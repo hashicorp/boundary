@@ -164,16 +164,17 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...O
 }
 
 // DeleteRole will delete a role from the repository.
-func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteRole(ctx context.Context, scopeId, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteRole"
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
 	role := allocRole()
 	role.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
-	}
+	role.ScopeId = scopeId
 	rowsDeleted, err := r.delete(ctx, &role)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))

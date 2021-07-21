@@ -269,7 +269,7 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -466,13 +466,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	return out, m, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	const op = "groups.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteGroup(ctx, id)
+	rows, err := repo.DeleteGroup(ctx, scopeId, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil

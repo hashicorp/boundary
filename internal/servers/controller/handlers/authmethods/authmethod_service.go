@@ -595,7 +595,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if err != nil {
 			return false, errors.Wrap(err, op)
 		}
-		rows, dErr = repo.DeleteAuthMethod(ctx, id)
+		rows, dErr = repo.DeleteAuthMethod(ctx, scopeId, id)
 	}
 
 	if dErr != nil {

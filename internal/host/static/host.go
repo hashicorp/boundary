@@ -1,7 +1,6 @@
 package static
 
 import (
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -22,10 +21,6 @@ type Host struct {
 // Name and description are the only valid options. All other options are
 // ignored.
 func NewHost(catalogId string, opt ...Option) (*Host, error) {
-	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, "static.NewHost", "no catalog id")
-	}
-
 	opts := getOpts(opt...)
 	host := &Host{
 		Host: &store.Host{

@@ -307,7 +307,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -401,13 +401,13 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	return out, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, errors.Wrap(err, op)
 	}
-	rows, err := repo.DeleteCatalog(ctx, id)
+	rows, err := repo.DeleteCatalog(ctx, scopeId, id)
 	if err != nil {
 		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
 	}

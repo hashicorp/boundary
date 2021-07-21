@@ -432,7 +432,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 }
 
 // DeleteScope will delete a scope from the repository
-func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteScope(ctx context.Context, parentId, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteScope"
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
@@ -442,6 +442,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	}
 	scope := AllocScope()
 	scope.PublicId = withPublicId
+	scope.ParentId = parentId
 	rowsDeleted, err := r.delete(ctx, &scope)
 	if err != nil {
 		if errors.Is(err, ErrMetadataScopeNotFound) {

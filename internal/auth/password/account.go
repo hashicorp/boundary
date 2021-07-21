@@ -2,7 +2,6 @@ package password
 
 import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,10 +28,6 @@ func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
 	const op = "password.NewAccount"
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
-	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
-	}
-
 	opts := getOpts(opt...)
 	a := &Account{
 		Account: &store.Account{

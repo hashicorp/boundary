@@ -188,13 +188,17 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, _ ...Option)
 }
 
 // DeleteUser will delete a user from the repository
-func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteUser(ctx context.Context, scopeId, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteUser"
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
 	user := AllocUser()
 	user.PublicId = withPublicId
+	user.ScopeId = scopeId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}

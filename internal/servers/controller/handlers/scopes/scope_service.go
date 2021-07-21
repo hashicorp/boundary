@@ -344,7 +344,7 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -465,13 +465,13 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	return out, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	const op = "scope.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteScope(ctx, scopeId)
+	rows, err := repo.DeleteScope(ctx, scopeId, id)
 	if err != nil {
 		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete scope"))
 	}

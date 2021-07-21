@@ -521,8 +521,9 @@ func TestRepository_DeleteUser(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				user: func() *iam.User {
-					u := iam.AllocUser()
-					return &u
+					u, err := iam.NewUser(org.PublicId)
+					require.NoError(t, err)
+					return u
 				}(),
 			},
 			wantRowsDeleted: 0,
@@ -549,7 +550,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deletedRows, err := repo.DeleteUser(context.Background(), tt.args.user.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteUser(context.Background(), tt.args.user.ScopeId, tt.args.user.PublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)

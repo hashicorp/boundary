@@ -670,7 +670,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.DeleteCatalog(context.Background(), tt.id)
+			got, err := repo.DeleteCatalog(context.Background(), prj.GetPublicId(), tt.id)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return

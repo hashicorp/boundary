@@ -153,16 +153,17 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 }
 
 // DeleteGroup will delete a group from the repository.
-func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteGroup(ctx context.Context, scopeId, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteGroup"
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
 	g := allocGroup()
 	g.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &g); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
-	}
+	g.ScopeId = scopeId
 	rowsDeleted, err := r.delete(ctx, &g)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))

@@ -238,7 +238,7 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		rowsDeleted, err := repo.DeleteScope(context.Background(), s.PublicId)
+		rowsDeleted, err := repo.DeleteScope(context.Background(), s.GetParentId(), s.PublicId)
 		require.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
@@ -255,7 +255,7 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 		foundScope, err := repo.LookupScope(context.Background(), invalidId)
 		require.NoError(err)
 		require.Nil(foundScope)
-		rowsDeleted, err := repo.DeleteScope(context.Background(), invalidId)
+		rowsDeleted, err := repo.DeleteScope(context.Background(), invalidId, invalidId)
 		require.NoError(err) // no error is expected if the resource isn't in the db
 		assert.Equal(0, rowsDeleted)
 	})

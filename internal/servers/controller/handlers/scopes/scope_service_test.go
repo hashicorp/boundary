@@ -285,10 +285,10 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 
 	oNoProjects, p1 := iam.TestScopes(t, repo)
-	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
+	_, err = repo.DeleteScope(context.Background(), p1.GetParentId(), p1.GetPublicId())
 	require.NoError(t, err)
 	oWithProjects, p2 := iam.TestScopes(t, repo)
-	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
+	_, err = repo.DeleteScope(context.Background(), p2.GetParentId(), p2.GetPublicId())
 	require.NoError(t, err)
 
 	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults("u_auth")

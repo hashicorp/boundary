@@ -496,8 +496,9 @@ func TestRepository_DeleteRole(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				role: func() *Role {
-					r := allocRole()
-					return &r
+					r, err := NewRole(org.PublicId)
+					require.NoError(t, err)
+					return r
 				}(),
 			},
 			wantRowsDeleted: 0,
@@ -516,16 +517,14 @@ func TestRepository_DeleteRole(t *testing.T) {
 				}(),
 			},
 			wantRowsDeleted: 0,
-			wantErr:         true,
-			wantErrMsg:      "iam.(Repository).DeleteRole: failed for " + roleId + ": db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteRole(context.Background(), tt.args.role.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteRole(context.Background(), tt.args.role.ScopeId, tt.args.role.PublicId, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(t, err)
 				assert.Equal(0, deletedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
@@ -539,8 +538,10 @@ func TestRepository_DeleteRole(t *testing.T) {
 			assert.NoError(err)
 			assert.Nil(foundRole)
 
-			err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			if tt.wantRowsDeleted > 0 {
+				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
 		})
 	}
 }

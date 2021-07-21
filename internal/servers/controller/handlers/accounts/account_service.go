@@ -115,7 +115,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -177,7 +177,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -219,11 +219,11 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	acct, err := s.createInRepo(ctx, authMeth, req.GetItem())
+	acct, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -258,11 +258,11 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 
-	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	acct, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req)
+	acct, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -313,7 +313,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
+	authResults := s.authResult(ctx, req.GetId(), action.ChangePassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -352,7 +352,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
+	authResults := s.authResult(ctx, req.GetId(), action.SetPassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -428,26 +428,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 	return acct, mgIds, nil
 }
 
-func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
+func (s Service) createPwInRepo(ctx context.Context, scopeId, authMethodId string, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.(Service).createPwInRepo"
-	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
-	}
-	pwAttrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
-	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
-	if item.GetName() != nil {
-		opts = append(opts, password.WithName(item.GetName().GetValue()))
-	}
-	if item.GetDescription() != nil {
-		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
-	}
-	a, err := password.NewAccount(am.GetPublicId(), opts...)
+	a, err := toStoragePwAccount(authMethodId, item)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for update: %v.", err)
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
@@ -455,10 +440,15 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	}
 
 	var createOpts []password.Option
-	if pwAttrs.GetPassword() != nil {
-		createOpts = append(createOpts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
+	attrs := &pb.PasswordAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
-	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a, createOpts...)
+	if attrs.GetPassword() != nil {
+		createOpts = append(createOpts, password.WithPassword(attrs.GetPassword().GetValue()))
+	}
+	out, err := repo.CreateAccount(ctx, scopeId, a, createOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -468,7 +458,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	return out, nil
 }
 
-func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*oidc.Account, error) {
+func (s Service) createOidcInRepo(ctx context.Context, scopeId, authMethodId string, item *pb.Account) (*oidc.Account, error) {
 	const op = "accounts.(Service).createOidcInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing item")
@@ -492,7 +482,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		}
 		opts = append(opts, oidc.WithIssuer(u))
 	}
-	a, err := oidc.NewAccount(am.GetPublicId(), attrs.GetSubject(), opts...)
+	a, err := oidc.NewAccount(authMethodId, attrs.GetSubject(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
@@ -501,7 +491,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		return nil, err
 	}
 
-	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a)
+	out, err := repo.CreateAccount(ctx, scopeId, a)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create account"))
 	}
@@ -511,15 +501,15 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	return out, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (auth.Account, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Account) (auth.Account, error) {
 	const op = "accounts.(Service).createInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.Account
-	switch auth.SubtypeFromId(am.GetPublicId()) {
+	switch auth.SubtypeFromId(item.GetAuthMethodId()) {
 	case auth.PasswordSubtype:
-		am, err := s.createPwInRepo(ctx, am, item)
+		am, err := s.createPwInRepo(ctx, scopeId, item.GetAuthMethodId(), item)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -528,7 +518,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		}
 		out = am
 	case auth.OidcSubtype:
-		am, err := s.createOidcInRepo(ctx, am, item)
+		am, err := s.createOidcInRepo(ctx, scopeId, item.GetAuthMethodId(), item)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -540,9 +530,9 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	return out, nil
 }
 
-func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
+func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.(Service).updatePwInRepo"
-	u, err := toStoragePwAccount(authMethId, item)
+	u, err := toStoragePwAccount(item.GetAuthMethodId(), item)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for update: %v.", err)
 	}
@@ -573,7 +563,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 	return out, nil
 }
 
-func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
+func (s Service) updateOidcInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
 	const op = "accounts.(Service).updateOidcInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
@@ -607,12 +597,12 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (auth.Account, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAccountRequest) (auth.Account, error) {
 	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
 	switch auth.SubtypeFromId(req.GetId()) {
 	case auth.PasswordSubtype:
-		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		a, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -621,7 +611,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 		}
 		out = a
 	case auth.OidcSubtype:
-		a, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		a, err := s.updateOidcInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -740,17 +730,17 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return out, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) (auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	pwRepo, err := s.pwRepoFn()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 
 	var parentId string
@@ -764,55 +754,55 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			acct, err := pwRepo.LookupAccount(ctx, id)
 			if err != nil {
 				res.Error = err
-				return nil, res
+				return res
 			}
 			if acct == nil {
 				res.Error = handlers.NotFoundError()
-				return nil, res
+				return res
 			}
 			parentId = acct.GetAuthMethodId()
 		case auth.OidcSubtype:
 			acct, err := oidcRepo.LookupAccount(ctx, id)
 			if err != nil {
 				res.Error = err
-				return nil, res
+				return res
 			}
 			if acct == nil {
 				res.Error = handlers.NotFoundError()
-				return nil, res
+				return res
 			}
 			parentId = acct.GetAuthMethodId()
 		}
 		opts = append(opts, auth.WithId(id))
 	}
 
-	var authMeth auth.AuthMethod
+	var scopeId string
 	switch auth.SubtypeFromId(parentId) {
 	case auth.PasswordSubtype:
 		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if am == nil {
 			res.Error = handlers.NotFoundError()
-			return nil, res
+			return res
 		}
-		authMeth = am
+		scopeId = am.GetScopeId()
 	case auth.OidcSubtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if am == nil {
 			res.Error = handlers.NotFoundError()
-			return nil, res
+			return res
 		}
-		authMeth = am
+		scopeId = am.GetScopeId()
 	}
-	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
-	return authMeth, auth.Verify(ctx, opts...)
+	opts = append(opts, auth.WithScopeId(scopeId), auth.WithPin(parentId))
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
@@ -893,6 +883,11 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
+	attrs := &pb.PasswordAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
+	}
 	var opts []password.Option
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -900,19 +895,12 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
+	if attrs.GetLoginName() != "" {
+		opts = append(opts, password.WithLoginName(attrs.GetLoginName()))
+	}
 	u, err := password.NewAccount(amId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
-	}
-
-	attrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
-
-	if attrs.GetLoginName() != "" {
-		u.LoginName = attrs.GetLoginName()
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build storage account: %v.", err)
 	}
 	return u, nil
 }

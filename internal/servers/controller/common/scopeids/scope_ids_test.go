@@ -238,14 +238,14 @@ func TestListingScopeIds(t *testing.T) {
 
 			// Clean up scopes between tests
 			defer func() {
-				_, err := iamRepo.DeleteScope(ctx, o.GetPublicId())
+				_, err := iamRepo.DeleteScope(ctx, o.GetParentId(), o.GetPublicId())
 				require.NoError(err)
 			}()
 
 			for i := 0; i < tc.globalGroups; i++ {
 				g := iam.TestGroup(t, conn, scope.Global.String())
 				defer func() {
-					_, err := iamRepo.DeleteGroup(ctx, g.GetPublicId())
+					_, err := iamRepo.DeleteGroup(ctx, g.GetScopeId(), g.GetPublicId())
 					require.NoError(err)
 				}()
 			}
@@ -269,7 +269,7 @@ func TestListingScopeIds(t *testing.T) {
 					// Clean up global between tests
 					if pubId == scope.Global.String() {
 						defer func() {
-							_, err := iamRepo.DeleteRole(ctx, role.GetPublicId())
+							_, err := iamRepo.DeleteRole(ctx, role.GetScopeId(), role.GetPublicId())
 							require.NoError(err)
 						}()
 					}
