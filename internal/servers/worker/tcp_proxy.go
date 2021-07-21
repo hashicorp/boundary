@@ -10,27 +10,30 @@ import (
 	"nhooyr.io/websocket"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
 func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAddr, conn *websocket.Conn, si *sessionInfo, connectionId, endpoint string) {
+	const op = "worker.(Worker).handleTcpProxyV1"
+	ctx := context.TODO()
 	si.RLock()
 	sessionId := si.lookupSessionResponse.GetAuthorization().GetSessionId()
 	si.RUnlock()
 
 	sessionUrl, err := url.Parse(endpoint)
 	if err != nil {
-		w.logger.Error("error parsing endpoint information", "error", err, "session_id", sessionId, "endpoint", endpoint)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error parsing endpoint information", "session_id": sessionId, "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
 		return
 	}
 	if sessionUrl.Scheme != "tcp" {
-		w.logger.Error("invalid scheme for tcp proxy", "error", err, "session_id", sessionId, "endpoint", endpoint)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"session_id": sessionId, "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "invalid scheme for type")
 		return
 	}
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
-		w.logger.Error("error dialing endpoint", "error", err, "endpoint", endpoint)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error dialing endpoint", "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
 		return
 	}
@@ -49,7 +52,7 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 
 	connStatus, err := w.connectConnection(connCtx, connectionInfo)
 	if err != nil {
-		w.logger.Error("error marking connection as connected", "error", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marking connection as connected"}))
 		conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
 		return
 	}
@@ -67,14 +70,14 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 		_, err := io.Copy(netConn, tcpRemoteConn)
 		netConn.Close()
 		tcpRemoteConn.Close()
-		w.logger.Debug("copy from client to endpoint done", "error", err)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "copy from client to endpoint done", "error": err})
 	}()
 	go func() {
 		defer connWg.Done()
 		_, err := io.Copy(tcpRemoteConn, netConn)
 		tcpRemoteConn.Close()
 		netConn.Close()
-		w.logger.Debug("copy from endpoint to client done", "error", err)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "copy from endpoint to client done", "error": err})
 	}()
 	connWg.Wait()
 }

@@ -8,12 +8,21 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
-	t.Parallel()
+	// do not runn using t.Parallel() since it relies on the sys eventer
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(t, err)
 	for _, name := range []string{"ok", "timeout"} {
 		t.Run(name, func(t *testing.T) {
 			require := require.New(t)

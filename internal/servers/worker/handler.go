@@ -2,12 +2,14 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"nhooyr.io/websocket"
@@ -32,9 +34,11 @@ func (w *Worker) handler(props HandlerProperties) http.Handler {
 }
 
 func (w *Worker) handleProxy() http.HandlerFunc {
+	const op = "worker.(Worker).handleProxy"
 	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		if r.TLS == nil {
-			w.logger.Error("no request TLS information found")
+			event.WriteError(ctx, op, errors.New("no request TLS information found"))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -42,13 +46,13 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
-			w.logger.Error("unable to understand remote address", "error", err, "remote_addr", r.RemoteAddr)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to understand remote address", "remote_addr": r.RemoteAddr}))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		numPort, err := strconv.Atoi(clientPort)
 		if err != nil {
-			w.logger.Error("unable to understand remote port", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to understand remote port"}))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -57,11 +61,11 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			Port: numPort,
 		}
 
-		w.logger.Trace("received TLS connection")
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "received TLS connection"})
 
 		siRaw, valid := w.sessionInfoMap.Load(sessionId)
 		if !valid {
-			w.logger.Error("session not found in info map", "session_id", sessionId)
+			event.WriteError(ctx, op, errors.New("session not found in info map"), event.WithInfo(map[string]interface{}{"session_id": sessionId}))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -75,56 +79,56 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		sessStatus := si.status
 		si.RUnlock()
 
-		w.logger.Trace("found session in session info map")
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "found session in session info map"})
 
 		opts := &websocket.AcceptOptions{
 			Subprotocols: []string{globals.TcpProxyV1},
 		}
 		conn, err := websocket.Accept(wr, r, opts)
 		if err != nil {
-			w.logger.Error("error during websocket upgrade", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error during websocket upgrade"}))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
-		w.logger.Trace("websocket upgrade done")
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "websocket upgrade done"})
 
 		connCtx, connCancel := context.WithDeadline(r.Context(), expiration.AsTime())
 		defer connCancel()
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
-			w.logger.Error("error reading handshake from client", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error reading handshake from client"}))
 			conn.Close(websocket.StatusPolicyViolation, "invalid handshake received")
 			return
 		}
 		if len(handshake.GetTofuToken()) < 20 {
-			w.logger.Error("invalid tofu token")
+			event.WriteError(ctx, op, errors.New("invalid tofu token"))
 			conn.Close(websocket.StatusUnsupportedData, "invalid tofu token")
 			return
 		}
 
-		w.logger.Trace("proxy handshake finished")
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "proxy handshake finished"})
 
 		if tofuToken != "" {
 			if tofuToken != handshake.GetTofuToken() {
-				w.logger.Error("WARNING: mismatched tofu token", "session_id", sessionId)
+				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo(map[string]interface{}{"session_id": sessionId}))
 				conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed")
 				return
 			}
 		} else {
 			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
-				w.logger.Error("no tofu token but not in correct session state", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "no tofu token but not in correct session state"}))
 				conn.Close(websocket.StatusInternalError, "refusing to activate session")
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				w.logger.Trace("activating session")
+				event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "activating session"})
 				sessStatus, err = w.activateSession(r.Context(), sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
-					w.logger.Error("unable to validate session", "error", err)
+					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to validate session"}))
 					conn.Close(websocket.StatusInternalError, "unable to activate session")
 					return
 				}
@@ -132,10 +136,10 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 
 		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
-			w.logger.Trace("canceling session at client request")
+			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "canceling session at client request"})
 			_, err := w.cancelSession(r.Context(), sessionId)
 			if err != nil {
-				w.logger.Error("unable to cancel session", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to cancel session"}))
 				conn.Close(websocket.StatusInternalError, "unable to cancel session")
 				return
 			}
@@ -147,7 +151,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		var connsLeft int32
 		ci, connsLeft, err = w.authorizeConnection(r.Context(), sessionId)
 		if err != nil {
-			w.logger.Error("unable to authorize connection", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to authorize connection"}))
 			conn.Close(websocket.StatusInternalError, "unable to authorize connection")
 			return
 		}
@@ -164,7 +168,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		connectionLimit := si.lookupSessionResponse.GetConnectionLimit()
 		si.Unlock()
 
-		w.logger.Trace("authorized connection", "connection_id", ci.id)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "authorized connection", "connection_id": ci.id})
 
 		handshakeResult := &proxy.HandshakeResult{
 			Expiration:      expiration,
@@ -172,7 +176,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			ConnectionsLeft: connsLeft,
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
-			w.logger.Error("error sending handshake result to client", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error sending handshake result to client"}))
 			conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
 			return
 		}
