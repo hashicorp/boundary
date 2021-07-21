@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -98,8 +99,9 @@ func New(conf *Config) (*Worker, error) {
 }
 
 func (w *Worker) Start() error {
+	const op = "worker.(Worker).Start"
 	if w.started.Load() {
-		w.logger.Info("already started, skipping")
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already started, skipping"})
 		return nil
 	}
 
@@ -128,8 +130,9 @@ func (w *Worker) Start() error {
 // to create new listeners we'd have to migrate listener setup logic here --
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
+	const op = "worker.(Worker).Shutdown"
 	if !w.started.Load() {
-		w.logger.Info("already shut down, skipping")
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already shut down, skipping"})
 		return nil
 	}
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})

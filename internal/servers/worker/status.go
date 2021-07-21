@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
@@ -23,6 +25,7 @@ type LastStatusInformation struct {
 }
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
+	const op = "worker.(Worker).startStatusTicking"
 	go func() {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		// This function exists to desynchronize calls to controllers from
@@ -42,7 +45,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				w.logger.Info("status ticking shutting down")
+				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "status ticking shutting down"})
 				return
 
 			case <-timer.C:
@@ -67,17 +70,18 @@ func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 // The timeout is aligned with the worker's status grace period. A nil error
 // means the status was sent successfully.
 func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
-	w.logger.Debug("waiting for next status report to controller")
+	const op = "worker.(Worker).WaitForNextSuccessfulStatusUpdate"
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer cancel()
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report to controller"})
 	for {
 		select {
 		case <-time.After(time.Second):
 			// pass
 
 		case <-ctx.Done():
-			w.logger.Error("error waiting for next status report to controller", "err", ctx.Err())
+			event.WriteError(ctx, op, ctx.Err(), event.WithInfo(map[string]interface{}{"msg": "error waiting for next status report to controller"}))
 			return ctx.Err()
 		}
 
@@ -86,11 +90,12 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 		}
 	}
 
-	w.logger.Debug("next worker status update sent successfully")
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "next worker status update sent successfully"})
 	return nil
 }
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
+	const op = "worker.(Worker).sendWorkerStatus"
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus
@@ -148,7 +153,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		UpdateTags: w.updateTags.Load(),
 	})
 	if err != nil {
-		w.logger.Error("error making status request to controller", "error", err)
+		event.WriteError(statusCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error making status request to controller"}))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
@@ -159,9 +164,12 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		// connections should continue to exist.
 
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
-			w.logger.Warn("status error grace period has expired, canceling all sessions on worker",
-				"last_status_time", lastStatusTime.String(),
-				"grace_period", gracePeriod,
+			event.WriteError(statusCtx, op,
+				errors.New("status error grace period has expired, canceling all sessions on worker"),
+				event.WithInfo(map[string]interface{}{
+					"last_status_time": lastStatusTime.String(),
+					"grace_period":     gracePeriod,
+				}),
 			)
 
 			// Run a "cleanup" for all sessions that will not be caught by
@@ -180,7 +188,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.logger.Trace("found controllers", "addresses", strAddrs)
 		switch len(strAddrs) {
 		case 0:
-			w.logger.Warn("got no controller addresses from controller; possibly prior to first status save, not persisting")
+			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
 		default:
 			w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 		}
@@ -196,7 +204,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					sessionId := sessInfo.GetSessionId()
 					siRaw, ok := w.sessionInfoMap.Load(sessionId)
 					if !ok {
-						w.logger.Warn("session change requested but could not find local information for it", "session_id", sessionId)
+						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo(map[string]interface{}{"session_id": sessionId}))
 						continue
 					}
 					si := siRaw.(*sessionInfo)
@@ -208,7 +216,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 						connId := conn.GetConnectionId()
 						connInfo, ok := si.connInfoMap[conn.GetConnectionId()]
 						if !ok {
-							w.logger.Warn("connection change requested but could not find local information for it", "connection_id", connId)
+							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo(map[string]interface{}{"connection_id": connId}))
 							continue
 						}
 
@@ -315,7 +323,8 @@ func (w *Worker) cancelConnections(connInfoMap map[string]*connInfo, ignoreConne
 }
 
 func (w *Worker) logClose(sessionId, connId string) {
-	w.logger.Info("terminated connection due to cancellation or expiration", "session_id", sessionId, "connection_id", connId)
+	const op = "worker.(Worker).logClose"
+	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "terminated connection due to cancellation or expiration", "session_id": sessionId, "connection_id": connId})
 }
 
 func (w *Worker) lastSuccessfulStatusTime() time.Time {

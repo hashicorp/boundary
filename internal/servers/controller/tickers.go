@@ -61,7 +61,7 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 		for {
 			select {
 			case <-cancelCtx.Done():
-				c.logger.Info("recovery nonce ticking shutting down")
+				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "recovery nonce ticking shutting down"})
 				return
 
 			case <-timer.C:
