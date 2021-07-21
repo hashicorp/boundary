@@ -5,24 +5,34 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSchedulerWorkflow(t *testing.T) {
-	t.Parallel()
+	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
-
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
 	job1Ch := make(chan error)
@@ -32,7 +42,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 		return <-job1Ch
 	}
 	tj1 := testJob{name: "name1", description: "desc", fn: fn1, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj1)
+	err = sched.RegisterJob(context.Background(), tj1)
 	require.NoError(err)
 
 	job2Ch := make(chan error)
@@ -78,17 +88,25 @@ func TestSchedulerWorkflow(t *testing.T) {
 }
 
 func TestSchedulerCancelCtx(t *testing.T) {
-	t.Parallel()
+	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
 	fn, jobReady, jobDone := testJobFn()
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj)
+	err = sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -116,19 +134,27 @@ func TestSchedulerCancelCtx(t *testing.T) {
 }
 
 func TestSchedulerInterruptedCancelCtx(t *testing.T) {
-	t.Parallel()
+	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	fn, job1Ready, job1Done := testJobFn()
 	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj1)
+	err = sched.RegisterJob(context.Background(), tj1)
 	require.NoError(err)
 
 	fn, job2Ready, job2Done := testJobFn()
@@ -208,13 +234,21 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 }
 
 func TestSchedulerJobProgress(t *testing.T) {
-	t.Parallel()
+	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
@@ -232,7 +266,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 		return <-jobStatus
 	}
 	tj := testJob{name: "name", description: "desc", fn: fn, statusFn: status, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj)
+	err = sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -302,6 +336,14 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
@@ -314,7 +356,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 		return nil
 	}
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj)
+	err = sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -348,6 +390,14 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
@@ -363,7 +413,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 		return <-jobStatus
 	}
 	tj := testJob{name: "name", description: "desc", fn: fn, statusFn: status, nextRunIn: time.Hour}
-	err := sched.RegisterJob(context.Background(), tj)
+	err = sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
