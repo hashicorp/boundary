@@ -291,59 +291,30 @@ with
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
 	// each.
+
 	closeConnectionsForDeadServersCte = `
-with
-  -- Get dead servers, parameterized off of grace period in seconds
-  dead_servers as (
-    select private_id, update_time
-    from server
-    where update_time < wt_sub_seconds_from_now($1)
-  ),
-  -- Find connections that are not closed so we can reference those IDs
-  unclosed_connections as (
-    select connection_id
-      from session_connection_state
-    where
-      -- It's the current state
-      end_time is null
-        and
-      -- Current state isn't closed state
-      state not in ('closed')
-        and
-      -- It's not in limbo between when it moved into this state and when
-      -- it started being reported by the worker, which is roughly every
-      -- 2-3 seconds
-      start_time < wt_sub_seconds_from_now(10)
-  ),
-  connections_to_close as (
-    select public_id
-      from session_connection
-    where
-      -- Related to the worker that just reported to us
-      server_id in (select private_id from dead_servers)
-        and
-      -- Only unclosed ones
-      public_id in (select connection_id from unclosed_connections)
-  ),
-  closed_connections as (
-    update session_connection
-      set
-        closed_reason = 'system error'
-      where
-        public_id in (select public_id from connections_to_close)
+   with
+   dead_servers (server_id, last_update_time) as (
+         select private_id, update_time
+           from server
+          where update_time < wt_sub_seconds_from_now($1)
+   ),
+   closed_connections (connection_id, server_id) as (
+         update session_connection
+            set closed_reason = 'system error'
+          where server_id in (select server_id from dead_servers)
+            and closed_reason is null
       returning public_id, server_id
-  )
-  select
-    dead_servers.private_id as server_id,
-    dead_servers.update_time as last_update_time,
-    count(closed_connections.public_id) as number_connections_closed
-  from dead_servers
-    left join closed_connections
-      on dead_servers.private_id = closed_connections.server_id
-  group by dead_servers.private_id, dead_servers.update_time
-  having count(closed_connections.public_id) > 0
-  order by dead_servers.private_id
-  `
+   )
+   select closed_connections.server_id,
+          dead_servers.last_update_time,
+          count(closed_connections.connection_id) as number_connections_closed
+     from closed_connections
+     join dead_servers
+       on closed_connections.server_id = dead_servers.server_id
+ group by closed_connections.server_id, dead_servers.last_update_time
+ order by closed_connections.server_id;
+`
 
 	// shouldCloseConnectionsCte finds connections that are marked as closed in
 	// the database given a set of connection IDs. They are returned along with
