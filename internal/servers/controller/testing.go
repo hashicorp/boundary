@@ -646,14 +646,16 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 // come in. If it does not come in within the default status grace
 // period, this function returns an error.
 func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
-	tc.Logger().Debug("waiting for next status report from worker", "worker", workerId)
+	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
+	ctx := context.TODO()
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report from worker", "worker": workerId})
 
 	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
-		tc.Logger().Error("error waiting for next status report from worker", "worker", workerId, "err", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error waiting for next status report from worker", "worker": workerId}))
 		return err
 	}
 
-	tc.Logger().Debug("waiting for next status report from worker received successfully", "worker", workerId)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report from worker received successfully", "worker": workerId})
 	return nil
 }
 

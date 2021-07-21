@@ -57,7 +57,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
-	ws.logger.Trace("got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got status request from worker", "name": req.Worker.PrivateId, "address": req.Worker.Address, "jobs": req.GetJobs()})
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
@@ -320,7 +320,8 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 }
 
 func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
-	ws.logger.Trace("got cancel session request from worker", "session_id", req.GetSessionId())
+	const op = "workers.(workerServiceServer).CancelSession"
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got cancel session request from worker", "session_id": req.GetSessionId()})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {

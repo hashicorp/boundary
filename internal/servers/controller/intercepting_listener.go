@@ -55,9 +55,8 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		return nil, err
 	}
-	if m.c.logger.IsTrace() {
-		m.c.logger.Trace("got connection", "addr", conn.RemoteAddr())
-	}
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got connection", "addr": conn.RemoteAddr()})
+
 	nonce := make([]byte, 20)
 	read, err := conn.Read(nonce)
 	if err != nil {

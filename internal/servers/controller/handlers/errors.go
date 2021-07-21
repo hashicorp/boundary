@@ -11,6 +11,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -115,10 +116,12 @@ func UnauthenticatedError() error {
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) *apiError {
+	const op = "handlers.InvalidArgumentErrorf"
+	ctx := context.TODO()
 	err := ApiErrorWithCodeAndMessage(codes.InvalidArgument, msg)
 	var apiErr *apiError
 	if !errors.As(err, &apiErr) {
-		hclog.L().Error("Unable to build invalid argument api error.", "original error", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "Unable to build invalid argument api error."}))
 	}
 
 	if len(fields) > 0 {
@@ -183,6 +186,7 @@ func backendErrorToApiError(inErr error) *apiError {
 }
 
 func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
+	const op = "handlers.ErrorHandler"
 	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, mar runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
 		// API specified error, otherwise we need to translate repo/db errors.
@@ -190,20 +194,20 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		isApiErr := errors.As(inErr, &apiErr)
 		if !isApiErr {
 			if err := backendErrorToApiError(inErr); err != nil && !errors.As(err, &apiErr) {
-				logger.Error("failed to cast error to api error", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to cast error to api error"}))
 			}
 		}
 
 		if apiErr.status == http.StatusInternalServerError {
-			logger.Error("internal error returned", "error", inErr)
+			event.WriteError(ctx, op, inErr, event.WithInfo(map[string]interface{}{"msg": "internal error returned"}))
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)
 		if merr != nil {
-			logger.Error("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr.inner), "error", merr)
+			event.WriteError(ctx, op, merr, event.WithInfo(map[string]interface{}{"msg": "failed to marshal error response", "response": fmt.Sprintf("%#v", apiErr.inner)}))
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
-				logger.Error("failed to write response", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to write response"}))
 			}
 			return
 		}
@@ -211,7 +215,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		w.Header().Set("Content-Type", mar.ContentType(apiErr.inner))
 		w.WriteHeader(int(apiErr.status))
 		if _, err := w.Write(buf); err != nil {
-			logger.Error("failed to send response chunk", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to send response chunk"}))
 			return
 		}
 	}

@@ -170,7 +170,7 @@ func (s *Scheduler) start(ctx context.Context) {
 			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "scheduling loop shutting down", "server id": s.serverId})
 			return
 		case <-timer.C:
-			s.logger.Debug("waking up to run jobs", "server id", s.serverId)
+			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waking up to run jobs", "server id": s.serverId})
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
@@ -232,7 +232,7 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 
 		switch runErr {
 		case nil:
-			s.logger.Debug("job run complete", "run id", r.PrivateId, "name", j.Name())
+			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "job run complete", "run id": r.PrivateId, "name": j.Name()})
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfo(map[string]interface{}{"msg": "error getting next run time", "name": j.Name()}))
@@ -259,7 +259,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug("job monitor loop shutting down")
+			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "job monitor loop shutting down"})
 			return
 
 		case <-timer.C:

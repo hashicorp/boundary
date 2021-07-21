@@ -81,6 +81,8 @@ func (l *ALPNMux) SetLogger(log hclog.Logger) {
 }
 
 func (l *ALPNMux) RegisterProto(proto string, tlsConf *tls.Config) (net.Listener, error) {
+	const op = "alpnmux.(ALPNMux).RegisterProto"
+	ctx := context.TODO()
 	switch proto {
 	case NoProto:
 		if tlsConf != nil {
@@ -111,13 +113,15 @@ func (l *ALPNMux) RegisterProto(proto string, tlsConf *tls.Config) (net.Listener
 	}
 
 	if l.log != nil && l.log.IsDebug() {
-		l.log.Debug("registered", "proto", proto)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "registered", "proto": proto})
 	}
 
 	return sub, nil
 }
 
 func (l *ALPNMux) UnregisterProto(proto string) {
+	const op = "alpnmux.(ALPNMux).UnregisterProto"
+	ctx := context.TODO()
 	val, ok := l.muxMap.Load(proto)
 	if !ok {
 		return
@@ -131,7 +135,7 @@ func (l *ALPNMux) UnregisterProto(proto string) {
 	})
 	l.muxMap.Delete(proto)
 	if l.log != nil && l.log.IsDebug() {
-		l.log.Debug("unregistered", "proto", proto)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "unregistered", "proto": proto})
 	}
 }
 

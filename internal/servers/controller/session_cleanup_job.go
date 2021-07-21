@@ -2,10 +2,12 @@ package controller
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
@@ -85,10 +87,7 @@ func (j *sessionCleanupJob) Status() scheduler.JobStatus {
 // Run executes the job.
 func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	const op = "controller.(sessionCleanupJob).Run"
-	j.logger.Debug(
-		"starting job",
-		"op", op,
-	)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "starting job"})
 	j.totalClosed = 0
 
 	// Load repos.
@@ -104,30 +103,28 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	}
 
 	if len(results) < 1 {
-		j.logger.Debug(
-			"all workers OK, no connections to close",
-			"op", op,
-		)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "all workers OK, no connections to close"})
 	} else {
 		for _, result := range results {
-			// Log a closed connection message for each worker as a warning
-			j.logger.Warn(
-				"worker has not reported status within acceptable grace period, all connections closed",
-				"op", op,
-				"private_id", result.ServerId,
-				"update_time", result.LastUpdateTime,
-				"grace_period_seconds", j.gracePeriod,
-				"number_connections_closed", result.NumberConnectionsClosed,
-			)
+			event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
+				event.WithInfo(map[string]interface{}{
+					"private_id":                result.ServerId,
+					"update_time":               result.LastUpdateTime,
+					"grace_period_seconds":      j.gracePeriod,
+					"number_connections_closed": result.NumberConnectionsClosed,
+				},
+				))
 
 			j.totalClosed += result.NumberConnectionsClosed
 		}
 	}
 
-	j.logger.Debug(
-		"job finished",
-		"op", op,
-		"total_connections_closed", j.totalClosed,
+	event.WriteSysEvent(ctx, op,
+		map[string]interface{}{
+			"msg":                      "job finished",
+			"op":                       op,
+			"total_connections_closed": j.totalClosed,
+		},
 	)
 	return nil
 }
