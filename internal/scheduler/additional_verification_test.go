@@ -329,7 +329,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 }
 
 func TestSchedulerMonitorLoop(t *testing.T) {
-	t.Parallel()
+	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
