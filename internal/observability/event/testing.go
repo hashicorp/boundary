@@ -4,10 +4,10 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/eventlogger"
@@ -15,21 +15,40 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testSysEventerLock sync.Mutex
+// TestEnableEventing will enable eventing via it's envvar
+// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
+func TestEnableEventing(t *testing.T, enable bool) {
+	t.Helper()
+	if enable {
+		os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
+		t.Cleanup(func() {
+			defer os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
+		})
+	} else {
+		os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
+	}
+}
+
+// TestGetEventerConfig is a test accessor for the eventer's config
+func TestGetEventerConfig(t *testing.T, e *Eventer) EventerConfig {
+	t.Helper()
+	return e.conf
+}
 
 // TestResetSysEventer will reset event.syseventer to an uninitialized state.
 func TestResetSystEventer(t *testing.T) {
 	t.Helper()
-	testSysEventerLock.Lock()
-	defer testSysEventerLock.Unlock()
-	sysEventerOnce = sync.Once{}
+	sysEventerLock.Lock()
+	defer sysEventerLock.Unlock()
 	sysEventer = nil
 }
 
 type TestConfig struct {
-	EventerConfig EventerConfig
-	AllEvents     *os.File
-	ErrorEvents   *os.File
+	EventerConfig     EventerConfig
+	AllEvents         *os.File
+	ErrorEvents       *os.File
+	ObservationEvents *os.File
+	AuditEvents       *os.File
 }
 
 // TestEventerConfig creates a test config and registers a cleanup func for its
@@ -51,9 +70,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 	c := TestConfig{
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
-			ObservationDelivery: Enforced,
 			AuditEnabled:        true,
-			AuditDelivery:       Enforced,
 			Sinks: []SinkConfig{
 				{
 					Name:       "every-type-file-sink",
@@ -64,8 +81,8 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					FileName:   tmpAllFile.Name(),
 				},
 				{
-					Name:       "stdout",
-					SinkType:   StdoutSink,
+					Name:       "stderr",
+					SinkType:   StderrSink,
 					EventTypes: []Type{EveryType},
 					Format:     JSONSinkFormat,
 				},
@@ -97,6 +114,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
+		c.AuditEvents = tmpFile
 	}
 	if opts.withObservationSink {
 		tmpFile, err := ioutil.TempFile("./", "tmp-observation-"+testName)
@@ -112,6 +130,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
+		c.ObservationEvents = tmpFile
 	}
 	if opts.withSysSink {
 		tmpFile, err := ioutil.TempFile("./", "tmp-sysevents-"+testName)
@@ -177,29 +196,33 @@ func testResponse(t *testing.T) *Response {
 	}
 }
 
-// testWithBroker is an unexported and a test option for passing in an optional broker
-func testWithBroker(b broker) Option {
+// TestWithBroker is an unexported and a test option for passing in an optional broker
+func TestWithBroker(t *testing.T, b broker) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withBroker = b
 	}
 }
 
-// testWithObservationSink is an unexported and a test option
-func testWithObservationSink() Option {
+// TestWithObservationSink is an unexported and a test option
+func TestWithObservationSink(t *testing.T) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withObservationSink = true
 	}
 }
 
-// testWithAuditSink is an unexported and a test option
-func testWithAuditSink() Option {
+// TestWithAuditSink is an unexported and a test option
+func TestWithAuditSink(t *testing.T) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withAuditSink = true
 	}
 }
 
 // testWithSysSink is an unexported and a test option
-func testWithSysSink() Option {
+func testWithSysSink(t *testing.T) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true
 	}

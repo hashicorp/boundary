@@ -186,7 +186,7 @@ func (s *Scheduler) start(ctx context.Context) {
 				err := s.runJob(ctx, r)
 				if err != nil {
 					s.logger.Error("error starting job", "error", err)
-					if _, inner := repo.FailRun(ctx, r.PrivateId); inner != nil {
+					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
 						s.logger.Error("error updating failed job run", "error", inner)
 					}
 				}
@@ -223,6 +223,10 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 		defer rj.cancelCtx()
 		runErr := j.Run(jobContext)
 		var updateErr error
+
+		// Get final status report to update run progress with
+		status := j.Status()
+
 		switch runErr {
 		case nil:
 			s.logger.Debug("job run complete", "run id", r.PrivateId, "name", j.Name())
@@ -230,10 +234,10 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 			if inner != nil {
 				s.logger.Error("error getting next run time", "name", j.Name(), "error", inner)
 			}
-			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun)
+			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun, status.Completed, status.Total)
 		default:
 			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name(), "error", runErr)
-			_, updateErr = repo.FailRun(jobContext, r.PrivateId)
+			_, updateErr = repo.FailRun(jobContext, r.PrivateId, status.Completed, status.Total)
 		}
 
 		if updateErr != nil {

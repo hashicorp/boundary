@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -137,6 +137,11 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
@@ -176,8 +181,8 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	migrationUrl, err := configutil.ParsePath(migrationUrlToParse)
-	if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+	migrationUrl, err := parseutil.ParsePath(migrationUrlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return base.CommandUserError
 	}

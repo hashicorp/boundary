@@ -9,13 +9,13 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/proxy"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
 
 type HandlerProperties struct {
-	ListenerConfig *configutil.Listener
+	ListenerConfig *listenerutil.ListenerConfig
 }
 
 // Handler returns an http.Handler for the API. This can be used on

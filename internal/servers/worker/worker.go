@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -28,8 +28,8 @@ type Worker struct {
 	started     *ua.Bool
 
 	controllerStatusConn *atomic.Value
-	workerStartTime      time.Time
 	lastStatusSuccess    *atomic.Value
+	workerStartTime      time.Time
 
 	controllerResolver *atomic.Value
 
@@ -140,6 +140,11 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		}
 	}
 	w.started.Store(false)
+	if w.conf.Eventer != nil {
+		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
+			return fmt.Errorf("error flushing worker eventer nodes: %w", err)
+		}
+	}
 	return nil
 }
 

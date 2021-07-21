@@ -3,7 +3,7 @@ package event
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
 //  This modified newId has been done to stop a circular

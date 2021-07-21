@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -99,6 +100,9 @@ type Config struct {
 	DevControllerKey     string `hcl:"-"`
 	DevWorkerAuthKey     string `hcl:"-"`
 	DevRecoveryKey       string `hcl:"-"`
+
+	// Eventing configuration for the controller
+	Eventing *event.EventerConfig `hcl:"events"`
 }
 
 type Controller struct {
@@ -115,6 +119,13 @@ type Controller struct {
 	// denoted by time.Duration
 	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// controller will wait before marking connections from a disconnected worker
+	// as invalid.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
 }
 
 type Worker struct {
@@ -128,6 +139,13 @@ type Worker struct {
 	// key=value syntax. This is trued up in the Parse function below.
 	TagsRaw interface{}         `hcl:"tags"`
 	Tags    map[string][]string `hcl:"-"`
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// worker will wait before disconnecting connections if it cannot make a
+	// status report to a controller.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
 }
 
 type Database struct {
@@ -236,8 +254,8 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
-		result.Controller.Name, err = configutil.ParsePath(result.Controller.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Controller.Name, err = parseutil.ParsePath(result.Controller.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing controller name: %w", err)
 		}
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
@@ -265,8 +283,8 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
-		result.Worker.Name, err = configutil.ParsePath(result.Worker.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
 		}
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
@@ -356,6 +374,14 @@ func Parse(d string) (*Config, error) {
 					listener.CorsAllowedOrigins = strutil.AppendIfMissing(listener.CorsAllowedOrigins, desktopCorsOrigin)
 				}
 			}
+		}
+	}
+
+	if result.Eventing == nil {
+		result.Eventing = event.DefaultEventerConfig()
+	} else {
+		if result.Eventing.Sinks == nil {
+			result.Eventing.Sinks = []event.SinkConfig{event.DefaultSink()}
 		}
 	}
 

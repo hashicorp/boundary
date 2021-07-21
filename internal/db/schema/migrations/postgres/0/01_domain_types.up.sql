@@ -5,7 +5,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_private_id as text
 not null
@@ -13,14 +13,14 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_private_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
 comment on domain wt_scope_id is
-'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_user_id as text
 not null
@@ -28,7 +28,7 @@ check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
-'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_role_id as text
 not null
@@ -36,7 +36,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
