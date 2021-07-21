@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -52,24 +54,25 @@ var (
 )
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
 	ws.logger.Trace("got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
-		ws.logger.Error("error getting servers repo", "error", err)
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting servers repo"}))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
-		ws.logger.Error("error getting sessions repo", "error", err)
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to query session status: %v", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting sessions repo"}))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 	req.Worker.Type = resource.Worker.String()
 	controllers, _, err := serverRepo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
-		ws.logger.Error("error storing worker status", "error", err)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error storing worker status"}))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 	ret := &pbs.StatusResponse{
@@ -209,14 +212,15 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
 	}
 	if closedConns > 0 {
-		ws.logger.Info("marked unclaimed connections as closed", "server_id", req.Worker.PrivateId, "count", closedConns)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "marked unclaimed connections as closed", "server_id": req.Worker.PrivateId, "count": closedConns})
 	}
 
 	return ret, nil
 }
 
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
-	ws.logger.Trace("got validate session request from worker", "session_id", req.GetSessionId())
+	const op = "workers.(workerServiceServer).LookupSession"
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got validate session request from worker", "session_id": req.GetSessionId()})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -236,17 +240,17 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 
 	if sessionInfo.WorkerFilter != "" {
 		if req.ServerId == "" {
-			ws.logger.Error("worker filter enabled for session but got no server ID from worker")
+			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no server ID from worker"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive server ID when looking up session but filtering is enabled: %v", err)
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
-			ws.logger.Error("error getting servers repo", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting servers repo"}))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
 		tags, err := serversRepo.ListTagsForServers(ctx, []string{req.ServerId})
 		if err != nil {
-			ws.logger.Error("error looking up tags for server", "error", err, "server_id", req.ServerId)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error looking up tags for server", "server_id": req.ServerId}))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 		}
 		// Build the map for filtering.
@@ -260,7 +264,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		// Create the evaluator
 		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
 		if err != nil {
-			ws.logger.Error("error creating worker filter evaluator", "error", err, "server_id", req.ServerId)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error creating worker filter evaluator", "server_id": req.ServerId}))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
 		filterInput := map[string]interface{}{
@@ -339,7 +343,8 @@ func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.Cance
 }
 
 func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
-	ws.logger.Trace("got activate session request from worker", "session_id", req.GetSessionId())
+	const op = "workers.(workerServiceServer).ActivateSession"
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got activate session request from worker", "session_id": req.GetSessionId()})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -363,12 +368,14 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Error(codes.Internal, "Invalid session state in activate response.")
 	}
 
-	ws.logger.Info("session activated",
-		"session_id", sessionInfo.PublicId,
-		"target_id", sessionInfo.TargetId,
-		"user_id", sessionInfo.UserId,
-		"host_set_id", sessionInfo.HostSetId,
-		"host_id", sessionInfo.HostId)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{
+		"msg":         "session activated",
+		"session_id":  sessionInfo.PublicId,
+		"target_id":   sessionInfo.TargetId,
+		"user_id":     sessionInfo.UserId,
+		"host_set_id": sessionInfo.HostSetId,
+		"host_id":     sessionInfo.HostId,
+	})
 
 	return &pbs.ActivateSessionResponse{
 		Status: sessionStates[0].Status.ProtoVal(),
@@ -376,7 +383,8 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 }
 
 func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
-	ws.logger.Trace("got authorize connection request from worker", "session_id", req.GetSessionId())
+	const op = "workers.(workerServiceServer"
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got authorize connection request from worker", "session_id": req.GetSessionId()})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -403,16 +411,20 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	ws.logger.Info("authorized connection",
-		"session_id", req.GetSessionId(),
-		"connection_id", ret.ConnectionId,
-		"connections_left", ret.ConnectionsLeft)
+	event.WriteSysEvent(ctx, op,
+		map[string]interface{}{
+			"msg":              "authorized connection",
+			"session_id":       req.GetSessionId(),
+			"connection_id":    ret.ConnectionId,
+			"connections_left": ret.ConnectionsLeft,
+		})
 
 	return ret, nil
 }
 
 func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
-	ws.logger.Trace("got connection established information from worker", "connection_id", req.GetConnectionId())
+	const op = "workers.(workerServiceServer).ConnectConnection"
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got connection established information from worker", "connection_id": req.GetConnectionId()})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -451,12 +463,13 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 		)
 	}
 
-	ws.logger.Info("connection established", loggerPairs...)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "connection established", "logger_pairs": loggerPairs})
 
 	return ret, nil
 }
 
 func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+	const op = "workers.(workerServiceServer).CloseConnection"
 	numCloses := len(req.GetCloseRequestData())
 	if numCloses == 0 {
 		return &pbs.CloseConnectionResponse{}, nil
@@ -474,7 +487,7 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 			ClosedReason: session.ClosedReason(v.GetReason()),
 		})
 	}
-	ws.logger.Trace("got connection close information from worker", "connection_ids", closeIds)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got connection close information from worker", "connection_ids": closeIds})
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -504,7 +517,7 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 	}
 
 	for _, v := range req.GetCloseRequestData() {
-		ws.logger.Info("connection closed", "connection_id", v.ConnectionId)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "connection closed", "connection_id": v.ConnectionId})
 	}
 
 	ret := &pbs.CloseConnectionResponse{

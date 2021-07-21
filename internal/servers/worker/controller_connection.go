@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
@@ -59,6 +60,7 @@ func (w *Worker) startControllerConnections() error {
 }
 
 func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		tlsConf, authInfo, err := w.workerAuthTLSConfig()
 		if err != nil {
@@ -79,13 +81,13 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 		if err != nil {
 			if err := nonTlsConn.Close(); err != nil {
-				w.logger.Error("error closing connection after writing failure", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing connection after writing failure"}))
 			}
 			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 		}
 		if written != len(authInfo.ConnectionNonce) {
 			if err := nonTlsConn.Close(); err != nil {
-				w.logger.Error("error closing connection after writing failure", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing connection after writing failure"}))
 			}
 			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}
@@ -94,6 +96,7 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 }
 
 func (w *Worker) createClientConn(addr string) error {
+	const op = "worker.(Worker)createClientConn"
 	defaultTimeout := (time.Second + time.Nanosecond).String()
 	defServiceConfig := fmt.Sprintf(`
 	  {
@@ -127,7 +130,7 @@ func (w *Worker) createClientConn(addr string) error {
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
-	w.logger.Info("connected to controller", "address", addr)
+	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "connected to controller", "address": addr})
 	return nil
 }
 
