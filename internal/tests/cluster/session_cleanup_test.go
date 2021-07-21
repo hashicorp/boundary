@@ -121,7 +121,6 @@ func TestWorkerSessionCleanup(t *testing.T) {
 
 func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testing.T) {
 	const op = "cluster.testWorkerSessionCleanupSingle"
-	ctx := context.TODO()
 	return func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
@@ -269,7 +268,6 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 
 func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing.T) {
 	const op = "cluster.testWorkerSessionCleanupMulti"
-	ctx := context.TODO()
 	return func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
