@@ -1,0 +1,12 @@
+machine:
+  image: 'ubuntu-1604:201903-01'
+working_directory: ~/boundary
+parameters:
+  postgres-version:
+    type: string
+steps:
+- checkout
+- run:
+    name: "Run SQL PgTap Tests"
+    command: |
+      make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=<< parameters.postgres-version >>
