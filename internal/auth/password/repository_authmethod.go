@@ -68,7 +68,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -132,7 +132,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 	am := allocAuthMethod()
 	am.PublicId = publicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
@@ -212,7 +212,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "field mask must not be empty")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
@@ -243,15 +243,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 			if rowsUpdated > 1 {
 				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			// we need a new repo, that's using the same reader/writer as this TxHandler
-			txRepo := &Repository{
-				reader: reader,
-				writer: w,
-				kms:    r.kms,
-				// intentionally not setting the defaultLimit, so we'll get all
-				// the account ids without a limit
-			}
-			upAuthMethod, err = txRepo.lookupAuthMethod(ctx, upAuthMethod.PublicId)
+			upAuthMethod, err = r.lookupAuthMethod(ctx, upAuthMethod.PublicId, withReader(reader))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
@@ -332,8 +324,12 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
 	}
 
+	reader := r.reader
+	if opts.withReader != nil {
+		reader = opts.withReader
+	}
 	var views []*authMethodView
-	err := r.reader.SearchWhere(ctx, &views, strings.Join(where, " and "), args, dbArgs...)
+	err := reader.SearchWhere(ctx, &views, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}

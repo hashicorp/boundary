@@ -41,7 +41,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // for c.AuthMethodId, SetConfiguration ignores c. If c contains settings
 // equal to a previous configuration for c.AuthMethodId, SetConfiguration
 // updates AuthMethod to use the previous configuration.
-func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
+func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Configuration, error) {
 	const op = "password.(Repository).SetConfiguration"
 	if c == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing configuration")
@@ -55,7 +55,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
-		out, err := r.setArgon2Conf(ctx, scopeId, v)
+		out, err := r.setArgon2Conf(ctx, v)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -65,7 +65,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 	}
 }
 
-func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon2Configuration) (*Argon2Configuration, error) {
+func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) (*Argon2Configuration, error) {
 	const op = "password.(Repository).setArgon2Conf"
 	c = c.clone()
 
@@ -81,7 +81,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 		},
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}

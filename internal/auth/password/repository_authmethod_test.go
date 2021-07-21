@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -141,7 +142,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAuthMethod(context.Background(), tt.in, tt.opts...)
@@ -171,11 +172,11 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				ScopeId: org.GetPublicId(),
@@ -199,11 +200,11 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org1, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org1.GetPublicId()).Build()
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, iamRepo)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				Name: "test-name-repo",
@@ -222,6 +223,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		org2, _ := iam.TestScopes(t, iamRepo)
+		repo, err = (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org2.GetPublicId()).Build()
 		in2.ScopeId = org2.GetPublicId()
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
 		require.NoError(err)
@@ -243,11 +245,11 @@ func TestRepository_CreateAuthMethod_PublicId(t *testing.T) {
 
 	t.Run("valid-with-publicid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org1, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org1.GetPublicId()).Build()
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, iamRepo)
 		in := allocAuthMethod()
 
 		amId, err := newAuthMethodId()
@@ -263,11 +265,11 @@ func TestRepository_CreateAuthMethod_PublicId(t *testing.T) {
 
 	t.Run("invalid-with-badpublicid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org1, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org1.GetPublicId()).Build()
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org1, _ := iam.TestScopes(t, iamRepo)
 		in := allocAuthMethod()
 
 		in.ScopeId = org1.GetPublicId()
@@ -316,7 +318,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAuthMethod(context.Background(), tt.in)
@@ -370,7 +372,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAuthMethod(context.Background(), o.GetPublicId(), tt.in)
@@ -424,7 +426,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
@@ -445,7 +447,7 @@ func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(scope.Global.String()).Build()
 	require.NoError(t, err)
 
 	var total int
@@ -491,7 +493,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		repoOpts []Option
+		repoLimit int
 		listOpts []Option
 		wantLen  int
 	}{
@@ -502,13 +504,13 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
+			repoLimit: 3,
 			listOpts: []Option{WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
+			repoLimit: -1,
 			wantLen:  authMethodCount,
 		},
 		{
@@ -523,13 +525,13 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
+			repoLimit: 2,
 			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
+			repoLimit: 6,
 			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
 			wantLen:  2,
 		},
@@ -539,7 +541,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).DefaultLimit(tt.repoLimit).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), []string{ams[0].GetScopeId()}, tt.listOpts...)
@@ -558,8 +560,6 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	ctx := context.Background()
@@ -737,6 +737,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 
 			// create the initial auth method
 			o, _ := iam.TestScopes(t, iamRepo)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
+			require.NoError(err)
+
 			am, err := NewAuthMethod(o.GetPublicId(), WithName("default"), WithDescription("default"))
 			require.NoError(err)
 			origAM, err := repo.CreateAuthMethod(ctx, am)

@@ -27,7 +27,7 @@ import (
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
-func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
+func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Option) (*Account, error) {
 	const op = "password.(Repository).CreateAccount"
 	if a == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
@@ -40,9 +40,6 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 	if a.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
-	}
-	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	if !validLoginName(a.LoginName) {
 		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
@@ -83,11 +80,11 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.keyFor(ctx, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
 	}
@@ -175,7 +172,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 	ac := allocAccount()
 	ac.PublicId = withPublicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -286,7 +283,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg(("unable to get oplog wrapper")))

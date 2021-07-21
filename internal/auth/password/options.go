@@ -1,5 +1,7 @@
 package password
 
+import "github.com/hashicorp/boundary/internal/db"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -20,6 +22,7 @@ type options struct {
 	withLimit             int
 	withConfig            Configuration
 	withPublicId          string
+	withReader db.Reader
 	password              string
 	withPassword          bool
 	withOrderByCreateTime bool
@@ -90,5 +93,12 @@ func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) {
 		o.withOrderByCreateTime = true
 		o.ascending = ascending
+	}
+}
+
+// withReader is an internal option used to specify a database reader.
+func withReader(r db.Reader) Option {
+	return func(o *options) {
+		o.withReader = r
 	}
 }

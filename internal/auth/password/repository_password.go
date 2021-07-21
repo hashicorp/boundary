@@ -46,7 +46,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		return nil, errors.New(errors.InvalidParameter, op, "missing scopeId")
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.keyFor(ctx, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
@@ -69,7 +69,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return acct.Account, errors.Wrap(err, op, errors.WithCode(errors.PasswordInvalidConfiguration))
 		}
 
-		oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+		oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 		if err != nil {
 			return acct.Account, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplong wrapper"))
 		}
@@ -138,11 +138,11 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, errors.New(errors.RecordNotFound, op, "account not found")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.keyFor(ctx, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
@@ -237,8 +237,8 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 		acct = accts[0]
 	}
 
-	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
+	// We don't pass a wrapper in here because for encryption we want to indicate the expected key ID
+	databaseWrapper, err := r.keyFor(ctx, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
@@ -269,11 +269,11 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		return nil, errors.New(errors.InvalidParameter, op, "missing scopeId")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.keyFor(ctx, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.keyFor(ctx, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}

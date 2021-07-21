@@ -231,10 +231,10 @@ func TestRepository_CreateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateAccount(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -271,11 +271,11 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 		authMethod := authMethods[0]
 
@@ -287,7 +287,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
+		got, err := repo.CreateAccount(context.Background(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
@@ -296,18 +296,18 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
+		got2, err := repo.CreateAccount(context.Background(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 2)
 		authMethoda, authMethodb := authMethods[0], authMethods[1]
 		in := &Account{
@@ -319,7 +319,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		in2 := in.clone()
 
 		in.AuthMethodId = authMethoda.GetPublicId()
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
+		got, err := repo.CreateAccount(context.Background(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
@@ -329,7 +329,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.AuthMethodId = authMethodb.GetPublicId()
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
+		got2, err := repo.CreateAccount(context.Background(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got2.PublicId)
@@ -381,7 +381,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
@@ -438,7 +438,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
@@ -496,7 +496,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
@@ -527,7 +527,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		repoOpts []Option
+		repoLen  int
 		listOpts []Option
 		wantLen  int
 	}{
@@ -536,14 +536,14 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			wantLen: accountCount,
 		},
 		{
-			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
-			wantLen:  3,
+			name:    "With repo limit",
+			repoLen: 3,
+			wantLen: 3,
 		},
 		{
-			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  accountCount,
+			name:    "With negative repo limit",
+			repoLen: -1,
+			wantLen: accountCount,
 		},
 		{
 			name:     "With List limit",
@@ -557,13 +557,13 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		},
 		{
 			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
+			repoLen:  2,
 			listOpts: []Option{WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
+			repoLen:  6,
 			listOpts: []Option{WithLimit(2)},
 			wantLen:  2,
 		},
@@ -573,7 +573,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).DefaultLimit(tt.repoLen).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
@@ -911,18 +911,18 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			org, _ := iam.TestScopes(t, iamRepo)
+			repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			org, _ := iam.TestScopes(t, iamRepo)
 			am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.orig.LoginName == "" {
 				tt.orig.LoginName = "kazmierczak"
 			}
-			orig, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.orig)
+			orig, err := repo.CreateAccount(context.Background(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
@@ -976,12 +976,12 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
 		name := "test-dup-name"
-		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
@@ -1008,11 +1008,11 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -1027,7 +1027,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 		in.AuthMethodId = ama.PublicId
 		in.LoginName = "kazmierczak"
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
+		got, err := repo.CreateAccount(context.Background(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
@@ -1038,7 +1038,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		in2.AuthMethodId = amb.PublicId
 		in2.LoginName = "kazmierczak2"
 		in2.Name = "first-name"
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
+		got2, err := repo.CreateAccount(context.Background(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
@@ -1054,12 +1054,12 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-loginnames", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
 		loginName := "kazmierczak12"
-		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
@@ -1086,11 +1086,11 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]
@@ -1104,7 +1104,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		in2 := in.clone()
 
 		in.AuthMethodId = ama.PublicId
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
+		got, err := repo.CreateAccount(context.Background(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
@@ -1113,7 +1113,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 		in2.AuthMethodId = amb.PublicId
 		in2.LoginName = "kazmierczak2"
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
+		got2, err := repo.CreateAccount(context.Background(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.LoginName = got.LoginName
@@ -1128,11 +1128,11 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		org, _ := iam.TestScopes(t, iamRepo)
+		repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(org.GetPublicId()).Build()
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		org, _ := iam.TestScopes(t, iamRepo)
 		ams := TestAuthMethods(t, conn, org.PublicId, 2)
 
 		ama := ams[0]

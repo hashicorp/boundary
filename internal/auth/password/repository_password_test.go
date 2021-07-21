@@ -32,10 +32,10 @@ func TestRepository_Authenticate(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetParentId()).Build()
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
-	outAcct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
+	outAcct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
 	assert.NoError(t, err)
 	require.NotNil(t, outAcct)
 
@@ -142,7 +142,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	passwd := "12345678"
 	ctx := context.Background()
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := (&Builder{}).ReadWriter(rw).Kms(kmsCache).KeyId(o.GetParentId()).Build()
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -163,7 +163,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 		},
 	}
 
-	origAcct, err := repo.CreateAccount(ctx, o.GetPublicId(), inAcct, WithPassword(passwd))
+	origAcct, err := repo.CreateAccount(ctx, inAcct, WithPassword(passwd))
 	require.NoError(err)
 	require.NotNil(origAcct)
 	assert.NotEmpty(origAcct.PublicId)
@@ -204,7 +204,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	inArgonConf := origArgonConf.clone()
 	inArgonConf.Threads = origArgonConf.Threads + 1
 
-	upConf, err := repo.SetConfiguration(ctx, o.GetPublicId(), inArgonConf)
+	upConf, err := repo.SetConfiguration(ctx, inArgonConf)
 	require.NoError(err)
 	require.NotNil(upConf)
 	assert.NotSame(inArgonConf, upConf)
@@ -251,12 +251,12 @@ func TestRepository_ChangePassword(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	inAcct := &Account{
@@ -267,7 +267,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	acct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
+	acct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
 	require.NoError(t, err)
 	require.NotNil(t, acct)
 
@@ -414,12 +414,12 @@ func TestRepository_SetPassword(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := (&Builder{}).ReadWriter(rw).Kms(kms).KeyId(o.GetPublicId()).Build()
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	origPasswd := "12345678"
@@ -436,7 +436,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			if pw != "" {
 				opts = append(opts, WithPassword(origPasswd))
 			}
-			acct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, opts...)
+			acct, err := repo.CreateAccount(context.Background(), inAcct, opts...)
 			require.NoError(t, err)
 			require.NotNil(t, acct)
 			return acct
