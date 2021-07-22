@@ -2,7 +2,7 @@
 -- sessions are created using the password auth method
 -- after the auth_password_account has its description change.
 begin;
-  select plan(32);
+  select plan(40);
 
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
@@ -24,11 +24,15 @@ begin;
   select is(auth_account_type,             'password auth account') from wh_user_dimension;
   select is(auth_account_name,             'None')                  from wh_user_dimension;
   select is(auth_account_description,      'None')                  from wh_user_dimension;
+  select is(auth_account_external_id,      'Not Applicable')        from wh_user_dimension;
+  select is(auth_account_full_name,        'Not Applicable')        from wh_user_dimension;
+  select is(auth_account_email,            'Not Applicable')        from wh_user_dimension;
 
   select is(auth_method_id,                'apm___widget')          from wh_user_dimension;
   select is(auth_method_type,              'password auth method')  from wh_user_dimension;
   select is(auth_method_name,              'Widget Auth Password')  from wh_user_dimension;
   select is(auth_method_description,       'None')                  from wh_user_dimension;
+  select is(auth_method_external_id,       'Not Applicable')        from wh_user_dimension;
 
   select is(user_organization_id,          'o_____widget')          from wh_user_dimension;
   select is(user_organization_name,        'Widget Inc')            from wh_user_dimension;
@@ -62,11 +66,15 @@ begin;
   select is(auth_account_type,             'password auth account')   from wh_user_dimension where current_row_indicator = 'Current';
   select is(auth_account_name,             'None')                    from wh_user_dimension where current_row_indicator = 'Current';
   select is(auth_account_description,      'Walter Password Account') from wh_user_dimension where current_row_indicator = 'Current';
+  select is(auth_account_external_id,      'Not Applicable')          from wh_user_dimension where current_row_indicator = 'Current';
+  select is(auth_account_full_name,        'Not Applicable')          from wh_user_dimension where current_row_indicator = 'Current';
+  select is(auth_account_email,            'Not Applicable')          from wh_user_dimension where current_row_indicator = 'Current';
 
   select is(auth_method_id,                'apm___widget')            from wh_user_dimension where current_row_indicator = 'Current';
   select is(auth_method_type,              'password auth method')    from wh_user_dimension where current_row_indicator = 'Current';
   select is(auth_method_name,              'Widget Auth Password')    from wh_user_dimension where current_row_indicator = 'Current';
   select is(auth_method_description,       'None')                    from wh_user_dimension where current_row_indicator = 'Current';
+  select is(auth_method_external_id,       'Not Applicable')          from wh_user_dimension where current_row_indicator = 'Current';
 
   select is(user_organization_id,          'o_____widget')            from wh_user_dimension where current_row_indicator = 'Current';
   select is(user_organization_name,        'Widget Inc')              from wh_user_dimension where current_row_indicator = 'Current';

@@ -11,20 +11,24 @@ begin;
   insert into wh_user_dimension
     (
       id,
-      user_id,               user_name,                       user_description,
-      auth_account_id,       auth_account_type,               auth_account_name,             auth_account_description,
-      auth_method_id,        auth_method_type,                auth_method_name,              auth_method_description,
-      user_organization_id,  user_organization_name,          user_organization_description,
-      current_row_indicator, row_effective_time,              row_expiration_time
+      user_id,                  user_name,                       user_description,
+      auth_account_id,          auth_account_type,               auth_account_name,             auth_account_description,
+      auth_account_external_id, auth_account_full_name,          auth_account_email,
+      auth_method_id,           auth_method_type,                auth_method_name,              auth_method_description,
+      auth_method_external_id,
+      user_organization_id,     user_organization_name,          user_organization_description,
+      current_row_indicator,    row_effective_time,              row_expiration_time
     )
   values
     (
       'wud_____1',
-      'u_____walter',        'Walter',                        'This is Walter',
-      'apa___walter',        'password auth account',         'walter',                      'Account for Walter',
-      'apm___widget',        'password auth method',          'Widget Auth Password',        'None',
-      'o_____widget',        'Widget Inc',                    'None',
-      'Current',             '2021-07-21T12:01'::timestamptz, 'infinity'::timestamptz
+      'u_____walter',           'Walter',                        'This is Walter',
+      'apa___walter',           'password auth account',         'walter',                      'Account for Walter',
+      'None',                   'None',                          'None',
+      'apm___widget',           'password auth method',          'Widget Auth Password',        'None',
+      'None',
+      'o_____widget',           'Widget Inc',                    'None',
+      'Current',                '2021-07-21T12:01'::timestamptz, 'infinity'::timestamptz
     );
 
   select lives_ok($$select wh_upsert_user('u_____walter', 'tok___walter')$$);
