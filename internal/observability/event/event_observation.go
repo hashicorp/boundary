@@ -3,7 +3,7 @@ package event
 import (
 	"fmt"
 
-	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -11,7 +11,7 @@ import (
 const observationVersion = "v0.1"
 
 type observation struct {
-	*eventlogger.SimpleGatedPayload
+	*gated.Payload
 	Version     string       `json:"version"`
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
@@ -36,7 +36,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		}
 	}
 	i := &observation{
-		SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
+		Payload: &gated.Payload{
 			ID:     opts.withId,
 			Header: opts.withHeader,
 			Detail: opts.withDetails,
