@@ -46,3 +46,32 @@ func (sc *SinkConfig) validate() error {
 	}
 	return nil
 }
+
+// FilterType defines a type for filters (allow or deny)
+type FilterType string
+
+const (
+	AllowFilter FilterType = "allow" // AllowFilter defines a filter type for "allow"
+	DenyFilter  FilterType = "deny"  // DenyFilter defines a filter type for "deny"
+)
+
+// SinkFilter defines an event filter (allow or deny) for a sink
+type SinkFilter struct {
+	Type   FilterType `hcl:"type"`   // Type of filter (allow or deny)
+	Filter string     `hcl:"filter"` // Filter in a format supported by hashicorp/go-bexpr.
+}
+
+// Validate a SinkFilter
+func (s SinkFilter) Validate() error {
+	const op = "event.(SinkFilter).Validate"
+	switch s.Type {
+	case AllowFilter, DenyFilter:
+	default:
+		return fmt.Errorf("%s: invalid filter type %s: %w", op, s.Type, ErrInvalidParameter)
+	}
+	_, err := newFilter(s.Filter)
+	if err != nil {
+		return fmt.Errorf("%s: invalid filter '%s': %w", op, s.Filter, err)
+	}
+	return nil
+}
