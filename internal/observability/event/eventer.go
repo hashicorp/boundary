@@ -292,7 +292,9 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
-		gatedFilterNode := gated.Filter{}
+		gatedFilterNode := gated.Filter{
+			Broker: e.broker,
+		}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := NewId("gated-audit")
 		if err != nil {
@@ -320,7 +322,9 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
-		gatedFilterNode := gated.Filter{}
+		gatedFilterNode := gated.Filter{
+			Broker: e.broker,
+		}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := NewId("gated-observation")
 		if err != nil {
