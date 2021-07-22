@@ -457,24 +457,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
-	var serverName string
-	switch {
-	case opts.Config.Controller == nil:
-		serverName = "test-controller"
-	default:
-		if _, err := opts.Config.Controller.InitNameIfEmpty(); err != nil {
-			t.Fatal(err)
-		}
-		serverName = opts.Config.Controller.Name + "test-controller"
-	}
-
-	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
-		t.Fatal(err)
-	}
-
-	// Initialize status grace period
-	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
-
 	if opts.Config.Controller == nil {
 		opts.Config.Controller = new(config.Controller)
 	}
@@ -485,6 +467,14 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
 	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Initialize status grace period
+	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
+
 	tc.name = opts.Config.Controller.Name
 
 	if opts.InitialResourcesSuffix != "" {
