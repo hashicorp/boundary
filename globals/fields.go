@@ -54,4 +54,6 @@ const (
 	CredentialStoreIdField               = "credential_store_id"
 	ApplicationCredentialLibraryIdsField = "application_credential_library_ids"
 	ApplicationCredentialLibrariesField  = "application_credential_libraries"
+	ApplicationCredentialSourceIdsField  = "application_credential_source_ids"
+	ApplicationCredentialSourcesField    = "application_credential_sources"
 )

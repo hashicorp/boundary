@@ -11,24 +11,24 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// AddTargetCredentialLibraries adds the clIds to the targetId in the repository. The target
-// and the list of credential libraries attached to the target, after clIds are added,
+// AddTargetCredentialSources adds the cIds to the targetId in the repository. The target
+// and the list of credential sources attached to the target, after cIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
-	const op = "target.(Repository).AddTargetCredentialLibraries"
+func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
+	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
-	if len(clIds) == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing credential library ids")
+	if len(cIds) == 0 {
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing credential source ids")
 	}
 
-	addCredLibs := make([]interface{}, 0, len(clIds))
-	for _, id := range clIds {
+	addCredLibs := make([]interface{}, 0, len(cIds))
+	for _, id := range cIds {
 		cl, err := NewCredentialLibrary(targetId, id)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
