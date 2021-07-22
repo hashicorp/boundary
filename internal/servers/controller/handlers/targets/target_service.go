@@ -61,6 +61,9 @@ var (
 		action.AddCredentialLibraries,
 		action.SetCredentialLibraries,
 		action.RemoveCredentialLibraries,
+		action.AddCredentialSources,
+		action.SetCredentialSources,
+		action.RemoveCredentialSources,
 		action.AuthorizeSession,
 	}
 
