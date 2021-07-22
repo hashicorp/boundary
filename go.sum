@@ -405,10 +405,6 @@ github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df/go.mod h1:+B5eZ
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
-github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746 h1:uFLAYWBCufq4idhqjltAWb4s2JuJt1oE1hDRixwWqwY=
-github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746/go.mod h1:LG0lqGlYKC9FD5m5Umh7FW8SeJlciNUZv400J4+j094=
-github.com/hashicorp/eventlogger v0.0.0-20210718203147-0ead77f3996b h1:zqmDTececZEI3SMEJY4Pyi1uCJiE3VdnMLSQUc318jA=
-github.com/hashicorp/eventlogger v0.0.0-20210718203147-0ead77f3996b/go.mod h1:EbdHvKIOukAPY0arcVLQwStY5/rmYNfkLtObPUR2RsU=
 github.com/hashicorp/eventlogger v0.0.0-20210722131509-097103f6241c h1:SiLp72RDg3EthwrTXCfwQB0niH5AD9wycdysKUTF5gE=
 github.com/hashicorp/eventlogger v0.0.0-20210722131509-097103f6241c/go.mod h1:EbdHvKIOukAPY0arcVLQwStY5/rmYNfkLtObPUR2RsU=
 github.com/hashicorp/go-bexpr v0.1.8 h1:ETfuLF1bBAuHW/Qg6l1xCdV8WJ7lfatLtJ1N1w0IsfE=
@@ -639,7 +635,6 @@ github.com/mattn/go-isatty v0.0.7/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hd
 github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
 github.com/mattn/go-isatty v0.0.10/go.mod h1:qgIWMr58cqv1PHHyhnkY9lrL7etaEgOFcMEpPG5Rm84=
 github.com/mattn/go-isatty v0.0.11/go.mod h1:PhnuNfih5lzO57/f3n+odYbM4JtupLOxQOAqxQCu2WE=
-github.com/mattn/go-isatty v0.0.12 h1:wuysRhFDzyxgEmMf5xjvJ2M9dZoWAXNNr5LSBS7uHXY=
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-isatty v0.0.13 h1:qdl+GuBjcsKKDco5BsxPJlId98mSWNKqYA+Co0SC1yA=
 github.com/mattn/go-isatty v0.0.13/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
