@@ -10,8 +10,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A CredentialLibrary represents the relationship between a target
-// and a credential library.
+var _ CredentialSource = (*TargetLibrary)(nil)
+
+// A CredentialLibrary is a CredentialSource that represents the relationship
+// between a target and a credential library.
 type CredentialLibrary struct {
 	*store.CredentialLibrary
 	tableName string `gorm:"-"`
@@ -84,4 +86,19 @@ type TargetLibrary struct {
 // TableName returns the tablename to override the default gorm table name
 func (ts *TargetLibrary) TableName() string {
 	return "target_library"
+}
+
+// Id returns the ID of the library
+func (ts *TargetLibrary) Id() string {
+	return ts.CredentialLibraryId
+}
+
+// CredentialStoreId returns the ID of the store containing the library
+func (ts *TargetLibrary) CredentialStoreId() string {
+	return ts.StoreId
+}
+
+// CredentialPurpose returns the purpose of the credentaial
+func (ts *TargetLibrary) CredentialPurpose() credential.Purpose {
+	return credential.Purpose(ts.GetCredentialPurpose())
 }

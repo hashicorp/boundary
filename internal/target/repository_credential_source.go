@@ -61,7 +61,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	}
 
 	var hostSets []*TargetSet
-	var credLibs []*TargetLibrary
+	var credSources []TargetCredentialSource
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -100,7 +100,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
 			}
-			credLibs, err = fetchLibraries(ctx, reader, targetId)
+			credSources, err = fetchSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
 			}
@@ -385,14 +385,21 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	return changes, nil
 }
 
-func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*TargetLibrary, error) {
-	const op = "target.fetchLibraries"
+func fetchSources(ctx context.Context, r db.Reader, targetId string) ([]TargetCredentialSource, error) {
+	const op = "target.fetchSources"
 	var libraries []*TargetLibrary
 	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	// FIXME: When we have static creds, there will need to be an updated view
+	// that unions between libs and creds, at which point the type above will
+	// change. For now we just take the libraries and wrap them.
 	if len(libraries) == 0 {
 		return nil, nil
 	}
-	return libraries, nil
+	ret := make([]TargetCredentialSource, len(libraries))
+	for i, lib := range libraries {
+		ret[i] = lib
+	}
+	return ret, nil
 }

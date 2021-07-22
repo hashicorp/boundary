@@ -1332,7 +1332,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	return ret
 }
 
-func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*target.TargetLibrary, opt ...handlers.Option) (*pb.Target, error) {
+func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, credSources []target.CredentialSource, opt ...handlers.Option) (*pb.Target, error) {
 	const op = "target_service.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -1394,22 +1394,42 @@ func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*
 		}
 	}
 	if outputFields.Has(globals.ApplicationCredentialLibraryIdsField) {
-		for _, cl := range l {
-			out.ApplicationCredentialLibraryIds = append(out.ApplicationCredentialLibraryIds, cl.GetCredentialLibraryId())
+		for _, cs := range credSources {
+			out.ApplicationCredentialLibraryIds = append(out.ApplicationCredentialLibraryIds, cs.Id())
+		}
+	}
+	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
+		for _, cs := range credSources {
+			out.ApplicationCredentialSourceIds = append(out.ApplicationCredentialSourceIds, cs.Id())
 		}
 	}
 	if outputFields.Has(globals.ApplicationCredentialLibrariesField) {
-		for _, cl := range l {
-			switch credential.Purpose(cl.GetCredentialPurpose()) {
+		for _, cs := range credSources {
+			switch credential.Purpose(cs.CredentialPurpose()) {
 			case credential.ApplicationPurpose:
 				out.ApplicationCredentialLibraries = append(out.ApplicationCredentialLibraries, &pb.CredentialLibrary{
-					Id:                cl.GetCredentialLibraryId(),
-					CredentialStoreId: cl.StoreId,
+					Id:                cs.Id(),
+					CredentialStoreId: cs.CredentialStoreId(),
 				})
 			case credential.IngressPurpose, credential.EgressPurpose:
 				// TODO: When we support other purposes add them to different fields here.
 			default:
-				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
+				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cs.CredentialPurpose()))
+			}
+		}
+	}
+	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
+		for _, cs := range credSources {
+			switch credential.Purpose(cs.CredentialPurpose()) {
+			case credential.ApplicationPurpose:
+				out.ApplicationCredentialSources = append(out.ApplicationCredentialSources, &pb.CredentialSource{
+					Id:                cs.Id(),
+					CredentialStoreId: cs.CredentialStoreId(),
+				})
+			case credential.IngressPurpose, credential.EgressPurpose:
+				// TODO: When we support other purposes add them to different fields here.
+			default:
+				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
 			}
 		}
 	}
