@@ -133,11 +133,8 @@ func (c *Controller) InitNameIfEmpty() (string, error) {
 	if c == nil {
 		return "", fmt.Errorf("controller config is empty")
 	}
-	if c.Name == "" {
-		var err error
-		if c.Name, err = base62.Random(10); err != nil {
-			return "", fmt.Errorf("error auto-generating controller name: %w", err)
-		}
+	if err := initNameIfEmpty(&c.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 	return c.Name, nil
 }
@@ -166,13 +163,20 @@ func (w *Worker) InitNameIfEmpty() (string, error) {
 	if w == nil {
 		return "", fmt.Errorf("worker config is empty")
 	}
-	if w.Name == "" {
-		var err error
-		if w.Name, err = base62.Random(10); err != nil {
-			return "", fmt.Errorf("error auto-generating worker name: %w", err)
-		}
+	if err := initNameIfEmpty(&w.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating worker name: %w", err)
 	}
 	return w.Name, nil
+}
+
+func initNameIfEmpty(name *string) error {
+	if *name == "" {
+		var err error
+		if *name, err = base62.Random(10); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type Database struct {
