@@ -132,7 +132,7 @@ func (w *Worker) createClientConn(addr string) error {
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
-	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "connected to controller", "address": addr})
+	event.WriteSysEvent(context.TODO(), op, event.I{"msg": "connected to controller", "address": addr})
 	return nil
 }
 

@@ -300,7 +300,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts)
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "worker name generated", "name": nextOpts.Name})
+		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "worker name generated", "name": nextOpts.Name})
 	}
 	return NewTestWorker(t, nextOpts)
 }

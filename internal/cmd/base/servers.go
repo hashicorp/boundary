@@ -244,7 +244,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	// logic and re-enable.
 	/*
 		proxyCfg := httpproxy.FromEnvironment()
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{
+		event.WriteSysEvent(context.TODO(), op, event.I{{
 			"msg": 			"proxy environment",
 			"http_proxy": 	proxyCfg.HTTPProxy,
 			"https_proxy": 	proxyCfg.HTTPSProxy,

@@ -161,7 +161,7 @@ func New(conf *Config) (*Controller, error) {
 func (c *Controller) Start() error {
 	const op = "controller.(Controller).Start"
 	if c.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already started, skipping"})
+		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "already started, skipping"})
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
@@ -214,7 +214,7 @@ func (c *Controller) registerSessionCleanupJob() error {
 func (c *Controller) Shutdown(serversOnly bool) error {
 	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already shut down, skipping"})
+		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "already shut down, skipping"})
 	}
 	c.baseCancel()
 	if err := c.stopListeners(serversOnly); err != nil {

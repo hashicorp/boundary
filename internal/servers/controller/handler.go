@@ -219,7 +219,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
 		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "AUTHORIZATION CHECKING DISABLED"})
+		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "AUTHORIZATION CHECKING DISABLED"})
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

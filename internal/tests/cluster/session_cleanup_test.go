@@ -824,7 +824,7 @@ func (c *testSessionConnection) TestSendRecvAll(t *testing.T) {
 	const op = "cluster.(testSessionConnection).TestSendRecvAll"
 	t.Helper()
 	require.True(t, c.testSendRecv(t))
-	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "successfully asserted send/recv as passing"})
+	event.WriteSysEvent(context.TODO(), op, event.I{"msg": "successfully asserted send/recv as passing"})
 }
 
 // TestSendRecvFail asserts that we were able to send/recv all pings
@@ -833,7 +833,7 @@ func (c *testSessionConnection) TestSendRecvFail(t *testing.T) {
 	const op = "cluster.(testSessionConnection).TestSendRecvFail"
 	t.Helper()
 	require.False(t, c.testSendRecv(t))
-	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "successfully asserted send/recv as failing"})
+	event.WriteSysEvent(context.TODO(), op, event.I{"msg": "successfully asserted send/recv as failing"})
 }
 
 type testTcpServer struct {

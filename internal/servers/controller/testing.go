@@ -637,7 +637,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "controller name generated", "name": nextOpts.Name})
+		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "controller name generated", "name": nextOpts.Name})
 	}
 	return NewTestController(t, nextOpts)
 }

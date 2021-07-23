@@ -324,7 +324,7 @@ func (w *Worker) cancelConnections(connInfoMap map[string]*connInfo, ignoreConne
 
 func (w *Worker) logClose(sessionId, connId string) {
 	const op = "worker.(Worker).logClose"
-	event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "terminated connection due to cancellation or expiration", "session_id": sessionId, "connection_id": connId})
+	event.WriteSysEvent(context.TODO(), op, event.I{"msg": "terminated connection due to cancellation or expiration", "session_id": sessionId, "connection_id": connId})
 }
 
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
