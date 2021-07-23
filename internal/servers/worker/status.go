@@ -45,7 +45,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "status ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "status ticking shutting down"})
 				return
 
 			case <-timer.C:
@@ -177,7 +177,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			w.cleanupConnections(cancelCtx, true)
 		}
 	} else {
-		event.WriteSysEvent(statusCtx, op, map[string]interface{}{"msg": "successfully sent status to controller"})
+		event.WriteSysEvent(statusCtx, op, event.I{"msg": "successfully sent status to controller"})
 		w.updateTags.Store(false)
 		addrs := make([]resolver.Address, 0, len(result.Controllers))
 		strAddrs := make([]string, 0, len(result.Controllers))
@@ -185,7 +185,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			addrs = append(addrs, resolver.Address{Addr: v.Address})
 			strAddrs = append(strAddrs, v.Address)
 		}
-		event.WriteSysEvent(statusCtx, op, map[string]interface{}{"msg": "found controllers", "addresses": strAddrs})
+		event.WriteSysEvent(statusCtx, op, event.I{"msg": "found controllers", "addresses": strAddrs})
 		switch len(strAddrs) {
 		case 0:
 			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
@@ -195,7 +195,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 		for _, request := range result.GetJobsRequests() {
-			event.WriteSysEvent(statusCtx, op, map[string]interface{}{"msg": "got job request from controller", "request": request})
+			event.WriteSysEvent(statusCtx, op, event.I{"msg": "got job request from controller", "request": request})
 			switch request.GetRequestType() {
 			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 				switch request.GetJob().GetType() {

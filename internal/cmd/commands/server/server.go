@@ -647,7 +647,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "goroutine trace", "stack": string(buf[:n])})
+			event.WriteSysEvent(context.TODO(), op, event.I{"msg": "goroutine trace", "stack": string(buf[:n])})
 		}
 	}
 
