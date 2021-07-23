@@ -107,7 +107,7 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	} else {
 		for _, result := range results {
 			event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
-				event.WithInfo(map[string]interface{}{
+				event.WithInfo(event.I{
 					"private_id":                result.ServerId,
 					"update_time":               result.LastUpdateTime,
 					"grace_period_seconds":      j.gracePeriod,

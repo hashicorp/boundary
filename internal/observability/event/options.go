@@ -25,6 +25,7 @@ type options struct {
 	withHeader        map[string]interface{}
 	withFlush         bool
 	withInfo          map[string]interface{}
+	withInfoMsg       string
 	withRequestInfo   *RequestInfo
 	withNow           time.Time
 	withRequest       *Request
@@ -71,10 +72,32 @@ func WithFlush() Option {
 	}
 }
 
-// WithInfo allows an optional map as info
-func WithInfo(d map[string]interface{}) Option {
+// I represents optional information about an error or system event
+type I map[string]interface{}
+
+// H represents optional header level data/info about an observation event.
+// There is only one "header" for an observation.
+type H map[string]interface{}
+
+// D represents optional detail level data/info about an observation event.
+// There can be multiple details for an observation.
+type D map[string]interface{}
+
+// WithInfo allows an optional map as info about an error event. If used along
+// with WithInfoMsg(...) any value for key "msg" within the I passed to WithInfo
+// will be overridden by the msg passed into WithInfoMsg(...)
+func WithInfo(i I) Option {
 	return func(o *options) {
-		o.withInfo = d
+		o.withInfo = i
+	}
+}
+
+// WithInfoMsg allows an optional msg about and error event.  If used along with
+// WithInfo(...) any value for key "msg" within the I passed into WithInfo will
+// be overridden by this option.
+func WithInfoMsg(msg string) Option {
+	return func(o *options) {
+		o.withInfoMsg = msg
 	}
 }
 

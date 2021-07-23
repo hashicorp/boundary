@@ -181,7 +181,7 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	if err != nil {
 		// this event.WriteError(...) may cause a dup error to be emitted...
 		// it should be removed if that's the case.
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error starting the oidc authentication flow"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
 		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
@@ -308,7 +308,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		default:
 			// this event.WriteError(...) may cause a dup error to be emitted...
 			// it should be removed if that's the case.
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error generating parameters for token request"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error generating parameters for token request"))
 			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
 		}
 	}

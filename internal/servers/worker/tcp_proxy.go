@@ -22,18 +22,18 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 
 	sessionUrl, err := url.Parse(endpoint)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error parsing endpoint information", "session_id": sessionId, "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error parsing endpoint information", "session_id": sessionId, "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
 		return
 	}
 	if sessionUrl.Scheme != "tcp" {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"session_id": sessionId, "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfo(event.I{"session_id": sessionId, "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "invalid scheme for type")
 		return
 	}
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error dialing endpoint", "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error dialing endpoint", "endpoint": endpoint}))
 		conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
 		return
 	}
@@ -52,7 +52,7 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 
 	connStatus, err := w.connectConnection(connCtx, connectionInfo)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marking connection as connected"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection as connected"))
 		conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
 		return
 	}

@@ -247,7 +247,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	var err error
 	authResults, ret.UserId, ret.Scope, v.acl, err = v.performAuthCheck(ctx)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing authn/authz check"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
 	}
 
@@ -308,14 +308,14 @@ func (v *verifier) decryptToken(ctx context.Context) {
 
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to get authtoken repo"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to get authtoken repo"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 
 		at, err := tokenRepo.LookupAuthToken(v.ctx, v.requestInfo.PublicId)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to look up auth token by public ID"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to look up auth token by public ID"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
@@ -327,7 +327,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 
 		tokenWrapper, err := v.kms.GetWrapper(v.ctx, at.GetScopeId(), kms.KeyPurposeTokens)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to get wrapper for tokens; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get wrapper for tokens; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
@@ -336,34 +336,34 @@ func (v *verifier) decryptToken(ctx context.Context) {
 		switch version {
 		case globals.ServiceTokenV1:
 		default:
-			event.WriteError(ctx, op, stderrors.New("unknown token encryption version; continuing as anonymous user"), event.WithInfo(map[string]interface{}{"version": version}))
+			event.WriteError(ctx, op, stderrors.New("unknown token encryption version; continuing as anonymous user"), event.WithInfo(event.I{"version": version}))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 		marshaledToken, err := base58.FastBase58Decoding(v.requestInfo.EncryptedToken[len(globals.ServiceTokenV1):])
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error unmarshaling base58 token; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error unmarshaling base58 token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 
 		blobInfo := new(wrapping.EncryptedBlobInfo)
 		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error decoding encrypted token; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error decoding encrypted token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 
 		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error decrypting encrypted token; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error decrypting encrypted token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 
 		var s1Info tokens.S1TokenInfo
 		if err := proto.Unmarshal(s1Bytes, &s1Info); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error unmarshaling token info; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error unmarshaling token info; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
@@ -391,7 +391,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 		}
 		info, err := recovery.ParseRecoveryToken(v.ctx, wrapper, v.requestInfo.EncryptedToken)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "decrypt recovery token: error parsing and validating recovery token"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error parsing and validating recovery token"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
@@ -405,16 +405,16 @@ func (v *verifier) decryptToken(ctx context.Context) {
 		}
 		repo, err := v.serversRepoFn()
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "decrypt recovery token: error fetching servers repo"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error fetching servers repo"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
 		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "decrypt recovery token: error adding nonce to database (possible replay attack)"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error adding nonce to database (possible replay attack)"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown
 			return
 		}
-		event.WriteError(ctx, op, stderrors.New("recovery KMS was used to authorize a call"), event.WithInfo(map[string]interface{}{"url": v.requestInfo.Path, "method": v.requestInfo.Method}))
+		event.WriteError(ctx, op, stderrors.New("recovery KMS was used to authorize a call"), event.WithInfo(event.I{"url": v.requestInfo.Path, "method": v.requestInfo.Method}))
 	}
 }
 
@@ -452,14 +452,14 @@ func (v verifier) performAuthCheck(ctx context.Context) (aclResults perms.ACLRes
 		if err != nil {
 			// Continue as the anonymous user as maybe this token is expired but
 			// we can still perform the action
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error validating token; continuing as anonymous user"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error validating token; continuing as anonymous user"))
 			break
 		}
 		if at != nil {
 			accountId = at.GetAuthAccountId()
 			userId = at.GetIamUserId()
 			if userId == "" {
-				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo(map[string]interface{}{"token_id": at.GetPublicId()}))
+				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo(event.I{"token_id": at.GetPublicId()}))
 				userId = AnonymousUserId
 				accountId = ""
 			}
@@ -656,7 +656,7 @@ func GetTokenFromRequest(ctx context.Context, kmsCache *kms.Kms, req *http.Reque
 
 	splitFullToken := strings.Split(fullToken, "_")
 	if len(splitFullToken) != 3 {
-		event.WriteError(ctx, op, stderrors.New("unexpected number of segments in token; continuing as anonymous user"), event.WithInfo(map[string]interface{}{"expected": 3, "found": len(splitFullToken)}))
+		event.WriteError(ctx, op, stderrors.New("unexpected number of segments in token; continuing as anonymous user"), event.WithInfo(event.I{"expected": 3, "found": len(splitFullToken)}))
 		return "", "", AuthTokenTypeUnknown
 	}
 

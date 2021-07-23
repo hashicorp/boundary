@@ -32,6 +32,15 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
+	if opts.withInfoMsg != "" {
+		if opts.withInfo == nil {
+			opts.withInfo = map[string]interface{}{
+				"msg": opts.withInfoMsg,
+			}
+		} else {
+			opts.withInfo["msg"] = opts.withInfoMsg
+		}
+	}
 	newErr := &err{
 		Id:          Id(opts.withId),
 		Op:          fromOperation,

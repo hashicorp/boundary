@@ -609,7 +609,7 @@ func (c *Command) WaitForInterrupt() int {
 				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
 			}
 			if err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfo(map[string]interface{}{"msg": "could not reload config", "path": c.flagConfig}))
+				event.WriteError(context.TODO(), op, err, event.WithInfo(event.I{"msg": "could not reload config", "path": c.flagConfig}))
 				goto RUNRELOADFUNCS
 			}
 

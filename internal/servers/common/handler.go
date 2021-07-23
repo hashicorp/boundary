@@ -127,13 +127,13 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(r.Context(), op, err, event.WithInfo(map[string]interface{}{"msg": "unable to create context with request info", "method": r.Method, "url": r.URL.RequestURI()}))
+			event.WriteError(r.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with request info", "method": r.Method, "url": r.URL.RequestURI()}))
 			return
 		}
 		ctx, err = event.NewEventerContext(ctx, e)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(r.Context(), op, err, event.WithInfo(map[string]interface{}{"msg": "unable to create context with eventer", "method": r.Method, "url": r.URL.RequestURI()}))
+			event.WriteError(r.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with eventer", "method": r.Method, "url": r.URL.RequestURI()}))
 			return
 		}
 
@@ -146,14 +146,14 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 			start := time.Now()
 			if err := startGatedEvents(ctx, method, url, start); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to start gated events"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to start gated events"))
 				return
 			}
 
 			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to wrap handler with optional interfaces"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to wrap handler with optional interfaces"))
 				return
 			}
 			h.ServeHTTP(wrapper, r)
@@ -161,7 +161,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 			i, _ := wrapper.(interface{ StatusCode() int })
 			if err := flushGatedEvents(ctx, method, url, i.StatusCode(), start); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "unable to flush gated events"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to flush gated events"))
 				return
 			}
 		}

@@ -877,7 +877,7 @@ func (ts *testTcpServer) run() {
 		conn, err := ts.ln.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				event.WriteError(context.TODO(), op, err, event.WithInfo(map[string]interface{}{"msg": "Accept() error in testTcpServer"}))
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("Accept() error in testTcpServer"))
 			}
 
 			return

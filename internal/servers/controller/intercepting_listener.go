@@ -50,7 +50,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	if err != nil {
 		if conn != nil {
 			if err := conn.Close(); err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("error closing worker connection"))
 			}
 		}
 		return nil, err
@@ -61,20 +61,20 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	read, err := conn.Read(nonce)
 	if err != nil {
 		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
 		return nil, fmt.Errorf("error reading nonce from connection: %w", err)
 	}
 	if read != len(nonce) {
 		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
 		return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
 	}
 	workerInfoRaw, found := m.c.workerAuthCache.Get(string(nonce))
 	if !found {
 		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
 		return nil, errors.New("did not find valid nonce for incoming worker")
 	}

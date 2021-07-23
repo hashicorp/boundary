@@ -81,7 +81,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 			// pass
 
 		case <-ctx.Done():
-			event.WriteError(ctx, op, ctx.Err(), event.WithInfo(map[string]interface{}{"msg": "error waiting for next status report to controller"}))
+			event.WriteError(ctx, op, ctx.Err(), event.WithInfoMsg("error waiting for next status report to controller"))
 			return ctx.Err()
 		}
 
@@ -153,7 +153,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		UpdateTags: w.updateTags.Load(),
 	})
 	if err != nil {
-		event.WriteError(statusCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error making status request to controller"}))
+		event.WriteError(statusCtx, op, err, event.WithInfoMsg("error making status request to controller"))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
@@ -166,7 +166,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
 			event.WriteError(statusCtx, op,
 				errors.New("status error grace period has expired, canceling all sessions on worker"),
-				event.WithInfo(map[string]interface{}{
+				event.WithInfo(event.I{
 					"last_status_time": lastStatusTime.String(),
 					"grace_period":     gracePeriod,
 				}),
@@ -204,7 +204,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					sessionId := sessInfo.GetSessionId()
 					siRaw, ok := w.sessionInfoMap.Load(sessionId)
 					if !ok {
-						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo(map[string]interface{}{"session_id": sessionId}))
+						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo(event.I{"session_id": sessionId}))
 						continue
 					}
 					si := siRaw.(*sessionInfo)
@@ -216,7 +216,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 						connId := conn.GetConnectionId()
 						connInfo, ok := si.connInfoMap[conn.GetConnectionId()]
 						if !ok {
-							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo(map[string]interface{}{"connection_id": connId}))
+							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo(event.I{"connection_id": connId}))
 							continue
 						}
 

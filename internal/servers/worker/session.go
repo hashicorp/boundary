@@ -249,7 +249,7 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 		return nil, err
 	}
 	if len(resp.GetCloseResponseData()) != len(req.GetCloseRequestData()) {
-		event.WriteError(ctx, op, errors.New("mismatched number of states returned on connection closed"), event.WithInfo(map[string]interface{}{"expected": len(req.GetCloseRequestData()), "got": len(resp.GetCloseResponseData())}))
+		event.WriteError(ctx, op, errors.New("mismatched number of states returned on connection closed"), event.WithInfo(event.I{"expected": len(req.GetCloseRequestData()), "got": len(resp.GetCloseResponseData())}))
 	}
 
 	return resp, nil
@@ -286,7 +286,7 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	response, err := w.closeConnection(closeConnCtx, w.makeCloseConnectionRequest(closeInfo))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfo(
-			map[string]interface{}{
+			event.I{
 				"msg":                        "error marking connections closed",
 				"warning":                    "error contacting controller, connections will be closed only on worker",
 				"session_and_connection_ids": fmt.Sprintf("%#v", closeInfo),
@@ -302,7 +302,7 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	}
 
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "serious error in processing return data from controller, aborting additional session/connection state modification"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
 		return
 	}
 
@@ -310,11 +310,11 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	closedIds, errs := w.setCloseTimeForResponse(sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marking connection closed in state"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
 		}
 	}
 
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "connections successfully marked closed", "connection_ids": closedIds})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "connections successfully marked closed", "connection_ids": closedIds})
 }
 
 // makeCloseConnectionRequest creates a CloseConnectionRequest for

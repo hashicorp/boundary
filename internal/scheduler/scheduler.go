@@ -174,22 +174,22 @@ func (s *Scheduler) start(ctx context.Context) {
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error creating job repo"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
 				break
 			}
 
 			runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
 			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting jobs to run from repo"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
 				break
 			}
 
 			for _, r := range runs {
 				err := s.runJob(ctx, r)
 				if err != nil {
-					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error starting job"}))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
 					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
-						event.WriteError(ctx, op, inner, event.WithInfo(map[string]interface{}{"msg": "error updating failed job run"}))
+						event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
 					}
 				}
 			}
@@ -235,16 +235,16 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "job run complete", "run id": r.PrivateId, "name": j.Name()})
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
-				event.WriteError(ctx, op, inner, event.WithInfo(map[string]interface{}{"msg": "error getting next run time", "name": j.Name()}))
+				event.WriteError(ctx, op, inner, event.WithInfo(event.I{"msg": "error getting next run time", "name": j.Name()}))
 			}
 			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun, status.Completed, status.Total)
 		default:
-			event.WriteError(ctx, op, runErr, event.WithInfo(map[string]interface{}{"msg": "job run failed", "run id": r.PrivateId, "name": j.Name()}))
+			event.WriteError(ctx, op, runErr, event.WithInfo(event.I{"msg": "job run failed", "run id": r.PrivateId, "name": j.Name()}))
 			_, updateErr = repo.FailRun(jobContext, r.PrivateId, status.Completed, status.Total)
 		}
 
 		if updateErr != nil {
-			event.WriteError(ctx, op, updateErr, event.WithInfo(map[string]interface{}{"msg": "error updating job run", "name": j.Name()}))
+			event.WriteError(ctx, op, updateErr, event.WithInfo(event.I{"msg": "error updating job run", "name": j.Name()}))
 		}
 		s.runningJobs.Delete(j.Name())
 	}()
@@ -267,7 +267,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 			s.runningJobs.Range(func(_, v interface{}) bool {
 				err := s.updateRunningJobProgress(ctx, v.(*runningJob))
 				if err != nil {
-					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error updating job progress"}))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error updating job progress"))
 				}
 				return true
 			})
@@ -275,13 +275,13 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 			// Check for defunct runs to interrupt
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error creating job repo"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
 				break
 			}
 
 			_, err = repo.InterruptRuns(ctx, s.interruptThreshold)
 			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error interrupting job runs"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error interrupting job runs"))
 			}
 		}
 		timer.Reset(s.monitorInterval)

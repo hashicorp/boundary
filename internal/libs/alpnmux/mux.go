@@ -219,7 +219,7 @@ func (l *ALPNMux) accept() {
 			peeked, err := bufConn.buffer.Peek(3)
 			if err != nil {
 				if l.log != nil && l.log.IsDebug() {
-					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error peeking connection", "addr": conn.RemoteAddr()}))
+					event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error peeking connection", "addr": conn.RemoteAddr()}))
 				}
 				bufConn.Close()
 				return
@@ -260,7 +260,7 @@ func (l *ALPNMux) accept() {
 				if err := tlsConn.Handshake(); err != nil {
 					closeErr := tlsConn.Close()
 					if l.log != nil && l.log.IsDebug() {
-						event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error handshaking connection", "addr": conn.RemoteAddr(), "close_error": closeErr}))
+						event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error handshaking connection", "addr": conn.RemoteAddr(), "close_error": closeErr}))
 					}
 					return
 				}

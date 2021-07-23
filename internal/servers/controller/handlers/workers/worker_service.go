@@ -61,18 +61,18 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting servers repo"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting sessions repo"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 	req.Worker.Type = resource.Worker.String()
 	controllers, _, err := serverRepo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error storing worker status"}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 	ret := &pbs.StatusResponse{
@@ -245,12 +245,12 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error getting servers repo"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
 		tags, err := serversRepo.ListTagsForServers(ctx, []string{req.ServerId})
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error looking up tags for server", "server_id": req.ServerId}))
+			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error looking up tags for server", "server_id": req.ServerId}))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 		}
 		// Build the map for filtering.
@@ -264,7 +264,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		// Create the evaluator
 		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error creating worker filter evaluator", "server_id": req.ServerId}))
+			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error creating worker filter evaluator", "server_id": req.ServerId}))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
 		filterInput := map[string]interface{}{

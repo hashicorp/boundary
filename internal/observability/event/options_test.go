@@ -53,6 +53,28 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withInfo = i
 		assert.Equal(opts, testOpts)
+
+		opts = getOpts(WithInfo(i), WithInfoMsg("test"))
+		testOpts.withInfo = i
+		testOpts.withInfo["msg"] = "test"
+		testOpts.withInfoMsg = "test"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithInfoMsg", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithInfoMsg("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withInfoMsg = "test"
+		assert.Equal(opts, testOpts)
+
+		i := map[string]interface{}{
+			"name": "alice",
+		}
+		opts = getOpts(WithInfo(i), WithInfoMsg("test"))
+		testOpts.withInfo = i
+		testOpts.withInfo["msg"] = "test"
+		testOpts.withInfoMsg = "test"
+		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithRequestInfo", func(t *testing.T) {
 		assert := assert.New(t)

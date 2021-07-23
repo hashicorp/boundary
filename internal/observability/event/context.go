@@ -111,8 +111,8 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
 // found an hclog.Logger will be created and used.
 //
-// The options WithId and WithRequestInfo are supported and all other options
-// are ignored.
+// The options WithInfo, WithId and WithRequestInfo are supported and all other
+// options are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	const op = "event.WriteError"
 	// EventerFromContext will handle a nil ctx appropriately. If e or caller is
@@ -242,9 +242,9 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 // event.SysEventer() if no eventer can be found an hclog.Logger will be created
 // and used. This function should never be used when sending events while
 // handling API requests.
-func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) {
+func WriteSysEvent(ctx context.Context, caller Op, info I) {
 	const op = "event.WriteError"
-	if data == nil {
+	if info == nil {
 		return
 	}
 	if caller == "" {
@@ -260,21 +260,21 @@ func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) 
 	eventer := SysEventer()
 	if eventer == nil {
 		logger := hclog.New(nil)
-		logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, data))
+		logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
 		return
 	}
 
 	id, err := newId(string(SystemType))
 	if err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
-		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, data))
+		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, info))
 	}
 
 	e := &sysEvent{
 		Id:      Id(id),
 		Version: sysVersion,
 		Op:      caller,
-		Data:    data,
+		Data:    info,
 	}
 	if err := eventer.writeSysEvent(ctx, e); err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))

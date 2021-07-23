@@ -362,7 +362,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(req.Context(), op, err, event.WithInfo(map[string]interface{}{"msg": "unable to create context with request info", "method": req.Method, "url": req.URL.RequestURI()}))
+			event.WriteError(req.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with request info", "method": req.Method, "url": req.URL.RequestURI()}))
 			return
 		}
 		// If this doesn't have a callback suffix on a supported action, serve
@@ -385,7 +385,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		case http.MethodGet:
 			if err := req.ParseForm(); err != nil {
 				if logCallbackErrors && c != nil {
-					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "callback error"}))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("callback error"))
 				}
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -411,12 +411,12 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 					if s, ok := values["state"].(string); ok {
 						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
 						if err != nil {
-							event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marshaling state"}))
+							event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling state"))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 						if stateWrapper.AuthMethodId == "" {
-							event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "missing auth method id"}))
+							event.WriteError(ctx, op, err, event.WithInfoMsg("missing auth method id"))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
@@ -434,7 +434,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			attrBytes, err := json.Marshal(attrs)
 			if err != nil {
 				if logCallbackErrors && c != nil {
-					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marshaling json"}))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling json"))
 				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -446,7 +446,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			if req.Body != nil {
 				if err := req.Body.Close(); err != nil {
 					if logCallbackErrors && c != nil {
-						event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing original request body"}))
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing original request body"))
 					}
 				}
 			}

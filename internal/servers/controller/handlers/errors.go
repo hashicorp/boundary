@@ -121,7 +121,7 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) *apiError {
 	err := ApiErrorWithCodeAndMessage(codes.InvalidArgument, msg)
 	var apiErr *apiError
 	if !errors.As(err, &apiErr) {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "Unable to build invalid argument api error."}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid argument api error."))
 	}
 
 	if len(fields) > 0 {
@@ -194,20 +194,20 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		isApiErr := errors.As(inErr, &apiErr)
 		if !isApiErr {
 			if err := backendErrorToApiError(inErr); err != nil && !errors.As(err, &apiErr) {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to cast error to api error"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("failed to cast error to api error"))
 			}
 		}
 
 		if apiErr.status == http.StatusInternalServerError {
-			event.WriteError(ctx, op, inErr, event.WithInfo(map[string]interface{}{"msg": "internal error returned"}))
+			event.WriteError(ctx, op, inErr, event.WithInfoMsg("internal error returned"))
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)
 		if merr != nil {
-			event.WriteError(ctx, op, merr, event.WithInfo(map[string]interface{}{"msg": "failed to marshal error response", "response": fmt.Sprintf("%#v", apiErr.inner)}))
+			event.WriteError(ctx, op, merr, event.WithInfo(event.I{"msg": "failed to marshal error response", "response": fmt.Sprintf("%#v", apiErr.inner)}))
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to write response"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("failed to write response"))
 			}
 			return
 		}
@@ -215,7 +215,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		w.Header().Set("Content-Type", mar.ContentType(apiErr.inner))
 		w.WriteHeader(int(apiErr.status))
 		if _, err := w.Write(buf); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "failed to send response chunk"}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to send response chunk"))
 			return
 		}
 	}

@@ -651,7 +651,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report from worker", "worker": workerId})
 
 	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error waiting for next status report from worker", "worker": workerId}))
+		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error waiting for next status report from worker", "worker": workerId}))
 		return err
 	}
 

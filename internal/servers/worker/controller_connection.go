@@ -83,13 +83,13 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 		if err != nil {
 			if err := nonTlsConn.Close(); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing connection after writing failure"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 			}
 			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 		}
 		if written != len(authInfo.ConnectionNonce) {
 			if err := nonTlsConn.Close(); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing connection after writing failure"}))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 			}
 			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}

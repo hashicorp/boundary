@@ -39,11 +39,11 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 				}
 				repo, err := c.ServersRepoFn()
 				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for status update"}))
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 				} else {
 					_, _, err = repo.UpsertServer(cancelCtx, server)
 					if err != nil {
-						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing status update"}))
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing status update"))
 					} else {
 						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "controller status successfully saved"})
 					}
@@ -67,11 +67,11 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 			case <-timer.C:
 				repo, err := c.ServersRepoFn()
 				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for recovery nonce cleanup"}))
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for recovery nonce cleanup"))
 				} else {
 					nonceCount, err := repo.CleanupNonces(cancelCtx)
 					if err != nil {
-						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing recovery nonce cleanup"}))
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing recovery nonce cleanup"))
 					} else if nonceCount > 0 {
 						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "recovery nonce cleanup successful", "nonces_cleaned": nonceCount})
 					}
@@ -106,11 +106,11 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 			case <-timer.C:
 				repo, err := c.SessionRepoFn()
 				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for terminating completed sessions"}))
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for terminating completed sessions"))
 				} else {
 					terminationCount, err := repo.TerminateCompletedSessions(cancelCtx)
 					if err != nil {
-						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing termination of completed sessions"}))
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing termination of completed sessions"))
 					} else if terminationCount > 0 {
 						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "terminating completed sessions successful", "sessions_terminated": terminationCount})
 					}
@@ -145,11 +145,11 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 			case <-timer.C:
 				repo, err := c.AuthTokenRepoFn()
 				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for closing expired pending tokens"}))
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for closing expired pending tokens"))
 				} else {
 					closeCount, err := repo.CloseExpiredPendingTokens(cancelCtx)
 					if err != nil {
-						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing closing expired pending tokens"}))
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing closing expired pending tokens"))
 					} else if closeCount > 0 {
 						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "closing expired pending tokens completed sessions successful", "pending_tokens_closed": closeCount})
 					}
