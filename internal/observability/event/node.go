@@ -40,7 +40,7 @@ func NewCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Optio
 		},
 	}
 
-	// intentionally not checking of allow and/or deny optional filters were
+	// intentionally not checking if allow and/or deny optional filters were
 	// supplied since having a filter node with no filters is okay.
 
 	if len(opts.withAllow) > 0 {
