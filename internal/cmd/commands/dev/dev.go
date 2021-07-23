@@ -276,19 +276,19 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `Event format. Supported values are "cloudevents-json" and "cloudevents-text".`,
 	})
 	f.StringVar(&base.StringVar{
-		Name:       "observations",
+		Name:       "observation-events",
 		Target:     &c.flagObservations,
 		Completion: complete.PredictSet("true", "false"),
 		Usage:      `Emit observation events. Supported values are "true" and "false".`,
 	})
 	f.StringVar(&base.StringVar{
-		Name:       "audit",
+		Name:       "audit-events",
 		Target:     &c.flagAudit,
 		Completion: complete.PredictSet("true", "false"),
 		Usage:      `Emit audit events. Supported values are "true" and "false".`,
 	})
 	f.StringVar(&base.StringVar{
-		Name:       "sys-events",
+		Name:       "system-events",
 		Target:     &c.flagSysEvents,
 		Completion: complete.PredictSet("true", "false"),
 		Usage:      `Emit system events. Supported values are "true" and "false".`,
