@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
 ### Bug Fixes
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as
