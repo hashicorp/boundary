@@ -11,13 +11,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the future Boundary will gain the ability to internally store static
   credentials that are not generated or fetched dynamically, and the _sources_
   terminology better reflects that the IDs provided are a source of credentials,
-  whether via dynamic generation or via the credentials themselves. In this 0.5
-  release the Boundary CLI has gained parallel `application-credential-source`
-  flags to the existing `application-credential-library` flags, as well as
-  `boundary targets add/remove/set-credential-sources` commands that parallel
-  `boundary targets add/remove/set-credential-libraries` commands. This
-  parallelism extends to the API actions and the grants system. In 0.6, the
-  _library_ versions of these commands, flags, and actions will be removed.
+  whether via dynamic generation or via the credentials themselves. This will
+  allow a paradigm similar to `principals` with roles, where the principal IDs
+  can be a users, groups, and managed groups, rather than having them split out,
+  and should result in an easier user experience once those features roll out
+  compared to having separate flags and fields. In this 0.5 release the Boundary
+  CLI has gained parallel `application-credential-source` flags to the existing
+  `application-credential-library` flags, as well as `boundary targets
+  add/remove/set-credential-sources` commands that parallel `boundary targets
+  add/remove/set-credential-libraries` commands. This parallelism extends to the
+  API actions and the grants system. In 0.6, the _library_ versions of these
+  commands, flags, and actions will be removed.
 
 ### Bug Fixes
 
