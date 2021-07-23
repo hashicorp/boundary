@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
-	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -174,7 +174,7 @@ func TestGet(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.GetRole(auth2.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -298,7 +298,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test the non-anon case
-			got, gErr := s.ListRoles(auth2.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err))
@@ -308,7 +308,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test the anon case
-			got, gErr = s.ListRoles(auth2.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth2.WithUserId(auth2.AnonymousUserId)), tc.req)
+			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -379,7 +379,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteRole(auth2.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			got, gErr := s.DeleteRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.NotNil(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteRole(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -398,7 +398,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
 	}
-	ctx := auth2.DisabledAuthTestContext(repoFn, or.GetScopeId())
+	ctx := auth.DisabledAuthTestContext(repoFn, or.GetScopeId())
 	_, gErr := s.DeleteRole(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteRole(ctx, req)
@@ -408,7 +408,7 @@ func TestDelete_twice(t *testing.T) {
 	projReq := &pbs.DeleteRoleRequest{
 		Id: pr.GetPublicId(),
 	}
-	ctx = auth2.DisabledAuthTestContext(repoFn, pr.GetScopeId())
+	ctx = auth.DisabledAuthTestContext(repoFn, pr.GetScopeId())
 	_, gErr = s.DeleteRole(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteRole(ctx, projReq)
@@ -541,7 +541,7 @@ func TestCreate(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Error when getting new role service.")
 
-			got, gErr := s.CreateRole(auth2.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
+			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
 			if tc.err != nil {
 				require.NotNil(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -971,14 +971,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test with bad version (too high, too low)
 			req.Item.Version = ver + 2
-			_, gErr := tested.UpdateRole(auth2.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			require.Error(gErr)
 			req.Item.Version = ver - 1
-			_, gErr = tested.UpdateRole(auth2.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			require.Error(gErr)
 			req.Item.Version = ver
 
-			got, gErr := tested.UpdateRole(auth2.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -1142,7 +1142,7 @@ func TestAddPrincipal(t *testing.T) {
 					PrincipalIds: append(tc.addUsers, append(tc.addGroups, tc.addManagedGroups...)...),
 				}
 
-				got, err := s.AddRolePrincipals(auth2.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
+				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1193,7 +1193,7 @@ func TestAddPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddRolePrincipals(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1332,7 +1332,7 @@ func TestSetPrincipal(t *testing.T) {
 					PrincipalIds: append(tc.setUsers, append(tc.setGroups, tc.setManagedGroups...)...),
 				}
 
-				got, err := s.SetRolePrincipals(auth2.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
+				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1383,7 +1383,7 @@ func TestSetPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetRolePrincipals(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1563,7 +1563,7 @@ func TestRemovePrincipal(t *testing.T) {
 					PrincipalIds: append(tc.removeUsers, append(tc.removeGroups, tc.removeManagedGroups...)...),
 				}
 
-				got, err := s.RemoveRolePrincipals(auth2.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
+				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1614,7 +1614,7 @@ func TestRemovePrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveRolePrincipals(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1702,7 +1702,7 @@ func TestAddGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.add
-				got, err := s.AddRoleGrants(auth2.DisabledAuthTestContext(repoFn, scopeId), req)
+				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1760,7 +1760,7 @@ func TestAddGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddRoleGrants(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRoleGrants(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
@@ -1836,7 +1836,7 @@ func TestSetGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.set
-				got, err := s.SetRoleGrants(auth2.DisabledAuthTestContext(repoFn, scopeId), req)
+				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1886,7 +1886,7 @@ func TestSetGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetRoleGrants(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1961,7 +1961,7 @@ func TestRemoveGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.remove
-				got, err := s.RemoveRoleGrants(auth2.DisabledAuthTestContext(repoFn, scopeId), req)
+				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -2022,7 +2022,7 @@ func TestRemoveGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveRoleGrants(auth2.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

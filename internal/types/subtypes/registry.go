@@ -9,7 +9,7 @@ import (
 type Subtype string
 
 const (
-	UnknownSubtype = "unknown"
+	UnknownSubtype Subtype = "unknown"
 )
 
 func (t Subtype) String() string {
@@ -31,7 +31,8 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Subtype uses the provided subtype
+// SubtypeFromType returns the Subtype from the provided string or if
+// no Subtype was registered with that string Unknown is returned.
 func (r *Registry) SubtypeFromType(t string) Subtype {
 	st := Subtype(t)
 	if _, ok := r.knownSubtypes[st]; !ok {
@@ -40,6 +41,8 @@ func (r *Registry) SubtypeFromType(t string) Subtype {
 	return st
 }
 
+// SubtypeFromId returns the Subtype from the provided id if the id's prefix
+// was registered with a Subtype. Otherwise Unknown is returned.
 func (r *Registry) SubtypeFromId(id string) Subtype {
 	i := strings.Index(id, "_")
 	if i == -1 {
@@ -57,7 +60,8 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 }
 
 // Register registers all the prefixes for a provided Subtype. Register panics if the
-// subtype has already been registered.
+// subtype has already been registered or if any of the prefixes are associated with
+// another subtype.
 func (r *Registry) Register(subtype Subtype, prefixes ...string) {
 	r.subtypeMu.Lock()
 	defer r.subtypeMu.Unlock()
