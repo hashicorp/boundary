@@ -214,9 +214,9 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 		reqInfo, ok := RequestInfoFromContext(ctx)
 		if !ok {
 			// there's no RequestInfo, so there's no id associated with the
-			// observation and we'll generate one and flush the observation
+			// event and we'll generate one and flush the event
 			// since there will never be another with the same id
-			id, err := NewId("e")
+			id, err := NewId(idPrefix)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}

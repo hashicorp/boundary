@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
+const idPrefix = "e"
+
 // NewId is a bit of a modified NewId has been done to stop a circular
 // dependency with the errors package that is caused by importing
 // boundary/internal/db
