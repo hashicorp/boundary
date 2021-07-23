@@ -151,7 +151,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		return berrors.New(berrors.InvalidParameter, op, "missing serialization lock")
 	}
 	if serverName == "" {
-		return berrors.New(berrors.InvalidParameter, op, "missing server name lock")
+		return berrors.New(berrors.InvalidParameter, op, "missing server name")
 	}
 	opts := getOpts(opt...)
 	if opts.withEventerConfig != nil {
