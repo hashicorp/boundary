@@ -206,7 +206,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
 		}
 		if s.TokenStatus == string(CurrentToken) {
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "Vault credential store current token has expired", "credential store id": s.StoreId})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "Vault credential store current token has expired", "credential store id": s.StoreId})
 		}
 
 		// Set credentials associated with this token to expired as Vault will already cascade delete them

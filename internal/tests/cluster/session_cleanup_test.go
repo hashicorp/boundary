@@ -196,11 +196,11 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "running initial send/recv test"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "running initial send/recv test"})
 		sConn.TestSendRecvAll(t)
 
 		// Kill the link
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "pausing controller/worker link"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "pausing controller/worker link"})
 		proxy.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -234,7 +234,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		}
 
 		// Resume the connection, and reconnect.
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "resuming controller/worker link"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "resuming controller/worker link"})
 		proxy.Resume()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
@@ -259,7 +259,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		}
 
 		// Proceed with new connection test
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "connecting to new session after resuming controller/worker link"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "connecting to new session after resuming controller/worker link"})
 		sess = newTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
@@ -379,20 +379,20 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "running initial send/recv test"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "running initial send/recv test"})
 		sConn.TestSendRecvAll(t)
 
 		// Kill connection to first controller, and run test again, should
 		// pass, deferring to other controller. Wait for the next
 		// successful status report to ensure this.
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "pausing link to controller #1"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "pausing link to controller #1"})
 		p1.Pause()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "pausing link to controller #2, resuming #1"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "pausing link to controller #2, resuming #1"})
 		p1.Resume()
 		p2.Pause()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -401,7 +401,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 
 		// Kill the first controller connection again. This one should fail
 		// due to lack of any connection.
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "pausing link to controller #1 again, both connections should be offline"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "pausing link to controller #1 again, both connections should be offline"})
 		p1.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -435,7 +435,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		}
 
 		// Finally resume both, try again. Should behave as per normal.
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "resuming connections to both controllers"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "resuming connections to both controllers"})
 		p1.Resume()
 		p2.Resume()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -461,7 +461,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		}
 
 		// Proceed with new connection test
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "connecting to new session after resuming controller/worker link"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "connecting to new session after resuming controller/worker link"})
 		sess = newTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
@@ -649,7 +649,7 @@ func (s *testSession) ExpectConnectionStateOnController(
 
 	// Assert
 	require.Equal(expectStates, actualStates)
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "successfully asserted all connection states on controller", "expected_states": expectStates, "actual_states": actualStates})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "successfully asserted all connection states on controller", "expected_states": expectStates, "actual_states": actualStates})
 }
 
 // ExpectConnectionStateOnWorker waits until all connections in a
@@ -706,7 +706,7 @@ func (s *testSession) ExpectConnectionStateOnWorker(
 
 	// Assert
 	require.Equal(expectStates, actualStates)
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "successfully asserted all connection states on worker", "expected_states": expectStates, "actual_states": actualStates})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "successfully asserted all connection states on worker", "expected_states": expectStates, "actual_states": actualStates})
 }
 
 func (s *testSession) testWorkerConnectionInfo(t *testing.T, tw *worker.TestWorker) map[string]worker.TestConnectionInfo {
@@ -784,7 +784,7 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 		// Shuttle over the sequence number as base64.
 		err := binary.Write(c.conn, binary.LittleEndian, i)
 		if err != nil {
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "received error during write", "err": err})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "received error during write", "err": err})
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
 				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
@@ -798,7 +798,7 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 		var j uint32
 		err = binary.Read(c.conn, binary.LittleEndian, &j)
 		if err != nil {
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "received error during read", "err": err, "num_successfully_sent": i})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "received error during read", "err": err, "num_successfully_sent": i})
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
 				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
@@ -814,7 +814,7 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 		// time.Sleep(time.Second)
 	}
 
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "finished send/recv successfully", "num_successfully_sent": testSendRecvSendMax})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "finished send/recv successfully", "num_successfully_sent": testSendRecvSendMax})
 	return true
 }
 

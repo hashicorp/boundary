@@ -236,7 +236,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "worker name generated", "name": opts.Config.Worker.Name})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "worker name generated", "name": opts.Config.Worker.Name})
 	}
 	tw.name = opts.Config.Worker.Name
 

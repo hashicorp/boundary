@@ -135,7 +135,7 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 func (s *Scheduler) Start(ctx context.Context) error {
 	const op = "scheduler.(Scheduler).Start"
 	if !s.started.CAS(s.started.Load(), true) {
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "scheduler already started, skipping"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "scheduler already started, skipping"})
 		return nil
 	}
 
@@ -162,15 +162,15 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 func (s *Scheduler) start(ctx context.Context) {
 	const op = "scheduler.(Scheduler).start"
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "starting scheduling loop", "server id": s.serverId})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "starting scheduling loop", "server id": s.serverId})
 	timer := time.NewTimer(s.runJobsInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "scheduling loop shutting down", "server id": s.serverId})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "scheduling loop shutting down", "server id": s.serverId})
 			return
 		case <-timer.C:
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waking up to run jobs", "server id": s.serverId})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "waking up to run jobs", "server id": s.serverId})
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
@@ -195,7 +195,7 @@ func (s *Scheduler) start(ctx context.Context) {
 			}
 		}
 
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "scheduling loop going back to sleep", "server id": s.serverId})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "scheduling loop going back to sleep", "server id": s.serverId})
 		timer.Reset(s.runJobsInterval)
 	}
 }
@@ -206,7 +206,7 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	if !ok {
 		return fmt.Errorf("job %q not registered on scheduler", r.JobName)
 	}
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "starting job run", "run id": r.PrivateId, "job name": r.JobName})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "starting job run", "run id": r.PrivateId, "job name": r.JobName})
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
@@ -232,7 +232,7 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 
 		switch runErr {
 		case nil:
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "job run complete", "run id": r.PrivateId, "name": j.Name()})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "job run complete", "run id": r.PrivateId, "name": j.Name()})
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfo(event.I{"msg": "error getting next run time", "name": j.Name()}))
@@ -254,12 +254,12 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 
 func (s *Scheduler) monitorJobs(ctx context.Context) {
 	const op = "scheduler.(Scheduler).monitorJobs"
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "starting job monitor loop"})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "starting job monitor loop"})
 	timer := time.NewTimer(0)
 	for {
 		select {
 		case <-ctx.Done():
-			event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "job monitor loop shutting down"})
+			event.WriteSysEvent(ctx, op, event.I{"msg": "job monitor loop shutting down"})
 			return
 
 		case <-timer.C:

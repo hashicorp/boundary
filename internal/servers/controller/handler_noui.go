@@ -19,7 +19,7 @@ func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Hand
 	if err != nil {
 		panic(err)
 	}
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "serving passthrough files at /", "path": abs})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "serving passthrough files at /", "path": abs})
 	fs := http.FileServer(http.Dir(abs))
 	prefixHandler := http.StripPrefix("/", fs)
 

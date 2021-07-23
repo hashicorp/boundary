@@ -74,7 +74,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer cancel()
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report to controller"})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report to controller"})
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -90,7 +90,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 		}
 	}
 
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "next worker status update sent successfully"})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "next worker status update sent successfully"})
 	return nil
 }
 

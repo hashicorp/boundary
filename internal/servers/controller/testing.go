@@ -474,7 +474,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "controller name generated", "name": opts.Config.Controller.Name})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "controller name generated", "name": opts.Config.Controller.Name})
 	}
 	tc.name = opts.Config.Controller.Name
 
@@ -648,14 +648,14 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
 	ctx := context.TODO()
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report from worker", "worker": workerId})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report from worker", "worker": workerId})
 
 	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
 		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error waiting for next status report from worker", "worker": workerId}))
 		return err
 	}
 
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "waiting for next status report from worker received successfully", "worker": workerId})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report from worker received successfully", "worker": workerId})
 	return nil
 }
 

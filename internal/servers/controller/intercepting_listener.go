@@ -55,7 +55,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		return nil, err
 	}
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "got connection", "addr": conn.RemoteAddr()})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "got connection", "addr": conn.RemoteAddr()})
 
 	nonce := make([]byte, 20)
 	read, err := conn.Read(nonce)
@@ -80,7 +80,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	}
 	workerInfo := workerInfoRaw.(*workerAuthEntry)
 	workerInfo.conn = conn
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "worker successfully authed", "name": workerInfo.Name})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "worker successfully authed", "name": workerInfo.Name})
 	return conn, nil
 }
 

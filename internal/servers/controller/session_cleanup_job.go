@@ -87,7 +87,7 @@ func (j *sessionCleanupJob) Status() scheduler.JobStatus {
 // Run executes the job.
 func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	const op = "controller.(sessionCleanupJob).Run"
-	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "starting job"})
+	event.WriteSysEvent(ctx, op, event.I{"msg": "starting job"})
 	j.totalClosed = 0
 
 	// Load repos.
@@ -103,7 +103,7 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	}
 
 	if len(results) < 1 {
-		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "all workers OK, no connections to close"})
+		event.WriteSysEvent(ctx, op, event.I{"msg": "all workers OK, no connections to close"})
 	} else {
 		for _, result := range results {
 			event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
