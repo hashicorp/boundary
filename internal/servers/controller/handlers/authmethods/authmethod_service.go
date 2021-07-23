@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
+	requestauth "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -153,7 +153,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	for _, am := range ul {
 		res.Id = am.GetPublicId()
 		res.ScopeId = am.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], auth2.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -168,7 +168,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := auth2.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+			collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -217,7 +217,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth2.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -262,7 +262,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth2.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +312,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth2.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +366,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth2.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -448,7 +448,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth2.WithResource(res)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
 	return &pbs.AuthenticateLoginResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
@@ -487,7 +487,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 	return am, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth2.VerifyResults) ([]auth.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults requestauth.VerifyResults) ([]auth.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
 	reqCtx, ok := requests.RequestContextFromCtx(ctx)
 	if !ok {
@@ -500,7 +500,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth2.AnonymousUserId))
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == requestauth.AnonymousUserId))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -651,12 +651,12 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth2.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) requestauth.VerifyResults {
 	const op = "authmethods.(Service).authResult"
-	res := auth2.VerifyResults{}
+	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []auth2.Option{auth2.WithType(resource.AuthMethod), auth2.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithType(resource.AuthMethod), requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -714,10 +714,10 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth2
 			return res
 		}
 		parentId = authMeth.GetScopeId()
-		opts = append(opts, auth2.WithId(id))
+		opts = append(opts, requestauth.WithId(id))
 	}
-	opts = append(opts, auth2.WithScopeId(parentId))
-	return auth2.Verify(ctx, opts...)
+	opts = append(opts, requestauth.WithScopeId(parentId))
+	return requestauth.Verify(ctx, opts...)
 }
 
 func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
@@ -1236,7 +1236,7 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 	return prot, nil
 }
 
-func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth2.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
+func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *requestauth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod.convertToAuthenticateResponse"
 	if req == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Missing request.")
@@ -1257,7 +1257,7 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth2.WithResource(res)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
 	retAttrs, err := handlers.ProtoToStruct(tok)
 	if err != nil {
 		return nil, err

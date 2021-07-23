@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
-	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
+	requestauth "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -231,7 +231,7 @@ func TestGet(t *testing.T) {
 				require.NoError(err)
 			}
 
-			got, gErr := s.GetAccount(auth2.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
+			got, gErr := s.GetAccount(requestauth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -349,7 +349,7 @@ func TestListPassword(t *testing.T) {
 			require.NoError(err, "Couldn't create new user service.")
 
 			// Test non-anon first
-			got, gErr := s.ListAccounts(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -363,7 +363,7 @@ func TestListPassword(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth2.WithUserId(auth2.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -498,7 +498,7 @@ func TestListOidc(t *testing.T) {
 			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -516,7 +516,7 @@ func TestListOidc(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth2.WithUserId(auth2.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -614,7 +614,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -649,9 +649,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	_, gErr := s.DeleteAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr := s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr = s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 }
@@ -831,7 +831,7 @@ func TestCreatePassword(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1050,7 +1050,7 @@ func TestCreateOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1100,7 +1100,7 @@ func TestUpdatePassword(t *testing.T) {
 
 	freshAccount := func(t *testing.T) (*pb.Account, func()) {
 		t.Helper()
-		acc, err := tested.CreateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+		acc, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			&pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
@@ -1114,7 +1114,7 @@ func TestUpdatePassword(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -1418,7 +1418,7 @@ func TestUpdatePassword(t *testing.T) {
 				tc.res.Item.CreatedTime = acc.GetCreatedTime()
 			}
 
-			got, gErr := tested.UpdateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1495,7 +1495,7 @@ func TestUpdateOidc(t *testing.T) {
 		acc := oidc.TestAccount(t, conn, am, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAccountRequest{Id: acc.GetPublicId()})
 			require.NoError(t, err)
 		}
@@ -1801,7 +1801,7 @@ func TestUpdateOidc(t *testing.T) {
 				tc.res.Item.CreatedTime = acc.GetCreateTime().GetTimestamp()
 			}
 
-			got, gErr := tested.UpdateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1862,7 +1862,7 @@ func TestSetPassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -1902,7 +1902,7 @@ func TestSetPassword(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			acct := createAccount(t, tt.oldPw)
 
-			setResp, err := tested.SetPassword(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       acct.GetId(),
 				Version:  acct.GetVersion(),
 				Password: tt.newPw,
@@ -1960,7 +1960,7 @@ func TestSetPassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			setResp, err := tested.SetPassword(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       tt.accountId,
 				Version:  tt.version,
 				Password: tt.password,
@@ -2000,7 +2000,7 @@ func TestChangePassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -2017,7 +2017,7 @@ func TestChangePassword(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "originalpassword",
@@ -2036,7 +2036,7 @@ func TestChangePassword(t *testing.T) {
 		assert := assert.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "thewrongpassword",
@@ -2133,7 +2133,7 @@ func TestChangePassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			changeResp, err := tested.ChangePassword(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+			changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 				Id:              tt.accountId,
 				Version:         tt.version,
 				CurrentPassword: tt.oldPW,
