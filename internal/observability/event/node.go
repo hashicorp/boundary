@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"reflect"
 
+	filterpkg "github.com/hashicorp/boundary/internal/filter"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-bexpr"
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Node represents an eventlogger.Node which filters events based on allow and
@@ -107,7 +104,7 @@ func newFilter(f string) (*filter, error) {
 	if f == "" {
 		return nil, fmt.Errorf("%s: missing filter: %w", op, ErrInvalidParameter)
 	}
-	e, err := bexpr.CreateEvaluator(f, bexpr.WithHookFn(wellKnownTypeFilterHook))
+	e, err := bexpr.CreateEvaluator(f, bexpr.WithHookFn(filterpkg.WellKnownTypeFilterHook))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -126,38 +123,4 @@ func (f *filter) Match(item interface{}) bool {
 	// is part of a sub structure that is nil in this item. Because of this, any filter which would
 	// result in an error using the underlying library is simply interpreted as not a match.
 	return err == nil && m
-}
-
-// wellKnownTypeFilterHook is passed to bexpr to treat all proto well-known
-// types as the types they wrap for comparison.
-func wellKnownTypeFilterHook(v reflect.Value) reflect.Value {
-	if !v.CanInterface() {
-		return v
-	}
-	ret := v.Interface()
-	switch pm := v.Interface().(type) {
-	case *wrapperspb.BoolValue:
-		ret = pm.GetValue()
-	case *wrapperspb.BytesValue:
-		ret = pm.GetValue()
-	case *wrapperspb.StringValue:
-		ret = pm.GetValue()
-	case *wrapperspb.DoubleValue:
-		ret = pm.GetValue()
-	case *wrapperspb.FloatValue:
-		ret = pm.GetValue()
-	case *wrapperspb.Int32Value:
-		ret = pm.GetValue()
-	case *wrapperspb.Int64Value:
-		ret = pm.GetValue()
-	case *wrapperspb.UInt32Value:
-		ret = pm.GetValue()
-	case *wrapperspb.UInt64Value:
-		ret = pm.GetValue()
-	case *structpb.Struct:
-		ret = pm.AsMap()
-	case *timestamppb.Timestamp:
-		ret = pm.AsTime()
-	}
-	return reflect.ValueOf(ret)
 }
