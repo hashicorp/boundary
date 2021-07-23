@@ -1,7 +1,7 @@
 import { VERSION, DESKTOP_VERSION } from 'data/version.js'
 import HashiHead from '@hashicorp/react-head'
 import { productName, productSlug } from 'data/metadata'
-import ProductDownloader from '@hashicorp/react-product-downloader'
+import ProductDownloadsPage from '@hashicorp/react-product-downloads-page'
 import MerchDesktopClient from 'components/merch-desktop-client'
 import styles from './style.module.css'
 
@@ -11,7 +11,7 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
   return (
     <div className={styles.root}>
       <HashiHead title={`Downloads | ${productName} by HashiCorp`} />
-      <ProductDownloader
+      <ProductDownloadsPage
         releases={binaryReleases}
         packageManagers={[
           {
