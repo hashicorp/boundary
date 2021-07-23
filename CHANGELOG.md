@@ -6,6 +6,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* With respect to Target resources, _credential libraries_ that are attached to
+  the targets are being renamed to the more abstract _credential sources_. In
+  the future Boundary will gain the ability to internally store static
+  credentials that are not generated or fetched dynamically, and the _sources_
+  terminology better reflects that the IDs provided are a source of credentials,
+  whether via dynamic generation or via the credentials themselves. In this 0.5
+  release the Boundary CLI has gained parallel `application-credential-source`
+  flags to the existing `application-credential-library` flags, as well as
+  `boundary targets add/remove/set-credential-sources` commands that parallel
+  `boundary targets add/remove/set-credential-libraries` commands. This
+  parallelism extends to the API actions and the grants system. In 0.6, the
+  _library_ versions of these commands, flags, and actions will be removed.
+
 ### Bug Fixes
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as
