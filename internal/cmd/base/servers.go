@@ -718,7 +718,7 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 		n, err := strconv.Atoi(v)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfo(
-				map[string]interface{}{
+				event.I{
 					"msg":   fmt.Sprintf("could not read setting for %s", statusGracePeriodEnvVar),
 					"value": v,
 				},

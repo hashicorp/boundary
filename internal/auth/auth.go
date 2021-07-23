@@ -257,18 +257,19 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil
 			// TODO: Decide whether to remove this
-			err := event.WriteObservation(ctx, op, event.WithHeader(map[string]interface{}{
-				"auth-results": struct {
-					Msg      string
-					Resource string
-					UserId   string
-					Action   string
-				}{
-					Msg:      "failed authz info for request",
-					Resource: pretty.Sprint(v.res),
-					UserId:   ret.UserId,
-					Action:   v.act.String(),
-				}}))
+			err := event.WriteObservation(ctx, op,
+				event.WithHeader(event.H{
+					"auth-results": struct {
+						Msg      string
+						Resource string
+						UserId   string
+						Action   string
+					}{
+						Msg:      "failed authz info for request",
+						Resource: pretty.Sprint(v.res),
+						UserId:   ret.UserId,
+						Action:   v.act.String(),
+					}}))
 			if err != nil {
 				event.WriteError(ctx, op, err)
 			}

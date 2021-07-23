@@ -413,7 +413,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	}
 
 	event.WriteSysEvent(ctx, op,
-		map[string]interface{}{
+		event.I{
 			"msg":              "authorized connection",
 			"session_id":       req.GetSessionId(),
 			"connection_id":    ret.ConnectionId,

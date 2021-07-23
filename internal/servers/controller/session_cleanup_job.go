@@ -120,7 +120,7 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	}
 
 	event.WriteSysEvent(ctx, op,
-		map[string]interface{}{
+		event.I{
 			"msg":                      "job finished",
 			"op":                       op,
 			"total_connections_closed": j.totalClosed,
