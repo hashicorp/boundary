@@ -1,14 +1,23 @@
 package password
 
 import (
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+
+func init() {
+	auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix)
+}
 
 // PublicId prefixes for the resources in the password package.
 const (
 	AuthMethodPrefix = "ampw"
+
+	Subtype = subtypes.Subtype("password")
 )
 
 func newAuthMethodId() (string, error) {

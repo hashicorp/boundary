@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -123,7 +123,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	for _, item := range items {
 		res.Id = item.GetPublicId()
 		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth2.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -751,8 +751,8 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
-	res := auth.VerifyResults{}
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth2.VerifyResults {
+	res := auth2.VerifyResults{}
 	repo, err := s.repoFn()
 	if err != nil {
 		res.Error = err
@@ -760,7 +760,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.Role), auth.WithAction(a)}
+	opts := []auth2.Option{auth2.WithType(resource.Role), auth2.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -784,10 +784,10 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 		parentId = r.GetScopeId()
-		opts = append(opts, auth.WithId(id))
+		opts = append(opts, auth2.WithId(id))
 	}
-	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	opts = append(opts, auth2.WithScopeId(parentId))
+	return auth2.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant, opt ...handlers.Option) (*pb.Role, error) {

@@ -3,13 +3,21 @@ package static
 import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+func init() {
+	host.Register(Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix)
+}
 
 // PublicId prefixes for the resources in the static package.
 const (
 	HostCatalogPrefix = "hcst"
 	HostSetPrefix     = "hsst"
 	HostPrefix        = "hst"
+
+	Subtype = subtypes.Subtype("static")
 )
 
 func newHostCatalogId() (string, error) {

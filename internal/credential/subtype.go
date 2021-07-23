@@ -1,69 +1,22 @@
 package credential
 
 import (
-	"strings"
-	"sync"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
-type Subtype int
-
-const (
-	UnknownSubtype Subtype = iota
-	VaultSubtype
-)
-
-func (t Subtype) String() string {
-	switch t {
-	case VaultSubtype:
-		return "vault"
-	}
-	return "unknown"
-}
+var registry = subtypes.NewRegistry()
 
 // Subtype uses the provided subtype
-func SubtypeFromType(t string) Subtype {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), VaultSubtype.String()):
-		return VaultSubtype
-	}
-	return UnknownSubtype
+func SubtypeFromType(t string) subtypes.Subtype {
+	return registry.SubtypeFromType(t)
 }
 
-func SubtypeFromId(id string) Subtype {
-	i := strings.Index(id, "_")
-	if i == -1 {
-		return UnknownSubtype
-	}
-	prefix := id[:i]
-
-	subtypeMu.RLock()
-	subtype, ok := subtypes[prefix]
-	subtypeMu.RUnlock()
-	if !ok {
-		return UnknownSubtype
-	}
-	return subtype
+func SubtypeFromId(id string) subtypes.Subtype {
+	return registry.SubtypeFromId(id)
 }
 
-var (
-	subtypeMu sync.RWMutex
-	subtypes  = make(map[string]Subtype)
-)
-
-// Register registers the prefixes for a Subtype. Register panics if the
-// subtype is unknown.
-func Register(subtype Subtype, prefixes ...string) {
-	subtypeMu.Lock()
-	defer subtypeMu.Unlock()
-
-	switch subtype {
-	case VaultSubtype:
-	default:
-		panic("credential.Register: subtype is unknown ")
-	}
-
-	for _, prefix := range prefixes {
-		prefix = strings.TrimSpace(prefix)
-		subtypes[prefix] = subtype
-	}
+// Register registers all the prefixes for a provided Subtype. Register panics if the
+// subtype has already been registered.
+func Register(subtype subtypes.Subtype, prefixes ...string) {
+	registry.Register(subtype, prefixes...)
 }

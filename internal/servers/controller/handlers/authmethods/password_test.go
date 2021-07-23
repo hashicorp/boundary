@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -18,6 +17,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -57,7 +57,7 @@ func TestUpdate_Password(t *testing.T) {
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
-		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+		am, err := tested.CreateAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				Name:        wrapperspb.String("default"),
@@ -67,7 +67,7 @@ func TestUpdate_Password(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -417,7 +417,7 @@ func TestUpdate_Password(t *testing.T) {
 				tc.res.Item.CreatedTime = am.GetCreatedTime()
 			}
 
-			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -593,7 +593,7 @@ func TestAuthenticate_Password(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
@@ -762,7 +762,7 @@ func TestAuthenticateLogin_Password(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err)
 
-			resp, err := s.AuthenticateLogin(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.AuthenticateLogin(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
@@ -822,7 +822,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 
 	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err)
-	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
+	resp, err := s.Authenticate(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{

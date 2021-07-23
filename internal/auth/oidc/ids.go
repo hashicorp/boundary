@@ -1,16 +1,24 @@
 package oidc
 
 import (
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+func init() {
+	auth.Register(Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix)
+}
 
 const (
 	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
 	AuthMethodPrefix = "amoidc"
 	// AccountPrefix defines the prefix for Account public ids.
 	AccountPrefix = "acctoidc"
+
+	Subtype = subtypes.Subtype("oidc")
 )
 
 func newAuthMethodId() (string, error) {

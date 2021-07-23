@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -20,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -120,7 +120,7 @@ func TestGet(t *testing.T) {
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
-		Type:        auth.OidcSubtype.String(),
+		Type:        oidc.Subtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":             structpb.NewStringValue("https://alice.com"),
 			"client_id":          structpb.NewStringValue("alice_rp"),
@@ -187,7 +187,7 @@ func TestGet(t *testing.T) {
 			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			got, gErr := s.GetAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -240,7 +240,7 @@ func TestList(t *testing.T) {
 		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
 		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:     2,
-		Type:        auth.OidcSubtype.String(),
+		Type:        oidc.Subtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":             structpb.NewStringValue("https://alice.com"),
 			"client_id":          structpb.NewStringValue("alice_rp"),
@@ -354,7 +354,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr := s.ListAuthMethods(auth2.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -371,7 +371,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
-			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAuthMethods(auth2.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth2.WithUserId(auth2.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -450,7 +450,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.DeleteAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -489,9 +489,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthMethodRequest{
 		Id: am.GetPublicId(),
 	}
-	_, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr := s.DeleteAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr = s.DeleteAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
@@ -560,7 +560,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid OIDC AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":      structpb.NewStringValue("someclientid"),
@@ -590,7 +590,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/"),
 						"client_id":          structpb.NewStringValue("someclientid"),
@@ -650,7 +650,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a global OIDC AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: scope.Global.String(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"issuer":         structpb.NewStringValue("https://example.discovery.url"),
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
@@ -668,7 +668,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 						"issuer":             structpb.NewStringValue("https://example.discovery.url"),
@@ -696,7 +696,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
-				Type:        auth.PasswordSubtype.String(),
+				Type:        password.Subtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -706,7 +706,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        auth.PasswordSubtype.String(),
+				Type:        password.Subtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -715,7 +715,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify IsPrimary",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:   o.GetPublicId(),
-				Type:      auth.PasswordSubtype.String(),
+				Type:      password.Subtype.String(),
 				IsPrimary: true,
 			}},
 			res: nil,
@@ -726,7 +726,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        auth.PasswordSubtype.String(),
+				Type:        password.Subtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -747,7 +747,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
-				Type:        auth.PasswordSubtype.String(),
+				Type:        password.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"invalid_field":         structpb.NewStringValue("invalid_value"),
 					"min_login_name_length": structpb.NewNumberValue(3),
@@ -762,7 +762,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
-				Type:        auth.OidcSubtype.String(),
+				Type:        oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"login-name": structpb.NewStringValue("invalid_value"),
 					"password":   structpb.NewNumberValue(3),
@@ -775,7 +775,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Doesn't Require Issuer",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"client_id":      structpb.NewStringValue("someclientid"),
@@ -791,7 +791,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 						"client_id":          structpb.NewStringValue("someclientid"),
@@ -807,7 +807,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires ApiUrl",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
@@ -819,7 +819,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires Client Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -832,7 +832,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires Client Secret",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -845,7 +845,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify client secret hmac",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 					"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -860,7 +860,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify state",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -875,7 +875,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Must Match Standard Alg Names",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
@@ -893,7 +893,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod API Urls Prefix Format",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":      structpb.NewStringValue("someclientid"),
@@ -907,7 +907,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Callback Url Read Only",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
@@ -921,7 +921,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod unparseable certificates",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
@@ -939,7 +939,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify default claims scopes of openid",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    auth.OidcSubtype.String(),
+				Type:    oidc.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"api_url_prefix": structpb.NewStringValue("https://api.com"),
 					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -961,7 +961,7 @@ func TestCreate(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
-			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
+			got, gErr := s.CreateAuthMethod(auth2.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

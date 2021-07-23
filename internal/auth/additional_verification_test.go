@@ -9,12 +9,12 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	auth2 "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	authmethodsservice "github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -86,27 +86,27 @@ func TestFetchActionSetForId(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			req := require.New(t)
-			ctx := auth.NewVerifierContext(
+			ctx := auth2.NewVerifierContext(
 				context.Background(),
 				tc.Logger(),
 				iamRepoFn,
 				authTokenRepoFn,
 				serversRepoFn,
 				tc.Kms(),
-				auth.RequestInfo{
+				auth2.RequestInfo{
 					PublicId:       token.Id,
 					EncryptedToken: strings.Split(token.Token, "_")[2],
-					TokenFormat:    auth.AuthTokenTypeBearer,
+					TokenFormat:    auth2.AuthTokenTypeBearer,
 				})
 			typ := resource.Target
 			if tt.typeOverride != resource.Unknown {
 				typ = tt.typeOverride
 			}
-			res := auth.Verify(ctx, []auth.Option{
-				auth.WithId("foo"),
-				auth.WithAction(action.Read),
-				auth.WithScopeId(org.PublicId),
-				auth.WithType(typ),
+			res := auth2.Verify(ctx, []auth2.Option{
+				auth2.WithId("foo"),
+				auth2.WithAction(action.Read),
+				auth2.WithScopeId(org.PublicId),
+				auth2.WithType(typ),
 			}...)
 			req.NoError(res.Error)
 			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
@@ -131,7 +131,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	// will expect the defaults.
 	globalRole := iam.TestRole(t, conn, scope.Global.String())
 	iam.TestUserRole(t, conn, globalRole.PublicId, token.UserId)
-	iam.TestUserRole(t, conn, globalRole.PublicId, auth.AnonymousUserId)
+	iam.TestUserRole(t, conn, globalRole.PublicId, auth2.AnonymousUserId)
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list,no-op")
 
 	// Create some users at the org level, and some role grants for them

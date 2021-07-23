@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -16,10 +15,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -427,7 +428,7 @@ func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, o
 		out.HostCatalogId = in.GetCatalogId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = host.StaticSubtype.String()
+		out.Type = static.Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -476,7 +477,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := host.SubtypeFromId(req.GetId())
-		if ct == host.UnknownSubtype {
+		if ct == subtypes.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
@@ -490,8 +491,8 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
 			}
 			attrs := &pb.StaticHostAttributes{}
@@ -521,8 +522,8 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
 
 				attrs := &pb.StaticHostAttributes{}
