@@ -902,10 +902,10 @@ HostSetIterationLoop:
 	var dynCreds []*session.DynamicCredential
 	for _, l := range libs {
 		reqs = append(reqs, credential.Request{
-			SourceId: l.GetCredentialLibraryId(),
-			Purpose:  credential.Purpose(l.GetCredentialPurpose()),
+			SourceId: l.Id(),
+			Purpose:  credential.Purpose(l.CredentialPurpose()),
 		})
-		dynCreds = append(dynCreds, session.NewDynamicCredential(l.GetCredentialLibraryId(), credential.Purpose(l.GetCredentialPurpose())))
+		dynCreds = append(dynCreds, session.NewDynamicCredential(l.Id(), credential.Purpose(l.CredentialPurpose())))
 	}
 
 	expTime := timestamppb.Now()
@@ -1026,7 +1026,7 @@ HostSetIterationLoop:
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
@@ -1044,7 +1044,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*
 	return u, hs, cl, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).createInRepo"
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
@@ -1084,7 +1084,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	return out, hs, cl, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).updateInRepo"
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -1161,7 +1161,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.
 	return ul, nil
 }
 
-func (s Service) addSetsInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) addSetsInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
@@ -1177,7 +1177,7 @@ func (s Service) addSetsInRepo(ctx context.Context, targetId string, hostSetId [
 	return out, hs, cl, nil
 }
 
-func (s Service) setSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) setSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).setSetsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1199,7 +1199,7 @@ func (s Service) setSetsInRepo(ctx context.Context, targetId string, hostSetIds 
 	return out, hs, cl, nil
 }
 
-func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).removeSetsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1220,12 +1220,12 @@ func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetI
 	return out, hs, cl, nil
 }
 
-func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, cl, err := repo.AddTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)
@@ -1233,50 +1233,50 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding credential sources to it.")
 	}
-	return out, hs, cl, nil
+	return out, hs, credSources, nil
 }
 
-func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).setCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, _, _, err = repo.SetTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
 	}
 
-	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
+	out, hs, credSources, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting credential sources"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting credential sources for it.")
 	}
-	return out, hs, cl, nil
+	return out, hs, credSources, nil
 }
 
-func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []*target.TargetSet, []target.CredentialSource, error) {
 	const op = "targets.(Service).removeCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, err = repo.DeleteTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential sources from target: %v.", err)
 	}
-	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
+	out, hs, credSources, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing credential sources"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing credential sources from it.")
 	}
-	return out, hs, cl, nil
+	return out, hs, credSources, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {

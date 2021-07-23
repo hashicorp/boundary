@@ -15,7 +15,7 @@ import (
 // and the list of credential sources attached to the target, after cIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
+func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, error) {
 	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -61,7 +61,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	}
 
 	var hostSets []*TargetSet
-	var credSources []TargetCredentialSource
+	var credSources []CredentialSource
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -89,7 +89,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 			credLibsOplogMsgs := make([]*oplog.Message, 0, len(addCredLibs))
 			if err := w.CreateItems(ctx, addCredLibs, db.NewOplogMsgs(&credLibsOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create target credential libraries"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to create target credential sources"))
 			}
 			msgs = append(msgs, credLibsOplogMsgs...)
 
@@ -98,11 +98,11 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			}
 			hostSets, err = fetchSets(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
 			}
-			credSources, err = fetchSources(ctx, reader, targetId)
+			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
 			}
 			return nil
 		},
@@ -110,25 +110,25 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return updatedTarget.(Target), hostSets, credLibs, nil
+	return updatedTarget.(Target), hostSets, credSources, nil
 }
 
-// DeleteTargetCredentialLibraries deletes credential libraries from a target in the repository.
+// DeleteTargetCredentialSources deletes credential sources from a target in the repository.
 // The target's current db version must match the targetVersion or an error will be returned.
-func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (int, error) {
-	const op = "target.(Repository).DeleteTargetCredentialLibraries"
+func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) (int, error) {
+	const op = "target.(Repository).DeleteTargetCredentialSources"
 	if targetId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
-	if len(clIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing credential library ids")
+	if len(csIds) == 0 {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing credential source ids")
 	}
 
-	deleteCredLibs := make([]interface{}, 0, len(clIds))
-	for _, id := range clIds {
+	deleteCredLibs := make([]interface{}, 0, len(csIds))
+	for _, id := range csIds {
 		cl, err := NewCredentialLibrary(targetId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
@@ -188,10 +188,10 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 			credLibsOplogMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
 			rowsDeleted, err = w.DeleteItems(ctx, deleteCredLibs, db.NewOplogMsgs(&credLibsOplogMsgs))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential libraries"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential sources"))
 			}
 			if rowsDeleted != len(deleteCredLibs) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("credential sources deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
 			}
 			msgs = append(msgs, credLibsOplogMsgs...)
 
@@ -207,11 +207,11 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 	return rowsDeleted, nil
 }
 
-// SetTargetCredentialLibraries will set the target's credential libraries. Set will add
-// and/or delete credential libraries as need to reconcile the existing credential libraries
-// with the request. If clIds is empty, all the credential libraries will be cleared from the target.
-func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
-	const op = "target.(Repository).SetTargetCredentialLibraries"
+// SetTargetCredentialSources will set the target's credential sources. Set will add
+// and/or delete credential sources as need to reconcile the existing credential sources
+// with the request. If clIds is empty, all the credential sources will be cleared from the target.
+func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) ([]*TargetSet, []CredentialSource, int, error) {
+	const op = "target.(Repository).SetTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
@@ -219,7 +219,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 
-	changes, err := r.changes(ctx, targetId, clIds)
+	changes, err := r.changes(ctx, targetId, csIds)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -229,11 +229,11 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		credLibs, err := fetchLibraries(ctx, r.reader, targetId)
+		credSources, err := fetchCredentialSources(ctx, r.reader, targetId)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		return hostSets, credLibs, db.NoRowsAffected, nil
+		return hostSets, credSources, db.NoRowsAffected, nil
 	}
 
 	var deleteCredLibs, addCredLibs []interface{}
@@ -274,7 +274,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 
 	var rowsAffected int
 	var hostSets []*TargetSet
-	var credLibs []*TargetLibrary
+	var credSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -332,9 +332,9 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
 			}
-			credLibs, err = fetchLibraries(ctx, reader, targetId)
+			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential libraries after add/delete"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential sources after add/delete"))
 			}
 			return nil
 		},
@@ -342,7 +342,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return hostSets, credLibs, rowsAffected, nil
+	return hostSets, credSources, rowsAffected, nil
 }
 
 type change struct {
@@ -385,8 +385,8 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	return changes, nil
 }
 
-func fetchSources(ctx context.Context, r db.Reader, targetId string) ([]TargetCredentialSource, error) {
-	const op = "target.fetchSources"
+func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) ([]CredentialSource, error) {
+	const op = "target.fetchCredentialSources"
 	var libraries []*TargetLibrary
 	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -397,7 +397,7 @@ func fetchSources(ctx context.Context, r db.Reader, targetId string) ([]TargetCr
 	if len(libraries) == 0 {
 		return nil, nil
 	}
-	ret := make([]TargetCredentialSource, len(libraries))
+	ret := make([]CredentialSource, len(libraries))
 	for i, lib := range libraries {
 		ret[i] = lib
 	}

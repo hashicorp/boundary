@@ -63,6 +63,9 @@ var testAuthorizedActions = []string{
 	"add-credential-libraries",
 	"set-credential-libraries",
 	"remove-credential-libraries",
+	"add-credential-sources",
+	"set-credential-sources",
+	"remove-credential-sources",
 	"authorize-session",
 }
 

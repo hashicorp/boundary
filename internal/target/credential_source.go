@@ -8,4 +8,5 @@ type CredentialSource interface {
 	CredentialStoreId() string
 	Id() string
 	CredentialPurpose() credential.Purpose
+	TargetId() string
 }
