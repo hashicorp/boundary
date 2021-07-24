@@ -649,31 +649,26 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
 	ctx := context.TODO()
 	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report from worker", "worker": workerId})
-
-	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error waiting for next status report from worker", "worker": workerId}))
-		return err
-	}
-
-	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report from worker received successfully", "worker": workerId})
-	return nil
-}
-
-func (tc *TestController) waitForNextWorkerStatusUpdate(workerId string) error {
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
 	defer cancel()
+	var err error
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		if err = func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
 
-		case <-time.After(time.Second):
-			// pass
+			case <-time.After(time.Second):
+				// pass
+			}
+
+			return nil
+		}(); err != nil {
+			break
 		}
 
 		var waitStatusCurrent time.Time
-		var err error
 		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
@@ -701,7 +696,7 @@ func (tc *TestController) waitForNextWorkerStatusUpdate(workerId string) error {
 		})
 
 		if err != nil {
-			return err
+			break
 		}
 
 		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
@@ -709,5 +704,10 @@ func (tc *TestController) waitForNextWorkerStatusUpdate(workerId string) error {
 		}
 	}
 
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error waiting for next status report from worker", "worker": workerId}))
+		return err
+	}
+	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report from worker received successfully", "worker": workerId})
 	return nil
 }

@@ -105,9 +105,9 @@ func workerGracePeriod(ty timeoutBurdenType) time.Duration {
 	return defaultGracePeriod
 }
 
-// TestWorkerSessionCleanup is the main test for session cleanup, and
+// TestSessionCleanup is the main test for session cleanup, and
 // dispatches to the individual subtests.
-func TestWorkerSessionCleanup(t *testing.T) {
+func TestSessionCleanup(t *testing.T) {
 	t.Parallel()
 	for _, burdenCase := range timeoutBurdenCases {
 		burdenCase := burdenCase
