@@ -68,7 +68,7 @@ func TestRegister(t *testing.T) {
 		defer func() {
 			assert.Nil(t, recover())
 		}()
-		r.Register("test", "tttst")
+		r.Register("test", "testprefix")
 	}()
 
 	// registering multiple subtypes should be fine.
@@ -76,7 +76,15 @@ func TestRegister(t *testing.T) {
 		defer func() {
 			assert.Nil(t, recover())
 		}()
-		r.Register("second", "tttst")
+		r.Register("second", "secondprefix")
+	}()
+
+	// registering another prefix with a different subtype panics.
+	func() {
+		defer func() {
+			assert.Nil(t, recover())
+		}()
+		r.Register("third", "thirdprefix")
 	}()
 
 	// Registering the same subtype twice panics.
@@ -84,6 +92,6 @@ func TestRegister(t *testing.T) {
 		defer func() {
 			assert.NotNil(t, recover())
 		}()
-		r.Register("test", "tttst")
+		r.Register("test", "repeatedprefix")
 	}()
 }
