@@ -53,7 +53,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // LookupTarget will look up a target in the repository and return the target
-// with its host set ids and credential library ids.  If the target is not found,
+// with its host set ids and credential source ids.  If the target is not found,
 // it will return nil, nil, nil, nil.
 // No options are currently supported.
 func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []CredentialSource, error) {
