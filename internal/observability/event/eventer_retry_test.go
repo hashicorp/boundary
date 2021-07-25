@@ -24,7 +24,7 @@ func TestEventer_retrySend(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	eventer, err := NewEventer(testLogger, testLock, testConfig.EventerConfig)
+	eventer, err := NewEventer(testLogger, testLock, "TestEventer_retrySend", testConfig.EventerConfig)
 	require.NoError(t, err)
 
 	testError := fmt.Errorf("%s: missing operation: %w", "missing operation", ErrInvalidParameter)

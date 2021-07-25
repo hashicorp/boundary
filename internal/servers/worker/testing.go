@@ -232,13 +232,17 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		opts.Config.Worker = new(config.Worker)
 	}
 	if opts.Config.Worker.Name == "" {
-		opts.Config.Worker.Name, err = base62.Random(5)
+		opts.Config.Worker.Name, err = opts.Config.Worker.InitNameIfEmpty()
 		if err != nil {
 			t.Fatal(err)
 		}
 		event.WriteSysEvent(ctx, op, "worker name generated", "name", opts.Config.Worker.Name)
 	}
 	tw.name = opts.Config.Worker.Name
+
+	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, opts.Config.Worker.Name+"/test-worker", base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+		t.Fatal(err)
+	}
 
 	// Set up KMSes
 	switch {

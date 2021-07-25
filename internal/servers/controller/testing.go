@@ -459,23 +459,24 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
-	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if opts.Config.Controller == nil {
+		opts.Config.Controller = new(config.Controller)
+	}
+	if opts.Config.Controller.Name == "" {
+		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
+		if err != nil {
+			t.Fatal(err)
+		}
+		event.WriteSysEvent(ctx, op, "controller name generated", "name", opts.Config.Controller.Name)
+	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
 	// Initialize status grace period
 	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
-	if opts.Config.Controller == nil {
-		opts.Config.Controller = new(config.Controller)
-	}
-	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = base62.Random(5)
-		if err != nil {
-			t.Fatal(err)
-		}
-		event.WriteSysEvent(ctx, op, "controller name generated", "name", opts.Config.Controller.Name)
-	}
 	tc.name = opts.Config.Controller.Name
 
 	if opts.InitialResourcesSuffix != "" {

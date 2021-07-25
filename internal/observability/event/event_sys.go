@@ -11,4 +11,4 @@ type sysEvent struct {
 }
 
 // EventType is required for all event types by the eventlogger broker
-func (e *sysEvent) EventType() string { return string(ErrorType) }
+func (e *sysEvent) EventType() string { return string(SystemType) }

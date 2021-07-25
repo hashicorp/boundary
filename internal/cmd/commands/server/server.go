@@ -149,7 +149,23 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverNames []string
+	if c.Config.Controller != nil {
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		serverNames = append(serverNames, c.Config.Controller.Name)
+	}
+	if c.Config.Worker != nil {
+		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		serverNames = append(serverNames, c.Config.Worker.Name)
+	}
+
+	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
