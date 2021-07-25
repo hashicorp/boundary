@@ -108,7 +108,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 					return errors.Wrap(err, op, errors.WithMsg("unable to add credential sources"))
 				}
 				if returnedCredSources, err = fetchCredentialSources(ctx, read, t.PublicId); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to read credential ources"))
+					return errors.Wrap(err, op, errors.WithMsg("unable to read credential sources"))
 				}
 				msgs = append(msgs, credLibOplogMsgs...)
 			}
