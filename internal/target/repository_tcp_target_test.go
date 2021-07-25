@@ -98,7 +98,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					require.NoError(t, err)
 					return target
 				}(),
-				opt: []Option{WithCredentialLibraries(clIds)},
+				opt: []Option{WithCredentialSources(clIds)},
 			},
 			wantErr:      false,
 			wantCredLibs: clIds,
@@ -117,7 +117,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 				opt: []Option{
 					WithHostSets(sets),
-					WithCredentialLibraries(clIds),
+					WithCredentialSources(clIds),
 				},
 			},
 			wantErr:      false,
@@ -439,7 +439,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				testClIds = append(testClIds, cl.PublicId)
 			}
 
-			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSets(testHostSetIds), WithCredentialLibraries(testClIds))
+			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSets(testHostSetIds), WithCredentialSources(testClIds))
 			name := tt.newName
 			if name == "" {
 				name = testId(t)

@@ -14,7 +14,7 @@ import (
 
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
-// WithHostSets and WithCredentialLibraries are the only supported option.
+// WithHostSets and WithCredentialSources are the only supported option.
 func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []CredentialSource, error) {
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
@@ -63,8 +63,8 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		newHostSets = append(newHostSets, hostSet)
 	}
 
-	newCredLibs := make([]interface{}, 0, len(opts.withCredentialLibraries))
-	for _, clId := range opts.withCredentialLibraries {
+	newCredLibs := make([]interface{}, 0, len(opts.withCredentialSources))
+	for _, clId := range opts.withCredentialSources {
 		credLib, err := NewCredentialLibrary(t.PublicId, clId)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
