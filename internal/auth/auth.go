@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/kr/pretty"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
@@ -260,13 +259,13 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			err := event.WriteObservation(ctx, op,
 				event.WithHeader(
 					"auth-results", struct {
-						Msg      string `json:"msg"`
-						Resource string `json:"resource"`
-						UserId   string `json:"user_id"`
-						Action   string `json:"action"`
+						Msg      string          `json:"msg"`
+						Resource *perms.Resource `json:"resource"`
+						UserId   string          `json:"user_id"`
+						Action   string          `json:"action"`
 					}{
 						Msg:      "failed authz info for request",
-						Resource: pretty.Sprint(v.res),
+						Resource: v.res,
 						UserId:   ret.UserId,
 						Action:   v.act.String(),
 					}))

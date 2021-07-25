@@ -1,6 +1,7 @@
 package perms
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -334,4 +335,17 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestJsonMarshal(t *testing.T) {
+	res := &Resource{
+		ScopeId: "scope",
+		Id:      "id",
+		Type:    resource.Controller,
+		Pin:     "",
+	}
+
+	out, err := json.Marshal(res)
+	require.NoError(t, err)
+	assert.Equal(t, `{"scope_id":"scope","id":"id","type":"controller"}`, string(out))
 }
