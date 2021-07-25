@@ -634,7 +634,7 @@ func (c *Command) WaitForInterrupt() int {
 				case "err", "error":
 					level = hclog.Error
 				default:
-					event.WriteError(context.TODO(), op, fmt.Errorf("unknown log level found on reload: level == %s", newConf.LogLevel))
+					event.WriteError(context.TODO(), op, stderrors.New("unknown log level found on reload"), event.WithInfo("level", newConf.LogLevel))
 					goto RUNRELOADFUNCS
 				}
 				c.Logger.SetLevel(level)
