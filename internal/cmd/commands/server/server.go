@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -615,7 +616,7 @@ func (c *Command) WaitForInterrupt() int {
 
 			// Ensure at least one config was found.
 			if newConf == nil {
-				event.WriteError(context.TODO(), op, errors.New(errors.InvalidParameter, op, "no config found at reload time"))
+				event.WriteError(context.TODO(), op, stderrors.New("no config found at reload time"))
 				goto RUNRELOADFUNCS
 			}
 
@@ -633,7 +634,7 @@ func (c *Command) WaitForInterrupt() int {
 				case "err", "error":
 					level = hclog.Error
 				default:
-					event.WriteError(context.TODO(), op, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown log level found on reload: level == %s", newConf.LogLevel)))
+					event.WriteError(context.TODO(), op, fmt.Errorf("unknown log level found on reload: level == %s", newConf.LogLevel))
 					goto RUNRELOADFUNCS
 				}
 				c.Logger.SetLevel(level)
