@@ -8,7 +8,8 @@ import (
 const errorVersion = "v0.1"
 
 type err struct {
-	Error       error                  `json:"error"`
+	Error       string                 `json:"error"`
+	ErrorFields error                  `json:"error_fields"`
 	Id          Id                     `json:"id,omitempty"`
 	Version     string                 `json:"version"`
 	Op          Op                     `json:"op,omitempty"`
@@ -38,7 +39,8 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 		Version:     errorVersion,
 		RequestInfo: opts.withRequestInfo,
 		Info:        opts.withInfo,
-		Error:       e,
+		Error:       e.Error(),
+		ErrorFields: e,
 	}
 	if err := newErr.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -57,7 +59,10 @@ func (e *err) validate() error {
 	if e.Op == "" {
 		return fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
-	if e.Error == nil {
+	if e.ErrorFields == nil {
+		return fmt.Errorf("%s: missing error fields: %w", op, ErrInvalidParameter)
+	}
+	if e.Error == "" {
 		return fmt.Errorf("%s: missing error: %w", op, ErrInvalidParameter)
 	}
 	return nil
