@@ -260,10 +260,10 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			err := event.WriteObservation(ctx, op,
 				event.WithHeader(
 					"auth-results", struct {
-						Msg      string
-						Resource string
-						UserId   string
-						Action   string
+						Msg      string `json:"msg"`
+						Resource string `json:"resource"`
+						UserId   string `json:"user_id"`
+						Action   string `json:"action"`
 					}{
 						Msg:      "failed authz info for request",
 						Resource: pretty.Sprint(v.res),

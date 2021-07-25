@@ -31,7 +31,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
 	case "":
-		event.WriteError(ctx, op, err, event.WithInfoMsg(fmt.Sprintf("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("unsupported dialect", "wanted", "postgres", "got", opts.withDialect))
 	default:
 		dialect = opts.withDialect
 	}
