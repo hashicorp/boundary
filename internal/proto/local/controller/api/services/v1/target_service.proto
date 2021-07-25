@@ -248,7 +248,7 @@ service TargetService {
   // Target from which the Credential Sources will be removed. If the ID is
   // missing, or malformed, an error is returned.  An error is returned if a
   // Credential Library is attempted to be removed from the Target when the
-  // Target does not have the Credential Library.
+  // Target does not have the Credential Source.
   rpc RemoveTargetCredentialSources(RemoveTargetCredentialSourcesRequest) returns (RemoveTargetCredentialSourcesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:remove-credential-sources"
