@@ -57,7 +57,6 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
-	event.WriteSysEvent(ctx, op, "got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {

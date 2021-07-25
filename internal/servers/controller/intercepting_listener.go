@@ -55,7 +55,6 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		return nil, err
 	}
-	event.WriteSysEvent(ctx, op, "got connection", "addr", conn.RemoteAddr())
 
 	nonce := make([]byte, 20)
 	read, err := conn.Read(nonce)

@@ -28,7 +28,6 @@ import (
 
 func (w *Worker) startControllerConnections() error {
 	const op = "worker.(Worker).startControllerConnections"
-	ctx := context.TODO()
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		switch {
@@ -37,7 +36,6 @@ func (w *Worker) startControllerConnections() error {
 		default:
 			host, port, err := net.SplitHostPort(addr)
 			if err != nil && strings.Contains(err.Error(), "missing port in address") {
-				event.WriteSysEvent(ctx, op, "missing port in controller address, using port 9201", "address", addr)
 				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
 			}
 			if err != nil {

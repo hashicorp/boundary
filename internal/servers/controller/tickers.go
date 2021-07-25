@@ -45,7 +45,6 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing status update"))
 					} else {
-						event.WriteSysEvent(cancelCtx, op, "controller status successfully saved")
 					}
 				}
 				timer.Reset(statusInterval)

@@ -725,10 +725,8 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 	}
 
 	if result < defaultStatusGracePeriod {
-		event.WriteSysEvent(ctx, op, "invalid grace period setting or none provided, using default", "value", result, "default", defaultStatusGracePeriod)
 		result = defaultStatusGracePeriod
 	}
 
-	event.WriteSysEvent(ctx, op, "session cleanup in effect, connections will be terminated if status reports cannot be made", "grace_period", result)
 	s.StatusGracePeriodDuration = result
 }
