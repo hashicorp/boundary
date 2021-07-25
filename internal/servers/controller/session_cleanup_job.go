@@ -87,7 +87,7 @@ func (j *sessionCleanupJob) Status() scheduler.JobStatus {
 // Run executes the job.
 func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	const op = "controller.(sessionCleanupJob).Run"
-	event.WriteSysEvent(ctx, op, event.I{"msg": "starting job"})
+	event.WriteSysEvent(ctx, op, "starting job")
 	j.totalClosed = 0
 
 	// Load repos.
@@ -103,28 +103,21 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	}
 
 	if len(results) < 1 {
-		event.WriteSysEvent(ctx, op, event.I{"msg": "all workers OK, no connections to close"})
+		event.WriteSysEvent(ctx, op, "all workers OK, no connections to close")
 	} else {
 		for _, result := range results {
 			event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
-				event.WithInfo(event.I{
-					"private_id":                result.ServerId,
-					"update_time":               result.LastUpdateTime,
-					"grace_period_seconds":      j.gracePeriod,
-					"number_connections_closed": result.NumberConnectionsClosed,
-				},
+				event.WithInfo(
+					"private_id", result.ServerId,
+					"update_time", result.LastUpdateTime,
+					"grace_period_seconds", j.gracePeriod,
+					"number_connections_closed", result.NumberConnectionsClosed,
 				))
 
 			j.totalClosed += result.NumberConnectionsClosed
 		}
 	}
 
-	event.WriteSysEvent(ctx, op,
-		event.I{
-			"msg":                      "job finished",
-			"op":                       op,
-			"total_connections_closed": j.totalClosed,
-		},
-	)
+	event.WriteSysEvent(ctx, op, "job finished", "op", op, "total_connections_closed", j.totalClosed)
 	return nil
 }

@@ -26,7 +26,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "status ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, "status ticking shutting down")
 				return
 
 			case <-timer.C:
@@ -45,7 +45,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing status update"))
 					} else {
-						event.WriteSysEvent(cancelCtx, op, event.I{"msg": "controller status successfully saved"})
+						event.WriteSysEvent(cancelCtx, op, "controller status successfully saved")
 					}
 				}
 				timer.Reset(statusInterval)
@@ -61,7 +61,7 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "recovery nonce ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, "recovery nonce ticking shutting down")
 				return
 
 			case <-timer.C:
@@ -73,7 +73,7 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing recovery nonce cleanup"))
 					} else if nonceCount > 0 {
-						event.WriteSysEvent(cancelCtx, op, event.I{"msg": "recovery nonce cleanup successful", "nonces_cleaned": nonceCount})
+						event.WriteSysEvent(cancelCtx, op, "recovery nonce cleanup successful", "nonces_cleaned", nonceCount)
 					}
 				}
 				timer.Reset(RecoveryNonceCleanupInterval)
@@ -100,7 +100,7 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "terminating completed sessions ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, "terminating completed sessions ticking shutting down")
 				return
 
 			case <-timer.C:
@@ -112,7 +112,7 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing termination of completed sessions"))
 					} else if terminationCount > 0 {
-						event.WriteSysEvent(cancelCtx, op, event.I{"msg": "terminating completed sessions successful", "sessions_terminated": terminationCount})
+						event.WriteSysEvent(cancelCtx, op, "terminating completed sessions successful", "sessions_terminated", terminationCount)
 					}
 				}
 				timer.Reset(getRandomInterval())
@@ -139,7 +139,7 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "closing expired pending tokens ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, "closing expired pending tokens ticking shutting down")
 				return
 
 			case <-timer.C:
@@ -151,7 +151,7 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing closing expired pending tokens"))
 					} else if closeCount > 0 {
-						event.WriteSysEvent(cancelCtx, op, event.I{"msg": "closing expired pending tokens completed sessions successful", "pending_tokens_closed": closeCount})
+						event.WriteSysEvent(cancelCtx, op, "closing expired pending tokens completed sessions successful", "pending_tokens_closed", closeCount)
 					}
 				}
 				timer.Reset(getRandomInterval())

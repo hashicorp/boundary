@@ -609,7 +609,7 @@ func (c *Command) WaitForInterrupt() int {
 				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
 			}
 			if err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfo(event.I{"msg": "could not reload config", "path": c.flagConfig}))
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
 				goto RUNRELOADFUNCS
 			}
 
@@ -647,7 +647,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			event.WriteSysEvent(context.TODO(), op, event.I{"msg": "goroutine trace", "stack": string(buf[:n])})
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 

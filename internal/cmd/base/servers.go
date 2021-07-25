@@ -244,11 +244,11 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	// logic and re-enable.
 	/*
 		proxyCfg := httpproxy.FromEnvironment()
-		event.WriteSysEvent(context.TODO(), op, event.I{{
-			"msg": 			"proxy environment",
-			"http_proxy": 	proxyCfg.HTTPProxy,
-			"https_proxy": 	proxyCfg.HTTPSProxy,
-			"no_proxy": 	proxyCfg.NoProxy,
+		event.WriteSysEvent(context.TODO(), op,
+			"proxy environment",
+			"http_proxy", proxyCfg.HTTPProxy,
+			"https_proxy", proxyCfg.HTTPSProxy,
+			"no_proxy",	proxyCfg.NoProxy,
 		})
 	*/
 	// Setup gorm logging
@@ -717,12 +717,7 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 		v := os.Getenv(statusGracePeriodEnvVar)
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(
-				event.I{
-					"msg":   fmt.Sprintf("could not read setting for %s", statusGracePeriodEnvVar),
-					"value": v,
-				},
-			))
+			event.WriteError(ctx, op, err, event.WithInfoMsg(fmt.Sprintf("could not read setting for %s", statusGracePeriodEnvVar), "value", v))
 			break
 		}
 
@@ -730,10 +725,10 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 	}
 
 	if result < defaultStatusGracePeriod {
-		event.WriteSysEvent(ctx, op, event.I{"msg": "invalid grace period setting or none provided, using default", "value": result, "default": defaultStatusGracePeriod})
+		event.WriteSysEvent(ctx, op, "invalid grace period setting or none provided, using default", "value", result, "default", defaultStatusGracePeriod)
 		result = defaultStatusGracePeriod
 	}
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "session cleanup in effect, connections will be terminated if status reports cannot be made", "grace_period": result})
+	event.WriteSysEvent(ctx, op, "session cleanup in effect, connections will be terminated if status reports cannot be made", "grace_period", result)
 	s.StatusGracePeriodDuration = result
 }

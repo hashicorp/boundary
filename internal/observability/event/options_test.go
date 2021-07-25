@@ -19,22 +19,20 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithDetails", func(t *testing.T) {
 		assert := assert.New(t)
-		d := map[string]interface{}{
+		opts := getOpts(WithDetails("name", "alice"))
+		testOpts := getDefaultOptions()
+		testOpts.withDetails = map[string]interface{}{
 			"name": "alice",
 		}
-		opts := getOpts(WithDetails(d))
-		testOpts := getDefaultOptions()
-		testOpts.withDetails = d
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithHeader", func(t *testing.T) {
 		assert := assert.New(t)
-		h := map[string]interface{}{
+		opts := getOpts(WithHeader("name", "alice"))
+		testOpts := getDefaultOptions()
+		testOpts.withHeader = map[string]interface{}{
 			"name": "alice",
 		}
-		opts := getOpts(WithHeader(h))
-		testOpts := getDefaultOptions()
-		testOpts.withHeader = h
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithFlush", func(t *testing.T) {
@@ -46,34 +44,27 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithInfo", func(t *testing.T) {
 		assert := assert.New(t)
-		i := map[string]interface{}{
-			"name": "alice",
-		}
-		opts := getOpts(WithInfo(i))
+		opts := getOpts(WithInfo("name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withInfo = i
+		testOpts.withInfo = map[string]interface{}{"name": "alice"}
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithInfo(i), WithInfoMsg("test"))
-		testOpts.withInfo = i
-		testOpts.withInfo["msg"] = "test"
-		testOpts.withInfoMsg = "test"
+		opts = getOpts(WithInfoMsg("test"), WithInfo("name", "alice"))
+		testOpts.withInfo = map[string]interface{}{"name": "alice"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithInfoMsg", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithInfoMsg("test"))
+		opts := getOpts(WithInfoMsg("test", "name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withInfoMsg = "test"
+		testOpts.withInfo = map[string]interface{}{msgField: "test", "name": "alice"}
 		assert.Equal(opts, testOpts)
 
-		i := map[string]interface{}{
-			"name": "alice",
+		opts = getOpts(WithInfo("name", "alice"), WithInfoMsg("test", "name", "eve"))
+		testOpts.withInfo = map[string]interface{}{
+			"msg":  "test",
+			"name": "eve",
 		}
-		opts = getOpts(WithInfo(i), WithInfoMsg("test"))
-		testOpts.withInfo = i
-		testOpts.withInfo["msg"] = "test"
-		testOpts.withInfoMsg = "test"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithRequestInfo", func(t *testing.T) {

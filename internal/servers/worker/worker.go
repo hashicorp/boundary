@@ -101,7 +101,7 @@ func New(conf *Config) (*Worker, error) {
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
 	if w.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "already started, skipping"})
+		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
 
@@ -132,7 +132,7 @@ func (w *Worker) Start() error {
 func (w *Worker) Shutdown(skipListeners bool) error {
 	const op = "worker.(Worker).Shutdown"
 	if !w.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "already shut down, skipping"})
+		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 		return nil
 	}
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})

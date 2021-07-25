@@ -127,13 +127,13 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(r.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with request info", "method": r.Method, "url": r.URL.RequestURI()}))
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 		ctx, err = event.NewEventerContext(ctx, e)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(r.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with eventer", "method": r.Method, "url": r.URL.RequestURI()}))
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with eventer", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 
@@ -176,9 +176,7 @@ func startGatedEvents(ctx context.Context, method, url string, startTime time.Ti
 	if startTime.IsZero() {
 		startTime = time.Now()
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithHeader(map[string]interface{}{
-		"start": startTime,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithHeader("start", startTime))
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to write observation event"))
 	}
@@ -200,11 +198,13 @@ func flushGatedEvents(ctx context.Context, method, url string, statusCode int, s
 	if !startTime.IsZero() {
 		latency = float64(stopTime.Sub(startTime)) / float64(time.Millisecond)
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithFlush(), event.WithHeader(map[string]interface{}{
-		"stop":       stopTime,
-		"latency-ms": latency,
-		"status":     statusCode,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithFlush(),
+		event.WithHeader(
+			"stop", stopTime,
+			"latency-ms", latency,
+			"status", statusCode,
+		),
+	)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush observation event"))
 	}

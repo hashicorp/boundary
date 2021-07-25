@@ -204,7 +204,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 
 		buf, merr := mar.Marshal(apiErr.inner)
 		if merr != nil {
-			event.WriteError(ctx, op, merr, event.WithInfo(event.I{"msg": "failed to marshal error response", "response": fmt.Sprintf("%#v", apiErr.inner)}))
+			event.WriteError(ctx, op, merr, event.WithInfoMsg("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr.inner)))
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("failed to write response"))

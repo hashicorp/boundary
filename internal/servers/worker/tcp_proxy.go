@@ -22,18 +22,18 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 
 	sessionUrl, err := url.Parse(endpoint)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error parsing endpoint information", "session_id": sessionId, "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error parsing endpoint information", "session_id", sessionId, "endpoint", endpoint))
 		conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
 		return
 	}
 	if sessionUrl.Scheme != "tcp" {
-		event.WriteError(ctx, op, err, event.WithInfo(event.I{"session_id": sessionId, "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfo("session_id", sessionId, "endpoint", endpoint))
 		conn.Close(websocket.StatusInternalError, "invalid scheme for type")
 		return
 	}
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error dialing endpoint", "endpoint": endpoint}))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error dialing endpoint", "endpoint", endpoint))
 		conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
 		return
 	}
@@ -70,14 +70,14 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 		_, err := io.Copy(netConn, tcpRemoteConn)
 		netConn.Close()
 		tcpRemoteConn.Close()
-		event.WriteSysEvent(ctx, op, event.I{"msg": "copy from client to endpoint done", "error": err})
+		event.WriteSysEvent(ctx, op, "copy from client to endpoint done", "error", err)
 	}()
 	go func() {
 		defer connWg.Done()
 		_, err := io.Copy(tcpRemoteConn, netConn)
 		tcpRemoteConn.Close()
 		netConn.Close()
-		event.WriteSysEvent(ctx, op, event.I{"msg": "copy from endpoint to client done", "error": err})
+		event.WriteSysEvent(ctx, op, "copy from endpoint to client done", "error", err)
 	}()
 	connWg.Wait()
 }

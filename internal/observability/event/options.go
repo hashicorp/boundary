@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const msgField = "msg"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -25,7 +27,6 @@ type options struct {
 	withHeader        map[string]interface{}
 	withFlush         bool
 	withInfo          map[string]interface{}
-	withInfoMsg       string
 	withRequestInfo   *RequestInfo
 	withNow           time.Time
 	withRequest       *Request
@@ -51,17 +52,19 @@ func WithId(id string) Option {
 	}
 }
 
-// WithDetails allows an optional map as details
-func WithDetails(d map[string]interface{}) Option {
+// WithDetails allows an optional set of key/value pairs about an observation
+// event at the detail level and observation events may have multiple "details"
+func WithDetails(args ...interface{}) Option {
 	return func(o *options) {
-		o.withDetails = d
+		o.withDetails = ConvertArgs(args...)
 	}
 }
 
-// WithHeader allows an optional map as a header
-func WithHeader(d map[string]interface{}) Option {
+// WithHeader allows an optional set of key/value pairs about an event at the
+// header level and observation events will only have one "header"
+func WithHeader(args ...interface{}) Option {
 	return func(o *options) {
-		o.withHeader = d
+		o.withHeader = ConvertArgs(args...)
 	}
 }
 
@@ -72,32 +75,32 @@ func WithFlush() Option {
 	}
 }
 
-// I represents optional information about an error or system event
-type I map[string]interface{}
-
-// H represents optional header level data/info about an observation event.
-// There is only one "header" for an observation.
-type H map[string]interface{}
-
-// D represents optional detail level data/info about an observation event.
-// There can be multiple details for an observation.
-type D map[string]interface{}
-
-// WithInfo allows an optional map as info about an error event. If used along
-// with WithInfoMsg(...) any value for key "msg" within the I passed to WithInfo
-// will be overridden by the msg passed into WithInfoMsg(...)
-func WithInfo(i I) Option {
+// WithInfo allows an optional info key/value pairs about an error event.  If
+// used in conjunction with the WithInfoMsg(...) option, and WithInfoMsg(...) is
+// specified after WithInfo(...), then WithInfoMsg(...) will overwrite any
+// values from WithInfo(...).  It's recommend that these two options not be used
+// together.
+func WithInfo(args ...interface{}) Option {
 	return func(o *options) {
-		o.withInfo = i
+		o.withInfo = ConvertArgs(args...)
 	}
 }
 
-// WithInfoMsg allows an optional msg about and error event.  If used along with
-// WithInfo(...) any value for key "msg" within the I passed into WithInfo will
-// be overridden by this option.
-func WithInfoMsg(msg string) Option {
+// WithInfoMsg allows an optional msg and optional info key/value pairs about an
+// error event. If used in conjunction with the WithInfo(...) option, and
+// WithInfo(...) is specified after WithInfoMsg(...), then WithInfo(...) will
+// overwrite any values from WithInfo(...).  It's recommend that these two
+// options not be used together.
+func WithInfoMsg(msg string, args ...interface{}) Option {
 	return func(o *options) {
-		o.withInfoMsg = msg
+		o.withInfo = ConvertArgs(args...)
+		if o.withInfo == nil {
+			o.withInfo = map[string]interface{}{
+				msgField: msg,
+			}
+			return
+		}
+		o.withInfo[msgField] = msg
 	}
 }
 

@@ -43,32 +43,32 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	var sessionId string
 	switch {
 	case strings.HasPrefix(hello.ServerName, "s_"):
-		event.WriteSysEvent(ctx, op, event.I{"msg": "got valid session in SNI", "session_id": hello.ServerName})
+		event.WriteSysEvent(ctx, op, "got valid session in SNI", "session_id", hello.ServerName)
 		sessionId = hello.ServerName
 	default:
-		event.WriteSysEvent(ctx, op, event.I{"msg": "invalid session in SNI", "session_id": hello.ServerName})
+		event.WriteSysEvent(ctx, op, "invalid session in SNI", "session_id", hello.ServerName)
 		return nil, fmt.Errorf("could not find session ID in SNI")
 	}
 
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
-		event.WriteSysEvent(ctx, op, event.I{"msg": "could not get a controller client", "session_id": sessionId})
+		event.WriteSysEvent(ctx, op, "could not get a controller client", "session_id", sessionId)
 		return nil, errors.New("could not get a controller client")
 	}
 	conn, ok := rawConn.(pbs.SessionServiceClient)
 	if !ok {
-		event.WriteSysEvent(ctx, op, event.I{"msg": "could not cast controller client to the real thing", "session_id": sessionId})
+		event.WriteSysEvent(ctx, op, "could not cast controller client to the real thing", "session_id", sessionId)
 		return nil, errors.New("could not cast atomic controller client to the real thing")
 	}
 	if conn == nil {
-		event.WriteSysEvent(ctx, op, event.I{"msg": "controller client is nil", "session_id": sessionId})
+		event.WriteSysEvent(ctx, op, "controller client is nil", "session_id", sessionId)
 		return nil, errors.New("controller client is nil")
 	}
 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "looking up session", "session_id": sessionId})
+	event.WriteSysEvent(ctx, op, "looking up session", "session_id", sessionId)
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
 		ServerId:  w.conf.RawConfig.Worker.Name,
 		SessionId: sessionId,
@@ -127,7 +127,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		actualSi.Unlock()
 	}
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "returning TLS configuration", "session_id": sessionId})
+	event.WriteSysEvent(ctx, op, "returning TLS configuration", "session_id", sessionId)
 	return tlsConf, nil
 }
 
@@ -249,7 +249,7 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 		return nil, err
 	}
 	if len(resp.GetCloseResponseData()) != len(req.GetCloseRequestData()) {
-		event.WriteError(ctx, op, errors.New("mismatched number of states returned on connection closed"), event.WithInfo(event.I{"expected": len(req.GetCloseRequestData()), "got": len(resp.GetCloseResponseData())}))
+		event.WriteError(ctx, op, errors.New("mismatched number of states returned on connection closed"), event.WithInfo("expected", len(req.GetCloseRequestData()), "got", len(resp.GetCloseResponseData())))
 	}
 
 	return resp, nil
@@ -270,7 +270,7 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 		return
 	}
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "marking connections as closed", "session_and_connection_ids": fmt.Sprintf("%#v", closeInfo)})
+	event.WriteSysEvent(ctx, op, "marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeInfo))
 
 	// How we handle close info depends on whether or not we succeeded with
 	// marking them closed on the controller.
@@ -285,12 +285,9 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	defer closeConnCancel()
 	response, err := w.closeConnection(closeConnCtx, w.makeCloseConnectionRequest(closeInfo))
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo(
-			event.I{
-				"msg":                        "error marking connections closed",
-				"warning":                    "error contacting controller, connections will be closed only on worker",
-				"session_and_connection_ids": fmt.Sprintf("%#v", closeInfo),
-			},
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connections closed",
+			"warning", "error contacting controller, connections will be closed only on worker",
+			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
 		))
 
 		// Since we could not reach the controller, we have to make a "fake" response set.
@@ -314,7 +311,7 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 		}
 	}
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "connections successfully marked closed", "connection_ids": closedIds})
+	event.WriteSysEvent(ctx, op, "connections successfully marked closed", "connection_ids", closedIds)
 }
 
 // makeCloseConnectionRequest creates a CloseConnectionRequest for

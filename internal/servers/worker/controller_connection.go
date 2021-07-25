@@ -37,7 +37,7 @@ func (w *Worker) startControllerConnections() error {
 		default:
 			host, port, err := net.SplitHostPort(addr)
 			if err != nil && strings.Contains(err.Error(), "missing port in address") {
-				event.WriteSysEvent(ctx, op, event.I{"msg": "missing port in controller address, using port 9201", "address": addr})
+				event.WriteSysEvent(ctx, op, "missing port in controller address, using port 9201", "address", addr)
 				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
 			}
 			if err != nil {
@@ -132,7 +132,7 @@ func (w *Worker) createClientConn(addr string) error {
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
-	event.WriteSysEvent(context.TODO(), op, event.I{"msg": "connected to controller", "address": addr})
+	event.WriteSysEvent(context.TODO(), op, "connected to controller", "address", addr)
 	return nil
 }
 

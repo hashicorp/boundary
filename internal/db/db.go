@@ -57,7 +57,7 @@ func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages
 			switch values[2].(type) {
 			case *pq.Error:
 				if log.IsTrace() {
-					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo(event.I{"error": values[2], "location": values[1]}))
+					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo("error", values[2], "location", values[1]))
 				}
 			}
 			return nil

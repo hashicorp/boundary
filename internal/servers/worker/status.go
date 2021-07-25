@@ -45,7 +45,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, event.I{"msg": "status ticking shutting down"})
+				event.WriteSysEvent(cancelCtx, op, "msg", "status ticking shutting down")
 				return
 
 			case <-timer.C:
@@ -74,7 +74,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer cancel()
-	event.WriteSysEvent(ctx, op, event.I{"msg": "waiting for next status report to controller"})
+	event.WriteSysEvent(ctx, op, "waiting for next status report to controller")
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -90,7 +90,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 		}
 	}
 
-	event.WriteSysEvent(ctx, op, event.I{"msg": "next worker status update sent successfully"})
+	event.WriteSysEvent(ctx, op, "next worker status update sent successfully")
 	return nil
 }
 
@@ -166,10 +166,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
 			event.WriteError(statusCtx, op,
 				errors.New("status error grace period has expired, canceling all sessions on worker"),
-				event.WithInfo(event.I{
-					"last_status_time": lastStatusTime.String(),
-					"grace_period":     gracePeriod,
-				}),
+				event.WithInfo("last_status_time", lastStatusTime.String(), "grace_period", gracePeriod),
 			)
 
 			// Run a "cleanup" for all sessions that will not be caught by
@@ -177,7 +174,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			w.cleanupConnections(cancelCtx, true)
 		}
 	} else {
-		event.WriteSysEvent(statusCtx, op, event.I{"msg": "successfully sent status to controller"})
+		event.WriteSysEvent(statusCtx, op, "successfully sent status to controller")
 		w.updateTags.Store(false)
 		addrs := make([]resolver.Address, 0, len(result.Controllers))
 		strAddrs := make([]string, 0, len(result.Controllers))
@@ -185,7 +182,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			addrs = append(addrs, resolver.Address{Addr: v.Address})
 			strAddrs = append(strAddrs, v.Address)
 		}
-		event.WriteSysEvent(statusCtx, op, event.I{"msg": "found controllers", "addresses": strAddrs})
+		event.WriteSysEvent(statusCtx, op, "found controllers", "addresses", strAddrs)
 		switch len(strAddrs) {
 		case 0:
 			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
@@ -195,7 +192,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 		for _, request := range result.GetJobsRequests() {
-			event.WriteSysEvent(statusCtx, op, event.I{"msg": "got job request from controller", "request": request})
+			event.WriteSysEvent(statusCtx, op, "got job request from controller", "request", request)
 			switch request.GetRequestType() {
 			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 				switch request.GetJob().GetType() {
@@ -204,7 +201,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					sessionId := sessInfo.GetSessionId()
 					siRaw, ok := w.sessionInfoMap.Load(sessionId)
 					if !ok {
-						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo(event.I{"session_id": sessionId}))
+						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
 						continue
 					}
 					si := siRaw.(*sessionInfo)
@@ -216,7 +213,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 						connId := conn.GetConnectionId()
 						connInfo, ok := si.connInfoMap[connId]
 						if !ok {
-							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo(event.I{"connection_id": connId}))
+							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo("connection_id", connId))
 							continue
 						}
 

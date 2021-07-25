@@ -283,25 +283,19 @@ func Test_WriteObservation(t *testing.T) {
 	noId.Id = ""
 
 	type observationPayload struct {
-		header  map[string]interface{}
-		details map[string]interface{}
+		header  []interface{}
+		details []interface{}
 	}
 
 	testPayloads := []observationPayload{
 		{
-			header: map[string]interface{}{
-				"name": "bar",
-			},
+			header: []interface{}{"name", "bar"},
 		},
 		{
-			header: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			header: []interface{}{"list", []string{"1", "2"}},
 		},
 		{
-			details: map[string]interface{}{
-				"file": "temp-file.txt",
-			},
+			details: []interface{}{"file", "temp-file.txt"},
 		},
 	}
 
@@ -334,9 +328,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     testCtxNoInfoId,
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -385,9 +377,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     context.Background(),
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -423,7 +413,7 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
-				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header), event.WithDetails(p.details))
+				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header...), event.WithDetails(p.details...))
 				if tt.wantErrIs != nil {
 					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
@@ -928,7 +918,8 @@ func Test_WriteSysEvent(t *testing.T) {
 	tests := []struct {
 		name         string
 		ctx          context.Context
-		data         map[string]interface{}
+		data         []interface{}
+		msg          string
 		info         *event.RequestInfo
 		setup        func() error
 		cleanup      func()
@@ -944,20 +935,23 @@ func Test_WriteSysEvent(t *testing.T) {
 		{
 			name:        "missing-caller",
 			ctx:         ctx,
-			data:        map[string]interface{}{"data": "test-data"},
+			msg:         "hello",
+			data:        []interface{}{"data", "test-data"},
 			noOperation: true,
 		},
 		{
 			name:         "syseventer-not-initialized",
 			ctx:          context.Background(),
-			data:         map[string]interface{}{"data": "test-data"},
+			msg:          "hello",
+			data:         []interface{}{"data", "test-data"},
 			sinkFileName: c.AllEvents.Name(),
 			noOutput:     true,
 		},
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
-			data: map[string]interface{}{"data": "test-data", event.ServerName: "test-server", event.ServerAddress: "localhost"},
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
@@ -979,7 +973,7 @@ func Test_WriteSysEvent(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteSysEvent(tt.ctx, event.Op(op), tt.data)
+			event.WriteSysEvent(tt.ctx, event.Op(op), tt.msg, tt.data...)
 			if tt.sinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.sinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.sinkFileName)
@@ -994,8 +988,66 @@ func Test_WriteSysEvent(t *testing.T) {
 				err = json.Unmarshal(b, gotSysEvent)
 				require.NoErrorf(err, "json: %s", string(b))
 
-				assert.Equal(tt.data, gotSysEvent.Payload["data"].(map[string]interface{}))
+				expected := event.ConvertArgs(tt.data...)
+				expected["msg"] = tt.msg
+				assert.Equal(expected, gotSysEvent.Payload["data"].(map[string]interface{}))
 			}
 		})
 	}
+}
+
+func TestConvertArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		args []interface{}
+		want map[string]interface{}
+	}{
+		{
+			name: "no-args",
+			args: []interface{}{},
+			want: nil,
+		},
+		{
+			name: "nil-first-arg",
+			args: []interface{}{nil},
+			want: map[string]interface{}{
+				event.MissingKey: nil,
+			},
+		},
+		{
+			name: "odd-number-of-args",
+			args: []interface{}{1, 2, 3},
+			want: map[string]interface{}{
+				"1":              2,
+				event.MissingKey: 3,
+			},
+		},
+		{
+			name: "struct-key",
+			args: []interface{}{[]struct{ name string }{{name: "alice"}}, 1},
+			want: map[string]interface{}{
+				"[{alice}]": 1,
+			},
+		},
+		{
+			name: "test-key-with-stringer",
+			args: []interface{}{testIntKeyWithStringer(11), "eleven"},
+			want: map[string]interface{}{
+				"*11*": "eleven",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := event.ConvertArgs(tt.args...)
+			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+type testIntKeyWithStringer int
+
+func (ti testIntKeyWithStringer) String() string {
+	return fmt.Sprint("*", int(ti), "*")
 }

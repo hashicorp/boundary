@@ -219,7 +219,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
 		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
-		event.WriteSysEvent(context.TODO(), op, event.I{"msg": "AUTHORIZATION CHECKING DISABLED"})
+		event.WriteSysEvent(context.TODO(), op, "AUTHORIZATION CHECKING DISABLED")
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -362,7 +362,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(req.Context(), op, err, event.WithInfo(event.I{"msg": "unable to create context with request info", "method": req.Method, "url": req.URL.RequestURI()}))
+			event.WriteError(req.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", req.Method, "url", req.URL.RequestURI()))
 			return
 		}
 		// If this doesn't have a callback suffix on a supported action, serve

@@ -111,8 +111,8 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
 // found an hclog.Logger will be created and used.
 //
-// The options WithInfo, WithId and WithRequestInfo are supported and all other
-// options are ignored.
+// The options WithInfoMsg, WithInfo, WithId and WithRequestInfo are supported
+// and all other options are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	const op = "event.WriteError"
 	// EventerFromContext will handle a nil ctx appropriately. If e or caller is
@@ -240,13 +240,18 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 
 // WriteSysEvent will write a sysevent using the eventer from
 // event.SysEventer() if no eventer can be found an hclog.Logger will be created
-// and used. This function should never be used when sending events while
+// and used. The args are and optional set of key/value pairs about the event.
+//
+// This function should never be used when sending events while
 // handling API requests.
-func WriteSysEvent(ctx context.Context, caller Op, info I) {
+func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface{}) {
 	const op = "event.WriteError"
+	info := ConvertArgs(args...)
 	if info == nil {
 		return
 	}
+	info["msg"] = msg
+
 	if caller == "" {
 		pc, _, _, ok := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
@@ -281,4 +286,34 @@ func WriteSysEvent(ctx context.Context, caller Op, info I) {
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write sysevent: (%s) %+v", op, caller, e))
 		return
 	}
+}
+
+// MissingKey defines a key to be used as the "missing key" when ConvertArgs has
+// an odd number of args (it's missing a key in its key/value pairs)
+const MissingKey = "EXTRA_VALUE_AT_END"
+
+// ConvertArgs will convert the key/value pair args to a map.  If the args
+// provided are an odd number (they're missing a key in their key/value pairs)
+// then MissingKey is used to the missing key.
+func ConvertArgs(args ...interface{}) map[string]interface{} {
+	if len(args) == 0 {
+		return nil
+	}
+	if len(args)%2 != 0 {
+		extra := args[len(args)-1]
+		args = append(args[:len(args)-1], MissingKey, extra)
+	}
+
+	m := map[string]interface{}{}
+	for i := 0; i < len(args); i = i + 2 {
+		var key string
+		switch st := args[i].(type) {
+		case string:
+			key = st
+		default:
+			key = fmt.Sprintf("%v", st)
+		}
+		m[key] = args[i+1]
+	}
+	return m
 }

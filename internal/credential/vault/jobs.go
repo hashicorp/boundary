@@ -162,7 +162,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 			return errors.Wrap(err, op)
 		}
 		if err := r.renewToken(ctx, s); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error renewing token", "credential store id": s.StoreId, "token status": s.TokenStatus}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing token", "credential store id", s.StoreId, "token status", s.TokenStatus))
 		}
 		r.numProcessed++
 	}
@@ -206,7 +206,9 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
 		}
 		if s.TokenStatus == string(CurrentToken) {
-			event.WriteSysEvent(ctx, op, event.I{"msg": "Vault credential store current token has expired", "credential store id": s.StoreId})
+			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.StoreId)
+
+			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.StoreId)
 		}
 
 		// Set credentials associated with this token to expired as Vault will already cascade delete them
@@ -396,7 +398,7 @@ or
 			return errors.Wrap(err, op)
 		}
 		if err := r.revokeToken(ctx, s); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error revoking token", "credential store id": s.StoreId}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error revoking token", "credential store id", s.StoreId))
 		}
 		r.numProcessed++
 	}
@@ -556,7 +558,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 		}
 
 		if err := r.renewCred(ctx, c); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error renewing credential", "credential id": c.PublicId}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing credential", "credential id", c.PublicId))
 		}
 
 		r.numProcessed++
@@ -720,7 +722,7 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 			return errors.Wrap(err, op)
 		}
 		if err := r.revokeCred(ctx, c); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error revoking credential", "credential id": c.PublicId}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error revoking credential", "credential id", c.PublicId))
 		}
 		r.numProcessed++
 	}
@@ -870,14 +872,14 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 
 		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "unable to get oplog wrapper for credential store cleanup job", "credential store id": store.PublicId}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId))
 			r.numProcessed++
 			continue
 		}
 
 		_, err = r.writer.Delete(ctx, store, db.WithOplog(oplogWrapper, store.oplog(oplog.OpType_OP_TYPE_DELETE)))
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfo(event.I{"msg": "error deleting credential store", "credential store id": store.PublicId}))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error deleting credential store", "credential store id", store.PublicId))
 		}
 
 		r.numProcessed++
