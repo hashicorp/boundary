@@ -3,6 +3,7 @@ package event_test
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -802,6 +803,7 @@ func Test_WriteError(t *testing.T) {
 		name            string
 		ctx             context.Context
 		e               error
+		opt             []event.Option
 		info            *event.RequestInfo
 		setup           func() error
 		cleanup         func()
@@ -851,6 +853,22 @@ func Test_WriteError(t *testing.T) {
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
+		{
+			name:            "simple-with-opt",
+			ctx:             testCtx,
+			e:               &testError,
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "stderrors",
+			ctx:             testCtx,
+			e:               stderrors.New("test std errors"),
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -866,7 +884,7 @@ func Test_WriteError(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteError(tt.ctx, event.Op(op), tt.e)
+			event.WriteError(tt.ctx, event.Op(op), tt.e, tt.opt...)
 			if tt.errSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
@@ -880,14 +898,17 @@ func Test_WriteError(t *testing.T) {
 				gotError := &eventJson{}
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
+				fmt.Println("raw: ", string(b))
 
 				require.NoError(err)
 
-				actualError := fakeError{
-					Msg:  gotError.Payload["error"].(map[string]interface{})["Msg"].(string),
-					Code: gotError.Payload["error"].(map[string]interface{})["Code"].(string),
+				if _, ok := gotError.Payload["error_fields"].(map[string]interface{})["Msg"]; ok {
+					actualError := fakeError{
+						Msg:  gotError.Payload["error_fields"].(map[string]interface{})["Msg"].(string),
+						Code: gotError.Payload["error_fields"].(map[string]interface{})["Code"].(string),
+					}
+					assert.Equal(tt.e, &actualError)
 				}
-				assert.Equal(tt.e, &actualError)
 
 			}
 		})

@@ -246,11 +246,15 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 // handling API requests.
 func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface{}) {
 	const op = "event.WriteError"
+
 	info := ConvertArgs(args...)
-	if info == nil {
+	if msg == "" && info == nil {
 		return
 	}
-	info["msg"] = msg
+	if info == nil {
+		info = make(map[string]interface{}, 1)
+	}
+	info[msgField] = msg
 
 	if caller == "" {
 		pc, _, _, ok := runtime.Caller(1)
@@ -262,11 +266,14 @@ func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface
 		}
 	}
 
-	eventer := SysEventer()
-	if eventer == nil {
-		logger := hclog.New(nil)
-		logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
-		return
+	eventer, ok := EventerFromContext(ctx)
+	if !ok {
+		eventer = SysEventer()
+		if eventer == nil {
+			logger := hclog.New(nil)
+			logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
+			return
+		}
 	}
 
 	id, err := newId(string(SystemType))
