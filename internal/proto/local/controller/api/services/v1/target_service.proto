@@ -212,7 +212,7 @@ service TargetService {
   // Target must be a child of a Store that is in the same scope as this
   // Target. If the scope or Target IDs are missing, malformed, or reference
   // non-existing resources, an error is returned. An error is returned if a
-  // Credential Library is attempted to be added to a target that is already
+  // Credential Source is attempted to be added to a target that is already
   // present on the Target.
   rpc AddTargetCredentialSources(AddTargetCredentialSourcesRequest) returns (AddTargetCredentialSourcesResponse) {
     option (google.api.http) = {
