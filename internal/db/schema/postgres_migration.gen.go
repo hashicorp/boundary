@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 12001,
+		binarySchemaVersion: 13001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6121,6 +6121,12 @@ create function wt_sub_seconds(sec integer, ts timestamp with time zone)
         returns null on null input;
     comment on function wt_add_seconds_to_now is
         'wt_sub_seconds_from_now returns current_timestamp - sec.';
+`),
+			13001: []byte(`
+alter table auth_oidc_account
+  add column token_claims text;
+alter table auth_oidc_account
+  add column userinfo_claims text;
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
