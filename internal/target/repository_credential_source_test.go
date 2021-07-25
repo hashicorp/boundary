@@ -339,7 +339,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		require.NoError(err)
 		assert.Len(gotCredSources, 2)
 
-		// Deleting an unassociated library should return an error
+		// Deleting an unassociated source should return an error
 		delCount, err := repo.DeleteTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
