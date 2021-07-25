@@ -1,6 +1,7 @@
 package event
 
 import (
+	"net/url"
 	"time"
 )
 
@@ -31,6 +32,9 @@ type options struct {
 	withAuth          *Auth
 	withEventer       *Eventer
 	withEventerConfig *EventerConfig
+	withAllow         []string
+	withDeny          []string
+	withSchema        *url.URL
 
 	withBroker          broker // test only option
 	withAuditSink       bool   // test only option
@@ -116,5 +120,26 @@ func WithEventer(e *Eventer) Option {
 func WithEventerConfig(c *EventerConfig) Option {
 	return func(o *options) {
 		o.withEventerConfig = c
+	}
+}
+
+// WithSchema is an optional schema for the cloudevents
+func WithSchema(url *url.URL) Option {
+	return func(o *options) {
+		o.withSchema = url
+	}
+}
+
+// WithAllow is an optional set of allow filters
+func WithAllow(f ...string) Option {
+	return func(o *options) {
+		o.withAllow = f
+	}
+}
+
+// WithDeny is an optional set of deny filters
+func WithDeny(f ...string) Option {
+	return func(o *options) {
+		o.withDeny = f
 	}
 }

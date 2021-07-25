@@ -21,48 +21,84 @@ func Test_InitSysEventer(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	testEventer, err := NewEventer(testLogger, testLock, testConfig.EventerConfig)
+	testEventer, err := NewEventer(testLogger, testLock, "Test_InitSysEventer", testConfig.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		log       hclog.Logger
-		lock      *sync.Mutex
-		opt       []Option
-		want      *Eventer
-		wantErrIs error
+		name       string
+		log        hclog.Logger
+		lock       *sync.Mutex
+		serverName string
+		opt        []Option
+		want       *Eventer
+		wantErrIs  error
 	}{
 		{
-			name:      "missing-both-eventer-and-config",
-			wantErrIs: ErrInvalidParameter,
+			name:       "missing-both-eventer-and-config",
+			serverName: "missing-both-eventer-and-config",
+			wantErrIs:  ErrInvalidParameter,
 		},
 		{
-			name:      "missing-hclog",
+			name:       "missing-hclog",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			lock:       testLock,
+			serverName: "missing-hclog",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "missing-lock",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:        testLogger,
+			serverName: "missing-lock",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:      "missing-serverName",
 			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:       testLogger,
 			lock:      testLock,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:      "missing-lock",
-			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
-			log:       testLogger,
-			wantErrIs: ErrInvalidParameter,
+			name:       "missing-eventer-and-config",
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
 		},
 		{
-			name: "success-with-config",
-			opt:  []Option{WithEventerConfig(&testConfig.EventerConfig)},
-			log:  testLogger,
-			lock: testLock,
+			name:       "both-eventer-and-config",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig), WithEventer(testEventer)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "bad-config",
+			opt:        []Option{WithEventerConfig(&EventerConfig{Sinks: []SinkConfig{{Format: "bad-format"}}})},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "success-with-config",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testConfig.EventerConfig,
 			},
 		},
 		{
-			name: "success-with-default-config",
-			opt:  []Option{WithEventerConfig(&EventerConfig{})},
-			log:  testLogger,
-			lock: testLock,
+			name:       "success-with-default-config",
+			opt:        []Option{WithEventerConfig(&EventerConfig{})},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-default-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
@@ -78,11 +114,12 @@ func Test_InitSysEventer(t *testing.T) {
 			},
 		},
 		{
-			name: "success-with-eventer",
-			opt:  []Option{WithEventer(testEventer)},
-			log:  testLogger,
-			lock: testLock,
-			want: testEventer,
+			name:       "success-with-eventer",
+			opt:        []Option{WithEventer(testEventer)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-eventer",
+			want:       testEventer,
 		},
 	}
 	for _, tt := range tests {
@@ -90,7 +127,7 @@ func Test_InitSysEventer(t *testing.T) {
 			defer TestResetSystEventer(t)
 
 			assert, require := assert.New(t), require.New(t)
-			err := InitSysEventer(tt.log, tt.lock, tt.opt...)
+			err := InitSysEventer(tt.log, tt.lock, tt.serverName, tt.opt...)
 			got := SysEventer()
 			if tt.wantErrIs != nil {
 				require.Nil(got)
@@ -118,7 +155,7 @@ func TestEventer_writeObservation(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeObservation", testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testHeader := map[string]interface{}{"name": "header"}
@@ -176,7 +213,7 @@ func TestEventer_writeObservation(t *testing.T) {
 			Name:  "test",
 		})
 		// with no defined config, it will default to a stderr sink
-		e, err := NewEventer(testLogger, testLock, c)
+		e, err := NewEventer(testLogger, testLock, "e2e-test", c)
 		require.NoError(err)
 
 		m := map[string]interface{}{
@@ -199,7 +236,7 @@ func TestEventer_writeAudit(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
-	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeAudit", testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testAudit, err := newAudit(
@@ -259,7 +296,7 @@ func TestEventer_writeError(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
-	eventer, er := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, er := NewEventer(testLogger, testLock, "TestEventer_writeError", testSetup.EventerConfig)
 	require.NoError(t, er)
 
 	testError, er := newError("TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
@@ -323,6 +360,7 @@ func Test_NewEventer(t *testing.T) {
 		opts           []Option
 		logger         hclog.Logger
 		lock           *sync.Mutex
+		serverName     string
 		want           *Eventer
 		wantRegistered []string
 		wantPipelines  []string
@@ -330,22 +368,32 @@ func Test_NewEventer(t *testing.T) {
 		wantErrIs      error
 	}{
 		{
-			name:      "missing-logger",
+			name:       "missing-logger",
+			config:     testSetup.EventerConfig,
+			lock:       testLock,
+			serverName: "missing-logger",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "missing-lock",
+			config:     testSetup.EventerConfig,
+			logger:     testLogger,
+			serverName: "missing-lock",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:      "missing-server-name",
 			config:    testSetup.EventerConfig,
+			logger:    testLogger,
 			lock:      testLock,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:      "missing-lock",
-			config:    testSetup.EventerConfig,
-			logger:    testLogger,
-			wantErrIs: ErrInvalidParameter,
-		},
-		{
-			name:   "success-with-default-config",
-			config: EventerConfig{},
-			logger: testLogger,
-			lock:   testLock,
+			name:       "success-with-default-config",
+			config:     EventerConfig{},
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "success-with-default-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
@@ -360,7 +408,7 @@ func Test_NewEventer(t *testing.T) {
 				},
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // fmt for everything
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
@@ -372,26 +420,32 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 1,
+				"error":       1,
+				"system":      1,
+				"observation": 1,
+				"audit":       1,
 			},
 		},
 		{
-			name:   "testSetup",
-			config: testSetup.EventerConfig,
-			logger: testLogger,
-			lock:   testLock,
+			name:       "testSetup",
+			config:     testSetup.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testSetup.EventerConfig,
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // stderr
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
 			},
 			wantPipelines: []string{
@@ -406,31 +460,40 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 3,
+				"error":       3,
+				"system":      2,
+				"observation": 2,
+				"audit":       2,
 			},
 		},
 		{
-			name:   "testSetup-with-all-opts",
-			config: testSetupWithOpts.EventerConfig,
-			logger: testLogger,
-			lock:   testLock,
+			name:       "testSetup-with-all-opts",
+			config:     testSetupWithOpts.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup-with-all-opts",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testSetupWithOpts.EventerConfig,
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // stderr
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
+				"cloudevents",       // observation-file-sink
 				"gated-observation", // observation-file-sink
 				"tmp-observation",   // observations-file-sink
+				"cloudevents",       // audit-file-sink
 				"gated-audit",       // audit-file-sink
 				"tmp-audit",         // audit-file-sink
+				"cloudevents",       // sys-file-sink
 				"tmp-sysevents",     // sys-file-sink
 			},
 			wantPipelines: []string{
@@ -448,7 +511,10 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // sys-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 3,
+				"error":       3,
+				"system":      3,
+				"observation": 3,
+				"audit":       3,
 			},
 		},
 	}
@@ -457,7 +523,7 @@ func Test_NewEventer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
-			got, err := NewEventer(tt.logger, tt.lock, tt.config, TestWithBroker(t, testBroker))
+			got, err := NewEventer(tt.logger, tt.lock, tt.serverName, tt.config, TestWithBroker(t, testBroker))
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)
@@ -548,7 +614,7 @@ func TestEventer_Reopen(t *testing.T) {
 			Name:  "test",
 		})
 
-		e, err := NewEventer(testLogger, testLock, EventerConfig{})
+		e, err := NewEventer(testLogger, testLock, "TestEventer_Reopen", EventerConfig{})
 		require.NoError(err)
 
 		e.broker = nil
@@ -570,7 +636,7 @@ func TestEventer_FlushNodes(t *testing.T) {
 			Name:  "test",
 		})
 
-		e, err := NewEventer(testLogger, testLock, EventerConfig{})
+		e, err := NewEventer(testLogger, testLock, "TestEventer_FlushNodes", EventerConfig{})
 		require.NoError(err)
 
 		node := &testFlushNode{}

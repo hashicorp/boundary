@@ -39,7 +39,7 @@ func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
-		opts.withId, err = newId(string(AuditType))
+		opts.withId, err = NewId(string(AuditType))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
