@@ -207,8 +207,6 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		}
 		if s.TokenStatus == string(CurrentToken) {
 			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.StoreId)
-
-			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.StoreId)
 		}
 
 		// Set credentials associated with this token to expired as Vault will already cascade delete them
