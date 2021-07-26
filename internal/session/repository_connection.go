@@ -196,7 +196,6 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 			return nil
 		},
 	)
-
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
