@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -816,6 +818,8 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 }
 
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
+	const op = "accounts.(Service).toProto"
+
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building account proto")
@@ -878,6 +882,26 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			Subject:  i.GetSubject(),
 			FullName: i.GetFullName(),
 			Email:    i.GetEmail(),
+		}
+		if s := i.GetTokenClaims(); s != "" {
+			m := make(map[string]interface{})
+			var err error
+			if err = json.Unmarshal([]byte(s), &m); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("error unmarshaling stored token claims"))
+			}
+			if attrs.TokenClaims, err = structpb.NewStruct(m); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("error converting stored token claims to protobuf struct"))
+			}
+		}
+		if s := i.GetUserinfoClaims(); s != "" {
+			m := make(map[string]interface{})
+			var err error
+			if err = json.Unmarshal([]byte(s), &m); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("error unmarshaling stored userinfo claims"))
+			}
+			if attrs.UserinfoClaims, err = structpb.NewStruct(m); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("error converting stored userinfo claims to protobuf struct"))
+			}
 		}
 		st, err := handlers.ProtoToStruct(attrs)
 		if err != nil {
