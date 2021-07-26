@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -66,6 +67,12 @@ type Command struct {
 	flagDatabaseUrl                  string
 	flagContainerImage               string
 	flagDisableDatabaseDestruction   bool
+	flagEventFormat                  string
+	flagAudit                        string
+	flagObservations                 string
+	flagSysEvents                    string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
 }
 
 func (c *Command) Synopsis() string {
@@ -262,6 +269,40 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagContainerImage,
 		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
 	})
+	f.StringVar(&base.StringVar{
+		Name:       "event-format",
+		Target:     &c.flagEventFormat,
+		Completion: complete.PredictSet("cloudevents-json", "cloudevents-text"),
+		Usage:      `Event format. Supported values are "cloudevents-json" and "cloudevents-text".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "observation-events",
+		Target:     &c.flagObservations,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit observation events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "audit-events",
+		Target:     &c.flagAudit,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit audit events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "system-events",
+		Target:     &c.flagSysEvents,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit system events. Supported values are "true" and "false".`,
+	})
+	f.StringSliceVar(&base.StringSliceVar{
+		Name:   "event-allow-filter",
+		Target: &c.flagEveryEventAllowFilters,
+		Usage:  `The optional every event allow filter. May be specified multiple times.`,
+	})
+	f.StringSliceVar(&base.StringSliceVar{
+		Name:   "event-deny-filter",
+		Target: &c.flagEveryEventDenyFilters,
+		Usage:  `The optional every event deny filter. May be specified multiple times.`,
+	})
 
 	return set
 }
@@ -420,7 +461,30 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-dev"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-dev"
+	}
+	eventFlags, err := base.NewEventFlags(event.TextSinkFormat, base.ComposedOfEventArgs{
+		Format:       c.flagEventFormat,
+		Audit:        c.flagAudit,
+		Observations: c.flagObservations,
+		SysEvents:    c.flagSysEvents,
+		Allow:        c.flagEveryEventAllowFilters,
+		Deny:         c.flagEveryEventDenyFilters,
+	})
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
+	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

@@ -52,6 +52,9 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 	if info.Id == "" {
 		return nil, fmt.Errorf("%s: missing request info id: %w", op, ErrInvalidParameter)
 	}
+	if info.EventId == "" {
+		return nil, fmt.Errorf("%s: missing request info event id: %w", op, ErrInvalidParameter)
+	}
 	return context.WithValue(ctx, requestInfoKey, info), nil
 }
 
@@ -211,9 +214,9 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 		reqInfo, ok := RequestInfoFromContext(ctx)
 		if !ok {
 			// there's no RequestInfo, so there's no id associated with the
-			// observation and we'll generate one and flush the observation
+			// event and we'll generate one and flush the event
 			// since there will never be another with the same id
-			id, err := newId(string(ObservationType))
+			id, err := NewId(idPrefix)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -224,15 +227,12 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			return retOpts, nil
 		}
 		retOpts = append(retOpts, WithRequestInfo(reqInfo))
-		if reqInfo.Id != "" {
-			retOpts = append(retOpts, WithId(reqInfo.Id))
-		}
-		switch reqInfo.Id {
+		switch reqInfo.EventId {
 		case "":
-			// there's no RequestInfo.Id associated with the observation, so we'll
-			// generate one and flush the observation since there will never be
-			// another with the same id
-			id, err := newId(string(ObservationType))
+			// there's no RequestInfo.EventId associated with the observation,
+			// so we'll generate one and flush the observation since there will
+			// never be another with the same id
+			id, err := NewId("e")
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -242,7 +242,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			}
 			return retOpts, nil
 		default:
-			retOpts = append(retOpts, WithId(reqInfo.Id))
+			retOpts = append(retOpts, WithId(reqInfo.EventId))
 		}
 	}
 	return retOpts, nil
@@ -274,7 +274,7 @@ func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) 
 		return
 	}
 
-	id, err := newId(string(SystemType))
+	id, err := NewId(string(SystemType))
 	if err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, data))

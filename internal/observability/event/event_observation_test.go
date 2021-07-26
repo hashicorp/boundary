@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/eventlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,9 +39,8 @@ func Test_newObservation(t *testing.T) {
 			name:   "valid-no-opts",
 			fromOp: Op("valid-no-opts"),
 			want: &observation{
-				SimpleGatedPayload: &eventlogger.SimpleGatedPayload{},
-				Version:            errorVersion,
-				Op:                 Op("valid-no-opts"),
+				Version: errorVersion,
+				Op:      Op("valid-no-opts"),
 			},
 		},
 		{
@@ -56,12 +54,10 @@ func Test_newObservation(t *testing.T) {
 				WithFlush(),
 			},
 			want: &observation{
-				SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
-					ID:     "valid-all-opts",
-					Header: testHeader,
-					Detail: testDetails,
-					Flush:  true,
-				},
+				ID:          "valid-all-opts",
+				Header:      testHeader,
+				Detail:      testDetails,
+				Flush:       true,
 				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
 				RequestInfo: TestRequestInfo(t),
@@ -124,9 +120,7 @@ func Test_observationvalidate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			e := observation{
 				Op: tt.op,
-				SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
-					ID: tt.id,
-				},
+				ID: tt.id,
 			}
 			err := e.validate()
 			if tt.wantErrIs != nil {

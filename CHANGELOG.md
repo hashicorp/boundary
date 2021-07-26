@@ -23,6 +23,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   API actions and the grants system. In 0.6, the _library_ versions of these
   commands, flags, and actions will be removed.
 
+### New and Improved
+
+* OIDC Accounts: When performing a `read` on an `oidc` type account, the
+  original token and userinfo claims are provided in the output. This can make
+  it significantly easier to write filters to create [managed
+  groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
+  ([PR](https://github.com/hashicorp/boundary/pull/1419))
+
 ### Bug Fixes
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as

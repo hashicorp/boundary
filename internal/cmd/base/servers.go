@@ -141,7 +141,7 @@ func NewServer(cmd *Command) *Server {
 
 // SetupEventing will setup the server's eventer and initialize the "system
 // wide" eventer with a pointer to the same eventer
-func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mutex, opt ...Option) error {
+func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
 	const op = "base.(Server).SetupEventing"
 
 	if logger == nil {
@@ -150,7 +150,9 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 	if serializationLock == nil {
 		return berrors.New(berrors.InvalidParameter, op, "missing serialization lock")
 	}
-
+	if serverName == "" {
+		return berrors.New(berrors.InvalidParameter, op, "missing server name")
+	}
 	opts := getOpts(opt...)
 	if opts.withEventerConfig != nil {
 		if err := opts.withEventerConfig.Validate(); err != nil {
@@ -166,8 +168,8 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 			return berrors.Wrap(err, op, berrors.WithMsg("invalid event flags"))
 		}
 		if opts.withEventFlags.Format != "" {
-			for _, s := range opts.withEventerConfig.Sinks {
-				s.Format = opts.withEventFlags.Format
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].Format = opts.withEventFlags.Format
 			}
 		}
 		if opts.withEventFlags.AuditEnabled != nil {
@@ -176,15 +178,28 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		if opts.withEventFlags.ObservationsEnabled != nil {
 			opts.withEventerConfig.ObservationsEnabled = *opts.withEventFlags.ObservationsEnabled
 		}
+		if opts.withEventFlags.SysEventsEnabled != nil {
+			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
+		}
+		if len(opts.withEventFlags.AllowFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].AllowFilters = opts.withEventFlags.AllowFilters
+			}
+		}
+		if len(opts.withEventFlags.DenyFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].DenyFilters = opts.withEventFlags.DenyFilters
+			}
+		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, *opts.withEventerConfig)
+	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
 	if err != nil {
 		return berrors.Wrap(err, op, berrors.WithMsg("unable to create eventer"))
 	}
 	b.Eventer = e
 
-	if err := event.InitSysEventer(logger, serializationLock, event.WithEventer(e)); err != nil {
+	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventer(e)); err != nil {
 		return berrors.Wrap(err, op, berrors.WithMsg("unable to initialize system eventer"))
 	}
 
