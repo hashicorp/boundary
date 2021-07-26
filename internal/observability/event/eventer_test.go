@@ -420,8 +420,8 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error":       1,
-				"system":      1,
+				"error": 1,
+				//	"system":      1, // See TODO in eventer.go NewEventer(...)
 				"observation": 1,
 				"audit":       1,
 			},
@@ -460,8 +460,8 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error":       3,
-				"system":      2,
+				"error": 3,
+				// "system":      2, // See TODO in eventer.go NewEventer(...)
 				"observation": 2,
 				"audit":       2,
 			},
@@ -511,8 +511,8 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // sys-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error":       3,
-				"system":      3,
+				"error": 3,
+				// "system":      3, // See TODO in eventer.go NewEventer(...)
 				"observation": 3,
 				"audit":       3,
 			},
