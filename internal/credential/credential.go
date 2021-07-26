@@ -5,30 +5,8 @@ package credential
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/boundary"
 )
-
-// An Entity is an object distinguished by its identity, rather than its
-// attributes. It can contain value objects and other entities.
-type Entity interface {
-	GetPublicId() string
-}
-
-// An Aggregate is an entity that is the root of a transactional
-// consistency boundary.
-type Aggregate interface {
-	Entity
-	GetVersion() uint32
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-}
-
-// A Resource is an aggregate with a name and description.
-type Resource interface {
-	Aggregate
-	GetName() string
-	GetDescription() string
-}
 
 // A Store is a resource that can store, retrieve, and potentially generate
 // credentials of differing types and access levels. It belongs to a scope
@@ -36,14 +14,14 @@ type Resource interface {
 // mechanisms to limit the credentials it can access to the minimum
 // necessary for the scope it is in.
 type Store interface {
-	Resource
+	boundary.Resource
 	GetScopeId() string
 }
 
 // A Library is a resource that provides credentials that are of the same
 // type and access level from a single store.
 type Library interface {
-	Resource
+	boundary.Resource
 	GetStoreId() string
 }
 
@@ -72,7 +50,7 @@ type SecretData interface{}
 
 // Credential is an entity containing secret data.
 type Credential interface {
-	Entity
+	boundary.Entity
 	Secret() SecretData
 }
 
