@@ -1,31 +1,34 @@
+// Package subtypes provides helpers to work with boundary resource subtypes.
 package subtypes
 
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
+// Subtype variables identify a boundary resource subtype.
 type Subtype string
 
 const (
 	UnknownSubtype Subtype = "unknown"
 )
 
+// String returns the string representation of a Subtype
 func (t Subtype) String() string {
 	return string(t)
 }
 
-// Registry stores a collection of subtypes along with their prefixes and
-// allows for translating prefixes back to registered subtypes.
+// Registry stores a collection of boundary resource subtypes along with their
+// prefixes and allows for translating prefixes back to registered subtypes.
+// Registry is not thread safe.
 type Registry struct {
-	subtypeMu        sync.RWMutex
 	subtypesPrefixes map[string]Subtype
 	knownSubtypes map[Subtype]interface{}
 }
 
+// New Registry creates a new boundary resource subtype registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		subtypesPrefixes: make(map[string]Subtype),
@@ -37,8 +40,6 @@ func NewRegistry() *Registry {
 // no Subtype was registered with that string Unknown is returned.
 func (r *Registry) SubtypeFromType(t string) Subtype {
 	st := Subtype(t)
-	r.subtypeMu.RLock()
-	defer r.subtypeMu.RUnlock()
 	if _, ok := r.knownSubtypes[st]; !ok {
 		return UnknownSubtype
 	}
@@ -54,9 +55,7 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 	}
 	prefix := id[:i]
 
-	r.subtypeMu.RLock()
 	subtype, ok := r.subtypesPrefixes[prefix]
-	r.subtypeMu.RUnlock()
 	if !ok {
 		return UnknownSubtype
 	}
@@ -68,9 +67,6 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 // prefixes are associated with another subtype.
 func (r *Registry) Register(subtype Subtype, prefixes ...string) error {
 	const op = "registry.(Registry).Register"
-	r.subtypeMu.Lock()
-	defer r.subtypeMu.Unlock()
-
 	if _, present := r.knownSubtypes[subtype]; present {
 		return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
 	}
