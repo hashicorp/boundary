@@ -104,7 +104,7 @@ type TargetServiceClient interface {
 	// Target must be a child of a Store that is in the same scope as this
 	// Target. If the scope or Target IDs are missing, malformed, or reference
 	// non-existing resources, an error is returned. An error is returned if a
-	// Credential Library is attempted to be added to a target that is already
+	// Credential Source is attempted to be added to a target that is already
 	// present on the Target.
 	AddTargetCredentialSources(ctx context.Context, in *AddTargetCredentialSourcesRequest, opts ...grpc.CallOption) (*AddTargetCredentialSourcesResponse, error)
 	// SetTargetCredentialSources sets the Target's Credential Sources.
@@ -120,7 +120,7 @@ type TargetServiceClient interface {
 	// Target from which the Credential Sources will be removed. If the ID is
 	// missing, or malformed, an error is returned.  An error is returned if a
 	// Credential Library is attempted to be removed from the Target when the
-	// Target does not have the Credential Library.
+	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(ctx context.Context, in *RemoveTargetCredentialSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialSourcesResponse, error)
 }
 
@@ -360,7 +360,7 @@ type TargetServiceServer interface {
 	// Target must be a child of a Store that is in the same scope as this
 	// Target. If the scope or Target IDs are missing, malformed, or reference
 	// non-existing resources, an error is returned. An error is returned if a
-	// Credential Library is attempted to be added to a target that is already
+	// Credential Source is attempted to be added to a target that is already
 	// present on the Target.
 	AddTargetCredentialSources(context.Context, *AddTargetCredentialSourcesRequest) (*AddTargetCredentialSourcesResponse, error)
 	// SetTargetCredentialSources sets the Target's Credential Sources.
@@ -376,7 +376,7 @@ type TargetServiceServer interface {
 	// Target from which the Credential Sources will be removed. If the ID is
 	// missing, or malformed, an error is returned.  An error is returned if a
 	// Credential Library is attempted to be removed from the Target when the
-	// Target does not have the Credential Library.
+	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(context.Context, *RemoveTargetCredentialSourcesRequest) (*RemoveTargetCredentialSourcesResponse, error)
 	mustEmbedUnimplementedTargetServiceServer()
 }
