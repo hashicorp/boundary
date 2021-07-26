@@ -66,7 +66,7 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
 func (r *Registry) Register(subtype Subtype, prefixes ...string) error {
-	const op = "registry.(Registry).Register"
+	const op = "subtypes.(Registry).Register"
 	if _, present := r.knownSubtypes[subtype]; present {
 		return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
 	}
