@@ -31,7 +31,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
@@ -99,7 +99,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
@@ -147,7 +147,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerInterruptedCancelCtx", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
@@ -247,7 +247,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
@@ -342,7 +342,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
@@ -396,7 +396,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerFinalStatusUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))

@@ -72,7 +72,7 @@ func TestListening(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestListening", event.WithEventerConfig(testConfig))
 	if err != nil {
 		t.Fatal(err)
 	}

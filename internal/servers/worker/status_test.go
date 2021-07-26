@@ -21,7 +21,7 @@ func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestWorkerWaitForNextSuccessfulStatusUpdate", event.WithEventerConfig(testConfig))
 	require.NoError(t, err)
 	for _, name := range []string{"ok", "timeout"} {
 		t.Run(name, func(t *testing.T) {
