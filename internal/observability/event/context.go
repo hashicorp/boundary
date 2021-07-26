@@ -245,7 +245,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 // This function should never be used when sending events while
 // handling API requests.
 func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface{}) {
-	const op = "event.WriteError"
+	const op = "event.WriteSysEvent"
 
 	info := ConvertArgs(args...)
 	if msg == "" && info == nil {
