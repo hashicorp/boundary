@@ -118,7 +118,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 		publicId, _, _ := auth.GetTokenFromRequest(ctx, kms, r)
 
 		var err error
-		id, err := event.NewId("e")
+		id, err := event.NewId(event.IdPrefix)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI()))

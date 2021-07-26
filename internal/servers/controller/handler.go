@@ -353,7 +353,14 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		const op = "controller.wrapHandlerWithCallbackInterceptor"
 		ctx := req.Context()
 		var err error
+		id, err := event.NewId(event.IdField)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", req.Method, "url", req.URL.RequestURI()))
+			return
+		}
 		info := &event.RequestInfo{
+			EventId:  id,
 			Id:       common.GeneratedTraceId(ctx),
 			PublicId: "unknown",
 			Method:   req.Method,
