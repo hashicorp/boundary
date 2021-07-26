@@ -206,7 +206,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			// there's no RequestInfo, so there's no id associated with the
 			// event and we'll generate one and flush the event
 			// since there will never be another with the same id
-			id, err := NewId(idPrefix)
+			id, err := NewId(IdPrefix)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
