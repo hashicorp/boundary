@@ -467,7 +467,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.WriteSysEvent(ctx, op, "controller name generated", "name", opts.Config.Controller.Name)
 	}
 
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
