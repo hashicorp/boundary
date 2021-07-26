@@ -19,11 +19,11 @@ func SubtypeFromId(id string) subtypes.Subtype {
 	return registry.SubtypeFromId(id)
 }
 
-// Register registers all the prefixes for a provided Subtype. Register panics if the
-// subtype has already been registered or if any of the prefixes are associated with
-// another subtype.
-func Register(subtype subtypes.Subtype, prefixes ...string) {
-	registry.Register(subtype, prefixes...)
+// Register registers all the prefixes for a provided Subtype. Register returns
+// an error if the subtype has already been registered or if any of the
+// prefixes are associated with another subtype.
+func Register(subtype subtypes.Subtype, prefixes ...string) error {
+	return registry.Register(subtype, prefixes...)
 }
 
 // AuthMethod contains the common methods across all the different types of auth methods.

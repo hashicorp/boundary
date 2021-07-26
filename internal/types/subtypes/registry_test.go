@@ -64,34 +64,11 @@ func TestSubtypeFromType(t *testing.T) {
 
 func TestRegister(t *testing.T) {
 	r := subtypes.NewRegistry()
-	func() {
-		defer func() {
-			assert.Nil(t, recover())
-		}()
-		r.Register("test", "testprefix")
-	}()
-
+	assert.NoError(t, r.Register("test", "testprefix"))
 	// registering multiple subtypes should be fine.
-	func() {
-		defer func() {
-			assert.Nil(t, recover())
-		}()
-		r.Register("second", "secondprefix")
-	}()
-
-	// registering another prefix with a different subtype panics.
-	func() {
-		defer func() {
-			assert.Nil(t, recover())
-		}()
-		r.Register("third", "thirdprefix")
-	}()
-
-	// Registering the same subtype twice panics.
-	func() {
-		defer func() {
-			assert.NotNil(t, recover())
-		}()
-		r.Register("test", "repeatedprefix")
-	}()
+	assert.NoError(t, r.Register("second", "secondprefix"))
+	// registering another prefix with a different subtype errors.
+	assert.Error(t, r.Register("third", "testprefix"))
+	// Registering the same subtype twice errors.
+	assert.Error(t, r.Register("test", "repeatedprefix"))
 }

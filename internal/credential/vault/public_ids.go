@@ -8,7 +8,9 @@ import (
 )
 
 func init() {
-	credential.Register(Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix)
+	if err := credential.Register(Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix); err != nil {
+		panic(err)
+	}
 }
 
 // PublicId prefixes for the resources in the vault package.

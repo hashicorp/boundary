@@ -8,7 +8,9 @@ import (
 )
 
 func init() {
-	host.Register(Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix)
+	if err := host.Register(Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
+		panic(err)
+	}
 }
 
 // PublicId prefixes for the resources in the static package.

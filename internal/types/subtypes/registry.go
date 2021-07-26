@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 type Subtype string
@@ -35,6 +37,8 @@ func NewRegistry() *Registry {
 // no Subtype was registered with that string Unknown is returned.
 func (r *Registry) SubtypeFromType(t string) Subtype {
 	st := Subtype(t)
+	r.subtypeMu.RLock()
+	defer r.subtypeMu.RUnlock()
 	if _, ok := r.knownSubtypes[st]; !ok {
 		return UnknownSubtype
 	}
@@ -59,23 +63,25 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 	return subtype
 }
 
-// Register registers all the prefixes for a provided Subtype. Register panics if the
-// subtype has already been registered or if any of the prefixes are associated with
-// another subtype.
-func (r *Registry) Register(subtype Subtype, prefixes ...string) {
+// Register registers all the prefixes for a provided Subtype. Register returns
+// an error if the subtype has already been registered or if any of the
+// prefixes are associated with another subtype.
+func (r *Registry) Register(subtype Subtype, prefixes ...string) error {
+	const op = "registry.(Registry).Register"
 	r.subtypeMu.Lock()
 	defer r.subtypeMu.Unlock()
 
 	if _, present := r.knownSubtypes[subtype]; present {
-		panic("subtype.(Registry).Register: subtype is already registered")
+		return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
 	}
 	r.knownSubtypes[subtype] = nil
 
 	for _, prefix := range prefixes {
 		prefix = strings.TrimSpace(prefix)
 		if st, ok := r.subtypesPrefixes[prefix]; ok {
-			panic(fmt.Sprintf("subtype.(Registry).Register: prefix is already registered to subtype %q", st))
+			return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("prefix %q is already registered to subtype %q", prefix, st))
 		}
 		r.subtypesPrefixes[prefix] = subtype
 	}
+	return nil
 }

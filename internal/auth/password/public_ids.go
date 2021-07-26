@@ -10,7 +10,9 @@ import (
 
 
 func init() {
-	auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix)
+	if err := auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+		panic(err)
+	}
 }
 
 // PublicId prefixes for the resources in the password package.

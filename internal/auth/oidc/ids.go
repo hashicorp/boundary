@@ -9,7 +9,9 @@ import (
 )
 
 func init() {
-	auth.Register(Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix)
+	if err := auth.Register(Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
+		panic(err)
+	}
 }
 
 const (
