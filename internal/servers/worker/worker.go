@@ -139,6 +139,7 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 		return nil
 	}
+	defer w.started.Store(false)
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 	w.baseCancel()
 	if !skipListeners {
@@ -147,7 +148,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		}
 	}
 	w.tickerWg.Wait()
-	w.started.Store(false)
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing worker eventer nodes: %w", err)

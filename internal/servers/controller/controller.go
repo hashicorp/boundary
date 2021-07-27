@@ -233,13 +233,13 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 	if !c.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 	}
+	defer c.started.Store(false)
 	c.baseCancel()
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
 	c.schedulerWg.Wait()
 	c.tickerWg.Wait()
-	c.started.Store(false)
 	if c.conf.Eventer != nil {
 		if err := c.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing controller eventer nodes: %w", err)
