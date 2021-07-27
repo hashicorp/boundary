@@ -64,11 +64,16 @@ func Test_newSendCtx(t *testing.T) {
 			assert.True(ctx.Err() != context.Canceled)
 			if tt.wantCancel {
 				require.NotNil(cancel)
+			} else {
+				require.Nil(cancel)
 			}
+			info, ok := RequestInfoFromContext(ctx)
 			if tt.wantInfo {
-				info, ok := RequestInfoFromContext(ctx)
 				assert.True(ok)
 				assert.NotNil(info)
+			} else {
+				assert.False(ok)
+				assert.Nil(info)
 			}
 		})
 	}
