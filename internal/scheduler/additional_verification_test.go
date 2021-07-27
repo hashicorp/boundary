@@ -54,8 +54,10 @@ func TestSchedulerWorkflow(t *testing.T) {
 	tj2 := testJob{name: "name2", description: "desc", fn: fn2, nextRunIn: time.Hour}
 	err = sched.RegisterJob(context.Background(), tj2)
 	require.NoError(err)
-
-	err = sched.Start(context.Background())
+	baseCtx, baseCnl := context.WithCancel(context.Background())
+	defer baseCnl()
+	var wg sync.WaitGroup
+	err = sched.Start(baseCtx, &wg)
 	require.NoError(err)
 
 	// Wait for scheduler to run both jobs
@@ -110,7 +112,9 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
-	err = sched.Start(baseCtx)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	err = sched.Start(baseCtx, &wg)
 	require.NoError(err)
 
 	// Wait for scheduler to run job
@@ -164,7 +168,9 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
 	defer baseCnl()
-	err = sched.Start(baseCtx)
+	var wg sync.WaitGroup
+	wg.Wait()
+	err = sched.Start(baseCtx, &wg)
 	require.NoError(err)
 
 	// Wait for scheduler to run both job
@@ -270,7 +276,9 @@ func TestSchedulerJobProgress(t *testing.T) {
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
-	err = sched.Start(baseCtx)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	err = sched.Start(baseCtx, &wg)
 	require.NoError(err)
 
 	// Wait for scheduler to run job
@@ -360,8 +368,10 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
-	defer baseCnl()
-	err = sched.Start(baseCtx)
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	err = sched.Start(baseCtx, &wg)
 	require.NoError(err)
 
 	// Wait for scheduler to run job
@@ -380,6 +390,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	run, err := repo.LookupRun(context.Background(), runId)
 	require.NoError(err)
 	assert.Equal(string(job.Interrupted), run.Status)
+	baseCnl()
 }
 
 func TestSchedulerFinalStatusUpdate(t *testing.T) {
