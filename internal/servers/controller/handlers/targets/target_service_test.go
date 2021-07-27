@@ -13,9 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	credpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
@@ -30,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
 	spb "github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
@@ -63,6 +62,9 @@ var testAuthorizedActions = []string{
 	"add-credential-libraries",
 	"set-credential-libraries",
 	"remove-credential-libraries",
+	"add-credential-sources",
+	"set-credential-sources",
+	"remove-credential-sources",
 	"authorize-session",
 }
 
@@ -1329,13 +1331,13 @@ func TestAddTargetLibraries(t *testing.T) {
 		},
 		{
 			name:             "Add library on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
 			addLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:             "Add duplicated libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
 			addLibraries:     []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
@@ -1465,19 +1467,19 @@ func TestSetTargetLibraries(t *testing.T) {
 		},
 		{
 			name:             "Set on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
 			setLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Set duplicate libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
 			setLibraries:     []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Set empty on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
 			setLibraries:     []string{},
 			resultLibraryIds: nil,
 		},
@@ -1591,13 +1593,13 @@ func TestRemoveTargetLibraries(t *testing.T) {
 		},
 		{
 			name:         "Remove 1 of 2 libraries",
-			tar:          target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			tar:          target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
 			removeLibs:   []string{cls[1].GetPublicId()},
 			resultLibIds: []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 duplicate set of 2 libraries",
-			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
 			removeLibs: []string{
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -1605,7 +1607,7 @@ func TestRemoveTargetLibraries(t *testing.T) {
 		},
 		{
 			name: "Remove all libraries from target",
-			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
 			removeLibs: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -1689,6 +1691,403 @@ func TestRemoveTargetLibraries(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetCredentialLibraries(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestAddTargetSources(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new target service.")
+
+	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	addCases := []struct {
+		name            string
+		tar             *target.TcpTarget
+		addSources      []string
+		resultSourceIds []string
+	}{
+		{
+			name:            "Add source on empty target",
+			tar:             target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty for sources"),
+			addSources:      []string{cls[1].GetPublicId()},
+			resultSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
+			name:            "Add source on populated target",
+			tar:             target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated for sources", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
+			addSources:      []string{cls[1].GetPublicId()},
+			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
+		},
+		{
+			name:            "Add duplicated sources on populated target",
+			tar:             target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated for sources", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
+			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
+			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.AddTargetCredentialSourcesRequest{
+				Id:                             tc.tar.GetPublicId(),
+				Version:                        tc.tar.GetVersion(),
+				ApplicationCredentialSourceIds: tc.addSources,
+			}
+
+			got, err := s.AddTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
+
+			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
+
+			wantTemplate := &pb.CredentialSource{
+				CredentialStoreId: store.GetPublicId(),
+			}
+			for _, cl := range got.GetItem().GetApplicationCredentialSources() {
+				cl.Id = ""
+				assert.Empty(t, cmp.Diff(wantTemplate, cl, protocmp.Transform()))
+			}
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
+
+	failCases := []struct {
+		name string
+		req  *pbs.AddTargetCredentialSourcesRequest
+		err  error
+	}{
+		{
+			name: "Bad target id",
+			req: &pbs.AddTargetCredentialSourcesRequest{
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{
+					cls[0].GetPublicId(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad version",
+			req: &pbs.AddTargetCredentialSourcesRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 2,
+				ApplicationCredentialSourceIds: []string{
+					cls[0].GetPublicId(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Empty source list",
+			req: &pbs.AddTargetCredentialSourcesRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Incorrect source id",
+			req: &pbs.AddTargetCredentialSourcesRequest{
+				Id:                             tar.GetPublicId(),
+				Version:                        tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{"incorrect"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestSetTargetCredentialSources(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new target service.")
+
+	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	resultingTargetSource := func(id string) *pb.CredentialSource {
+		return &pb.CredentialSource{
+			Id:                id,
+			CredentialStoreId: store.GetPublicId(),
+		}
+	}
+
+	setCases := []struct {
+		name                      string
+		tar                       *target.TcpTarget
+		setCredentialSources      []string
+		resultCredentialSourceIds []string
+		resultCredentialSources   []*pb.CredentialLibrary
+	}{
+		{
+			name:                      "Set on empty target",
+			tar:                       target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			setCredentialSources:      []string{cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
+			name:                      "Set on populated target",
+			tar:                       target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
+			setCredentialSources:      []string{cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
+			name:                      "Set duplicate sources on populated target",
+			tar:                       target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
+			setCredentialSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
+			name:                      "Set empty on populated target",
+			tar:                       target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialSources([]string{cls[0].GetPublicId()})),
+			setCredentialSources:      []string{},
+			resultCredentialSourceIds: nil,
+		},
+	}
+	for _, tc := range setCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.SetTargetCredentialSourcesRequest{
+				Id:                             tc.tar.GetPublicId(),
+				Version:                        tc.tar.GetVersion(),
+				ApplicationCredentialSourceIds: tc.setCredentialSources,
+			}
+
+			got, err := s.SetTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			require.NoError(t, err, "Got error: %v", s)
+			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
+
+			if len(tc.resultCredentialSources) != 0 {
+				sort.Slice(tc.resultCredentialSources, func(i, j int) bool {
+					return tc.resultCredentialSources[i].GetId() < tc.resultCredentialSources[j].GetId()
+				})
+				sort.Slice(got.GetItem().ApplicationCredentialSourceIds, func(i, j int) bool {
+					return got.GetItem().ApplicationCredentialSourceIds[i] < got.GetItem().ApplicationCredentialSourceIds[j]
+				})
+				assert.Empty(t, cmp.Diff(tc.resultCredentialSources, got.GetItem().GetApplicationCredentialSourceIds(), protocmp.Transform()))
+			} else {
+				assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSourceIds()))
+				for _, cl := range got.GetItem().GetApplicationCredentialSources() {
+					assert.Empty(t, cmp.Diff(resultingTargetSource(cl.GetId()), cl, protocmp.Transform()))
+				}
+			}
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test name")
+
+	failCases := []struct {
+		name string
+		req  *pbs.SetTargetCredentialSourcesRequest
+		err  error
+	}{
+		{
+			name: "Bad target Id",
+			req: &pbs.SetTargetCredentialSourcesRequest{
+				Id:                             "bad id",
+				Version:                        tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{cls[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad version",
+			req: &pbs.SetTargetCredentialSourcesRequest{
+				Id:                             tar.GetPublicId(),
+				Version:                        tar.GetVersion() + 3,
+				ApplicationCredentialSourceIds: []string{cls[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad source id",
+			req: &pbs.SetTargetCredentialSourcesRequest{
+				Id:                             tar.GetPublicId(),
+				Version:                        tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.SetTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestRemoveTargetCredentialSources(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new target service.")
+
+	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	removeCases := []struct {
+		name                      string
+		tar                       *target.TcpTarget
+		removeCredentialSources   []string
+		resultCredentialSourceIds []string
+		wantErr                   bool
+	}{
+		{
+			name:                    "Remove from empty",
+			tar:                     target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			removeCredentialSources: []string{cls[1].GetPublicId()},
+			wantErr:                 true,
+		},
+		{
+			name:                      "Remove 1 of 2 sources",
+			tar:                       target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeCredentialSources:   []string{cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 duplicate set of 2 sources",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeCredentialSources: []string{
+				cls[1].GetPublicId(), cls[1].GetPublicId(),
+			},
+			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
+		},
+		{
+			name: "Remove all sources from target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialSources([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeCredentialSources: []string{
+				cls[0].GetPublicId(), cls[1].GetPublicId(),
+			},
+			resultCredentialSourceIds: []string{},
+		},
+	}
+
+	for _, tc := range removeCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.RemoveTargetCredentialSourcesRequest{
+				Id:                             tc.tar.GetPublicId(),
+				Version:                        tc.tar.GetVersion(),
+				ApplicationCredentialSourceIds: tc.removeCredentialSources,
+			}
+
+			got, err := s.RemoveTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "testing")
+
+	failCases := []struct {
+		name string
+		req  *pbs.RemoveTargetCredentialSourcesRequest
+		err  error
+	}{
+		{
+			name: "Bad version",
+			req: &pbs.RemoveTargetCredentialSourcesRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 3,
+				ApplicationCredentialSourceIds: []string{
+					cls[0].GetPublicId(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad target Id",
+			req: &pbs.RemoveTargetCredentialSourcesRequest{
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{
+					cls[0].GetPublicId(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty sources",
+			req: &pbs.RemoveTargetCredentialSourcesRequest{
+				Id:                             tar.GetPublicId(),
+				Version:                        tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid source ids",
+			req: &pbs.RemoveTargetCredentialSourcesRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				ApplicationCredentialSourceIds: []string{
+					"invalid",
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.RemoveTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "RemoveTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}
@@ -1826,7 +2225,7 @@ func TestAuthorizeSession(t *testing.T) {
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
+				Type:              vault.Subtype.String(),
 			},
 		}},
 		// TODO: validate the contents of the authorization token is what is expected

@@ -507,7 +507,6 @@ func Test_WriteObservation(t *testing.T) {
 		assert.NoError(err)
 		assert.Len(b, 0)
 	})
-
 }
 
 func Test_Filtering(t *testing.T) {

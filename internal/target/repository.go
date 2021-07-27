@@ -53,10 +53,10 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // LookupTarget will look up a target in the repository and return the target
-// with its host set ids and credential library ids.  If the target is not found,
+// with its host set ids and credential source ids.  If the target is not found,
 // it will return nil, nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []CredentialSource, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := getOpts(opt...)
 
@@ -98,7 +98,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	target := allocTargetView()
 	target.PublicId = publicIdOrName
 	var hostSets []*TargetSet
-	var credLibs []*TargetLibrary
+	var credSources []CredentialSource
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -119,7 +119,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(err, op)
 			}
-			if credLibs, err = fetchLibraries(ctx, read, target.PublicId); err != nil {
+			if credSources, err = fetchCredentialSources(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(err, op)
 			}
 			return nil
@@ -135,7 +135,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return subtype, hostSets, credLibs, nil
+	return subtype, hostSets, credSources, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -250,7 +250,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 // update a target in the db repository with an oplog entry.
 // It currently supports no options.
-func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
+func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, int, error) {
 	const op = "target.(Repository).update"
 	if version == 0 {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
@@ -284,7 +284,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	var rowsUpdated int
 	var returnedTarget interface{}
 	var hostSets []*TargetSet
-	var credLibs []*TargetLibrary
+	var credSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -310,7 +310,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 				return errors.Wrap(err, op)
 			}
 
-			if credLibs, err = fetchLibraries(ctx, reader, target.GetPublicId()); err != nil {
+			if credSources, err = fetchCredentialSources(ctx, reader, target.GetPublicId()); err != nil {
 				return errors.Wrap(err, op)
 			}
 			return nil
@@ -319,5 +319,5 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return returnedTarget.(Target), hostSets, credLibs, rowsUpdated, nil
+	return returnedTarget.(Target), hostSets, credSources, rowsUpdated, nil
 }

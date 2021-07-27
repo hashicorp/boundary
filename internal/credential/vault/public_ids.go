@@ -4,13 +4,22 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+func init() {
+	if err := credential.Register(Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix); err != nil {
+		panic(err)
+	}
+}
 
 // PublicId prefixes for the resources in the vault package.
 const (
 	CredentialStorePrefix   = "csvlt"
 	CredentialLibraryPrefix = "clvlt"
 	DynamicCredentialPrefix = "cdvlt"
+
+	Subtype = subtypes.Subtype("vault")
 )
 
 func newCredentialStoreId() (string, error) {
@@ -35,8 +44,4 @@ func newCredentialLibraryId() (string, error) {
 		return "", errors.Wrap(err, "vault.newCredentialLibraryId")
 	}
 	return id, nil
-}
-
-func init() {
-	credential.Register(credential.VaultSubtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix)
 }

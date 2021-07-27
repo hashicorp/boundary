@@ -237,6 +237,30 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "add-credential-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-credential-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-credential-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

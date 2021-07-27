@@ -60,11 +60,11 @@ func Test_TestCredentialLibrary(t *testing.T) {
 	assert.Len(libs, 2)
 
 	rw := db.New(conn)
-	foundLibs, err := fetchLibraries(context.Background(), rw, target.PublicId)
+	foundSources, err := fetchCredentialSources(context.Background(), rw, target.PublicId)
 	require.NoError(err)
-	foundIds := make([]string, 0, len(foundLibs))
-	for _, s := range foundLibs {
-		foundIds = append(foundIds, s.CredentialLibraryId)
+	foundIds := make([]string, 0, len(foundSources))
+	for _, s := range foundSources {
+		foundIds = append(foundIds, s.Id())
 	}
 	require.Equal(libIds, foundIds)
 }

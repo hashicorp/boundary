@@ -7,13 +7,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
@@ -54,7 +54,7 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[auth.OidcSubtype] = action.ActionSet{
+	IdActions[oidc.Subtype] = action.ActionSet{
 		action.NoOp,
 		action.Read,
 		action.Update,

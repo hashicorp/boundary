@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -473,7 +473,7 @@ func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = host.StaticSubtype.String()
+		out.Type = static.Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -520,9 +520,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
-		case host.StaticSubtype:
+		case static.Subtype:
 		default:
-			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", host.StaticSubtype.String())
+			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", static.Subtype.String())
 		}
 		return badFields
 	})
@@ -532,8 +532,8 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != host.StaticSubtype {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
 		}

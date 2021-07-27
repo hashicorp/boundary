@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
+func TestRepository_AddTargetCredentialSources(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -55,7 +55,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "no-cred-libs",
+			name: "no-cred-sources",
 			args: args{
 				targetVersion: 1,
 			},
@@ -63,7 +63,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "valid-single-lib",
+			name: "valid-single-source",
 			args: args{
 				targetVersion: 1,
 				credLibIds:    []string{lib1.PublicId},
@@ -72,7 +72,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name: "valid-multiple-libs",
+			name: "valid-multiple-sources",
 			args: args{
 				targetVersion: 1,
 				credLibIds:    []string{lib1.PublicId, lib2.PublicId, lib3.PublicId},
@@ -81,10 +81,10 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name: "invalid-lib-id",
+			name: "invalid-source-id",
 			args: args{
 				targetVersion: 1,
-				credLibIds:    []string{lib1.PublicId, lib2.PublicId, lib3.PublicId, "invalid-lib-id"},
+				credLibIds:    []string{lib1.PublicId, lib2.PublicId, lib3.PublicId, "invalid-source-id"},
 			},
 			wantErr:     true,
 			wantErrCode: errors.NotSpecificIntegrity,
@@ -104,78 +104,78 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, tt.name)
-			gotTarget, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.credLibIds)
+			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.credLibIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
-			assert.Len(gotCredLibs, len(tt.wantCredLibIds))
-			gotCredLibsMap := map[string]*TargetLibrary{}
-			for _, s := range gotCredLibs {
-				gotCredLibsMap[s.CredentialLibraryId] = s
+			assert.Len(gotCredSources, len(tt.wantCredLibIds))
+			gotCredSourcesMap := map[string]CredentialSource{}
+			for _, s := range gotCredSources {
+				gotCredSourcesMap[s.Id()] = s
 			}
 			for _, id := range tt.wantCredLibIds {
-				assert.NotEmpty(gotCredLibsMap[id])
+				assert.NotEmpty(gotCredSourcesMap[id])
 			}
 
 			// test to see of the target version update oplog was created
 			err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 
-			foundCredLibs, err := fetchLibraries(context.Background(), rw, projTarget.PublicId)
+			foundCredSources, err := fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
 			require.NoError(err)
-			assert.Len(foundCredLibs, len(gotCredLibsMap))
-			for _, s := range foundCredLibs {
-				assert.NotEmpty(gotCredLibsMap[s.CredentialLibraryId])
-				assert.Equal(projTarget.PublicId, s.TargetId)
+			assert.Len(foundCredSources, len(gotCredSourcesMap))
+			for _, s := range foundCredSources {
+				assert.NotEmpty(gotCredSourcesMap[s.Id()])
+				assert.Equal(projTarget.PublicId, s.TargetId())
 			}
 
-			target, _, lookupCredLibs, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			target, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 			require.NoError(err)
 			assert.Equal(tt.args.targetVersion+1, target.GetVersion())
 			assert.Equal(projTarget.GetVersion(), target.GetVersion()-1)
 			assert.True(proto.Equal(gotTarget.(*TcpTarget), target.(*TcpTarget)))
-			assert.Equal(gotCredLibs, lookupCredLibs)
+			assert.Equal(gotCredSources, lookupCredSources)
 		})
 	}
 	t.Run("add-existing", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "add-existing")
-		_, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId})
+		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId})
 		require.NoError(err)
-		assert.Len(gotCredLibs, 1)
-		assert.Equal(lib1.PublicId, gotCredLibs[0].CredentialLibraryId)
+		assert.Len(gotCredSources, 1)
+		assert.Equal(lib1.PublicId, gotCredSources[0].Id())
 
 		// Adding lib1 again should error
-		_, _, _, err = repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId})
+		_, _, _, err = repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Adding multiple with lib1 in set should error
-		_, _, _, err = repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId, lib2.PublicId, lib1.PublicId})
+		_, _, _, err = repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId, lib2.PublicId, lib1.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		gotCredLibs, err = fetchLibraries(context.Background(), rw, projTarget.PublicId)
+		gotCredSources, err = fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
 		require.NoError(err)
-		assert.Len(gotCredLibs, 1)
-		assert.Equal(lib1.PublicId, gotCredLibs[0].CredentialLibraryId)
+		assert.Len(gotCredSources, 1)
+		assert.Equal(lib1.PublicId, gotCredSources[0].Id())
 	})
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, _, err := repo.AddTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.AddTargetCredentialSources(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())
 	})
 }
 
-func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
+func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -286,13 +286,13 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 					clIds = append(clIds, cl.PublicId)
 				}
 			}
-			_, _, addedCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
+			_, _, addedCredSources, err := repo.AddTargetCredentialSources(context.Background(), target.GetPublicId(), 1, clIds)
 			require.NoError(err)
-			assert.Equal(tt.args.createCnt, len(addedCredLibs))
+			assert.Equal(tt.args.createCnt, len(addedCredSources))
 
-			deleteCredLibs := make([]string, 0, tt.args.deleteCnt)
+			deleteCredSources := make([]string, 0, tt.args.deleteCnt)
 			for i := 0; i < tt.args.deleteCnt; i++ {
-				deleteCredLibs = append(deleteCredLibs, clIds[i])
+				deleteCredSources = append(deleteCredSources, clIds[i])
 			}
 			var targetId string
 			switch {
@@ -308,7 +308,7 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 			default:
 				targetVersion = 2
 			}
-			deletedRows, err := repo.DeleteTargetCredentialLibraries(context.Background(), targetId, targetVersion, deleteCredLibs)
+			deletedRows, err := repo.DeleteTargetCredentialSources(context.Background(), targetId, targetVersion, deleteCredSources)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -335,30 +335,30 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 		lib3 := libs[2]
 
 		projTarget := TestTcpTarget(t, conn, proj.PublicId, "add-existing")
-		_, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId, lib2.PublicId})
+		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId, lib2.PublicId})
 		require.NoError(err)
-		assert.Len(gotCredLibs, 2)
+		assert.Len(gotCredSources, 2)
 
-		// Deleting an unassociated library should return an error
-		delCount, err := repo.DeleteTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId})
+		// Deleting an unassociated source should return an error
+		delCount, err := repo.DeleteTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
-		// Deleting libraries which includes an unassociated libary should return an error
-		delCount, err = repo.DeleteTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId, lib2.PublicId, lib3.PublicId})
+		// Deleting sources which includes an unassociated source should return an error
+		delCount, err = repo.DeleteTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId, lib2.PublicId, lib3.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		gotCredLibs, err = fetchLibraries(context.Background(), rw, projTarget.PublicId)
+		gotCredSources, err = fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
 		require.NoError(err)
-		assert.Len(gotCredLibs, 2)
+		assert.Len(gotCredSources, 2)
 	})
 }
 
-func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
+func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -375,14 +375,14 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
-	setupFn := func(target Target) []*TargetLibrary {
+	setupFn := func(target Target) []CredentialSource {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		clIds := make([]string, 0, len(credLibs))
 		for _, cl := range credLibs {
 			clIds = append(clIds, cl.PublicId)
 		}
 
-		_, _, created, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
+		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), target.GetPublicId(), 1, clIds)
 		require.NoError(t, err)
 		require.Equal(t, 10, len(created))
 		return created
@@ -394,7 +394,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	}
 	tests := []struct {
 		name             string
-		setup            func(Target) []*TargetLibrary
+		setup            func(Target) []CredentialSource
 		args             args
 		wantAffectedRows int
 		wantErr          bool
@@ -422,7 +422,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			wantAffectedRows: 0,
 		},
 		{
-			name:  "add-cred-libs",
+			name:  "add-cred-sources",
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
@@ -472,23 +472,23 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 
 			target := TestTcpTarget(t, conn, proj.PublicId, tt.name)
 
-			var origCredLibs []*TargetLibrary
+			var origCredSources []CredentialSource
 			if tt.setup != nil {
-				origCredLibs = tt.setup(target)
+				origCredSources = tt.setup(target)
 			}
 			if tt.args.addToOrigLibs {
-				origIds := make([]string, 0, len(origCredLibs))
-				for _, cl := range origCredLibs {
-					origIds = append(origIds, cl.CredentialLibraryId)
+				origIds := make([]string, 0, len(origCredSources))
+				for _, cl := range origCredSources {
+					origIds = append(origIds, cl.Id())
 				}
 				tt.args.clIds = append(tt.args.clIds, origIds...)
 			}
 
-			origTarget, _, lookupCredLibs, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			origTarget, _, lookupCredSources, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			require.NoError(err)
-			assert.Equal(origCredLibs, lookupCredLibs)
+			assert.Equal(origCredSources, lookupCredSources)
 
-			_, got, affectedRows, err := repo.SetTargetCredentialLibraries(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
+			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -508,7 +508,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			if len(got) > 0 {
 				gotIds = make([]string, 0, len(got))
 				for _, s := range got {
-					gotIds = append(gotIds, s.CredentialLibraryId)
+					gotIds = append(gotIds, s.Id())
 				}
 			}
 			sort.Strings(gotIds)
@@ -525,7 +525,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	t.Run("missing-target-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, _, err := repo.SetTargetCredentialLibraries(context.Background(), "", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.SetTargetCredentialSources(context.Background(), "", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
@@ -533,7 +533,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, _, err := repo.SetTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.SetTargetCredentialSources(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())
