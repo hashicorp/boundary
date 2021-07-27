@@ -31,6 +31,7 @@ func init() {
 type extraCmdVars struct {
 	flagHostSets                       []string
 	flagApplicationCredentialLibraries []string
+	flagApplicationCredentialSources   []string
 	flagHostId                         string
 	sar                                *targets.SessionAuthorizationResult
 }
@@ -44,6 +45,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-credential-libraries":    {"id", "application-credential-library", "version"},
 		"remove-credential-libraries": {"id", "application-credential-library", "version"},
 		"set-credential-libraries":    {"id", "application-credential-library", "version"},
+		"add-credential-sources":      {"id", "application-credential-source", "version"},
+		"remove-credential-sources":   {"id", "application-credential-source", "version"},
+		"set-credential-sources":      {"id", "application-credential-source", "version"},
 	}
 }
 
@@ -65,11 +69,23 @@ func extraSynopsisFuncImpl(c *Command) string {
 		var in string
 		switch {
 		case strings.HasPrefix(c.Func, "add"):
-			in = "Add credential library to"
+			in = "Add credential libraries to"
 		case strings.HasPrefix(c.Func, "set"):
 			in = "Set the full contents of the credential libraries on"
 		case strings.HasPrefix(c.Func, "remove"):
 			in = "Remove credential libraries from"
+		}
+		return wordwrap.WrapString(fmt.Sprintf("%s a target. DEPRECATED; use the -sources version instead.", in), base.TermWidth)
+
+	case "add-credential-sources", "set-credential-sources", "remove-credential-sources":
+		var in string
+		switch {
+		case strings.HasPrefix(c.Func, "add"):
+			in = "Add credential sources to"
+		case strings.HasPrefix(c.Func, "set"):
+			in = "Set the full contents of the credential sources on"
+		case strings.HasPrefix(c.Func, "remove"):
+			in = "Remove credential sources from"
 		}
 		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
 
@@ -160,6 +176,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target add-credential-libraries [options] [args]",
 			"",
+			"  DEPRECATED: Use add-credential-sources instead.",
+			"",
 			"  This command allows adding credential-library resources to target resources. Example:",
 			"",
 			"    Add credential-library resources to a tcp-type target:",
@@ -171,6 +189,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	case "remove-credential-libraries":
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target remove-credential-libraries [options] [args]",
+			"",
+			"  DEPRECATED: Use remove-credential-sources instead.",
 			"",
 			"  This command allows removing credential-library resources from target resources. Example:",
 			"",
@@ -184,11 +204,49 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target set-credential-libraries [options] [args]",
 			"",
+			"  DEPRECATED: Use set-credential-sources instead.",
+			"",
 			"  This command allows setting the complete set of credential-library resources on a target resource. Example:",
 			"",
 			"    Set credential-library resources on a tcp-type target:",
 			"",
 			`      $ boundary targets set-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890`,
+			"",
+			"",
+		})
+	case "add-credential-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target add-credential-sources [options] [args]",
+			"",
+			"  This command allows adding credential sources to target resources. Example:",
+			"",
+			"    Add credential sources to a tcp-type target:",
+			"",
+			`      $ boundary targets add-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890 -application-credential-source clvlt_0987654321`,
+			"",
+			"",
+		})
+	case "remove-credential-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target remove-credential-sources [options] [args]",
+			"",
+			"  This command allows removing credential sources from target resources. Example:",
+			"",
+			"    Remove credential sources from a tcp-type target:",
+			"",
+			`      $ boundary targets remove-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890 -application-credential-source clvlt_0987654321`,
+			"",
+			"",
+		})
+	case "set-credential-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target set-credential-sources [options] [args]",
+			"",
+			"  This command allows setting the complete set of credential sources on a target resource. Example:",
+			"",
+			"    Set credential sources on a tcp-type target:",
+			"",
+			`      $ boundary targets set-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890`,
 			"",
 			"",
 		})
@@ -232,6 +290,12 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Name:   "application-credential-library",
 				Target: &c.flagApplicationCredentialLibraries,
 				Usage:  "The credential-library resource for application purpose to add, set, or remove.  May be specified multiple times.",
+			})
+		case "application-credential-source":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "application-credential-source",
+				Target: &c.flagApplicationCredentialSources,
+				Usage:  "The credential source for application purpose to add, set, or remove.  May be specified multiple times.",
 			})
 		}
 	}
@@ -322,6 +386,14 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		}
 		*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
 
+	case "add-credential-sources", "remove-credential-sources":
+		// TODO: As we add other purposes, add them to this check
+		if len(c.flagApplicationCredentialSources) == 0 {
+			c.UI.Error("No credential sources supplied via -application-credential-source")
+			return false
+		}
+		*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+
 	case "set-credential-libraries":
 		// TODO: As we add other purposes, add them to this check
 		switch len(c.flagApplicationCredentialLibraries) {
@@ -336,6 +408,22 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			fallthrough
 		default:
 			*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
+		}
+
+	case "set-credential-sources":
+		// TODO: As we add other purposes, add them to this check
+		switch len(c.flagApplicationCredentialSources) {
+		case 0:
+			c.UI.Error("No credential sources supplied via -application-credential-source")
+			return false
+		case 1:
+			if c.flagApplicationCredentialSources[0] == "null" {
+				*opts = append(*opts, targets.DefaultApplicationCredentialSourceIds())
+				break
+			}
+			fallthrough
+		default:
+			*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
 		}
 
 	case "authorize-session":
@@ -361,6 +449,12 @@ func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError
 		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, opts...)
 	case "set-credential-libraries":
 		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, opts...)
+	case "add-credential-sources":
+		return targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+	case "remove-credential-sources":
+		return targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+	case "set-credential-sources":
+		return targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"
@@ -480,20 +574,37 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	var libraryMaps map[credential.Purpose][]map[string]interface{}
-	if len(item.ApplicationCredentialLibraries) > 0 {
-		if libraryMaps == nil {
-			libraryMaps = make(map[credential.Purpose][]map[string]interface{})
+	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
+	if len(item.ApplicationCredentialSources) > 0 {
+		if credentialSourceMaps == nil {
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
 		}
-		var applicationLibraryMaps []map[string]interface{}
+		var applicationCredentialSourceMaps []map[string]interface{}
+		for _, lib := range item.ApplicationCredentialSources {
+			m := map[string]interface{}{
+				"ID":                  lib.Id,
+				"Credential Store ID": lib.CredentialStoreId,
+			}
+			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
+		}
+		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
+		if l := len("Credential Store ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+	if len(item.ApplicationCredentialLibraries) > 0 {
+		if credentialSourceMaps == nil {
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+		}
+		var applicationCredentialSourceMaps []map[string]interface{}
 		for _, lib := range item.ApplicationCredentialLibraries {
 			m := map[string]interface{}{
 				"ID":                  lib.Id,
 				"Credential Store ID": lib.CredentialStoreId,
 			}
-			applicationLibraryMaps = append(applicationLibraryMaps, m)
+			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
 		}
-		libraryMaps[credential.ApplicationPurpose] = applicationLibraryMaps
+		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
 		if l := len("Credential Store ID"); l > maxLength {
 			maxLength = l
 		}
@@ -537,10 +648,10 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	if len(libraryMaps) > 0 {
-		if appMap := libraryMaps[credential.ApplicationPurpose]; len(appMap) > 0 {
+	if len(credentialSourceMaps) > 0 {
+		if appMap := credentialSourceMaps[credential.ApplicationPurpose]; len(appMap) > 0 {
 			ret = append(ret,
-				"  Application Credential Libraries:",
+				"  Application Credential Sources:",
 			)
 			for _, m := range appMap {
 				ret = append(ret,
@@ -609,20 +720,20 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					}
 
 					ret = append(ret,
-						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId),
-						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
-						fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type))
+						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialSource.CredentialStoreId),
+						fmt.Sprintf("    Credential Source ID:          %s", cred.CredentialSource.Id),
+						fmt.Sprintf("    Credential Source Type:        %s", cred.CredentialSource.Type))
 
-					if len(cred.CredentialLibrary.Name) > 0 {
+					if len(cred.CredentialSource.Name) > 0 {
 						ret = append(ret,
-							fmt.Sprintf("    Credential Library Name:        %s", cred.CredentialLibrary.Name))
+							fmt.Sprintf("    Credential Source Name:        %s", cred.CredentialSource.Name))
 					}
-					if len(cred.CredentialLibrary.Description) > 0 {
+					if len(cred.CredentialSource.Description) > 0 {
 						ret = append(ret,
-							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
+							fmt.Sprintf("    Credential Source Description: %s", cred.CredentialSource.Description))
 					}
 					var secretStr []string
-					switch cred.CredentialLibrary.Type {
+					switch cred.CredentialSource.Type {
 					case "vault":
 						// If it's Vault, the result will be JSON, except in
 						// specific circumstances that aren't used for

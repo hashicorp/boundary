@@ -560,6 +560,10 @@ var inputStructs = []*structInfo{
 		outFile: "targets/credential_library.gen.go",
 	},
 	{
+		inProto: &targets.CredentialSource{},
+		outFile: "targets/credential_source.gen.go",
+	},
+	{
 		inProto: &targets.SessionSecret{},
 		outFile: "targets/session_secret.gen.go",
 		fieldOverrides: []fieldInfo{
@@ -606,6 +610,7 @@ var inputStructs = []*structInfo{
 				VarName:   "hostSetIds",
 			},
 			"CredentialLibraries": {},
+			"CredentialSources":   {},
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -629,6 +634,11 @@ var inputStructs = []*structInfo{
 			{
 				Name:      "ApplicationCredentialLibraryIds",
 				ProtoName: "application_credential_library_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "ApplicationCredentialSourceIds",
+				ProtoName: "application_credential_source_ids",
 				FieldType: "[]string",
 			},
 		},

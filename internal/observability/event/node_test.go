@@ -133,7 +133,6 @@ func Test_NewCloudEventsNode(t *testing.T) {
 			for _, f := range got.deny {
 				assert.Contains(tt.wantDeny, f.raw)
 			}
-
 		})
 	}
 }
