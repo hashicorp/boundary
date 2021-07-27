@@ -27,7 +27,7 @@ type Worker struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
-	tickerWg *sync.WaitGroup
+	tickerWg sync.WaitGroup
 
 	controllerStatusConn *atomic.Value
 	lastStatusSuccess    *atomic.Value
@@ -117,7 +117,6 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
-	w.tickerWg = new(sync.WaitGroup)
 	w.tickerWg.Add(1)
 	go func() {
 		defer w.tickerWg.Done()
@@ -147,10 +146,7 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 			return fmt.Errorf("error stopping worker listeners: %w", err)
 		}
 	}
-	if w.tickerWg != nil {
-		w.tickerWg.Wait()
-	}
-
+	w.tickerWg.Wait()
 	w.started.Store(false)
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
