@@ -403,6 +403,28 @@ func Test_WriteObservation(t *testing.T) {
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
 		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			observationPayload: []observationPayload{
+				{
+					header: []interface{}{"name", "bar"},
+				},
+			},
+			header: map[string]interface{}{
+				"name": "bar",
+			},
+			observationSinkFileName: c.AllEvents.Name(),
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup: func() { event.TestResetSystEventer(t) },
+		},
+		{
 			name:                    "simple",
 			ctx:                     testCtx,
 			observationPayload:      testPayloads,
@@ -740,6 +762,30 @@ func Test_WriteAudit(t *testing.T) {
 			auditSinkFileName: c.AllEvents.Name(),
 		},
 		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantAudit: &testAudit{
+				Auth:    testAuth,
+				Request: testReq,
+			},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:           func() { event.TestResetSystEventer(t) },
+			auditSinkFileName: c.AllEvents.Name(),
+		},
+		{
 			name: "simple",
 			ctx:  ctx,
 			auditOpts: [][]event.Option{
@@ -930,6 +976,20 @@ func Test_WriteError(t *testing.T) {
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
 		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			e: &testError,
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:         func() { event.TestResetSystEventer(t) },
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
 			name: "no-info-id",
 			ctx:  testCtxNoInfoId,
 			e:    &testError,
@@ -1065,6 +1125,21 @@ func Test_WriteSysEvent(t *testing.T) {
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+		},
+		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
 			msg:  "hello",
 			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {

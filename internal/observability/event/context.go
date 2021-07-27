@@ -6,12 +6,15 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-hclog"
 )
 
 type key int
+
+const cancelledSendTimeout = 3 * time.Second
 
 const (
 	eventerKey key = iota
@@ -104,7 +107,11 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if err := eventer.writeObservation(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeObservation(sendCtx, e); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -144,7 +151,11 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %v", op, e))
 		return
 	}
-	if err := eventer.writeError(ctx, ev); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeError(sendCtx, ev); err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write error: %v", op, e))
 		return
@@ -189,7 +200,11 @@ func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if err := eventer.writeAudit(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeAudit(sendCtx, e); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -288,11 +303,34 @@ func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface
 		Op:      caller,
 		Data:    info,
 	}
-	if err := eventer.writeSysEvent(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeSysEvent(sendCtx, e); err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write sysevent: (%s) %+v", op, caller, e))
 		return
 	}
+}
+
+func newSendCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	var sendCtx context.Context
+	var sendCancel context.CancelFunc
+	switch {
+	case ctx.Err() == context.Canceled:
+		sendCtx, sendCancel = context.WithTimeout(context.Background(), cancelledSendTimeout)
+		info, ok := RequestInfoFromContext(ctx)
+		if ok {
+			reqCtx, err := NewRequestInfoContext(sendCtx, info)
+			if err == nil {
+				sendCtx = reqCtx
+			}
+		}
+	default:
+		sendCtx = ctx
+	}
+	return sendCtx, sendCancel
 }
 
 // MissingKey defines a key to be used as the "missing key" when ConvertArgs has
