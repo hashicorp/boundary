@@ -169,10 +169,10 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	updateTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
 	updateHset := hsets[1]
 
-	_, gotHostSets, _, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
+	_, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
 	require.NoError(t, err)
-	require.Equal(t, 1, len(gotHostSets))
-	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSets[0].PublicId)
+	require.Equal(t, 1, len(gotHostSources))
+	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSources[0].Id())
 	require.NoError(t, err)
 
 	tests := []struct {

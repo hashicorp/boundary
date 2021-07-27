@@ -14,8 +14,8 @@ import (
 
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
-// WithHostSets and WithCredentialSources are the only supported option.
-func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []CredentialSource, error) {
+// WithHostSources and WithCredentialSources are the only supported option.
+func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []HostSource, []CredentialSource, error) {
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
 	if target == nil {
@@ -54,8 +54,8 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
-	for _, hsId := range opts.withHostSets {
+	newHostSets := make([]interface{}, 0, len(opts.withHostSources))
+	for _, hsId := range opts.withHostSources {
 		hostSet, err := NewTargetHostSet(t.PublicId, hsId)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
@@ -74,7 +74,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 
 	metadata := t.oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
-	var returnedHostSet []*TargetSet
+	var returnedHostSources []HostSource
 	var returnedCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
@@ -97,15 +97,15 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to add host sets"))
 				}
-				if returnedHostSet, err = fetchSets(ctx, read, t.PublicId); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to read host sets"))
+				if returnedHostSources, err = fetchHostSources(ctx, read, t.PublicId); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to read host sources"))
 				}
 				msgs = append(msgs, hostSetOplogMsgs...)
 			}
 			if len(newCredLibs) > 0 {
 				credLibOplogMsgs := make([]*oplog.Message, 0, len(newCredLibs))
 				if err := w.CreateItems(ctx, newCredLibs, db.NewOplogMsgs(&credLibOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add credential sources"))
+					return errors.Wrap(err, op, errors.WithMsg("unable to add credential libraries"))
 				}
 				if returnedCredSources, err = fetchCredentialSources(ctx, read, t.PublicId); err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to read credential sources"))
@@ -122,7 +122,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
 	}
-	return returnedTarget.(*TcpTarget), returnedHostSet, returnedCredSources, nil
+	return returnedTarget.(*TcpTarget), returnedHostSources, returnedCredSources, nil
 }
 
 // UpdateTcpTarget will update a target in the repository and return the written
@@ -131,7 +131,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 // included in fieldMask. Name, Description, and WorkerFilter are the only
 // updatable fields. If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, int, error) {
+func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []HostSource, []CredentialSource, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target")
@@ -172,7 +172,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	}
 	var returnedTarget Target
 	var rowsUpdated int
-	var targetSets []*TargetSet
+	var hostSources []HostSource
 	var credSources []CredentialSource
 	_, err := r.writer.DoTx(
 		ctx,
@@ -181,7 +181,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			t := target.Clone().(*TcpTarget)
-			returnedTarget, targetSets, credSources, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
+			returnedTarget, hostSources, credSources, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -194,5 +194,5 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		}
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
 	}
-	return returnedTarget, targetSets, credSources, rowsUpdated, nil
+	return returnedTarget, hostSources, credSources, rowsUpdated, nil
 }

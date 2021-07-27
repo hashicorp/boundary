@@ -10,29 +10,29 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// AddTargetHostSets provides the ability to add host sets (hostSetIds) to a
-// target (targetId).  The target's current db version must match the
-// targetVersion or an error will be returned.   The target and a list of
-// current host set ids will be returned on success. Zero is not a valid value
-// for the WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, error) {
-	const op = "target.(Repository).AddTargetHostSets"
+// AddTargetHostSources provides the ability to add host sources (hostSourceIds)
+// to a target (targetId). The target's current db version must match the
+// targetVersion or an error will be returned.  The target and a list of current
+// host source ids will be returned on success. Zero is not a valid value for the
+// WithVersion option and will return an error.
+func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, targetVersion uint32, hostSourceIds []string, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
+	const op = "target.(Repository).AddTargetHostSources"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
-	if len(hostSetIds) == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing host set ids")
+	if len(hostSourceIds) == 0 {
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing host source ids")
 	}
-	newHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
+	newHostSources := make([]interface{}, 0, len(hostSourceIds))
+	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
-		newHostSets = append(newHostSets, ths)
+		newHostSources = append(newHostSources, ths)
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
@@ -56,7 +56,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
-	var currentHostSets []*TargetSet
+	var currentHostSources []HostSource
 	var currentCredSources []CredentialSource
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
@@ -80,18 +80,18 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
-			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
-			if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to add target host sets"))
+			hostSourcesOplogMsgs := make([]*oplog.Message, 0, len(newHostSources))
+			if err := w.CreateItems(ctx, newHostSources, db.NewOplogMsgs(&hostSourcesOplogMsgs)); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to add target host sources"))
 			}
-			msgs = append(msgs, hostSetsOplogMsgs...)
+			msgs = append(msgs, hostSourcesOplogMsgs...)
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
-			currentHostSets, err = fetchSets(ctx, reader, targetId)
+			currentHostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current host sets after adds"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current host sources after adds"))
 			}
 			currentCredSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
@@ -103,31 +103,31 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("error creating sets"))
 	}
-	return updatedTarget.(Target), currentHostSets, currentCredSources, nil
+	return updatedTarget.(Target), currentHostSources, currentCredSources, nil
 }
 
-// DeleteTargeHostSets deletes host sets from a target (targetId). The target's
-// current db version must match the targetVersion or an error will be returned.
-// Zero is not a valid value for the WithVersion option and will return an
-// error.
-func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (int, error) {
-	const op = "target.(Repository).DeleteTargeHostSets"
+// DeleteTargeHostSources deletes host sources from a target (targetId). The
+// target's current db version must match the targetVersion or an error will be
+// returned. Zero is not a valid value for the WithVersion option and will
+// return an error.
+func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId string, targetVersion uint32, hostSourceIds []string, _ ...Option) (int, error) {
+	const op = "target.(Repository).DeleteTargetHostSources"
 	if targetId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
-	if len(hostSetIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing host set ids")
+	if len(hostSourceIds) == 0 {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing host source ids")
 	}
-	deleteTargeHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
+	deleteTargetHostSources := make([]interface{}, 0, len(hostSourceIds))
+	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
-		deleteTargeHostSets = append(deleteTargeHostSets, ths)
+		deleteTargetHostSources = append(deleteTargetHostSources, ths)
 	}
 
 	t := allocTargetView()
@@ -176,16 +176,16 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
-			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(deleteTargeHostSets))
-			rowsDeleted, err := w.DeleteItems(ctx, deleteTargeHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs))
+			hostSourcesOplogMsgs := make([]*oplog.Message, 0, len(deleteTargetHostSources))
+			rowsDeleted, err := w.DeleteItems(ctx, deleteTargetHostSources, db.NewOplogMsgs(&hostSourcesOplogMsgs))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete target host sets"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to delete target host sources"))
 			}
-			if rowsDeleted != len(deleteTargeHostSets) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteTargeHostSets)))
+			if rowsDeleted != len(deleteTargetHostSources) {
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sources deleted %d did not match request for %d", rowsDeleted, len(deleteTargetHostSources)))
 			}
 			totalRowsDeleted += rowsDeleted
-			msgs = append(msgs, hostSetsOplogMsgs...)
+			msgs = append(msgs, hostSourcesOplogMsgs...)
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
@@ -199,12 +199,12 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 	return totalRowsDeleted, nil
 }
 
-// SetTargetHostSets will set the target's host sets. Set add and/or delete
-// target host sets as need to reconcile the existing sets with the sets
-// requested. If hostSetIds is empty, the target host sets will be cleared. Zero
+// SetTargetHostSources will set the target's host sources. Set add and/or delete
+// target host sources as need to reconcile the existing sets with the sets
+// requested. If hostSourceIds is empty, the target host sources will be cleared. Zero
 // is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []CredentialSource, int, error) {
-	const op = "target.(Repository).SetTargetHostSets"
+func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, targetVersion uint32, hostSourceIds []string, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
+	const op = "target.(Repository).SetTargetHostSources"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
@@ -223,16 +223,16 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	// set.
 
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
-	foundThs, err := fetchSets(ctx, r.reader, targetId)
+	foundThs, err := fetchHostSources(ctx, r.reader, targetId)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing target host sets"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing target host sources"))
 	}
-	found := map[string]*TargetSet{}
+	found := map[string]HostSource{}
 	for _, s := range foundThs {
-		found[s.PublicId] = s
+		found[s.Id()] = s
 	}
-	addHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
+	addHostSources := make([]interface{}, 0, len(hostSourceIds))
+	for _, id := range hostSourceIds {
 		if _, ok := found[id]; ok {
 			// found a match, so do nothing (we want to keep it), but remove it
 			// from found
@@ -243,19 +243,19 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
-		addHostSets = append(addHostSets, hs)
+		addHostSources = append(addHostSources, hs)
 	}
-	deleteHostSets := make([]interface{}, 0, len(hostSetIds))
+	deleteHostSources := make([]interface{}, 0, len(hostSourceIds))
 	if len(found) > 0 {
 		for _, s := range found {
-			hs, err := NewTargetHostSet(targetId, s.PublicId)
+			hs, err := NewTargetHostSet(targetId, s.Id())
 			if err != nil {
 				return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(" unable to create in memory target host set"))
 			}
-			deleteHostSets = append(deleteHostSets, hs)
+			deleteHostSources = append(deleteHostSources, hs)
 		}
 	}
-	if len(addHostSets) == 0 && len(deleteHostSets) == 0 {
+	if len(addHostSources) == 0 && len(deleteHostSources) == 0 {
 		return foundThs, nil, db.NoRowsAffected, nil
 	}
 
@@ -277,7 +277,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	}
 
 	var totalRowsAffected int
-	var currentHostSets []*TargetSet
+	var currentHostSources []HostSource
 	var currentCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
@@ -296,42 +296,42 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("set target host sets: updated target and %d rows updated", rowsUpdated))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("set target host sources: updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
 			// Write the new ones in
-			if len(addHostSets) > 0 {
-				hostSetOplogMsgs := make([]*oplog.Message, 0, len(addHostSets))
-				if err := w.CreateItems(ctx, addHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add target host sets"))
+			if len(addHostSources) > 0 {
+				hostSourceOplogMsgs := make([]*oplog.Message, 0, len(addHostSources))
+				if err := w.CreateItems(ctx, addHostSources, db.NewOplogMsgs(&hostSourceOplogMsgs)); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to add target host sources"))
 				}
-				totalRowsAffected += len(addHostSets)
-				msgs = append(msgs, hostSetOplogMsgs...)
+				totalRowsAffected += len(addHostSources)
+				msgs = append(msgs, hostSourceOplogMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 			}
 
 			// Anything we didn't take out of found needs to be removed
-			if len(deleteHostSets) > 0 {
-				hostSetOplogMsgs := make([]*oplog.Message, 0, len(deleteHostSets))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteHostSets, db.NewOplogMsgs(&hostSetOplogMsgs))
+			if len(deleteHostSources) > 0 {
+				hostSourceOplogMsgs := make([]*oplog.Message, 0, len(deleteHostSources))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteHostSources, db.NewOplogMsgs(&hostSourceOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete target host set"))
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete target host source"))
 				}
-				if rowsDeleted != len(deleteHostSets) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteHostSets)))
+				if rowsDeleted != len(deleteHostSources) {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sources deleted %d did not match request for %d", rowsDeleted, len(deleteHostSources)))
 				}
 				totalRowsAffected += rowsDeleted
-				msgs = append(msgs, hostSetOplogMsgs...)
+				msgs = append(msgs, hostSourceOplogMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			currentHostSets, err = fetchSets(ctx, reader, targetId)
+			currentHostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after set"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sources after set"))
 			}
 			currentCredSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
@@ -344,17 +344,24 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return currentHostSets, currentCredSources, totalRowsAffected, nil
+	return currentHostSources, currentCredSources, totalRowsAffected, nil
 }
 
-func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet, error) {
-	const op = "target.fetchSets"
+func fetchHostSources(ctx context.Context, r db.Reader, targetId string) ([]HostSource, error) {
+	const op = "target.fetchHostSources"
 	var hostSets []*TargetSet
 	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []interface{}{targetId}); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	// FIXME: When we have direct host additions, there will need to be an
+	// updated view that unions between sets and hosts, at which point the type
+	// above will change. For now we just take the libraries and wrap them.
 	if len(hostSets) == 0 {
 		return nil, nil
 	}
-	return hostSets, nil
+	ret := make([]HostSource, len(hostSets))
+	for i, lib := range hostSets {
+		ret[i] = lib
+	}
+	return ret, nil
 }

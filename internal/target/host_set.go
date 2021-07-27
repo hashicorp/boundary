@@ -12,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var _ HostSource = (*TargetSet)(nil)
+
 const (
 	DefaultTargetHostSetTableName = "target_host_set"
 )
@@ -104,4 +106,14 @@ type TargetSet struct {
 // TableName returns the tablename to override the default gorm table name
 func (ts *TargetSet) TableName() string {
 	return "target_set"
+}
+
+// Id returns the ID of the host set
+func (ts *TargetSet) Id() string {
+	return ts.PublicId
+}
+
+// HostCatalogId returns the ID of the catalog containing the set
+func (ts *TargetSet) HostCatalogId() string {
+	return ts.CatalogId
 }

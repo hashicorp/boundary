@@ -24,17 +24,17 @@ func Test_TestTcpTarget(t *testing.T) {
 		sets = append(sets, s.PublicId)
 	}
 	name := testTargetName(t, proj.PublicId)
-	target := TestTcpTarget(t, conn, proj.PublicId, name, WithHostSets(sets))
+	target := TestTcpTarget(t, conn, proj.PublicId, name, WithHostSources(sets))
 	require.NotNil(t)
 	require.NotEmpty(target.PublicId)
 	require.Equal(name, target.Name)
 
 	rw := db.New(conn)
-	foundSets, err := fetchSets(context.Background(), rw, target.PublicId)
+	foundSources, err := fetchHostSources(context.Background(), rw, target.PublicId)
 	require.NoError(err)
-	foundIds := make([]string, 0, len(foundSets))
-	for _, s := range foundSets {
-		foundIds = append(foundIds, s.PublicId)
+	foundIds := make([]string, 0, len(foundSources))
+	for _, s := range foundSources {
+		foundIds = append(foundIds, s.Id())
 	}
 	require.Equal(sets, foundIds)
 }

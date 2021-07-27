@@ -71,6 +71,29 @@ type TargetServiceClient interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error)
+	// AddTargetHostSources adds Host Sources to this Target. The provided request
+	// must include the Target ID to which the Host Sources will be added. All
+	// Host Sources added to the provided Target must be a child of a Catalog that
+	// is a child of the same scope as this Target. If the scope or Target IDs are
+	// missing, malformed, or reference non-existing resources, an error is
+	// returned. An error is returned if a Host Source is attempted to be added to a
+	// target that is already present on the Target.
+	AddTargetHostSources(ctx context.Context, in *AddTargetHostSourcesRequest, opts ...grpc.CallOption) (*AddTargetHostSourcesResponse, error)
+	// SetTargetHostSources sets the Target's Host Sources. Any existing Host
+	// Sources on the Target are deleted if they are not included in this request.
+	// The provided request must include the scope, and the Target ID on which the
+	// Host Sources will be set. All Host Sources in the request must be a child
+	// of a Catalog that is in the same scope as the provided Target. If any IDs
+	// are missing, malformed, or references a non-existing resource, an error is
+	// returned.
+	SetTargetHostSources(ctx context.Context, in *SetTargetHostSourcesRequest, opts ...grpc.CallOption) (*SetTargetHostSourcesResponse, error)
+	// RemoveTargetHostSources removes the Host Sources from the specified Target.
+	// The provided request must include the Target ID for the Target from which
+	// the Host Sources will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope or Catalog, an error is returned.  An error
+	// is returned if a Host Source is attempted to be removed from the Target
+	// when the Target does not have the Host Set.
+	RemoveTargetHostSources(ctx context.Context, in *RemoveTargetHostSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetHostSourcesResponse, error)
 	// Deprecated: Do not use.
 	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
 	// The provided request must include the Target ID to which the Credential
@@ -119,7 +142,7 @@ type TargetServiceClient interface {
 	// specified Target. The provided request must include the Target ID for the
 	// Target from which the Credential Sources will be removed. If the ID is
 	// missing, or malformed, an error is returned.  An error is returned if a
-	// Credential Library is attempted to be removed from the Target when the
+	// Credential Source is attempted to be removed from the Target when the
 	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(ctx context.Context, in *RemoveTargetCredentialSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialSourcesResponse, error)
 }
@@ -207,6 +230,33 @@ func (c *targetServiceClient) SetTargetHostSets(ctx context.Context, in *SetTarg
 func (c *targetServiceClient) RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error) {
 	out := new(RemoveTargetHostSetsResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetHostSets", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) AddTargetHostSources(ctx context.Context, in *AddTargetHostSourcesRequest, opts ...grpc.CallOption) (*AddTargetHostSourcesResponse, error) {
+	out := new(AddTargetHostSourcesResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetHostSources", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) SetTargetHostSources(ctx context.Context, in *SetTargetHostSourcesRequest, opts ...grpc.CallOption) (*SetTargetHostSourcesResponse, error) {
+	out := new(SetTargetHostSourcesResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/SetTargetHostSources", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) RemoveTargetHostSources(ctx context.Context, in *RemoveTargetHostSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetHostSourcesResponse, error) {
+	out := new(RemoveTargetHostSourcesResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetHostSources", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +377,29 @@ type TargetServiceServer interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error)
+	// AddTargetHostSources adds Host Sources to this Target. The provided request
+	// must include the Target ID to which the Host Sources will be added. All
+	// Host Sources added to the provided Target must be a child of a Catalog that
+	// is a child of the same scope as this Target. If the scope or Target IDs are
+	// missing, malformed, or reference non-existing resources, an error is
+	// returned. An error is returned if a Host Source is attempted to be added to a
+	// target that is already present on the Target.
+	AddTargetHostSources(context.Context, *AddTargetHostSourcesRequest) (*AddTargetHostSourcesResponse, error)
+	// SetTargetHostSources sets the Target's Host Sources. Any existing Host
+	// Sources on the Target are deleted if they are not included in this request.
+	// The provided request must include the scope, and the Target ID on which the
+	// Host Sources will be set. All Host Sources in the request must be a child
+	// of a Catalog that is in the same scope as the provided Target. If any IDs
+	// are missing, malformed, or references a non-existing resource, an error is
+	// returned.
+	SetTargetHostSources(context.Context, *SetTargetHostSourcesRequest) (*SetTargetHostSourcesResponse, error)
+	// RemoveTargetHostSources removes the Host Sources from the specified Target.
+	// The provided request must include the Target ID for the Target from which
+	// the Host Sources will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope or Catalog, an error is returned.  An error
+	// is returned if a Host Source is attempted to be removed from the Target
+	// when the Target does not have the Host Set.
+	RemoveTargetHostSources(context.Context, *RemoveTargetHostSourcesRequest) (*RemoveTargetHostSourcesResponse, error)
 	// Deprecated: Do not use.
 	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
 	// The provided request must include the Target ID to which the Credential
@@ -375,7 +448,7 @@ type TargetServiceServer interface {
 	// specified Target. The provided request must include the Target ID for the
 	// Target from which the Credential Sources will be removed. If the ID is
 	// missing, or malformed, an error is returned.  An error is returned if a
-	// Credential Library is attempted to be removed from the Target when the
+	// Credential Source is attempted to be removed from the Target when the
 	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(context.Context, *RemoveTargetCredentialSourcesRequest) (*RemoveTargetCredentialSourcesResponse, error)
 	mustEmbedUnimplementedTargetServiceServer()
@@ -411,6 +484,15 @@ func (UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetT
 }
 func (UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSets not implemented")
+}
+func (UnimplementedTargetServiceServer) AddTargetHostSources(context.Context, *AddTargetHostSourcesRequest) (*AddTargetHostSourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHostSources not implemented")
+}
+func (UnimplementedTargetServiceServer) SetTargetHostSources(context.Context, *SetTargetHostSourcesRequest) (*SetTargetHostSourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetTargetHostSources not implemented")
+}
+func (UnimplementedTargetServiceServer) RemoveTargetHostSources(context.Context, *RemoveTargetHostSourcesRequest) (*RemoveTargetHostSourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSources not implemented")
 }
 func (UnimplementedTargetServiceServer) AddTargetCredentialLibraries(context.Context, *AddTargetCredentialLibrariesRequest) (*AddTargetCredentialLibrariesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTargetCredentialLibraries not implemented")
@@ -605,6 +687,60 @@ func _TargetService_RemoveTargetHostSets_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TargetService_AddTargetHostSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddTargetHostSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).AddTargetHostSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/AddTargetHostSources",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).AddTargetHostSources(ctx, req.(*AddTargetHostSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TargetService_SetTargetHostSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTargetHostSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).SetTargetHostSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/SetTargetHostSources",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).SetTargetHostSources(ctx, req.(*SetTargetHostSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TargetService_RemoveTargetHostSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTargetHostSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).RemoveTargetHostSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/RemoveTargetHostSources",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).RemoveTargetHostSources(ctx, req.(*RemoveTargetHostSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _TargetService_AddTargetCredentialLibraries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTargetCredentialLibrariesRequest)
 	if err := dec(in); err != nil {
@@ -755,6 +891,18 @@ var TargetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveTargetHostSets",
 			Handler:    _TargetService_RemoveTargetHostSets_Handler,
+		},
+		{
+			MethodName: "AddTargetHostSources",
+			Handler:    _TargetService_AddTargetHostSources_Handler,
+		},
+		{
+			MethodName: "SetTargetHostSources",
+			Handler:    _TargetService_SetTargetHostSources_Handler,
+		},
+		{
+			MethodName: "RemoveTargetHostSources",
+			Handler:    _TargetService_RemoveTargetHostSources_Handler,
 		},
 		{
 			MethodName: "AddTargetCredentialLibraries",

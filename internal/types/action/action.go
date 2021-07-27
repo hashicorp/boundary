@@ -32,9 +32,9 @@ const (
 	AddHosts                  Type = 21
 	SetHosts                  Type = 22
 	RemoveHosts               Type = 23
-	AddHostSets               Type = 24
-	SetHostSets               Type = 25
-	RemoveHostSets            Type = 26
+	AddHostSets               Type = 24 // DEPRECATED
+	SetHostSets               Type = 25 // DEPRECATED
+	RemoveHostSets            Type = 26 // DEPRECATED
 	Cancel                    Type = 27
 	AddAccounts               Type = 28
 	SetAccounts               Type = 29
@@ -50,6 +50,9 @@ const (
 	AddCredentialSources      Type = 39
 	SetCredentialSources      Type = 40
 	RemoveCredentialSources   Type = 41
+	AddHostSources            Type = 42
+	SetHostSources            Type = 43
+	RemoveHostSources         Type = 44
 )
 
 var Map = map[string]Type{
@@ -94,6 +97,9 @@ var Map = map[string]Type{
 	AddCredentialSources.String():      AddCredentialSources,
 	SetCredentialSources.String():      SetCredentialSources,
 	RemoveCredentialSources.String():   RemoveCredentialSources,
+	AddHostSources.String():            AddHostSources,
+	SetHostSources.String():            SetHostSources,
+	RemoveHostSources.String():         RemoveHostSources,
 }
 
 func (a Type) String() string {
@@ -140,6 +146,9 @@ func (a Type) String() string {
 		"add-credential-sources",
 		"set-credential-sources",
 		"remove-credential-sources",
+		"add-host-sources",
+		"set-host-sources",
+		"remove-host-sources",
 	}[a]
 }
 

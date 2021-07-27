@@ -896,6 +896,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "set-host-sets",
 			}, nil
 		},
+		"targets add-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-host-sources",
+			}, nil
+		},
+		"targets remove-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-host-sources",
+			}, nil
+		},
+		"targets set-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-host-sources",
+			}, nil
+		},
 		"targets add-credential-libraries": func() (cli.Command, error) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
