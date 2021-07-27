@@ -100,7 +100,7 @@ func (ts *TargetLibrary) CredentialStoreId() string {
 	return ts.StoreId
 }
 
-// CredentialPurpose returns the purpose of the credentaial
+// CredentialPurpose returns the purpose of the credential
 func (ts *TargetLibrary) CredentialPurpose() credential.Purpose {
 	return credential.Purpose(ts.GetCredentialPurpose())
 }
