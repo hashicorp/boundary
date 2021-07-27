@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -844,7 +844,7 @@ HostSetIterationLoop:
 	for _, tSet := range hostSets {
 		hsId := tSet.PublicId
 		switch host.SubtypeFromId(hsId) {
-		case host.StaticSubtype:
+		case static.Subtype:
 			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
 			if err != nil {
 				return nil, err
@@ -882,7 +882,7 @@ HostSetIterationLoop:
 	defaultPort := t.GetDefaultPort()
 	var endpointHost string
 	switch host.SubtypeFromId(chosenId.hostId) {
-	case host.StaticSubtype:
+	case static.Subtype:
 		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
 			return nil, errors.New(errors.InvalidParameter, op, "errors looking up host")
@@ -1790,7 +1790,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	}
 	if req.GetHostId() != "" {
 		switch host.SubtypeFromId(req.GetHostId()) {
-		case host.StaticSubtype:
+		case static.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."
 		}

@@ -13,9 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	credpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
@@ -30,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
 	spb "github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
@@ -2226,7 +2225,7 @@ func TestAuthorizeSession(t *testing.T) {
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
+				Type:              vault.Subtype.String(),
 			},
 		}},
 		// TODO: validate the contents of the authorization token is what is expected

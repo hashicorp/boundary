@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -15,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -379,7 +379,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 
 		switch credential.SubtypeFromId(id) {
-		case credential.VaultSubtype:
+		case vault.Subtype:
 			cl, err := repo.LookupCredentialLibrary(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -404,7 +404,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	opts = append(opts, auth.WithPin(parentId))
 
 	switch credential.SubtypeFromId(parentId) {
-	case credential.VaultSubtype:
+	case vault.Subtype:
 		cs, err := repo.LookupCredentialStore(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -465,7 +465,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 	}
 	if outputFields.Has(globals.AttributesField) {
 		switch credential.SubtypeFromId(in.GetPublicId()) {
-		case credential.VaultSubtype:
+		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialLibrary)
 			if !ok {
 				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential library")
@@ -531,8 +531,8 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch credential.SubtypeFromId(req.GetItem().GetCredentialStoreId()) {
-		case credential.VaultSubtype:
-			if t := req.GetItem().GetType(); t != "" && credential.SubtypeFromType(t) != credential.VaultSubtype {
+		case vault.Subtype:
+			if t := req.GetItem().GetType(); t != "" && credential.SubtypeFromType(t) != vault.Subtype {
 				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{}
@@ -560,8 +560,8 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch credential.SubtypeFromId(req.GetId()) {
-		case credential.VaultSubtype:
-			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != credential.VaultSubtype {
+		case vault.Subtype:
+			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{}

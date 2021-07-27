@@ -1,69 +1,26 @@
 package credential
 
 import (
-	"strings"
-	"sync"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
-type Subtype int
+var registry = subtypes.NewRegistry()
 
-const (
-	UnknownSubtype Subtype = iota
-	VaultSubtype
-)
-
-func (t Subtype) String() string {
-	switch t {
-	case VaultSubtype:
-		return "vault"
-	}
-	return "unknown"
+// SubtypeFromType returns the Subtype from the provided string or if
+// no Subtype was registered with that string Unknown is returned.
+func SubtypeFromType(t string) subtypes.Subtype {
+	return registry.SubtypeFromType(t)
 }
 
-// Subtype uses the provided subtype
-func SubtypeFromType(t string) Subtype {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), VaultSubtype.String()):
-		return VaultSubtype
-	}
-	return UnknownSubtype
+// SubtypeFromId returns the Subtype from the provided id if the id's prefix
+// was registered with a Subtype. Otherwise Unknown is returned.
+func SubtypeFromId(id string) subtypes.Subtype {
+	return registry.SubtypeFromId(id)
 }
 
-func SubtypeFromId(id string) Subtype {
-	i := strings.Index(id, "_")
-	if i == -1 {
-		return UnknownSubtype
-	}
-	prefix := id[:i]
-
-	subtypeMu.RLock()
-	subtype, ok := subtypes[prefix]
-	subtypeMu.RUnlock()
-	if !ok {
-		return UnknownSubtype
-	}
-	return subtype
-}
-
-var (
-	subtypeMu sync.RWMutex
-	subtypes  = make(map[string]Subtype)
-)
-
-// Register registers the prefixes for a Subtype. Register panics if the
-// subtype is unknown.
-func Register(subtype Subtype, prefixes ...string) {
-	subtypeMu.Lock()
-	defer subtypeMu.Unlock()
-
-	switch subtype {
-	case VaultSubtype:
-	default:
-		panic("credential.Register: subtype is unknown ")
-	}
-
-	for _, prefix := range prefixes {
-		prefix = strings.TrimSpace(prefix)
-		subtypes[prefix] = subtype
-	}
+// Register registers all the prefixes for a provided Subtype. Register returns
+// an error if the subtype has already been registered or if any of the
+// prefixes are associated with another subtype.
+func Register(subtype subtypes.Subtype, prefixes ...string) error {
+	return registry.Register(subtype, prefixes...)
 }

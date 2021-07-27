@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -26,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -305,7 +305,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
-			Type:        auth.OidcSubtype.String(),
+			Type:        oidc.Subtype.String(),
 			Attributes: &structpb.Struct{
 				Fields: defaultAttributeFields(),
 			},
@@ -345,7 +345,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -353,7 +353,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -372,7 +372,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -380,7 +380,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -412,7 +412,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -484,7 +484,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
-					Type: auth.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -513,7 +513,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId:     o.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -537,7 +537,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId: o.GetPublicId(),
 					Name:    &wrapperspb.StringValue{Value: "default"},
-					Type:    auth.OidcSubtype.String(),
+					Type:    oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -563,7 +563,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -589,7 +589,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -661,7 +661,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"type"},
 				},
 				Item: &pb.AuthMethod{
-					Type: auth.OidcSubtype.String(),
+					Type: oidc.Subtype.String(),
 				},
 			},
 			res: nil,
@@ -716,7 +716,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -749,7 +749,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -782,7 +782,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -830,7 +830,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -867,7 +867,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -906,7 +906,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -945,7 +945,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -1037,7 +1037,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -1172,7 +1172,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		CreatedTime:                 am.GetCreateTime().GetTimestamp(),
 		UpdatedTime:                 am.GetUpdateTime().GetTimestamp(),
 		Version:                     am.GetVersion(),
-		Type:                        auth.OidcSubtype.String(),
+		Type:                        oidc.Subtype.String(),
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -1353,7 +1353,7 @@ func TestChangeState_OIDC(t *testing.T) {
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
-		Type:        auth.OidcSubtype.String(),
+		Type:        oidc.Subtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
 			"client_id":          structpb.NewStringValue(tpClientId),
