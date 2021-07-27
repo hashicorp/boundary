@@ -1414,7 +1414,7 @@ func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, credS
 			case credential.IngressPurpose, credential.EgressPurpose:
 				// TODO: When we support other purposes add them to different fields here.
 			default:
-				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cs.CredentialPurpose()))
+				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
 			}
 		}
 	}
