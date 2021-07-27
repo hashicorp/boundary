@@ -26,34 +26,32 @@ type LastStatusInformation struct {
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startStatusTicking"
-	go func() {
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		// This function exists to desynchronize calls to controllers from
-		// workers so we aren't always getting status updates at the exact same
-		// intervals, to ease the load on the DB.
-		getRandomInterval := func() time.Duration {
-			// 0 to 0.5 adjustment to the base
-			f := r.Float64() / 2
-			// Half a chance to be faster, not slower
-			if r.Float32() > 0.5 {
-				f = -1 * f
-			}
-			return statusInterval + time.Duration(f*float64(time.Second))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// This function exists to desynchronize calls to controllers from
+	// workers so we aren't always getting status updates at the exact same
+	// intervals, to ease the load on the DB.
+	getRandomInterval := func() time.Duration {
+		// 0 to 0.5 adjustment to the base
+		f := r.Float64() / 2
+		// Half a chance to be faster, not slower
+		if r.Float32() > 0.5 {
+			f = -1 * f
 		}
+		return statusInterval + time.Duration(f*float64(time.Second))
+	}
 
-		timer := time.NewTimer(0)
-		for {
-			select {
-			case <-cancelCtx.Done():
-				event.WriteSysEvent(cancelCtx, op, "status ticking shutting down")
-				return
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-cancelCtx.Done():
+			event.WriteSysEvent(context.TODO(), op, "status ticking shutting down")
+			return
 
-			case <-timer.C:
-				w.sendWorkerStatus(cancelCtx)
-				timer.Reset(getRandomInterval())
-			}
+		case <-timer.C:
+			w.sendWorkerStatus(cancelCtx)
+			timer.Reset(getRandomInterval())
 		}
-	}()
+	}
 }
 
 // LastStatusSuccess reports the last time we sent a successful
@@ -237,6 +235,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 // connections, regardless of whether or not the session is still
 // active.
 func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool) {
+	const op = "worker.(Worker).cleanupConnections"
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
 	w.sessionInfoMap.Range(func(key, value interface{}) bool {
@@ -253,7 +252,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, true)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 
 			// closeTime is marked by closeConnections iff the
@@ -271,7 +270,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, false)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 		}
 

@@ -36,6 +36,9 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
+	tickerWg    *sync.WaitGroup
+	schedulerWg *sync.WaitGroup
+
 	workerAuthCache *cache.Cache
 
 	// Used for testing and tracking worker health
@@ -166,18 +169,36 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext); err != nil {
+	c.schedulerWg = new(sync.WaitGroup)
+	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 
-	c.startStatusTicking(c.baseContext)
-	c.startRecoveryNonceCleanupTicking(c.baseContext)
-	c.startTerminateCompletedSessionsTicking(c.baseContext)
-	c.startCloseExpiredPendingTokens(c.baseContext)
-	c.started.Store(true)
+	c.tickerWg = new(sync.WaitGroup)
+	c.tickerWg.Add(5)
+	go func() {
+		defer c.tickerWg.Done()
+		c.startStatusTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startRecoveryNonceCleanupTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startTerminateCompletedSessionsTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startCloseExpiredPendingTokens(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.started.Store(true)
+	}()
 
 	return nil
 }
@@ -217,6 +238,12 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 	c.baseCancel()
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
+	}
+	if c.schedulerWg != nil {
+		c.schedulerWg.Wait()
+	}
+	if c.tickerWg != nil {
+		c.tickerWg.Wait()
 	}
 	c.started.Store(false)
 	if c.conf.Eventer != nil {

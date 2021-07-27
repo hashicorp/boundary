@@ -132,7 +132,7 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 // new jobs once the ctx past in is canceled.
 // The scheduler cannot be started again once the ctx is canceled, a new scheduler will
 // need to be instantiated in order to begin scheduling again.
-func (s *Scheduler) Start(ctx context.Context) error {
+func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	const op = "scheduler.(Scheduler).Start"
 	if !s.started.CAS(s.started.Load(), true) {
 		event.WriteSysEvent(ctx, op, "scheduler already started, skipping")
@@ -154,8 +154,17 @@ func (s *Scheduler) Start(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 
-	go s.start(ctx)
-	go s.monitorJobs(ctx)
+	if wg != nil {
+		wg.Add(2)
+	}
+	go func() {
+		defer wg.Done()
+		s.start(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		s.monitorJobs(ctx)
+	}()
 
 	return nil
 }
