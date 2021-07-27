@@ -81,7 +81,7 @@ func extraSynopsisFuncImpl(c *Command) string {
 		var in string
 		switch {
 		case strings.HasPrefix(c.Func, "add"):
-			in = "Add credential sourcse to"
+			in = "Add credential sources to"
 		case strings.HasPrefix(c.Func, "set"):
 			in = "Set the full contents of the credential sources on"
 		case strings.HasPrefix(c.Func, "remove"):
