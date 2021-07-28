@@ -228,23 +228,25 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
 	go func() {
-		defer rj.cancelCtx()
 		runErr := j.Run(jobContext)
-		var updateErr error
+		// Job has ended, cancel job run specific context to clean up
+		rj.cancelCtx()
 
 		// Get final status report to update run progress with
 		status := j.Status()
-
-		switch runErr {
-		case nil:
+		var updateErr error
+		switch {
+		case ctx.Err() != nil:
+			// Base context is no longer valid, skip repo updates as they will fail and exit
+		case runErr == nil:
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun, status.Completed, status.Total)
+			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total)
 		default:
 			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
-			_, updateErr = repo.FailRun(jobContext, r.PrivateId, status.Completed, status.Total)
+			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total)
 		}
 
 		if updateErr != nil {
