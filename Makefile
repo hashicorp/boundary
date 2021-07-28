@@ -180,7 +180,7 @@ docker-build:
 
 # builds multiarch from releases.hashicorp.com official binary
 docker-multiarch-build:
- 	docker buildx build \
+	docker buildx build \
 	--push \
 	--tag $(IMAGE_TAG) \
 	--tag hashicorp/boundary:latest \
