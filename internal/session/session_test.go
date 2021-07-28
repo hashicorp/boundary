@@ -131,6 +131,7 @@ func TestSession_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			assert, require := assert.New(t), require.New(t)
 			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
@@ -144,10 +145,10 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
+				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
 				require.NoError(err)
 				got.Certificate = certBytes
-				err = db.New(conn).Create(context.Background(), got)
+				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return

@@ -66,10 +66,10 @@ func allocGroup() Group {
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(Group).VetForWrite"
 	if g.PublicId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

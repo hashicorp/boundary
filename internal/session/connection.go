@@ -109,30 +109,30 @@ func (c *Connection) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the connection
 // before it's written.
-func (c *Connection) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
+func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "session.(Connection).VetForWrite"
 	opts := db.GetOpts(opt...)
 	if c.PublicId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if err := c.validateNewConnection(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return errors.NewDeprecated(errors.InvalidParameter, op, "public id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "public id is immutable")
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
-			return errors.NewDeprecated(errors.InvalidParameter, op, "session id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "session id is immutable")
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return errors.NewDeprecated(errors.InvalidParameter, op, "create time is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "create time is immutable")
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return errors.NewDeprecated(errors.InvalidParameter, op, "update time is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
 			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 	}

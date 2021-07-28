@@ -96,7 +96,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -233,7 +233,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -306,7 +306,7 @@ func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update session"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update session"))
 	}
 	return out, nil
 }

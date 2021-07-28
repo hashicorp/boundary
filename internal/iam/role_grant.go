@@ -66,10 +66,10 @@ func (g *RoleGrant) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (g *RoleGrant) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "iam.(RoleGrant).VetForWrite"
 	if g.RawGrant == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing grant")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -79,11 +79,11 @@ func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ .
 	// anyways because it should still be part of the vetting process.
 	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 	}
 	canonical := perm.CanonicalString()
 	if g.CanonicalGrant != "" && g.CanonicalGrant != canonical {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
 	}
 	g.CanonicalGrant = canonical
 

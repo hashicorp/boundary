@@ -203,7 +203,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -248,7 +248,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -298,7 +298,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -352,7 +352,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -425,7 +425,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	case auth.OidcSubtype:
 		return s.authenticateOidc(ctx, req, &authResults)
 	}
-	return nil, errors.NewDeprecated(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
+	return nil, errors.New(ctx, errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
 
 // Deprecated: use Authenticate
@@ -489,18 +489,18 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	const op = "authmethods.(Service).listFromRepo"
 	reqCtx, ok := requests.RequestContextFromCtx(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	var outUl []auth.AuthMethod
 
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth.AnonymousUserId))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for _, item := range ol {
 		outUl = append(outUl, item)
@@ -508,11 +508,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	pl, err := repo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for _, item := range pl {
 		outUl = append(outUl, item)
@@ -527,7 +527,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	case auth.PasswordSubtype:
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -536,7 +536,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	case auth.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -556,7 +556,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	case auth.PasswordSubtype:
 		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, false, errors.WrapDeprecated(err, op)
+			return nil, false, errors.Wrap(ctx, err, op)
 		}
 		if pam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
@@ -566,7 +566,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	case auth.OidcSubtype:
 		oam, dr, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
-			return nil, false, errors.WrapDeprecated(err, op)
+			return nil, false, errors.Wrap(ctx, err, op)
 		}
 		if oam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
@@ -586,14 +586,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	case auth.PasswordSubtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
-			return false, errors.WrapDeprecated(err, op)
+			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, scopeId, id)
 
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
-			return false, errors.WrapDeprecated(err, op)
+			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
 	}
@@ -602,7 +602,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(dErr) {
 			return false, nil
 		}
-		return false, errors.WrapDeprecated(dErr, op, errors.WithMsg("unable to delete auth method"))
+		return false, errors.Wrap(ctx, dErr, op, errors.WithMsg("unable to delete auth method"))
 	}
 
 	return rows > 0, nil
@@ -620,7 +620,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 
 		attrs := &pbs.OidcChangeStateAttributes{}
 		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse attributes"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse attributes"))
 		}
 
 		var opts []oidc.Option
@@ -637,7 +637,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		case publicState:
 			am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
 		default:
-			err = errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
+			err = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
 		}
 		if err != nil {
 			return nil, err
@@ -646,7 +646,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		return am, nil
 	}
 
-	return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Given auth method type does not support changing state")
+	return nil, errors.New(ctx, errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -708,7 +708,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			authMeth = am
 		default:
-			res.Error = errors.NewDeprecated(errors.InvalidPublicId, op, "unrecognized auth method type")
+			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized auth method type")
 			return res
 		}
 		parentId = authMeth.GetScopeId()
@@ -1199,16 +1199,16 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 		return nil, err
 	}
 	if tok == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token.")
 	}
 	if tok.Token == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token.")
 	}
 	if tok.GetPublicId() == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token public ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token public ID.")
 	}
 	if tok.GetScopeId() == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token, scope ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token, scope ID.")
 	}
 	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetScopeId(), tok.GetPublicId(), tok.GetToken())
 	if err != nil {
@@ -1237,19 +1237,19 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod.convertToAuthenticateResponse"
 	if req == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing request.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing request.")
 	}
 	if authResults == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results.")
 	}
 	if authResults.Scope == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results scope.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope.")
 	}
 	if authResults.Scope.Id == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results scope ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope ID.")
 	}
 	if tok == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth token.")
 	}
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,

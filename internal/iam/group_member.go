@@ -104,10 +104,10 @@ func (m *GroupMemberUser) Clone() interface{} {
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GroupMemberUser).VetForWrite"
 	if m.GroupId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	if m.MemberId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing member id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing member id")
 	}
 	return nil
 }

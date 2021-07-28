@@ -195,17 +195,17 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		default:
 			iamRepo, err := v.iamRepoFn()
 			if err != nil {
-				ret.Error = errors.WrapDeprecated(err, op, errors.WithMsg("failed to get iam repo"))
+				ret.Error = errors.Wrap(ctx, err, op, errors.WithMsg("failed to get iam repo"))
 				return
 			}
 
 			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
 			if err != nil {
-				ret.Error = errors.WrapDeprecated(err, op)
+				ret.Error = errors.Wrap(ctx, err, op)
 				return
 			}
 			if scp == nil {
-				ret.Error = errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
+				ret.Error = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
 				return
 			}
 			ret.Scope = &scopes.ScopeInfo{

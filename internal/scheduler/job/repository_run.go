@@ -19,7 +19,7 @@ import (
 func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option) ([]*Run, error) {
 	const op = "job.(Repository).RunJobs"
 	if serverId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
 	}
 
 	opts := getOpts(opt...)
@@ -28,7 +28,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, runJobsQuery, []interface{}{serverId, opts.withRunJobsLimit})
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
@@ -36,7 +36,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 				run := allocRun()
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job run"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
 			}
@@ -45,7 +45,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 		},
 	)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return runs, nil
 }
@@ -58,7 +58,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed, total int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).UpdateProgress"
 	if runId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -67,38 +67,38 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, updateProgressQuery, []interface{}{completed, total, runId})
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job run"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
 					if errors.IsNotFoundError(err) {
-						return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
 					}
-					return errors.WrapDeprecated(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return run, nil
@@ -117,7 +117,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).CompleteRun"
 	if runId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -126,36 +126,36 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, completeRunQuery, []interface{}{runId})
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job run"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
 					if errors.IsNotFoundError(err) {
-						return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
 					}
-					return errors.WrapDeprecated(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
 			if err != nil {
-				return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
 			}
 			defer rows1.Close()
 
@@ -163,12 +163,12 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			rowCnt = 0
 			for rows1.Next() {
 				if rowCnt > 0 {
-					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job would have been updated")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows1, job)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"))
 				}
 			}
 
@@ -176,7 +176,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 		},
 	)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return run, nil
@@ -192,7 +192,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).FailRun"
 	if runId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -201,38 +201,38 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, failRunQuery, []interface{}{runId})
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job run"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
 					if errors.IsNotFoundError(err) {
-						return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
 					}
-					return errors.WrapDeprecated(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return run, nil
@@ -265,7 +265,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, query, args)
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
@@ -273,7 +273,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 				run := allocRun()
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job run"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
 			}
@@ -282,7 +282,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 		},
 	)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return runs, nil
@@ -295,7 +295,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).LookupRun"
 	if runId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -304,7 +304,7 @@ func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", runId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", runId)))
 	}
 	return run, nil
 }
@@ -316,7 +316,7 @@ func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (
 func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteRun"
 	if runId == "" {
-		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -327,16 +327,16 @@ func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (
 		func(_ db.Reader, w db.Writer) (err error) {
 			rowsDeleted, err = w.Delete(ctx, run)
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", runId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", runId)))
 	}
 
 	return rowsDeleted, nil

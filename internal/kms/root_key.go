@@ -52,18 +52,18 @@ func (k *RootKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *RootKey) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (k *RootKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(RootKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.ScopeId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 		}
 	case db.UpdateOp:
-		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

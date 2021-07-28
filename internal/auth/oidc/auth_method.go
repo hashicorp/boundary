@@ -65,7 +65,7 @@ type AuthMethod struct {
 // WithApiUrl and WithCertificates and all other options are ignored.
 func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
-
+	ctx := context.TODO()
 	opts := getOpts(opt...)
 	var u string
 	switch {
@@ -116,7 +116,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		}
 	}
 	if a.OperationalState != string(InactiveState) {
-		if err := a.isComplete(); err != nil {
+		if err := a.isComplete(ctx); err != nil {
 			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
 		}
 	}
@@ -207,14 +207,14 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
 	if cipher == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	a.KeyId = cipher.KeyID()
 	if err := a.hmacClientSecret(ctx, cipher); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -223,10 +223,10 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).decrypt"
 	if cipher == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -235,15 +235,15 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
 	if cipher == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return errors.NewDeprecated(errors.Encrypt, op, "unable to generate derived key")
+		return errors.New(ctx, errors.Encrypt, op, "unable to generate derived key")
 	}
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write([]byte(a.ClientSecret))
@@ -253,26 +253,26 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 
 // isComplete() checks the auth method to see if it has all the required
 // components of a complete/valid oidc auth method.
-func (am *AuthMethod) isComplete() error {
+func (am *AuthMethod) isComplete(ctx context.Context) error {
 	const op = "oidc.(AuthMethod).isComplete"
 	var result *multierror.Error
 	if err := am.validate(op); err != nil {
-		result = multierror.Append(result, errors.WrapDeprecated(err, op))
+		result = multierror.Append(result, errors.Wrap(ctx, err, op))
 	}
 	if am.Issuer == "" {
-		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing issuer"))
+		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing issuer"))
 	}
 	if am.ApiUrl == "" {
-		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing api url"))
+		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing api url"))
 	}
 	if am.ClientId == "" {
-		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing client id"))
+		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client id"))
 	}
 	if am.ClientSecret == "" {
-		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing client secret"))
+		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client secret"))
 	}
 	if len(am.SigningAlgs) == 0 {
-		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing signing algorithms"))
+		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing signing algorithms"))
 	}
 	return result.ErrorOrNil()
 }

@@ -1003,7 +1003,7 @@ func Test_valueObjectChanges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotAdd, gotDel, err := valueObjectChanges(tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
+			gotAdd, gotDel, err := valueObjectChanges(context.TODO(), tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
@@ -1075,7 +1075,7 @@ func Test_validateFieldMask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			err := validateFieldMask(tt.fieldMask)
+			err := validateFieldMask(context.TODO(), tt.fieldMask)
 			if tt.wantErr {
 				require.Error(err)
 				return

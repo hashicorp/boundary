@@ -50,14 +50,14 @@ func (k *OplogKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *OplogKey) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (k *OplogKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(OplogKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	}
 	return nil

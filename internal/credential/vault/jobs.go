@@ -31,45 +31,45 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 	const op = "vault.RegisterJobs"
 	tokenRenewal, err := newTokenRenewalJob(r, w, kms, logger)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRenewal); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("token renewal job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("token renewal job"))
 	}
 	tokenRevoke, err := newTokenRevocationJob(r, w, kms, logger)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRevoke); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("token revocation job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("token revocation job"))
 	}
 	credRenewal, err := newCredentialRenewalJob(r, w, kms, logger)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRenewal); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("credential renewal job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential renewal job"))
 	}
 	credRevoke, err := newCredentialRevocationJob(r, w, kms, logger)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("credential revocation job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential revocation job"))
 	}
 	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms, logger)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credStoreCleanup); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("credential store cleanup job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential store cleanup job"))
 	}
 	credCleanup, err := newCredentialCleanupJob(w)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credCleanup); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("credential cleanup job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential cleanup job"))
 	}
 	return nil
 }
@@ -134,13 +134,13 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var ps []*privateStore
@@ -149,7 +149,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	// set to renew in sequence.
 	err := r.reader.SearchWhere(ctx, &ps, `token_renewal_time < wt_add_seconds_to_now(?)`, []interface{}{renewalWindow.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -158,7 +158,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	for _, s := range ps {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.renewToken(ctx, s); err != nil {
 			r.logger.Error("error renewing token", "credential store id", s.StoreId, "token status", s.TokenStatus, "error", err)
@@ -173,10 +173,10 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 	const op = "vault.(TokenRenewalJob).renewToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = s.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	token := s.token()
@@ -187,7 +187,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 
 	vc, err := s.client()
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
@@ -199,10 +199,10 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		query, values := token.updateStatusQuery(ExpiredToken)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if numRows != 1 {
-			return errors.NewDeprecated(errors.Unknown, op, "token expired but failed to update repo")
+			return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
 		}
 		if s.TokenStatus == string(CurrentToken) {
 			r.logger.Info("Vault credential store current token has expired", "credential store id", s.StoreId)
@@ -211,28 +211,28 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		// Set credentials associated with this token to expired as Vault will already cascade delete them
 		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{ExpiredCredential, token.TokenHmac})
 		if err != nil {
-			return errors.WrapDeprecated(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 		}
 
 		return nil
 	}
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to renew vault token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
 
 	tokenExpires, err := renewedToken.TokenTTL()
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get vault token expiration"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault token expiration"))
 	}
 
 	token.expiration = tokenExpires
 	query, values := token.updateExpirationQuery()
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.NewDeprecated(errors.Unknown, op, "token renewed but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "token renewed but failed to update repo")
 	}
 
 	return nil
@@ -360,13 +360,13 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Fetch all tokens in the revoke state as well as all tokens in the maintaining state
@@ -384,7 +384,7 @@ or
 	var ps []*privateStore
 	err := r.reader.SearchWhere(ctx, &ps, where, nil, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for s report
@@ -392,7 +392,7 @@ or
 	for _, s := range ps {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.revokeToken(ctx, s); err != nil {
 			r.logger.Error("error revoking token", "credential store id", s.StoreId, "error", err)
@@ -407,10 +407,10 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 	const op = "vault.(TokenRevocationJob).revokeToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = s.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	token := s.token()
@@ -421,7 +421,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 
 	vc, err := s.client()
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
@@ -432,22 +432,22 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		err = nil
 	}
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to revoke vault token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke vault token"))
 	}
 
 	query, values := token.updateStatusQuery(RevokedToken)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.NewDeprecated(errors.Unknown, op, "token revoked but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "token revoked but failed to update repo")
 	}
 
 	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
 	_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{RevokedCredential, token.TokenHmac})
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 	}
 
 	return nil
@@ -528,13 +528,13 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var creds []*privateCredential
@@ -543,7 +543,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	// multiple credentials set to renew in sequence.
 	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?) and status = ?`, []interface{}{renewalWindow.Seconds(), ActiveCredential}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -551,7 +551,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	for _, c := range creds {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		if err := r.renewCred(ctx, c); err != nil {
@@ -568,15 +568,15 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	const op = "vault.(CredentialRenewalJob).renewCred"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = c.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	vc, err := c.client()
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	cred := c.toCredential()
 
@@ -590,25 +590,25 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		query, values := cred.updateStatusQuery(ExpiredCredential)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if numRows != 1 {
-			return errors.NewDeprecated(errors.Unknown, op, "credential expired but failed to update repo")
+			return errors.New(ctx, errors.Unknown, op, "credential expired but failed to update repo")
 		}
 		return nil
 	}
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to renew credential"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
 	}
 
 	cred.expiration = time.Duration(renewedCred.LeaseDuration) * time.Second
 	query, values := cred.updateExpirationQuery()
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.NewDeprecated(errors.Unknown, op, "credential renewed but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "credential renewed but failed to update repo")
 	}
 
 	return nil
@@ -696,19 +696,19 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var creds []*privateCredential
 	err := r.reader.SearchWhere(ctx, &creds, "status = ?", []interface{}{RevokeCredential}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -716,7 +716,7 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	for _, c := range creds {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.revokeCred(ctx, c); err != nil {
 			r.logger.Error("error revoking credential", "credential id", c.PublicId, "error", err)
@@ -731,15 +731,15 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 	const op = "vault.(CredentialRenewalJob).revokeCred"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = c.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	vc, err := c.client()
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	cred := c.toCredential()
@@ -751,16 +751,16 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		err = nil
 	}
 	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to revoke credential"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke credential"))
 	}
 
 	query, values := cred.updateStatusQuery(RevokedCredential)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.NewDeprecated(errors.Unknown, op, "credential revoked but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "credential revoked but failed to update repo")
 	}
 
 	return nil
@@ -841,13 +841,13 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// TODO (lcr 06/2021): Oplog does not currently support bulk
@@ -856,7 +856,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	var stores []*CredentialStore
 	err := r.reader.SearchWhere(ctx, &stores, credStoreCleanupWhereClause, []interface{}{RevokeToken}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numStores for status report
@@ -864,7 +864,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	for _, store := range stores {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.WrapDeprecated(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
@@ -941,18 +941,18 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	numRows, err := r.writer.Exec(ctx, credCleanupQuery, nil)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	r.numCreds = numRows
 

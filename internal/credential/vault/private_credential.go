@@ -57,7 +57,7 @@ func (pc *privateCredential) decrypt(ctx context.Context, cipher wrapping.Wrappe
 			CtToken: pc.CtToken,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
 		}
 		pc.Token = ptkv.Token
 	}
@@ -71,7 +71,7 @@ func (pc *privateCredential) decrypt(ctx context.Context, cipher wrapping.Wrappe
 			CtKey: pc.CtClientKey,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
 		}
 		pc.ClientKey = pckv.Key
 	}

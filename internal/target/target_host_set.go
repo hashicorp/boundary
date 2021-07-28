@@ -59,14 +59,14 @@ func (t *TargetHostSet) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the target
 // host set before it's written.
-func (t *TargetHostSet) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (t *TargetHostSet) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "target.(TargetHostSet).VetForWrite"
 	if opType == db.CreateOp {
 		if t.TargetId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 		}
 		if t.HostSetId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
 		}
 	}
 	return nil

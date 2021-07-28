@@ -122,10 +122,10 @@ func (s *State) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the state
 // before it's written.
-func (s *State) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (s *State) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(State).VetForWrite"
 	if err := s.validate(); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

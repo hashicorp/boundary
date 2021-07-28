@@ -54,15 +54,15 @@ func (k *OidcKey) Clone() interface{} {
 func (k *OidcKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "kms.(OidcKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.RootKeyId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	case db.UpdateOp:
-		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

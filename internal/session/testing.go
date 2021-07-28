@@ -71,6 +71,7 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 // are passed into New, and withServerId is handled locally.
 func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
+	ctx := context.Background()
 	opts := getOpts(opt...)
 	require := require.New(t)
 	if c.ExpirationTime == nil {
@@ -83,25 +84,25 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
+	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
 	s.ServerId = opts.withServerId
 
 	if len(s.TofuToken) != 0 {
-		err = s.encrypt(context.Background(), wrapper)
+		err = s.encrypt(ctx, wrapper)
 	}
 	require.NoError(err)
-	err = rw.Create(context.Background(), s, opts.withDbOpts...)
+	err = rw.Create(ctx, s, opts.withDbOpts...)
 	require.NoError(err)
 
 	for _, cred := range s.DynamicCredentials {
 		cred.SessionId = s.PublicId
-		err := rw.Create(context.Background(), cred)
+		err := rw.Create(ctx, cred)
 		require.NoError(err)
 	}
 
-	ss, err := fetchStates(context.Background(), rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
+	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
 
@@ -204,5 +205,5 @@ func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Op
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
 func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(wrapper, userId, jobId, time.Now().Add(5*time.Minute))
+	return newCert(context.Background(), wrapper, userId, jobId, time.Now().Add(5*time.Minute))
 }

@@ -19,46 +19,46 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
 	if target == nil {
-		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target store")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target store")
 	}
 	if target.ScopeId == "" {
-		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	if target.Name == "" {
-		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 	if target.PublicId != "" {
-		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 
 	t := target.Clone().(*TcpTarget)
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, TcpTargetPrefix+"_") {
-			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, TcpTargetPrefix))
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, TcpTargetPrefix))
 		}
 		t.PublicId = opts.withPublicId
 	} else {
 		id, err := newTcpTargetId()
 		if err != nil {
-			return nil, nil, nil, errors.WrapDeprecated(err, op)
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
 		t.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
 	for _, hsId := range opts.withHostSets {
 		hostSet, err := NewTargetHostSet(t.PublicId, hsId)
 		if err != nil {
-			return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory target host set"))
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
 		newHostSets = append(newHostSets, hostSet)
 	}
@@ -67,7 +67,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	for _, clId := range opts.withCredentialLibraries {
 		credLib, err := NewCredentialLibrary(t.PublicId, clId)
 		if err != nil {
-			return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory target credential library"))
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target credential library"))
 		}
 		newCredLibs = append(newCredLibs, credLib)
 	}
@@ -83,44 +83,44 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		func(read db.Reader, w db.Writer) error {
 			targetTicket, err := w.GetTicket(t)
 			if err != nil {
-				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 			msgs := make([]*oplog.Message, 0, 2)
 			var targetOplogMsg oplog.Message
 			returnedTarget = t.Clone()
 			if err := w.Create(ctx, returnedTarget, db.NewOplogMsg(&targetOplogMsg)); err != nil {
-				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create target"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 			if len(newHostSets) > 0 {
 				hostSetOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
 				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add host sets"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add host sets"))
 				}
 				if returnedHostSet, err = fetchSets(ctx, read, t.PublicId); err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to read host sets"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read host sets"))
 				}
 				msgs = append(msgs, hostSetOplogMsgs...)
 			}
 			if len(newCredLibs) > 0 {
 				credLibOplogMsgs := make([]*oplog.Message, 0, len(newCredLibs))
 				if err := w.CreateItems(ctx, newCredLibs, db.NewOplogMsgs(&credLibOplogMsgs)); err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add credential libraries"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add credential libraries"))
 				}
 				if returnedCredLibs, err = fetchLibraries(ctx, read, t.PublicId); err != nil {
-					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to read host sets"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read host sets"))
 				}
 				msgs = append(msgs, credLibOplogMsgs...)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
 	}
 	return returnedTarget.(*TcpTarget), returnedHostSet, returnedCredLibs, nil
 }
@@ -134,13 +134,13 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target store")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target store")
 	}
 	if target.PublicId == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target public id")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -151,7 +151,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("sessionconnectionlimit", f):
 		case strings.EqualFold("workerfilter", f):
 		default:
-			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -168,7 +168,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 	var returnedTarget Target
 	var rowsUpdated int
@@ -183,16 +183,16 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 			t := target.Clone().(*TcpTarget)
 			returnedTarget, targetSets, credLibs, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.Name, target.ScopeId))
+			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.Name, target.ScopeId))
 		}
-		return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
 	}
 	return returnedTarget.(Target), targetSets, credLibs, rowsUpdated, nil
 }

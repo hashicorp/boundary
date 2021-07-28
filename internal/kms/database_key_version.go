@@ -64,21 +64,21 @@ func (k *DatabaseKeyVersion) Clone() interface{} {
 func (k *DatabaseKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "kms.(DatabaseKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.DatabaseKeyId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing database key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	case db.UpdateOp:
-		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }
@@ -104,7 +104,7 @@ func (k *DatabaseKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrappe
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.DatabaseKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.DatabaseKeyVersion, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func (k *DatabaseKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrappe
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.DatabaseKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.DatabaseKeyVersion, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

@@ -225,7 +225,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -263,7 +263,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -301,7 +301,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -355,7 +355,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -393,7 +393,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -431,7 +431,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -469,7 +469,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -507,7 +507,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -545,7 +545,7 @@ func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.R
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -768,7 +768,7 @@ HostSetIterationLoop:
 	case host.StaticSubtype:
 		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
-			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "errors looking up host")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "errors looking up host")
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
@@ -824,11 +824,11 @@ HostSetIterationLoop:
 	if len(reqs) > 0 {
 		credRepo, err := s.vaultCredRepoFn()
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
@@ -839,7 +839,7 @@ HostSetIterationLoop:
 		// TODO: Access the json directly from the vault response instead of re-marshalling it.
 		jSecret, err := json.Marshal(secret)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("marshalling secret to json"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
 		}
 		var sSecret *structpb.Struct
 		switch secret.(type) {
@@ -852,11 +852,11 @@ HostSetIterationLoop:
 			// decoder with UseNumber here.
 			var dSecret map[string]interface{}
 			if err := json.Unmarshal(jSecret, &dSecret); err != nil {
-				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("decoding json for proto marshaling"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
 			}
 			sSecret, err = structpb.NewStruct(dSecret)
 			if err != nil {
-				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("creating proto struct for secret"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
 			}
 		}
 		creds = append(creds, &pb.SessionCredential{
@@ -959,7 +959,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	}
 	out, hs, cl, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create target"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
@@ -1008,7 +1008,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, hs, cl, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update target"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -1027,7 +1027,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete target"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target"))
 	}
 	return rows > 0, nil
 }
@@ -1074,7 +1074,7 @@ func (s Service) setSetsInRepo(ctx context.Context, targetId string, hostSetIds 
 
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after setting host sets"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
@@ -1095,7 +1095,7 @@ func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetI
 	}
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after removing host sets"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
@@ -1133,7 +1133,7 @@ func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, lids [
 
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after setting credential libraries"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after setting credential libraries"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting credential libraries for it.")
@@ -1154,7 +1154,7 @@ func (s Service) removeLibrariesInRepo(ctx context.Context, targetId string, lid
 	}
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after removing credential libraries"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after removing credential libraries"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing credential libraries from it.")
@@ -1292,7 +1292,7 @@ func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*
 			case credential.IngressPurpose, credential.EgressPurpose:
 				// TODO: When we support other purposes add them to different fields here.
 			default:
-				return nil, errors.NewDeprecated(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
+				return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
 			}
 		}
 	}

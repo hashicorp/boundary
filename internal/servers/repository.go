@@ -77,7 +77,7 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 		[]interface{}{serverType},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.WrapDeprecated(err, "servers.listServersWithReader")
+		return nil, errors.Wrap(ctx, err, "servers.listServersWithReader")
 	}
 	return servers, nil
 }
@@ -105,7 +105,7 @@ func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string,
 		[]interface{}{serverIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.WrapDeprecated(err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
+		return nil, errors.Wrap(ctx, err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
 	}
 	return serverTags, nil
 }
@@ -115,7 +115,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	const op = "servers.UpsertServer"
 
 	if server == nil {
-		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "server is nil")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "server is nil")
 	}
 
 	opts := getOpts(opt...)
@@ -137,7 +137,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					server.Address,
 				})
 			if err != nil {
-				return errors.WrapDeprecated(err, op+":Upsert")
+				return errors.Wrap(ctx, err, op+":Upsert")
 			}
 
 			// If it's a worker, fetch the current controllers to feed to them
@@ -145,7 +145,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 				// Fetch current controllers to feed to the workers
 				controllers, err = r.listServersWithReader(ctx, read, ServerTypeController)
 				if err != nil {
-					return errors.WrapDeprecated(err, op+":ListServer")
+					return errors.Wrap(ctx, err, op+":ListServer")
 				}
 			}
 
@@ -156,7 +156,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			if opts.withUpdateTags {
 				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
 				if err != nil {
-					return errors.WrapDeprecated(err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
@@ -167,7 +167,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					tags := make([]interface{}, 0, len(server.Tags))
 					for k, v := range server.Tags {
 						if v == nil {
-							return errors.NewDeprecated(errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
 						}
 						for _, val := range v.Values {
 							tags = append(tags, ServerTag{
@@ -178,7 +178,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.WrapDeprecated(err, op+":CreateTags", errors.WithMsg(server.PrivateId))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(server.PrivateId))
 					}
 				}
 			}
@@ -201,11 +201,11 @@ type RecoveryNonce struct {
 func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
 	const op = "servers.AddRecoveryNonce"
 	if nonce == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "empty nonce")
+		return errors.New(ctx, errors.InvalidParameter, op, "empty nonce")
 	}
 	rn := &RecoveryNonce{Nonce: nonce}
 	if err := r.writer.Create(ctx, rn); err != nil {
-		return errors.WrapDeprecated(err, op+":Insertion")
+		return errors.Wrap(ctx, err, op+":Insertion")
 	}
 	return nil
 }
@@ -217,7 +217,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 
 	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
-		return db.NoRowsAffected, errors.WrapDeprecated(err, "servers.CleanupNonces")
+		return db.NoRowsAffected, errors.Wrap(ctx, err, "servers.CleanupNonces")
 	}
 	return rows, nil
 }
@@ -226,7 +226,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]*RecoveryNonce, error) {
 	var nonces []*RecoveryNonce
 	if err := r.reader.SearchWhere(ctx, &nonces, "", nil, db.WithLimit(-1)); err != nil {
-		return nil, errors.WrapDeprecated(err, "servers.ListNonces")
+		return nil, errors.Wrap(ctx, err, "servers.ListNonces")
 	}
 	return nonces, nil
 }

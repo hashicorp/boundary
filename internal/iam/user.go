@@ -69,10 +69,10 @@ func (u *User) Clone() interface{} {
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(User).VetForWrite"
 	if u.PublicId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

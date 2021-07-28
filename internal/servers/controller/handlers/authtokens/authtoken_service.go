@@ -173,7 +173,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -229,14 +229,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*authtoken.AuthTok
 	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	at, err := repo.LookupAuthToken(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if at == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
 	return at, nil
 }
@@ -245,14 +245,14 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, errors.WrapDeprecated(err, op)
+		return false, errors.Wrap(ctx, err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete user"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
