@@ -144,7 +144,8 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	}
 
 	// Shut down all connections.
-	w.CloseConnectionsForShutdownOrReload()
+	w.logger.Debug("shutting down all connections due to worker shutdown or reload")
+	w.cleanupConnections(w.baseContext, true)
 
 	// Wait for next status request to succeed. Don't wait too long;
 	// wrap the base context in a timeout equal to our status grace
@@ -180,11 +181,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 
 	w.logger.Debug("shutdown successful")
 	return nil
-}
-
-func (w *Worker) CloseConnectionsForShutdownOrReload() {
-	w.logger.Debug("shutting down all connections due to worker shutdown or reload")
-	w.cleanupConnections(w.baseContext, true)
 }
 
 func (w *Worker) Resolver() *manual.Resolver {
