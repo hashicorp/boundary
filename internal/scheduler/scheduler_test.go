@@ -383,6 +383,7 @@ func TestScheduler_Start(t *testing.T) {
 		wantErr         bool
 		wantErrContains string
 	}{
+
 		{
 			name:            "missing-ctx",
 			wg:              &sync.WaitGroup{},
@@ -394,6 +395,12 @@ func TestScheduler_Start(t *testing.T) {
 			ctx:             context.Background(),
 			wantErr:         true,
 			wantErrContains: "missing wait group",
+		},
+
+		{
+			name: "valid",
+			ctx:  context.Background(),
+			wg:   &sync.WaitGroup{},
 		},
 	}
 	for _, tt := range tests {
