@@ -3,6 +3,7 @@ package event_test
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -295,25 +296,19 @@ func Test_WriteObservation(t *testing.T) {
 	noEventId.Id = ""
 
 	type observationPayload struct {
-		header  map[string]interface{}
-		details map[string]interface{}
+		header  []interface{}
+		details []interface{}
 	}
 
 	testPayloads := []observationPayload{
 		{
-			header: map[string]interface{}{
-				"name": "bar",
-			},
+			header: []interface{}{"name", "bar"},
 		},
 		{
-			header: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			header: []interface{}{"list", []string{"1", "2"}},
 		},
 		{
-			details: map[string]interface{}{
-				"file": "temp-file.txt",
-			},
+			details: []interface{}{"file", "temp-file.txt"},
 		},
 	}
 
@@ -346,9 +341,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     testCtxNoEventInfoId,
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -397,9 +390,29 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     context.Background(),
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
+				},
+			},
+			header: map[string]interface{}{
+				"name": "bar",
+			},
+			observationSinkFileName: c.AllEvents.Name(),
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup: func() { event.TestResetSystEventer(t) },
+		},
+		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			observationPayload: []observationPayload{
+				{
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -435,7 +448,7 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
-				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header), event.WithDetails(p.details))
+				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header...), event.WithDetails(p.details...))
 				if tt.wantErrIs != nil {
 					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
@@ -507,39 +520,31 @@ func Test_Filtering(t *testing.T) {
 		name  string
 		allow []string
 		deny  []string
-		hdr   map[string]interface{}
+		hdr   []interface{}
 		found bool
 	}{
 		{
 			name:  "allowed",
 			allow: []string{`"/Data/list" contains "1"`},
-			hdr: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: true,
 		},
 		{
 			name:  "not-allowed",
 			allow: []string{`"/Data/list" contains "22"`},
-			hdr: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
-			name: "deny",
-			deny: []string{`"/Data/list" contains "1"`},
-			hdr: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			name:  "deny",
+			deny:  []string{`"/Data/list" contains "1"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
-			name: "not-deny",
-			deny: []string{`"/Data/list" contains "22"`},
-			hdr: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			name:  "not-deny",
+			deny:  []string{`"/Data/list" contains "22"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: true,
 		},
 	}
@@ -560,7 +565,7 @@ func Test_Filtering(t *testing.T) {
 			testCtx, err = event.NewRequestInfoContext(testCtx, info)
 			require.NoError(err)
 
-			require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(tt.hdr), event.WithFlush()))
+			require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(tt.hdr...), event.WithFlush()))
 
 			b, err := ioutil.ReadFile(c.AllEvents.Name())
 			assert.NoError(err)
@@ -756,6 +761,30 @@ func Test_WriteAudit(t *testing.T) {
 			auditSinkFileName: c.AllEvents.Name(),
 		},
 		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantAudit: &testAudit{
+				Auth:    testAuth,
+				Request: testReq,
+			},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:           func() { event.TestResetSystEventer(t) },
+			auditSinkFileName: c.AllEvents.Name(),
+		},
+		{
 			name: "simple",
 			ctx:  ctx,
 			auditOpts: [][]event.Option{
@@ -913,6 +942,7 @@ func Test_WriteError(t *testing.T) {
 		name            string
 		ctx             context.Context
 		e               error
+		opt             []event.Option
 		info            *event.RequestInfo
 		setup           func() error
 		cleanup         func()
@@ -945,6 +975,20 @@ func Test_WriteError(t *testing.T) {
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
 		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			e: &testError,
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:         func() { event.TestResetSystEventer(t) },
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
 			name: "no-info-id",
 			ctx:  testCtxNoInfoId,
 			e:    &testError,
@@ -959,6 +1003,22 @@ func Test_WriteError(t *testing.T) {
 			name:            "simple",
 			ctx:             testCtx,
 			e:               &testError,
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "simple-with-opt",
+			ctx:             testCtx,
+			e:               &testError,
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "stderrors",
+			ctx:             testCtx,
+			e:               stderrors.New("test std errors"),
+			opt:             []event.Option{event.WithInfo("test", "info")},
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
@@ -977,7 +1037,7 @@ func Test_WriteError(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteError(tt.ctx, event.Op(op), tt.e)
+			event.WriteError(tt.ctx, event.Op(op), tt.e, tt.opt...)
 			if tt.errSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
@@ -991,14 +1051,17 @@ func Test_WriteError(t *testing.T) {
 				gotError := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
+				fmt.Println("raw: ", string(b))
 
 				require.NoError(err)
 
-				actualError := fakeError{
-					Msg:  gotError.Data.(map[string]interface{})["error"].(map[string]interface{})["Msg"].(string),
-					Code: gotError.Data.(map[string]interface{})["error"].(map[string]interface{})["Code"].(string),
+				if _, ok := gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"]; ok {
+					actualError := fakeError{
+						Msg:  gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"].(string),
+						Code: gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Code"].(string),
+					}
+					assert.Equal(tt.e, &actualError)
 				}
-				assert.Equal(tt.e, &actualError)
 
 			}
 		})
@@ -1029,7 +1092,8 @@ func Test_WriteSysEvent(t *testing.T) {
 	tests := []struct {
 		name         string
 		ctx          context.Context
-		data         map[string]interface{}
+		data         []interface{}
+		msg          string
 		info         *event.RequestInfo
 		setup        func() error
 		cleanup      func()
@@ -1045,20 +1109,38 @@ func Test_WriteSysEvent(t *testing.T) {
 		{
 			name:        "missing-caller",
 			ctx:         ctx,
-			data:        map[string]interface{}{"data": "test-data"},
+			msg:         "hello",
+			data:        []interface{}{"data", "test-data"},
 			noOperation: true,
 		},
 		{
 			name:         "syseventer-not-initialized",
 			ctx:          context.Background(),
-			data:         map[string]interface{}{"data": "test-data"},
+			msg:          "hello",
+			data:         []interface{}{"data", "test-data"},
 			sinkFileName: c.AllEvents.Name(),
 			noOutput:     true,
 		},
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
-			data: map[string]interface{}{"data": "test-data", event.ServerName: "test-server", event.ServerAddress: "localhost"},
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+		},
+		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
@@ -1080,7 +1162,7 @@ func Test_WriteSysEvent(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteSysEvent(tt.ctx, event.Op(op), tt.data)
+			event.WriteSysEvent(tt.ctx, event.Op(op), tt.msg, tt.data...)
 			if tt.sinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.sinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.sinkFileName)
@@ -1095,8 +1177,66 @@ func Test_WriteSysEvent(t *testing.T) {
 				err = json.Unmarshal(b, gotSysEvent)
 				require.NoErrorf(err, "json: %s", string(b))
 
-				assert.Equal(tt.data, gotSysEvent.Data.(map[string]interface{})["data"].(map[string]interface{}))
+				expected := event.ConvertArgs(tt.data...)
+				expected["msg"] = tt.msg
+				assert.Equal(expected, gotSysEvent.Data.(map[string]interface{})["data"].(map[string]interface{}))
 			}
 		})
 	}
+}
+
+func TestConvertArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		args []interface{}
+		want map[string]interface{}
+	}{
+		{
+			name: "no-args",
+			args: []interface{}{},
+			want: nil,
+		},
+		{
+			name: "nil-first-arg",
+			args: []interface{}{nil},
+			want: map[string]interface{}{
+				event.MissingKey: nil,
+			},
+		},
+		{
+			name: "odd-number-of-args",
+			args: []interface{}{1, 2, 3},
+			want: map[string]interface{}{
+				"1":              2,
+				event.MissingKey: 3,
+			},
+		},
+		{
+			name: "struct-key",
+			args: []interface{}{[]struct{ name string }{{name: "alice"}}, 1},
+			want: map[string]interface{}{
+				"[{alice}]": 1,
+			},
+		},
+		{
+			name: "test-key-with-stringer",
+			args: []interface{}{testIntKeyWithStringer(11), "eleven"},
+			want: map[string]interface{}{
+				"*11*": "eleven",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := event.ConvertArgs(tt.args...)
+			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+type testIntKeyWithStringer int
+
+func (ti testIntKeyWithStringer) String() string {
+	return fmt.Sprint("*", int(ti), "*")
 }

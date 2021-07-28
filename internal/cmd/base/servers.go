@@ -259,8 +259,12 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	// logic and re-enable.
 	/*
 		proxyCfg := httpproxy.FromEnvironment()
-		b.Logger.Info("proxy environment", "http_proxy", proxyCfg.HTTPProxy,
-			"https_proxy", proxyCfg.HTTPSProxy, "no_proxy", proxyCfg.NoProxy)
+		event.WriteSysEvent(context.TODO(), op,
+			"proxy environment",
+			"http_proxy", proxyCfg.HTTPProxy,
+			"https_proxy", proxyCfg.HTTPSProxy,
+			"no_proxy",	proxyCfg.NoProxy,
+		})
 	*/
 	// Setup gorm logging
 
@@ -716,6 +720,8 @@ func MakeSighupCh() chan struct{} {
 // The minimum setting for this value is the default setting. Values
 // below this will be reset to the default.
 func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
+	const op = "base.(Server).SetStatusGracePeriodDuration"
+	ctx := context.TODO()
 	var result time.Duration
 	switch {
 	case value > 0:
@@ -726,10 +732,7 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 		v := os.Getenv(statusGracePeriodEnvVar)
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			s.Logger.Error(fmt.Sprintf("could not read setting for %s", statusGracePeriodEnvVar),
-				"err", err,
-				"value", v,
-			)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read status grace period setting", "envvar", statusGracePeriodEnvVar, "value", v))
 			break
 		}
 
@@ -737,10 +740,8 @@ func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
 	}
 
 	if result < defaultStatusGracePeriod {
-		s.Logger.Debug("invalid grace period setting or none provided, using default", "value", result, "default", defaultStatusGracePeriod)
 		result = defaultStatusGracePeriod
 	}
 
-	s.Logger.Debug("session cleanup in effect, connections will be terminated if status reports cannot be made", "grace_period", result)
 	s.StatusGracePeriodDuration = result
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -178,9 +179,9 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
 	if err != nil {
-		if s.oidcLogger != nil {
-			s.oidcLogger.Error("error starting the oidc authentication flow", "op", op, "error", err)
-		}
+		// this event.WriteError(...) may cause a dup error to be emitted...
+		// it should be removed if that's the case.
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
 		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
@@ -305,9 +306,9 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
 			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
 		default:
-			if s.oidcLogger != nil {
-				s.oidcLogger.Error("error generating parameters for token request", "op", op, "error", err)
-			}
+			// this event.WriteError(...) may cause a dup error to be emitted...
+			// it should be removed if that's the case.
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error generating parameters for token request"))
 			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
 		}
 	}

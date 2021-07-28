@@ -10,13 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
+// GeneratedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
 // the id.
-func generatedTraceId(ctx context.Context) string {
+func GeneratedTraceId(ctx context.Context) string {
 	t, err := base62.Random(20)
 	if err != nil {
 		return ""
@@ -103,7 +102,7 @@ func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.Resp
 // WrapWithEventsHandler will wrap the provided http.Handler with a
 // handler that adds an Eventer to the request context and starts/flushes gated
 // events of type: observation and audit
-func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger, kms *kms.Kms) (http.Handler, error) {
+func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
 	if h == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing handler")
@@ -111,26 +110,23 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
 	}
-	if logger == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
-	}
 	if kms == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		publicId, _, _ := auth.GetTokenFromRequest(logger, kms, r)
+		publicId, _, _ := auth.GetTokenFromRequest(ctx, kms, r)
 
 		var err error
-		id, err := event.NewId("e")
+		id, err := event.NewId(event.IdPrefix)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Trace("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 		info := &event.RequestInfo{
 			EventId:  id,
-			Id:       generatedTraceId(ctx),
+			Id:       GeneratedTraceId(ctx),
 			PublicId: publicId,
 			Method:   r.Method,
 			Path:     r.URL.RequestURI(),
@@ -138,13 +134,13 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Trace("unable to create context with request info", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 		ctx, err = event.NewEventerContext(ctx, e)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Trace("unable to create context with eventer", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with eventer", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 
@@ -157,14 +153,14 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 			start := time.Now()
 			if err := startGatedEvents(ctx, method, url, start); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to start gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to start gated events"))
 				return
 			}
 
 			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to wrap handler with optional interfaces", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to wrap handler with optional interfaces"))
 				return
 			}
 			h.ServeHTTP(wrapper, r)
@@ -172,7 +168,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 			i, _ := wrapper.(interface{ StatusCode() int })
 			if err := flushGatedEvents(ctx, method, url, i.StatusCode(), start); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to flush gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to flush gated events"))
 				return
 			}
 		}
@@ -187,9 +183,7 @@ func startGatedEvents(ctx context.Context, method, url string, startTime time.Ti
 	if startTime.IsZero() {
 		startTime = time.Now()
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithHeader(map[string]interface{}{
-		"start": startTime,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithHeader("start", startTime))
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to write observation event"))
 	}
@@ -211,11 +205,13 @@ func flushGatedEvents(ctx context.Context, method, url string, statusCode int, s
 	if !startTime.IsZero() {
 		latency = float64(stopTime.Sub(startTime)) / float64(time.Millisecond)
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithFlush(), event.WithHeader(map[string]interface{}{
-		"stop":       stopTime,
-		"latency-ms": latency,
-		"status":     statusCode,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithFlush(),
+		event.WithHeader(
+			"stop", stopTime,
+			"latency-ms", latency,
+			"status", statusCode,
+		),
+	)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush observation event"))
 	}

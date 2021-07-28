@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -34,6 +35,9 @@ type Controller struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
+
+	tickerWg    sync.WaitGroup
+	schedulerWg sync.WaitGroup
 
 	workerAuthCache *cache.Cache
 
@@ -156,26 +160,43 @@ func New(conf *Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() error {
+	const op = "controller.(Controller).Start"
 	if c.started.Load() {
-		c.logger.Info("already started, skipping")
+		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext); err != nil {
+	if err := c.scheduler.Start(c.baseContext, &c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 
-	c.startStatusTicking(c.baseContext)
-	c.startRecoveryNonceCleanupTicking(c.baseContext)
-	c.startTerminateCompletedSessionsTicking(c.baseContext)
-	c.startCloseExpiredPendingTokens(c.baseContext)
-	c.started.Store(true)
+	c.tickerWg.Add(5)
+	go func() {
+		defer c.tickerWg.Done()
+		c.startStatusTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startRecoveryNonceCleanupTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startTerminateCompletedSessionsTicking(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.startCloseExpiredPendingTokens(c.baseContext)
+	}()
+	go func() {
+		defer c.tickerWg.Done()
+		c.started.Store(true)
+	}()
 
 	return nil
 }
@@ -208,15 +229,17 @@ func (c *Controller) registerSessionCleanupJob() error {
 }
 
 func (c *Controller) Shutdown(serversOnly bool) error {
+	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
-		c.logger.Info("already shut down, skipping")
-		return nil
+		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 	}
+	defer c.started.Store(false)
 	c.baseCancel()
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
-	c.started.Store(false)
+	c.schedulerWg.Wait()
+	c.tickerWg.Wait()
 	if c.conf.Eventer != nil {
 		if err := c.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing controller eventer nodes: %w", err)

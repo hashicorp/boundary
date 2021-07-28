@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -80,6 +81,8 @@ func (l *ALPNMux) SetLogger(log hclog.Logger) {
 }
 
 func (l *ALPNMux) RegisterProto(proto string, tlsConf *tls.Config) (net.Listener, error) {
+	const op = "alpnmux.(ALPNMux).RegisterProto"
+	ctx := context.TODO()
 	switch proto {
 	case NoProto:
 		if tlsConf != nil {
@@ -110,13 +113,15 @@ func (l *ALPNMux) RegisterProto(proto string, tlsConf *tls.Config) (net.Listener
 	}
 
 	if l.log != nil && l.log.IsDebug() {
-		l.log.Debug("registered", "proto", proto)
+		event.WriteSysEvent(ctx, op, "registered", "proto", proto)
 	}
 
 	return sub, nil
 }
 
 func (l *ALPNMux) UnregisterProto(proto string) {
+	const op = "alpnmux.(ALPNMux).UnregisterProto"
+	ctx := context.TODO()
 	val, ok := l.muxMap.Load(proto)
 	if !ok {
 		return
@@ -130,7 +135,7 @@ func (l *ALPNMux) UnregisterProto(proto string) {
 	})
 	l.muxMap.Delete(proto)
 	if l.log != nil && l.log.IsDebug() {
-		l.log.Debug("unregistered", "proto", proto)
+		event.WriteSysEvent(ctx, op, "unregistered", "proto", proto)
 	}
 }
 
@@ -146,10 +151,12 @@ func (l *ALPNMux) GetListener(proto string) net.Listener {
 }
 
 func (l *ALPNMux) getConfigForClient(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	const op = "alpnmux.(ALPNMux).getConfigForClient"
+	ctx := context.TODO()
 	var ret *tls.Config
 
 	if l.log != nil && l.log.IsTrace() {
-		l.log.Trace("getting config for client", "supported_protos", hello.SupportedProtos, "server_name", hello.ServerName)
+		event.WriteSysEvent(ctx, op, "getting config for client", "supported_protos", hello.SupportedProtos, "server_name", hello.ServerName)
 	}
 
 	supportedProtos := hello.SupportedProtos
@@ -182,6 +189,8 @@ func (l *ALPNMux) getConfigForClient(hello *tls.ClientHelloInfo) (*tls.Config, e
 }
 
 func (l *ALPNMux) accept() {
+	const op = "alpnmux.(ALPNMux).accept"
+	ctx := context.TODO()
 	baseTLSConf := &tls.Config{
 		GetConfigForClient: l.getConfigForClient,
 	}
@@ -197,7 +206,7 @@ func (l *ALPNMux) accept() {
 			continue
 		}
 		if l.log != nil && l.log.IsTrace() {
-			l.log.Trace("got connection", "addr", conn.RemoteAddr())
+			event.WriteSysEvent(ctx, op, "got connection", "addr", conn.RemoteAddr())
 		}
 
 		// Do the rest in a goroutine so that a timeout in e.g. handshaking
@@ -210,7 +219,7 @@ func (l *ALPNMux) accept() {
 			peeked, err := bufConn.buffer.Peek(3)
 			if err != nil {
 				if l.log != nil && l.log.IsDebug() {
-					l.log.Debug("error peeking connection", "addr", conn.RemoteAddr(), "error", err)
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error peeking connection", "addr", conn.RemoteAddr()))
 				}
 				bufConn.Close()
 				return
@@ -220,18 +229,18 @@ func (l *ALPNMux) accept() {
 			// third can be 3 or 1 depending on the implementation
 			case peeked[0] != 0x16 || peeked[1] != 0x03 || (peeked[2] != 0x03 && peeked[2] != 0x01):
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("connection is not tls", "addr", conn.RemoteAddr())
+					event.WriteSysEvent(ctx, op, "connection is not tls", "addr", conn.RemoteAddr())
 				}
 				val, ok := l.muxMap.Load(NoProto)
 				if !ok {
 					if l.log != nil && l.log.IsTrace() {
-						l.log.Trace("no non-tls registration found", "addr", conn.RemoteAddr())
+						event.WriteSysEvent(ctx, op, "no non-tls registration found", "addr", conn.RemoteAddr())
 					}
 					bufConn.Close()
 					return
 				}
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("found noproto handler", "addr", conn.RemoteAddr())
+					event.WriteSysEvent(ctx, op, "found noproto handler", "addr", conn.RemoteAddr())
 				}
 				ml := val.(*muxedListener)
 				ml.connMutex.RLock()
@@ -242,36 +251,36 @@ func (l *ALPNMux) accept() {
 
 			default:
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("connection is tls", "addr", conn.RemoteAddr())
+					event.WriteSysEvent(ctx, op, "connection is tls", "addr", conn.RemoteAddr())
 				}
 				tlsConn := tls.Server(bufConn, baseTLSConf)
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("handshaking", "addr", conn.RemoteAddr())
+					event.WriteSysEvent(ctx, op, "handshaking", "addr", conn.RemoteAddr())
 				}
 				if err := tlsConn.Handshake(); err != nil {
 					closeErr := tlsConn.Close()
 					if l.log != nil && l.log.IsDebug() {
-						l.log.Debug("error handshaking connection", "addr", conn.RemoteAddr(), "error", err, "close_error", closeErr)
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error handshaking connection", "addr", conn.RemoteAddr(), "close_error", closeErr))
 					}
 					return
 				}
 				negProto := tlsConn.ConnectionState().NegotiatedProtocol
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("tls negotiated", "addr", conn.RemoteAddr(), "proto", negProto)
+					event.WriteSysEvent(ctx, op, "tls negotiated", "addr", conn.RemoteAddr(), "proto", negProto)
 				}
 				val, ok := l.muxMap.Load(negProto)
 				if !ok {
 					val, ok = l.muxMap.Load(DefaultProto)
 					if !ok {
 						if l.log != nil && l.log.IsTrace() {
-							l.log.Trace("no handler found", "addr", conn.RemoteAddr(), "proto", negProto)
+							event.WriteSysEvent(ctx, op, "no handler found", "addr", conn.RemoteAddr(), "proto", negProto)
 						}
 						tlsConn.Close()
 						return
 					}
 				}
 				if l.log != nil && l.log.IsTrace() {
-					l.log.Trace("found tls handler", "addr", conn.RemoteAddr(), "proto", negProto)
+					event.WriteSysEvent(ctx, op, "found tls handler", "addr", conn.RemoteAddr(), "proto", negProto)
 				}
 				ml := val.(*muxedListener)
 				ml.connMutex.RLock()
