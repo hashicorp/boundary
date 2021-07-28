@@ -30,6 +30,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   it significantly easier to write filters to create [managed
   groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
   ([PR](https://github.com/hashicorp/boundary/pull/1419))
+* Controllers will now mark connections as closed in the database if the worker
+  has not reported its status; this can be seen as the controller counterpart to
+  the worker-side session cleanup functionality released in 0.4.0. As with the
+  worker, this timeout for this behavior is 15s. Additionally, in a split-brain
+  scenario where the worker is actually online but has not for some reason
+  already canceled the connection due to the aforementioned worker-side cleanup,
+  when the connection between worker and controller is restored, the worker will
+  close the connection on the next status update.
+* Workers will shut down connections gracefully upon shutdown of the worker,
+  both closing the connection and sending a request to mark the connection as
+  closed in the database.
+* Pressing CTRL-C (or sending a SIGINT) when Boundary is already shutting
+  down due to a CTRL-C or interrupt will now cause Boundary to immediately shut
+  down non-gracefully. This may leave various parts of the Boundary deployment
+  (namely sessions or connections) in an inconsistent state.
 
 ### Bug Fixes
 
@@ -70,8 +85,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   username/password and `boundary connect postgres` is the helper being used,
   the command will automatically pass the credentials to the `psql` process.
 * The worker will now close any existing proxy connections it is handling when
-  it cannot make a status request to the worker. The timeout for this behavior
-  is currently 15 seconds.
+  it cannot make a status request to the controller. The timeout for this
+  behavior is currently 15 seconds.
 
 NOTE: When using credential brokering, remember that if the user can connect
 directly to the end resource, they can use the brokered username and password
