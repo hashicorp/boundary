@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -583,6 +585,7 @@ func (c *Command) StartWorker() error {
 }
 
 func (c *Command) WaitForInterrupt() int {
+	const op = "server.(Command).WaitForInterrupt"
 	// Wait for shutdown
 	shutdownTriggered := false
 
@@ -623,13 +626,13 @@ func (c *Command) WaitForInterrupt() int {
 				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
 			}
 			if err != nil {
-				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
 				goto RUNRELOADFUNCS
 			}
 
 			// Ensure at least one config was found.
 			if newConf == nil {
-				c.Logger.Error("no config found at reload time")
+				event.WriteError(context.TODO(), op, stderrors.New("no config found at reload time"))
 				goto RUNRELOADFUNCS
 			}
 
@@ -647,7 +650,7 @@ func (c *Command) WaitForInterrupt() int {
 				case "err", "error":
 					level = hclog.Error
 				default:
-					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
+					event.WriteError(context.TODO(), op, stderrors.New("unknown log level found on reload"), event.WithInfo("level", newConf.LogLevel))
 					goto RUNRELOADFUNCS
 				}
 				c.Logger.SetLevel(level)
@@ -661,7 +664,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 

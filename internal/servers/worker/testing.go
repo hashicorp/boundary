@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -183,6 +184,7 @@ type TestWorkerOpts struct {
 }
 
 func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
+	const op = "worker.NewTestWorker"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	tw := &TestWorker{
@@ -234,7 +236,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tw.b.Logger.Info("worker name generated", "name", opts.Config.Worker.Name)
+		event.WriteSysEvent(ctx, op, "worker name generated", "name", opts.Config.Worker.Name)
 	}
 	tw.name = opts.Config.Worker.Name
 
@@ -285,6 +287,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 }
 
 func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts) *TestWorker {
+	const op = "worker.(TestWorker).AddClusterWorkerMember"
 	if opts == nil {
 		opts = new(TestWorkerOpts)
 	}
@@ -295,16 +298,13 @@ func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts)
 		Logger:                    tw.w.conf.Logger,
 		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
 	}
-	if opts.Logger != nil {
-		nextOpts.Logger = opts.Logger
-	}
 	if nextOpts.Name == "" {
 		var err error
 		nextOpts.Name, err = base62.Random(5)
 		if err != nil {
 			t.Fatal(err)
 		}
-		nextOpts.Logger.Info("worker name generated", "name", nextOpts.Name)
+		event.WriteSysEvent(context.TODO(), op, "worker name generated", "name", nextOpts.Name)
 	}
 	return NewTestWorker(t, nextOpts)
 }
