@@ -163,7 +163,7 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		s.start(ctx)
+		s.start(ctx, wg)
 	}()
 	go func() {
 		defer wg.Done()
@@ -173,7 +173,7 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *Scheduler) start(ctx context.Context) {
+func (s *Scheduler) start(ctx context.Context, wg *sync.WaitGroup) {
 	const op = "scheduler.(Scheduler).start"
 	timer := time.NewTimer(s.runJobsInterval)
 	for {
@@ -182,7 +182,6 @@ func (s *Scheduler) start(ctx context.Context) {
 			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
-
 			repo, err := s.jobRepoFn()
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
@@ -196,7 +195,7 @@ func (s *Scheduler) start(ctx context.Context) {
 			}
 
 			for _, r := range runs {
-				err := s.runJob(ctx, r)
+				err := s.runJob(ctx, wg, r)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
 					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
@@ -210,7 +209,7 @@ func (s *Scheduler) start(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
+func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) error {
 	const op = "scheduler.(Scheduler).runJob"
 	regJob, ok := s.registeredJobs.Load(r.JobName)
 	if !ok {
@@ -231,8 +230,10 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	var jobContext context.Context
 	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
+	wg.Add(1)
 	go func() {
 		defer rj.cancelCtx()
+		defer wg.Done()
 		runErr := j.Run(jobContext)
 
 		// Get final status report to update run progress with
