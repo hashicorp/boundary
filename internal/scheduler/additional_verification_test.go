@@ -517,9 +517,8 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
 	// call unexported start in order to bypass monitor loop
-	go sched.start(baseCtx, &wg)
+	go sched.start(baseCtx)
 
 	// Wait for scheduler to run job
 	<-jobReady

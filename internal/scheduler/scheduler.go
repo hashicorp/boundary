@@ -163,7 +163,7 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		s.start(ctx, wg)
+		s.start(ctx)
 	}()
 	go func() {
 		defer wg.Done()
@@ -173,12 +173,15 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *Scheduler) start(ctx context.Context, wg *sync.WaitGroup) {
+func (s *Scheduler) start(ctx context.Context) {
 	const op = "scheduler.(Scheduler).start"
 	timer := time.NewTimer(s.runJobsInterval)
+	var wg sync.WaitGroup
 	for {
 		select {
 		case <-ctx.Done():
+			event.WriteSysEvent(ctx, op, "scheduling loop received shutdown, waiting for jobs to finish", "server id", s.serverId)
+			wg.Wait()
 			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
@@ -195,7 +198,7 @@ func (s *Scheduler) start(ctx context.Context, wg *sync.WaitGroup) {
 			}
 
 			for _, r := range runs {
-				err := s.runJob(ctx, wg, r)
+				err := s.runJob(ctx, &wg, r)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
 					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
