@@ -92,6 +92,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "job already running",
 		Kind:    State,
 	},
+	SubtypeAlreadyRegistered: {
+		Message: "subtype already registered",
+		Kind:    Parameter,
+	},
 	InvalidDynamicCredential: {
 		Message: "dynamic credential for session is in an invalid state",
 		Kind:    Integrity,

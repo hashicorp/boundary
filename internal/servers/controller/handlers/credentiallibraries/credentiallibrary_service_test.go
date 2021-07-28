@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +62,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       l.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
 			Version:           l.GetVersion(),
-			Type:              credential.VaultSubtype.String(),
+			Type:              vault.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
@@ -251,7 +250,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "parent id must be included",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
-				Type: credential.VaultSubtype.String(),
+				Type: vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -351,7 +350,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.VaultSubtype.String(),
+					Type:              vault.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 							Path:            wrapperspb.String("something"),
@@ -391,7 +390,7 @@ func TestCreate(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.VaultSubtype.String(),
+					Type:              vault.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
@@ -480,7 +479,7 @@ func TestGet(t *testing.T) {
 					Id:                vl.GetPublicId(),
 					CredentialStoreId: vl.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.VaultSubtype.String(),
+					Type:              vault.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       vl.CreateTime.GetTimestamp(),
 					UpdatedTime:       vl.UpdateTime.GetTimestamp(),

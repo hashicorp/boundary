@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"go.uber.org/atomic"
 )
@@ -65,6 +66,16 @@ func TestRegistrationErrors(t *testing.T) {
 }
 
 func TestListening(t *testing.T) {
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, "TestListening", event.WithEventerConfig(testConfig))
+	if err != nil {
+		t.Fatal(err)
+	}
 	listener := getListener(t)
 
 	logger := hclog.Default()

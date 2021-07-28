@@ -99,6 +99,18 @@ func DefaultApplicationCredentialLibraryIds() Option {
 	}
 }
 
+func WithApplicationCredentialSourceIds(inApplicationCredentialSourceIds []string) Option {
+	return func(o *options) {
+		o.postMap["application_credential_source_ids"] = inApplicationCredentialSourceIds
+	}
+}
+
+func DefaultApplicationCredentialSourceIds() Option {
+	return func(o *options) {
+		o.postMap["application_credential_source_ids"] = nil
+	}
+}
+
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes

@@ -127,11 +127,26 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 		if spaces < 0 {
 			spaces = 0
 		}
+		vOut := fmt.Sprintf("%v", v)
+		switch v.(type) {
+		case map[string]interface{}:
+			buf, err := json.MarshalIndent(v, strings.Repeat(" ", prefixSpaces), "  ")
+			if err != nil {
+				vOut = "[Unable to Print]"
+				break
+			}
+			bStrings := strings.Split(string(buf), "\n")
+			if len(bStrings) > 0 {
+				// Indent doesn't apply to the first line 🙄
+				bStrings[0] = fmt.Sprintf("\n%s%s", strings.Repeat(" ", prefixSpaces), bStrings[0])
+			}
+			vOut = strings.Join(bStrings, "\n")
+		}
 		ret = append(ret, fmt.Sprintf("%s%s%s%s",
 			strings.Repeat(" ", prefixSpaces),
 			fmt.Sprintf("%s: ", k),
 			strings.Repeat(" ", spaces),
-			fmt.Sprintf("%v", v),
+			vOut,
 		))
 	}
 

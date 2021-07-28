@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -180,14 +181,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
-	testEventer, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_WrapWithEventsHandler", c.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
 		name            string
 		h               http.Handler
 		e               *event.Eventer
-		logger          hclog.Logger
 		kms             *kms.Kms
 		statusCode      int
 		noEventJson     bool
@@ -197,7 +197,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		{
 			name:            "missing handler",
 			e:               testEventer,
-			logger:          hclog.Default(),
 			kms:             testKms,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing handler",
@@ -207,24 +206,14 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			h: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintln(w, "Hello, client")
 			}),
-			logger:          hclog.Default(),
 			kms:             testKms,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing eventer",
 		},
 		{
-			name:            "missing logger",
-			h:               testHander,
-			e:               testEventer,
-			kms:             testKms,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing logger",
-		},
-		{
 			name:            "missing kms",
 			h:               testHander,
 			e:               testEventer,
-			logger:          hclog.Default(),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing kms",
 		},
@@ -234,11 +223,10 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			e: func() *event.Eventer {
 				b := &testMockBroker{errorOnSendAudit: true}
 				c := event.EventerConfig{AuditEnabled: true}
-				e, err := event.NewEventer(testLogger, testLock, c, event.TestWithBroker(t, b))
+				e, err := event.NewEventer(testLogger, testLock, "audit-startGatedEvents", c, event.TestWithBroker(t, b))
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:      hclog.Default(),
 			kms:         testKms,
 			statusCode:  http.StatusInternalServerError,
 			noEventJson: true,
@@ -249,11 +237,10 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			e: func() *event.Eventer {
 				b := &testMockBroker{errorOnFlush: true}
 				c := event.EventerConfig{AuditEnabled: true}
-				e, err := event.NewEventer(testLogger, testLock, c, event.TestWithBroker(t, b))
+				e, err := event.NewEventer(testLogger, testLock, "audit-flushGatedEvents", c, event.TestWithBroker(t, b))
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:      hclog.Default(),
 			kms:         testKms,
 			statusCode:  http.StatusTeapot, // this isn't ideal, but the write by the test handler will send an teapot status
 			noEventJson: true,
@@ -262,7 +249,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			name:       "success",
 			h:          testHander,
 			e:          testEventer,
-			logger:     hclog.Default(),
 			kms:        testKms,
 			statusCode: http.StatusTeapot,
 		},
@@ -270,7 +256,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.logger, tt.kms)
+			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)
@@ -299,7 +285,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 					assert.Lenf(b, 0, "expected no json for internal errors but got %s", string(b))
 					return
 				}
-				got := &eventJson{}
+				got := &cloudevents.Event{}
 				err = json.Unmarshal(b, got)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -311,13 +297,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Payload["id"].(string),
+					Id:     got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
 					"status":     http.StatusTeapot,
-					"start":      got.Payload["header"].(map[string]interface{})["start"].(string),
-					"stop":       got.Payload["header"].(map[string]interface{})["stop"].(string),
-					"latency-ms": got.Payload["header"].(map[string]interface{})["latency-ms"].(float64),
+					"start":      got.Data.(map[string]interface{})["start"].(string),
+					"stop":       got.Data.(map[string]interface{})["stop"].(string),
+					"latency-ms": got.Data.(map[string]interface{})["latency-ms"].(float64),
 				}
 				wantJson := testJson(t, event.ObservationType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -329,7 +315,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				b, err := ioutil.ReadFile(c.AuditEvents.Name())
 				assert.NoError(err)
 
-				got := &eventJson{}
+				got := &cloudevents.Event{}
 				err = json.Unmarshal(b, got)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -341,12 +327,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Payload["id"].(string),
+					// Id:     got.Data.(map[string]interface{})["id"].(string),
+					Id: got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
-					"id":              got.Payload["id"].(string),
-					"timestamp":       got.Payload["timestamp"].(string),
-					"serialized_hmac": got.Payload["serialized_hmac"].(string),
+					"id":              got.Data.(map[string]interface{})["id"].(string),
+					"timestamp":       got.Data.(map[string]interface{})["timestamp"].(string),
+					"serialized_hmac": got.Data.(map[string]interface{})["serialized_hmac"].(string),
 				}
 				wantJson := testJson(t, event.AuditType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -397,7 +384,7 @@ func Test_startGatedEvents(t *testing.T) {
 				Mutex: testLock,
 				Name:  "test",
 			})
-			e, err := event.NewEventer(testLogger, testLock, config, event.TestWithBroker(t, b))
+			e, err := event.NewEventer(testLogger, testLock, tt.name, config, event.TestWithBroker(t, b))
 			require.NoError(err)
 			ctx, err := event.NewEventerContext(context.Background(), e)
 			require.NoError(err)
@@ -456,7 +443,7 @@ func Test_flushGatedEvents(t *testing.T) {
 				Mutex: testLock,
 				Name:  "test",
 			})
-			e, err := event.NewEventer(testLogger, testLock, config, event.TestWithBroker(t, b))
+			e, err := event.NewEventer(testLogger, testLock, tt.name, config, event.TestWithBroker(t, b))
 			require.NoError(err)
 			ctx, err := event.NewEventerContext(context.Background(), e)
 			require.NoError(err)
@@ -482,8 +469,9 @@ type testMockBroker struct {
 
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
 	const op = "common.(testMockBroker).Send"
+	_, isGateable := payload.(gated.Gateable)
 	switch {
-	case b.errorOnFlush && payload.(gated.Gateable).FlushEvent():
+	case b.errorOnFlush && isGateable && payload.(gated.Gateable).FlushEvent():
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
 	case b.errorOnSendAudit && t == eventlogger.EventType(event.AuditType):
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send audit event")
@@ -506,7 +494,7 @@ type eventJson struct {
 	Payload   map[string]interface{} `json:"payload"`
 }
 
-func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *eventJson, hdr, details map[string]interface{}) []byte {
+func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	const (
 		testAuditVersion       = "v0.1"
@@ -520,19 +508,15 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 	switch eventType {
 	case event.ObservationType:
 		payload = map[string]interface{}{
-			event.IdField: got.Payload[event.IdField].(string),
-			event.HeaderField: map[string]interface{}{
-				event.RequestInfoField: reqInfo,
-				event.VersionField:     testObservationVersion,
-			},
+			event.RequestInfoField: reqInfo,
+			event.VersionField:     testObservationVersion,
 		}
-		h := payload[event.HeaderField].(map[string]interface{})
 		for k, v := range hdr {
-			h[k] = v
+			payload[k] = v
 		}
 	case event.AuditType:
 		payload = map[string]interface{}{
-			event.IdField:          got.Payload[event.IdField].(string),
+			event.IdField:          got.Data.(map[string]interface{})[event.IdField].(string),
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testAuditVersion,
 			event.TypeField:        event.ApiRequest,
@@ -541,16 +525,20 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 			payload[k] = v
 		}
 	}
-	j := eventJson{
-		CreatedAt: got.CreatedAt,
-		EventType: string(eventType),
-		Payload:   payload,
+	j := cloudevents.Event{
+		ID:              got.ID,
+		Time:            got.Time,
+		Source:          got.Source,
+		SpecVersion:     got.SpecVersion,
+		Type:            got.Type,
+		DataContentType: got.DataContentType,
+		Data:            payload,
 	}
 
 	if details != nil {
 		details[event.OpField] = string(caller)
-		d := got.Payload[event.DetailsField].([]interface{})[0].(map[string]interface{})
-		j.Payload[event.DetailsField] = []struct {
+		d := got.Data.(map[string]interface{})[event.DetailsField].([]interface{})[0].(map[string]interface{})
+		j.Data.(map[string]interface{})[event.DetailsField] = []struct {
 			CreatedAt string                 `json:"created_at"`
 			Type      string                 `json:"type"`
 			Payload   map[string]interface{} `json:"payload"`

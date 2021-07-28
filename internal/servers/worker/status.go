@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
@@ -23,34 +25,33 @@ type LastStatusInformation struct {
 }
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
-	go func() {
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		// This function exists to desynchronize calls to controllers from
-		// workers so we aren't always getting status updates at the exact same
-		// intervals, to ease the load on the DB.
-		getRandomInterval := func() time.Duration {
-			// 0 to 0.5 adjustment to the base
-			f := r.Float64() / 2
-			// Half a chance to be faster, not slower
-			if r.Float32() > 0.5 {
-				f = -1 * f
-			}
-			return statusInterval + time.Duration(f*float64(time.Second))
+	const op = "worker.(Worker).startStatusTicking"
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// This function exists to desynchronize calls to controllers from
+	// workers so we aren't always getting status updates at the exact same
+	// intervals, to ease the load on the DB.
+	getRandomInterval := func() time.Duration {
+		// 0 to 0.5 adjustment to the base
+		f := r.Float64() / 2
+		// Half a chance to be faster, not slower
+		if r.Float32() > 0.5 {
+			f = -1 * f
 		}
+		return statusInterval + time.Duration(f*float64(time.Second))
+	}
 
-		timer := time.NewTimer(0)
-		for {
-			select {
-			case <-cancelCtx.Done():
-				w.logger.Info("status ticking shutting down")
-				return
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-cancelCtx.Done():
+			event.WriteSysEvent(context.TODO(), op, "status ticking shutting down")
+			return
 
-			case <-timer.C:
-				w.sendWorkerStatus(cancelCtx)
-				timer.Reset(getRandomInterval())
-			}
+		case <-timer.C:
+			w.sendWorkerStatus(cancelCtx)
+			timer.Reset(getRandomInterval())
 		}
-	}()
+	}
 }
 
 // LastStatusSuccess reports the last time we sent a successful
@@ -67,17 +68,18 @@ func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 // The timeout is aligned with the worker's status grace period. A nil error
 // means the status was sent successfully.
 func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
-	w.logger.Debug("waiting for next status report to controller")
+	const op = "worker.(Worker).WaitForNextSuccessfulStatusUpdate"
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer cancel()
+	event.WriteSysEvent(ctx, op, "waiting for next status report to controller")
 	for {
 		select {
 		case <-time.After(time.Second):
 			// pass
 
 		case <-ctx.Done():
-			w.logger.Error("error waiting for next status report to controller", "err", ctx.Err())
+			event.WriteError(ctx, op, ctx.Err(), event.WithInfoMsg("error waiting for next status report to controller"))
 			return ctx.Err()
 		}
 
@@ -86,11 +88,12 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 		}
 	}
 
-	w.logger.Debug("next worker status update sent successfully")
+	event.WriteSysEvent(ctx, op, "next worker status update sent successfully")
 	return nil
 }
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
+	const op = "worker.(Worker).sendWorkerStatus"
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus
@@ -148,7 +151,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		UpdateTags: w.updateTags.Load(),
 	})
 	if err != nil {
-		w.logger.Error("error making status request to controller", "error", err)
+		event.WriteError(statusCtx, op, err, event.WithInfoMsg("error making status request to controller"))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
@@ -159,9 +162,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		// connections should continue to exist.
 
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
-			w.logger.Warn("status error grace period has expired, canceling all sessions on worker",
-				"last_status_time", lastStatusTime.String(),
-				"grace_period", gracePeriod,
+			event.WriteError(statusCtx, op,
+				errors.New("status error grace period has expired, canceling all sessions on worker"),
+				event.WithInfo("last_status_time", lastStatusTime.String(), "grace_period", gracePeriod),
 			)
 
 			// Run a "cleanup" for all sessions that will not be caught by
@@ -169,7 +172,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			w.cleanupConnections(cancelCtx, true)
 		}
 	} else {
-		w.logger.Trace("successfully sent status to controller")
 		w.updateTags.Store(false)
 		addrs := make([]resolver.Address, 0, len(result.Controllers))
 		strAddrs := make([]string, 0, len(result.Controllers))
@@ -177,17 +179,16 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			addrs = append(addrs, resolver.Address{Addr: v.Address})
 			strAddrs = append(strAddrs, v.Address)
 		}
-		w.logger.Trace("found controllers", "addresses", strAddrs)
 		switch len(strAddrs) {
 		case 0:
-			w.logger.Warn("got no controller addresses from controller; possibly prior to first status save, not persisting")
+			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
 		default:
 			w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 		}
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 		for _, request := range result.GetJobsRequests() {
-			w.logger.Trace("got job request from controller", "request", request)
+			event.WriteSysEvent(statusCtx, op, "got job request from controller", "request", request)
 			switch request.GetRequestType() {
 			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 				switch request.GetJob().GetType() {
@@ -196,7 +197,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					sessionId := sessInfo.GetSessionId()
 					siRaw, ok := w.sessionInfoMap.Load(sessionId)
 					if !ok {
-						w.logger.Warn("session change requested but could not find local information for it", "session_id", sessionId)
+						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
 						continue
 					}
 					si := siRaw.(*sessionInfo)
@@ -208,7 +209,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 						connId := conn.GetConnectionId()
 						connInfo, ok := si.connInfoMap[connId]
 						if !ok {
-							w.logger.Warn("connection change requested but could not find local information for it", "connection_id", connId)
+							event.WriteError(statusCtx, op, errors.New("connection change requested but could not find local information for it"), event.WithInfo("connection_id", connId))
 							continue
 						}
 
@@ -234,6 +235,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 // connections, regardless of whether or not the session is still
 // active.
 func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool) {
+	const op = "worker.(Worker).cleanupConnections"
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
 	w.sessionInfoMap.Range(func(key, value interface{}) bool {
@@ -250,7 +252,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, true)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 
 			// closeTime is marked by closeConnections iff the
@@ -268,7 +270,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, false)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
+				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 		}
 

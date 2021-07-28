@@ -15,7 +15,7 @@ import (
 // targetVersion or an error will be returned.   The target and a list of
 // current host set ids will be returned on success. Zero is not a valid value
 // for the WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
+func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, error) {
 	const op = "target.(Repository).AddTargetHostSets"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -57,7 +57,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	var currentHostSets []*TargetSet
-	var currentCredLibs []*TargetLibrary
+	var currentCredSources []CredentialSource
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -93,9 +93,9 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current host sets after adds"))
 			}
-			currentCredLibs, err = fetchLibraries(ctx, reader, targetId)
+			currentCredSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current credential libraries after adds"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current credential sources after adds"))
 			}
 			return nil
 		},
@@ -103,7 +103,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("error creating sets"))
 	}
-	return updatedTarget.(Target), currentHostSets, currentCredLibs, nil
+	return updatedTarget.(Target), currentHostSets, currentCredSources, nil
 }
 
 // DeleteTargeHostSets deletes host sets from a target (targetId). The target's
@@ -203,7 +203,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // target host sets as need to reconcile the existing sets with the sets
 // requested. If hostSetIds is empty, the target host sets will be cleared. Zero
 // is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
+func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []CredentialSource, int, error) {
 	const op = "target.(Repository).SetTargetHostSets"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -278,7 +278,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 
 	var totalRowsAffected int
 	var currentHostSets []*TargetSet
-	var currentCredLibs []*TargetLibrary
+	var currentCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -333,9 +333,9 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after set"))
 			}
-			currentCredLibs, err = fetchLibraries(ctx, reader, targetId)
+			currentCredSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential libraries after set"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential sources after set"))
 			}
 
 			return nil
@@ -344,7 +344,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return currentHostSets, currentCredLibs, totalRowsAffected, nil
+	return currentHostSets, currentCredSources, totalRowsAffected, nil
 }
 
 func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet, error) {

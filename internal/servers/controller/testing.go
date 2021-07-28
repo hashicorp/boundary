@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -379,6 +380,7 @@ type TestControllerOpts struct {
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.NewTestController"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if opts == nil {
@@ -457,23 +459,23 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
-	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if opts.Config.Controller == nil {
+		opts.Config.Controller = new(config.Controller)
+	}
+	if opts.Config.Controller.Name == "" {
+		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
 	// Initialize status grace period
 	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
-	if opts.Config.Controller == nil {
-		opts.Config.Controller = new(config.Controller)
-	}
-	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = base62.Random(5)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
-	}
 	tc.name = opts.Config.Controller.Name
 
 	if opts.InitialResourcesSuffix != "" {
@@ -606,6 +608,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.(TestController).AddClusterControllerMember"
 	if opts == nil {
 		opts = new(TestControllerOpts)
 	}
@@ -634,7 +637,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		if err != nil {
 			t.Fatal(err)
 		}
-		nextOpts.Logger.Info("controller name generated", "name", nextOpts.Name)
+		event.WriteSysEvent(context.TODO(), op, "controller name generated", "name", nextOpts.Name)
 	}
 	return NewTestController(t, nextOpts)
 }
@@ -643,7 +646,9 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 // come in. If it does not come in within the default status grace
 // period, this function returns an error.
 func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
-	tc.Logger().Debug("waiting for next status report from worker", "worker", workerId)
+	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
+	ctx := context.TODO()
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerId)
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
 	defer cancel()
@@ -700,10 +705,9 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	}
 
 	if err != nil {
-		tc.Logger().Error("error waiting for next status report from worker", "worker", workerId, "err", err)
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerId))
 		return err
 	}
-
-	tc.Logger().Debug("waiting for next status report from worker received successfully", "worker", workerId)
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
 	return nil
 }

@@ -1,13 +1,17 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 )
 
 func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Handler {
+	const op = "controller.devPassthroughHandler"
+	ctx := context.TODO()
 	// Panic may not be ideal but this is never a production call and it'll
 	// panic on startup. We could also just change the function to return
 	// an error.
@@ -15,7 +19,7 @@ func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Hand
 	if err != nil {
 		panic(err)
 	}
-	logger.Warn("serving passthrough files at /", "path", abs)
+	event.WriteSysEvent(ctx, op, "serving passthrough files at /", "path", abs)
 	fs := http.FileServer(http.Dir(abs))
 	prefixHandler := http.StripPrefix("/", fs)
 

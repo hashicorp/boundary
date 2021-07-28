@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/session"
@@ -81,6 +82,7 @@ func TestSessionCleanup(t *testing.T) {
 }
 
 func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testing.T) {
+	const op = "cluster.testWorkerSessionCleanupSingle"
 	return func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
@@ -156,11 +158,11 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		logger.Debug("running initial send/recv test")
+		event.WriteSysEvent(ctx, op, "running initial send/recv test")
 		sConn.TestSendRecvAll(t)
 
 		// Kill the link
-		logger.Debug("pausing controller/worker link")
+		event.WriteSysEvent(ctx, op, "pausing controller/worker link")
 		proxy.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -194,7 +196,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		}
 
 		// Resume the connection, and reconnect.
-		logger.Debug("resuming controller/worker link")
+		event.WriteSysEvent(ctx, op, "resuming controller/worker link")
 		proxy.Resume()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
@@ -219,7 +221,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		}
 
 		// Proceed with new connection test
-		logger.Debug("connecting to new session after resuming controller/worker link")
+		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
 		sess = helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
@@ -227,6 +229,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 }
 
 func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing.T) {
+	const op = "cluster.testWorkerSessionCleanupMulti"
 	return func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
@@ -338,20 +341,20 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
-		logger.Debug("running initial send/recv test")
+		event.WriteSysEvent(ctx, op, "running initial send/recv test")
 		sConn.TestSendRecvAll(t)
 
 		// Kill connection to first controller, and run test again, should
 		// pass, deferring to other controller. Wait for the next
 		// successful status report to ensure this.
-		logger.Debug("pausing link to controller #1")
+		event.WriteSysEvent(ctx, op, "pausing link to controller #1")
 		p1.Pause()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
 		sConn.TestSendRecvAll(t)
 
 		// Resume first controller, pause second. This one should work too.
-		logger.Debug("pausing link to controller #2, resuming #1")
+		event.WriteSysEvent(ctx, op, "pausing link to controller #2, resuming #1")
 		p1.Resume()
 		p2.Pause()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -360,7 +363,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 
 		// Kill the first controller connection again. This one should fail
 		// due to lack of any connection.
-		logger.Debug("pausing link to controller #1 again, both connections should be offline")
+		event.WriteSysEvent(ctx, op, "pausing link to controller #1 again, both connections should be offline")
 		p1.Pause()
 
 		// Wait for failure connection state (depends on burden case)
@@ -394,7 +397,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		}
 
 		// Finally resume both, try again. Should behave as per normal.
-		logger.Debug("resuming connections to both controllers")
+		event.WriteSysEvent(ctx, op, "resuming connections to both controllers")
 		p1.Resume()
 		p2.Resume()
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -420,7 +423,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		}
 
 		// Proceed with new connection test
-		logger.Debug("connecting to new session after resuming controller/worker link")
+		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
 		sess = helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)

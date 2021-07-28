@@ -49,7 +49,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 	}
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))
-	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock))
+	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock, "test-server-command"))
 
 	if opts.CreateDevDatabase {
 		kmsHcl := fmt.Sprintf(rootKmsConfig, opts.ControllerKey)
