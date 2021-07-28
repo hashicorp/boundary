@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -365,4 +366,48 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 		// Verify job run time in repo is at least 1 hour before than the previous run time
 		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))
 	})
+}
+
+func TestScheduler_Start(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iam.TestRepo(t, conn, wrapper)
+
+	sched := TestScheduler(t, conn, wrapper)
+
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		wg              *sync.WaitGroup
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:            "missing-ctx",
+			wg:              &sync.WaitGroup{},
+			wantErr:         true,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-waitgroup",
+			ctx:             context.Background(),
+			wantErr:         true,
+			wantErrContains: "missing wait group",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := sched.Start(tt.ctx, tt.wg)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
 }

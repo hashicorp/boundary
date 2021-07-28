@@ -138,6 +138,12 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		event.WriteSysEvent(ctx, op, "scheduler already started, skipping")
 		return nil
 	}
+	if ctx == nil {
+		return errors.New(errors.InvalidParameter, op, "missing context")
+	}
+	if wg == nil {
+		return errors.New(errors.InvalidParameter, op, "missing wait group")
+	}
 
 	if err := ctx.Err(); err != nil {
 		return errors.Wrap(err, op)
@@ -154,9 +160,7 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return errors.Wrap(err, op)
 	}
 
-	if wg != nil {
-		wg.Add(2)
-	}
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		s.start(ctx)
