@@ -228,9 +228,8 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
 	go func() {
+		defer rj.cancelCtx()
 		runErr := j.Run(jobContext)
-		// Job has ended, cancel job run specific context to clean up
-		rj.cancelCtx()
 
 		// Get final status report to update run progress with
 		status := j.Status()
