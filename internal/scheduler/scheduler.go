@@ -176,13 +176,15 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 func (s *Scheduler) start(ctx context.Context) {
 	const op = "scheduler.(Scheduler).start"
 	timer := time.NewTimer(s.runJobsInterval)
+	var wg sync.WaitGroup
 	for {
 		select {
 		case <-ctx.Done():
+			event.WriteSysEvent(ctx, op, "scheduling loop received shutdown, waiting for jobs to finish", "server id", s.serverId)
+			wg.Wait()
 			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
-
 			repo, err := s.jobRepoFn()
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
@@ -196,7 +198,7 @@ func (s *Scheduler) start(ctx context.Context) {
 			}
 
 			for _, r := range runs {
-				err := s.runJob(ctx, r)
+				err := s.runJob(ctx, &wg, r)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
 					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
@@ -210,7 +212,7 @@ func (s *Scheduler) start(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
+func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) error {
 	const op = "scheduler.(Scheduler).runJob"
 	regJob, ok := s.registeredJobs.Load(r.JobName)
 	if !ok {
@@ -231,24 +233,27 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	var jobContext context.Context
 	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
+	wg.Add(1)
 	go func() {
 		defer rj.cancelCtx()
+		defer wg.Done()
 		runErr := j.Run(jobContext)
-		var updateErr error
 
 		// Get final status report to update run progress with
 		status := j.Status()
-
-		switch runErr {
-		case nil:
+		var updateErr error
+		switch {
+		case ctx.Err() != nil:
+			// Base context is no longer valid, skip repo updates as they will fail and exit
+		case runErr == nil:
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun, status.Completed, status.Total)
+			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total)
 		default:
 			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
-			_, updateErr = repo.FailRun(jobContext, r.PrivateId, status.Completed, status.Total)
+			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total)
 		}
 
 		if updateErr != nil {
