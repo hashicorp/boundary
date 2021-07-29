@@ -109,7 +109,7 @@ module.exports = [
     permanent: false,
   },
   {
-    source: '/help/admin-ui/credential-sources',
+    source: '/help/admin-ui/credential-libraries',
     destination: '/docs/concepts/domain-model/credential-libraries',
     permanent: false,
   },
