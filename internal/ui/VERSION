@@ -1,4 +1,4 @@
-bfa3d8fd3a9c110eca2b0972f811d824f55cc1f4 Merge pull request #633 from hashicorp/fix-oidc-buttons
+c04c8f4f0a057d4f5734c8b9409f37fb1c9981db Merge pull request #683 from hashicorp/enable-credentials-brokering-feature
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
