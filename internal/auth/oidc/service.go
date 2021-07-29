@@ -106,7 +106,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 		WrapperKeyId: wrapper.KeyID(),
 		Ct:           marshaledBlob,
 	}
-	if err := wrapped.Validate(); err != nil {
+	if err := wrapped.Validate(ctx); err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	marshaledEncryptedSt, err := proto.Marshal(wrapped)

@@ -17,6 +17,7 @@ import (
 
 func TestAccount_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -53,7 +54,7 @@ func TestAccount_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -67,7 +68,7 @@ func TestAccount_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -83,7 +84,7 @@ func TestAccount_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, "newsubject", WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0]))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "newsubject", WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0]))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -135,7 +136,7 @@ func TestAccount_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(&url.URL{}))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(&url.URL{}))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -150,7 +151,7 @@ func TestAccount_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, "alice")
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice")
 				require.NoError(t, err)
 				return want
 			}(),
@@ -161,7 +162,7 @@ func TestAccount_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(tt.args.authMethodId, tt.args.subject, tt.args.opts...)
+			got, err := NewAccount(ctx, tt.args.authMethodId, tt.args.subject, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -171,7 +172,7 @@ func TestAccount_Create(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.create {
 				ctx := context.Background()
-				id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), tt.args.subject)
+				id, err := newAccountId(ctx, testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), tt.args.subject)
 				require.NoError(err)
 				got.PublicId = id
 				err = rw.Create(ctx, got)
@@ -194,9 +195,9 @@ func TestAccount_Create(t *testing.T) {
 	t.Run("account issuer stays when auth method discovery url changes", func(t *testing.T) {
 		am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "client", "secret",
 			WithIssuer(TestConvertToUrls(t, "https://discovery.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		a, err := NewAccount(am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetIssuer())[0]))
+		a, err := NewAccount(ctx, am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetIssuer())[0]))
 		require.NoError(t, err)
-		id, err := newAccountId(am.GetPublicId(), am.GetIssuer(), a.GetSubject())
+		id, err := newAccountId(ctx, am.GetPublicId(), am.GetIssuer(), a.GetSubject())
 		require.NoError(t, err)
 		a.PublicId = id
 		ctx := context.Background()
@@ -218,6 +219,7 @@ func TestAccount_Create(t *testing.T) {
 
 func TestAccount_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -242,9 +244,9 @@ func TestAccount_Delete(t *testing.T) {
 	testResource := func(authMethodId string, subject string) *Account {
 		u, err := url.Parse(testAuthMethod.GetIssuer())
 		require.NoError(t, err)
-		a, err := NewAccount(authMethodId, subject, WithIssuer(u))
+		a, err := NewAccount(ctx, authMethodId, subject, WithIssuer(u))
 		require.NoError(t, err)
-		id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), subject)
+		id, err := newAccountId(ctx, testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), subject)
 		require.NoError(t, err)
 		a.PublicId = id
 		return a
@@ -307,6 +309,7 @@ func TestAccount_Delete(t *testing.T) {
 
 func TestAccount_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -318,7 +321,7 @@ func TestAccount_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
+		orig, err := NewAccount(ctx, m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.Account, orig.Account))
@@ -330,9 +333,9 @@ func TestAccount_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
+		orig, err := NewAccount(ctx, m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
-		orig2, err := NewAccount(m.PublicId, "bob", WithFullName("Bob Eve Smith"), WithEmail("bob@alice.com"))
+		orig2, err := NewAccount(ctx, m.PublicId, "bob", WithFullName("Bob Eve Smith"), WithEmail("bob@alice.com"))
 		require.NoError(err)
 
 		cp := orig.Clone()

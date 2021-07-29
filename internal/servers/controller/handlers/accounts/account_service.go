@@ -496,7 +496,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		}
 		opts = append(opts, oidc.WithIssuer(u))
 	}
-	a, err := oidc.NewAccount(am.GetPublicId(), attrs.GetSubject(), opts...)
+	a, err := oidc.NewAccount(ctx, am.GetPublicId(), attrs.GetSubject(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}

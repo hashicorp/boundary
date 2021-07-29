@@ -141,11 +141,13 @@ func TestSessionCleanupJob(t *testing.T) {
 
 func TestSessionCleanupJobNewJobErr(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	const op = "controller.newNewSessionCleanupJob"
 	require := require.New(t)
 
 	job, err := newSessionCleanupJob(nil, nil, 0)
 	require.Equal(err, errors.E(
+		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
 		errors.WithMsg("missing logger"),
@@ -154,6 +156,7 @@ func TestSessionCleanupJobNewJobErr(t *testing.T) {
 
 	job, err = newSessionCleanupJob(hclog.New(nil), nil, 0)
 	require.Equal(err, errors.E(
+		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
 		errors.WithMsg("missing sessionRepoFn"),
@@ -162,6 +165,7 @@ func TestSessionCleanupJobNewJobErr(t *testing.T) {
 
 	job, err = newSessionCleanupJob(hclog.New(nil), func() (*session.Repository, error) { return nil, nil }, 0)
 	require.Equal(err, errors.E(
+		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
 		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %d", session.DeadWorkerConnCloseMinGrace)),

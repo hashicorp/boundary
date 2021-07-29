@@ -435,44 +435,44 @@ func validVoName(name voName) bool {
 }
 
 // factoryFunc defines a func type for value object factories
-type factoryFunc func(publicId string, i interface{}) (interface{}, error)
+type factoryFunc func(ctx context.Context, publicId string, i interface{}) (interface{}, error)
 
 // supportedFactories are the currently supported factoryFunc for value objects
 var supportedFactories = map[voName]factoryFunc{
-	SigningAlgVO: func(publicId string, i interface{}) (interface{}, error) {
+	SigningAlgVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
-		return NewSigningAlg(publicId, Alg(str))
+		return NewSigningAlg(ctx, publicId, Alg(str))
 	},
-	CertificateVO: func(publicId string, i interface{}) (interface{}, error) {
+	CertificateVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
-		return NewCertificate(publicId, str)
+		return NewCertificate(ctx, publicId, str)
 	},
-	AudClaimVO: func(publicId string, i interface{}) (interface{}, error) {
+	AudClaimVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
-		return NewAudClaim(publicId, str)
+		return NewAudClaim(ctx, publicId, str)
 	},
-	ClaimsScopesVO: func(publicId string, i interface{}) (interface{}, error) {
+	ClaimsScopesVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
-		return NewClaimsScope(publicId, str)
+		return NewClaimsScope(ctx, publicId, str)
 	},
-	AccountClaimMapsVO: func(publicId string, i interface{}) (interface{}, error) {
+	AccountClaimMapsVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
 		const op = "oidc.AccountClaimMapsFactory"
 		str := fmt.Sprintf("%s", i)
-		acm, err := ParseAccountClaimMaps(str)
+		acm, err := ParseAccountClaimMaps(ctx, str)
 		if err != nil {
 			return nil, err
 		}
 		if len(acm) > 1 {
-			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", str))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", str))
 		}
 		var m ClaimMap
 		for _, m = range acm {
 		}
-		to, err := ConvertToAccountToClaim(m.To)
+		to, err := ConvertToAccountToClaim(ctx, m.To)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		return NewAccountClaimMap(publicId, m.From, to)
+		return NewAccountClaimMap(ctx, publicId, m.From, to)
 	},
 }
 
@@ -523,7 +523,7 @@ func valueObjectChanges(
 	if strutil.StrListContains(nullFields, string(valueObjectName)) {
 		deletes = make([]interface{}, 0, len(oldVOs))
 		for _, v := range oldVOs {
-			deleteObj, err := factory(publicId, v)
+			deleteObj, err := factory(ctx, publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(ctx, err, op)
 			}
@@ -538,7 +538,7 @@ func valueObjectChanges(
 				delete(foundVOs, v)
 				continue
 			}
-			obj, err := factory(publicId, v)
+			obj, err := factory(ctx, publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(ctx, err, op)
 			}
@@ -548,7 +548,7 @@ func valueObjectChanges(
 	}
 	if len(foundVOs) > 0 {
 		for v := range foundVOs {
-			obj, err := factory(publicId, v)
+			obj, err := factory(ctx, publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(ctx, err, op)
 			}

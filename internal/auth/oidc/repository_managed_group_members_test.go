@@ -51,7 +51,7 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	repo, err := oidc.NewRepository(rw, rw, kmsCache)
+	repo, err := oidc.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 

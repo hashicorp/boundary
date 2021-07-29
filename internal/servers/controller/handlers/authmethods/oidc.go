@@ -91,7 +91,7 @@ func (o oidcState) String() string {
 // createOidcInRepo creates an oidc auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
-	u, _, _, err := toStorageOidcAuthMethod(scopeId, item)
+	u, _, _, err := toStorageOidcAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, bool, error) {
 	item := req.GetItem()
-	u, dryRun, forced, err := toStorageOidcAuthMethod(scopeId, item)
+	u, dryRun, forced, err := toStorageOidcAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, dryRun, err
 	}
@@ -404,7 +404,7 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 	return nil
 }
 
-func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, dryRun, forced bool, err error) {
+func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, dryRun, forced bool, err error) {
 	const op = "authmethod_service.toStorageOidcAuthMethod"
 	if in == nil {
 		return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
@@ -463,7 +463,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	}
 
 	if len(attrs.GetIdpCaCerts()) > 0 {
-		certs, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...)
+		certs, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...)
 		if err != nil {
 			return nil, false, false, err
 		}
@@ -477,7 +477,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	if len(attrs.GetAccountClaimMaps()) > 0 {
 		claimsMap := make(map[string]oidc.AccountToClaim, len(attrs.GetAccountClaimMaps()))
 		for _, v := range attrs.GetAccountClaimMaps() {
-			acm, err := oidc.ParseAccountClaimMaps(v)
+			acm, err := oidc.ParseAccountClaimMaps(ctx, v)
 			if err != nil {
 				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
@@ -487,7 +487,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			var m oidc.ClaimMap
 			for _, m = range acm {
 			}
-			to, err := oidc.ConvertToAccountToClaim(m.To)
+			to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
 			if err != nil {
 				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
@@ -496,7 +496,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithAccountClaimMap(claimsMap))
 	}
 
-	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
+	u, err := oidc.NewAuthMethod(ctx, scopeId, clientId, clientSecret, opts...)
 	if err != nil {
 		return nil, false, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}

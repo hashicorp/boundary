@@ -199,7 +199,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
@@ -235,7 +235,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -275,7 +275,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -328,7 +328,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 	t.Run("invalid-duplicate-subjects", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -367,7 +367,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 	t.Run("valid-duplicate-subject-diff-authmethod", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -423,7 +423,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 	t.Run("valid-duplicate-subject-diff-issuer", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -496,7 +496,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	)
 	account := TestAccount(t, conn, authMethod, "test-subject")
 
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-id")
+	newAcctId, err := newAccountId(ctx, authMethod.GetPublicId(), authMethod.Issuer, "random-id")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -525,7 +525,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
@@ -560,7 +560,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	account := TestAccount(t, conn, authMethod, "create-success")
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-subject")
+	newAcctId, err := newAccountId(ctx, authMethod.GetPublicId(), authMethod.Issuer, "random-subject")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -601,7 +601,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), tt.scopeId, tt.in)
@@ -690,7 +690,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
@@ -783,7 +783,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
@@ -1130,7 +1130,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -1188,7 +1188,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1227,7 +1227,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1265,7 +1265,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		assert.NoError(err)
 		require.NotNil(repo)
 

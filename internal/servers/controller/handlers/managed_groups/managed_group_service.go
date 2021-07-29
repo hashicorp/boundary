@@ -322,7 +322,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
-	mg, err := oidc.NewManagedGroup(am.GetPublicId(), attrs.GetFilter(), opts...)
+	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}

@@ -77,7 +77,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 		a.PublicId = opts.withPublicId
 	} else {
-		id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
+		id, err := newAccountId(ctx, a.AuthMethodId, a.Issuer, a.Subject)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -227,7 +227,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold(NameField, f):
 		case strings.EqualFold(DescriptionField, f):
 		default:
-			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -261,10 +261,10 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err != nil {
-				return errors.WrapDeprecated(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},

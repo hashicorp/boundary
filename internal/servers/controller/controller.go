@@ -60,7 +60,7 @@ type Controller struct {
 	kms *kms.Kms
 }
 
-func New(conf *Config) (*Controller, error) {
+func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -143,7 +143,7 @@ func New(conf *Config) (*Controller, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
-		return oidc.NewRepository(dbase, dbase, c.kms)
+		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)

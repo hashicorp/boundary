@@ -321,6 +321,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -579,7 +580,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(conf)
+		c.controller, err = controller.New(ctx, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError

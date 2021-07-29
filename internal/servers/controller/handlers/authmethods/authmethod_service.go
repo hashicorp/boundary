@@ -236,7 +236,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
 	const op = "authmethods.(Service).CreateAuthMethod"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
@@ -281,7 +281,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
 	const op = "authmethods.(Service).UpdateAuthMethod"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Update)
@@ -848,7 +848,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
 	const op = "authmethod.validateCreateRequest"
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
@@ -917,7 +917,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 				if len(attrs.GetIdpCaCerts()) > 0 {
-					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
+					if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
 						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
@@ -930,7 +930,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 				if len(attrs.GetAccountClaimMaps()) > 0 {
-					acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+					acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
 					if err != nil {
 						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 					}
@@ -950,7 +950,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest) error {
 	const op = "authmethod.validateUpdateRequest"
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing request")
@@ -1038,7 +1038,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				}
 			}
 			if len(attrs.GetIdpCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
+				if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
 					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
@@ -1051,7 +1051,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				}
 			}
 			if len(attrs.GetAccountClaimMaps()) > 0 {
-				acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+				acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
 				if err != nil {
 					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 				} else {
@@ -1062,7 +1062,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 						}
 						foundTo[m.To] = true
 
-						to, err := oidc.ConvertToAccountToClaim(m.To)
+						to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
 						if err != nil {
 							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
 							break

@@ -36,12 +36,12 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 
 	fromSub, fromName, fromEmail := string(ToSubClaim), string(ToNameClaim), string(ToEmailClaim)
 	if len(am.AccountClaimMaps) > 0 {
-		acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
+		acms, err := ParseAccountClaimMaps(ctx, am.AccountClaimMaps...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		for _, m := range acms {
-			toClaim, err := ConvertToAccountToClaim(m.To)
+			toClaim, err := ConvertToAccountToClaim(ctx, m.To)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
@@ -67,7 +67,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if sub, ok = IdTokenClaims[fromSub].(string); !ok {
 		return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("mapping 'claim' %s to account subject and it is not present in ID Token", fromSub))
 	}
-	pubId, err := newAccountId(am.GetPublicId(), iss, sub)
+	pubId, err := newAccountId(ctx, am.GetPublicId(), iss, sub)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -99,7 +99,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if err != nil {
 		return nil, errors.New(ctx, errors.Unknown, op, "unable to parse issuer", errors.WithWrap(err))
 	}
-	acctForOplog, err := NewAccount(am.PublicId, sub, WithIssuer(issAsUrl))
+	acctForOplog, err := NewAccount(ctx, am.PublicId, sub, WithIssuer(issAsUrl))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}

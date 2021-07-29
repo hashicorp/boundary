@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestNewRepository(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -101,7 +103,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)

@@ -29,14 +29,14 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 	if am.Version != 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "version must be empty")
 	}
-	if err := am.validate(op); err != nil {
+	if err := am.validate(ctx, op); err != nil {
 		return nil, err // validate properly sets the op to the caller, the code and the msg, so just return it.
 	}
 
 	opts := getOpts(opt...)
 	am.PublicId = opts.withPublicId
 	if am.PublicId == "" {
-		id, err := newAuthMethodId()
+		id, err := newAuthMethodId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -47,7 +47,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		}
 	}
 
-	vo, err := am.convertValueObjects()
+	vo, err := am.convertValueObjects(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

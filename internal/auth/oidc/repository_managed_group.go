@@ -42,7 +42,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 
 	mg = mg.Clone()
 
-	id, err := newManagedGroupId()
+	id, err := newManagedGroupId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

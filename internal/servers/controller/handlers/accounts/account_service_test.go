@@ -55,6 +55,7 @@ var (
 )
 
 func TestNewService(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -63,7 +64,7 @@ func TestNewService(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	cases := []struct {
@@ -114,7 +115,7 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -244,6 +245,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestListPassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -252,7 +254,7 @@ func TestListPassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -386,7 +388,7 @@ func TestListOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -539,7 +541,7 @@ func TestDelete(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -625,6 +627,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -634,7 +637,7 @@ func TestDelete_twice(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -657,6 +660,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreatePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -665,7 +669,7 @@ func TestCreatePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -867,7 +871,7 @@ func TestCreateOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -1071,6 +1075,7 @@ func TestCreateOidc(t *testing.T) {
 }
 
 func TestUpdatePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1079,7 +1084,7 @@ func TestUpdatePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -1460,7 +1465,7 @@ func TestUpdateOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -1834,6 +1839,7 @@ func TestUpdateOidc(t *testing.T) {
 }
 
 func TestSetPassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1842,7 +1848,7 @@ func TestSetPassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -1972,6 +1978,7 @@ func TestSetPassword(t *testing.T) {
 }
 
 func TestChangePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1980,7 +1987,7 @@ func TestChangePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
