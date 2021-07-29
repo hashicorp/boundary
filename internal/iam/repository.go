@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-var ErrMetadataScopeNotFound = errors.NewDeprecated(errors.RecordNotFound, "iam", "scope not found for metadata")
+var ErrMetadataScopeNotFound = errors.NewDeprecated(errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
 
 // Repository is the iam database repository
 type Repository struct {

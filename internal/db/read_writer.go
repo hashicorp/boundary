@@ -937,7 +937,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 				time.Sleep(d)
 				continue
 			}
-			return info, errors.Wrap(ctx, err, op)
+			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
 		if err := newTx.Commit().Error; err != nil {
@@ -1127,11 +1127,11 @@ func Clear(i interface{}, fields []string, depth int) error {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
-			return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+			return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
 		}
 		clear(v, fm, depth)
 	default:
-		return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
 	}
 	return nil
 }

@@ -34,16 +34,16 @@ type authAccount struct {
 func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
 	const op = "password.(Repository).Authenticate"
 	if authMethodId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing authMethodId")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing authMethodId", errors.WithoutEvent())
 	}
 	if loginName == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing loginName")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing loginName", errors.WithoutEvent())
 	}
 	if password == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password", errors.WithoutEvent())
 	}
 	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scopeId")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scopeId", errors.WithoutEvent())
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)

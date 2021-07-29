@@ -91,14 +91,14 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status), errors.WithoutEvent())
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	return run, nil
@@ -155,7 +155,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status), errors.WithoutEvent())
 			}
 
 			rows1, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
@@ -235,7 +235,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 					return errors.Wrap(ctx, err, op)
 				}
 
-				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.New(ctx, errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status), errors.WithoutEvent())
 			}
 
 			return nil
