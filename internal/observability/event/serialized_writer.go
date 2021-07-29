@@ -2,10 +2,9 @@ package event
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"sync"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // serializedWriter uses a mutext to serializes all writes to its io.Writer
@@ -18,13 +17,13 @@ type serializedWriter struct {
 func (s *serializedWriter) Write(p []byte) (int, error) {
 	const op = "event.(serializedWriter).Write"
 	if s == nil {
-		return 0, errors.New(errors.InvalidParameter, op, "missing serialized writer")
+		return 0, fmt.Errorf("%s: missing serialized writer: %w", op, ErrInvalidParameter)
 	}
 	if s.l == nil {
-		return 0, errors.New(errors.InvalidParameter, op, "missing lock")
+		return 0, fmt.Errorf("%s: missing lock: %w", op, ErrInvalidParameter)
 	}
 	if s.w == nil {
-		return 0, errors.New(errors.InvalidParameter, op, "missing writer")
+		return 0, fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
 	}
 
 	s.l.Lock()
