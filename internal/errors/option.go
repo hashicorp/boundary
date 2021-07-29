@@ -57,8 +57,8 @@ func WithCode(code Code) Option {
 	}
 }
 
-func WithoutEvent(withoutEvent bool) Option {
+func WithoutEvent() Option {
 	return func(o *Options) {
-		o.withoutEvent = withoutEvent
+		o.withoutEvent = true
 	}
 }

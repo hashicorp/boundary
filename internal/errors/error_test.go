@@ -15,7 +15,7 @@ import (
 
 func Test_ErrorE(t *testing.T) {
 	t.Parallel()
-	errRecordNotFound := errors.EDeprecated(errors.WithCode(errors.RecordNotFound))
+	errRecordNotFound := errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.RecordNotFound))
 	tests := []struct {
 		name string
 		opt  []errors.Option
@@ -80,8 +80,21 @@ func Test_ErrorE(t *testing.T) {
 			err := errors.EDeprecated(tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
+
+			err = errors.E(context.TODO(), tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
 		})
 	}
+	t.Run("nil-context", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		//nolint SA1012 intentionally passing a nil context.
+		err := errors.E(nil, errors.WithCode(errors.InvalidParameter))
+		require.Error(err)
+		assert.Equal(&errors.Err{
+			Code: errors.InvalidParameter,
+		}, err)
+	})
 }
 
 func Test_NewError(t *testing.T) {
@@ -100,13 +113,23 @@ func Test_NewError(t *testing.T) {
 			op:   "alice.Bob",
 			msg:  "test msg",
 			opt: []errors.Option{
-				errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.RecordNotFound))),
+				errors.WithWrap(errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.RecordNotFound))),
 			},
 			want: &errors.Err{
 				Op:      "alice.Bob",
-				Wrapped: errors.EDeprecated(errors.WithCode(errors.RecordNotFound)),
+				Wrapped: errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.RecordNotFound)),
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
+			},
+		},
+		{
+			name: "empty-op",
+			code: errors.InvalidParameter,
+			op:   "",
+			msg:  "test msg",
+			want: &errors.Err{
+				Msg:  "test msg",
+				Code: errors.InvalidParameter,
 			},
 		},
 		{
@@ -145,13 +168,17 @@ func Test_NewError(t *testing.T) {
 			err := errors.NewDeprecated(tt.code, tt.op, tt.msg, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
+
+			err = errors.New(context.TODO(), tt.code, tt.op, tt.msg, tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
 		})
 	}
 }
 
 func Test_WrapError(t *testing.T) {
 	t.Parallel()
-	testErr := errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp("alice.Bob"), errors.WithMsg("test msg"))
+	testErr := errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.InvalidParameter), errors.WithOp("alice.Bob"), errors.WithMsg("test msg"))
 	tests := []struct {
 		name string
 		opt  []errors.Option
@@ -232,7 +259,7 @@ func Test_WrapError(t *testing.T) {
 				Message: "test msg",
 			},
 			want: &errors.Err{
-				Wrapped: errors.EDeprecated(errors.WithCode(errors.NotSpecificIntegrity), errors.WithMsg("test msg")),
+				Wrapped: errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.NotSpecificIntegrity), errors.WithMsg("test msg")),
 				Code:    errors.NotSpecificIntegrity,
 			},
 		},
@@ -241,6 +268,10 @@ func Test_WrapError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			err := errors.WrapDeprecated(tt.err, tt.op, tt.opt...)
+			require.Error(err)
+			assert.Equal(tt.want, err)
+
+			err = errors.Wrap(context.TODO(), tt.err, tt.op, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})
@@ -261,12 +292,12 @@ func TestError_Info(t *testing.T) {
 		},
 		{
 			name: "Unknown",
-			err:  errors.EDeprecated().(*errors.Err),
+			err:  errors.E(context.TODO()).(*errors.Err),
 			want: errors.Unknown,
 		},
 		{
 			name: "InvalidParameter",
-			err:  errors.EDeprecated(errors.WithCode(errors.InvalidParameter)).(*errors.Err),
+			err:  errors.E(context.TODO(), errors.WithCode(errors.InvalidParameter)).(*errors.Err),
 			want: errors.InvalidParameter,
 		},
 	}
@@ -287,17 +318,17 @@ func TestError_Error(t *testing.T) {
 	}{
 		{
 			name: "msg",
-			err:  errors.EDeprecated(errors.WithMsg("test msg")),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithMsg("test msg")),
 			want: "test msg: unknown: error #0",
 		},
 		{
 			name: "code",
-			err:  errors.EDeprecated(errors.WithCode(errors.CheckConstraint)),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.CheckConstraint)),
 			want: "constraint check failed, integrity violation: error #1000",
 		},
 		{
 			name: "op-msg-and-code",
-			err:  errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithOp("alice.bob"), errors.WithMsg("test msg")),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.CheckConstraint), errors.WithOp("alice.bob"), errors.WithMsg("test msg")),
 			want: "alice.bob: test msg: integrity violation: error #1000",
 		},
 		{
@@ -307,17 +338,17 @@ func TestError_Error(t *testing.T) {
 		},
 		{
 			name: "wrapped-no-code",
-			err:  errors.EDeprecated(errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
 			want: "test msg: wrapped msg: parameter violation: error #100",
 		},
 		{
 			name: "wrapped-different-error-codes",
-			err:  errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
 			want: "test msg: integrity violation: error #1000: wrapped msg: parameter violation: error #100",
 		},
 		{
 			name: "wrapped-same-error-codes",
-			err:  errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
+			err:  errors.E(context.TODO(), errors.WithoutEvent(), errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithMsg("wrapped msg"))), errors.WithMsg("test msg")),
 			want: "test msg: wrapped msg: integrity violation: error #1000",
 		},
 	}
@@ -325,7 +356,7 @@ func TestError_Error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got := tt.err.Error()
-			assert.Equal(tt.want, got)
+			assert.Contains(got, tt.want)
 		})
 	}
 	t.Run("nil *Err", func(t *testing.T) {
