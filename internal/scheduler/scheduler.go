@@ -139,10 +139,10 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		return nil
 	}
 	if ctx == nil {
-		return errors.New(errors.InvalidParameter, op, "missing context")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing context")
 	}
 	if wg == nil {
-		return errors.New(errors.InvalidParameter, op, "missing wait group")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing wait group")
 	}
 
 	if err := ctx.Err(); err != nil {

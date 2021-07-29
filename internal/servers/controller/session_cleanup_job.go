@@ -44,11 +44,11 @@ func newSessionCleanupJob(
 	const op = "controller.newNewSessionCleanupJob"
 	switch {
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	case sessionRepoFn == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing sessionRepoFn")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing sessionRepoFn")
 	case gracePeriod < session.DeadWorkerConnCloseMinGrace:
-		return nil, errors.New(
+		return nil, errors.NewDeprecated(
 			errors.InvalidParameter, op, fmt.Sprintf("invalid gracePeriod, must be greater than %d", session.DeadWorkerConnCloseMinGrace))
 	}
 
@@ -92,13 +92,13 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 	// Load repos.
 	sessionRepo, err := j.sessionRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("error getting session repo"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error getting session repo"))
 	}
 
 	// Run the atomic dead worker cleanup job.
 	results, err := sessionRepo.CloseConnectionsForDeadWorkers(ctx, j.gracePeriod)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	if len(results) < 1 {

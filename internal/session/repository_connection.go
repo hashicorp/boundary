@@ -168,7 +168,7 @@ type CloseConnectionsForDeadWorkersResult struct {
 func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod int) ([]CloseConnectionsForDeadWorkersResult, error) {
 	const op = "session.(Repository).CloseConnectionsForDeadWorkers"
 	if gracePeriod < DeadWorkerConnCloseMinGrace {
-		return nil, errors.New(
+		return nil, errors.New(ctx,
 			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %d seconds", DeadWorkerConnCloseMinGrace))
 	}
 
@@ -180,14 +180,14 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 		func(reader db.Reader, w db.Writer) error {
 			rows, err := w.Query(ctx, closeConnectionsForDeadServersCte, []interface{}{gracePeriod})
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			defer rows.Close()
 
 			for rows.Next() {
 				var result CloseConnectionsForDeadWorkersResult
 				if err := w.ScanRows(rows, &result); err != nil {
-					return errors.Wrap(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 
 				results = append(results, result)
@@ -197,7 +197,7 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return results, nil
@@ -249,7 +249,7 @@ func (r *Repository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundCo
 		args,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 
@@ -257,7 +257,7 @@ func (r *Repository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundCo
 	for rows.Next() {
 		var connectionId, sessionId string
 		if err := rows.Scan(&connectionId, &sessionId); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 
 		result[sessionId] = append(result[sessionId], connectionId)

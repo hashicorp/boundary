@@ -491,7 +491,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			}
 			parentId = acct.GetAuthMethodId()
 		default:
-			res.Error = errors.New(errors.InvalidPublicId, op, "unrecognized managed group subtype")
+			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized managed group subtype")
 			return nil, res
 		}
 		opts = append(opts, requestauth.WithId(id))
@@ -512,7 +512,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		authMeth = am
 		opts = append(opts, requestauth.WithScopeId(am.GetScopeId()))
 	default:
-		res.Error = errors.New(errors.InvalidPublicId, op, "unrecognized auth method subtype")
+		res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized auth method subtype")
 		return nil, res
 	}
 	opts = append(opts, requestauth.WithPin(parentId))
