@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -16,6 +15,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -502,7 +502,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 	}
 	if outputFields.Has(globals.AttributesField) {
 		switch credential.SubtypeFromId(in.GetPublicId()) {
-		case credential.VaultSubtype:
+		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
 				return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential store")
@@ -613,7 +613,7 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch credential.SubtypeFromType(req.GetItem().GetType()) {
-		case credential.VaultSubtype:
+		case vault.Subtype:
 			attrs := &pb.VaultCredentialStoreAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[globals.AttributesField] = fmt.Sprintf("Attribute fields do not match the expected format. Got %#v", req.GetItem().GetAttributes().AsMap())
@@ -656,8 +656,8 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch credential.SubtypeFromId(req.GetId()) {
-		case credential.VaultSubtype:
-			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != credential.VaultSubtype {
+		case vault.Subtype:
+			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{}

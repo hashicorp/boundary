@@ -37,9 +37,10 @@ func Test_newError(t *testing.T) {
 			fromOp: Op("valid-no-opts"),
 			e:      fmt.Errorf("%s: valid no opts: %w", "valid-no-opts", ErrInvalidParameter),
 			want: &err{
-				Error:   fmt.Errorf("%s: valid no opts: %w", "valid-no-opts", ErrInvalidParameter),
-				Version: errorVersion,
-				Op:      Op("valid-no-opts"),
+				ErrorFields: fmt.Errorf("%s: valid no opts: %w", "valid-no-opts", ErrInvalidParameter),
+				Error:       "valid-no-opts: valid no opts: invalid parameter",
+				Version:     errorVersion,
+				Op:          Op("valid-no-opts"),
 			},
 		},
 		{
@@ -49,13 +50,16 @@ func Test_newError(t *testing.T) {
 			opts: []Option{
 				WithId("valid-all-opts"),
 				WithRequestInfo(TestRequestInfo(t)),
+				WithInfo("msg", "hello"),
 			},
 			want: &err{
-				Error:       fmt.Errorf("%s: valid all opts: %w", "valid-all-opts", ErrInvalidParameter),
+				ErrorFields: fmt.Errorf("%s: valid all opts: %w", "valid-all-opts", ErrInvalidParameter),
+				Error:       "valid-all-opts: valid all opts: invalid parameter",
 				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
 				Id:          "valid-all-opts",
 				RequestInfo: TestRequestInfo(t),
+				Info:        map[string]interface{}{"msg": "hello"},
 			},
 		},
 	}
@@ -92,38 +96,57 @@ func Test_errvalidate(t *testing.T) {
 		name            string
 		id              string
 		op              Op
-		want            error
+		wantError       string
+		wantFields      error
 		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-id",
 			op:              Op("missing-id"),
-			want:            fmt.Errorf("%s: missing id: %w", "missing-id", ErrInvalidParameter),
+			wantFields:      fmt.Errorf("%s: missing id: %w", "missing-id", ErrInvalidParameter),
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing id",
 		},
 		{
 			name:            "missing-operation",
 			id:              "missing-operation",
-			want:            fmt.Errorf("%s: missing operation: %w", "missing-operation", ErrInvalidParameter),
+			wantFields:      fmt.Errorf("%s: missing operation: %w", "missing-operation", ErrInvalidParameter),
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing operation",
 		},
 		{
-			name: "valid",
-			op:   Op("valid"),
-			id:   "valid",
-			want: fmt.Errorf("%s: valid error: %w", "valid-error", ErrInvalidParameter),
+			name:            "missing-error",
+			op:              Op("missing-error"),
+			id:              "missing-error",
+			wantFields:      fmt.Errorf("%s: missing operation: %w", "missing-operation", ErrInvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing error",
+		},
+		{
+			name:            "missing-error-fields",
+			op:              Op("missing-error-fields"),
+			id:              "missing-error-fields",
+			wantError:       "test error",
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing error",
+		},
+		{
+			name:       "valid",
+			op:         Op("valid"),
+			id:         "valid",
+			wantFields: fmt.Errorf("%s: valid error: %w", "valid-error", ErrInvalidParameter),
+			wantError:  "test error",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			e := err{
-				Op:    tt.op,
-				Id:    Id(tt.id),
-				Error: tt.want,
+				Op:          tt.op,
+				Id:          Id(tt.id),
+				ErrorFields: tt.wantFields,
+				Error:       tt.wantError,
 			}
 			err := e.validate()
 			if tt.wantErrIs != nil {
@@ -135,7 +158,8 @@ func Test_errvalidate(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tt.want, e.Error)
+			assert.Equal(tt.wantFields, e.ErrorFields)
+			assert.Equal(tt.wantError, e.Error)
 		})
 	}
 }

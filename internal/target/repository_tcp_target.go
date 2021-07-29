@@ -14,8 +14,8 @@ import (
 
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
-// WithHostSets and WithCredentialLibraries are the only supported option.
-func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
+// WithHostSets and WithCredentialSources are the only supported option.
+func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []CredentialSource, error) {
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
 	if target == nil {
@@ -63,8 +63,8 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		newHostSets = append(newHostSets, hostSet)
 	}
 
-	newCredLibs := make([]interface{}, 0, len(opts.withCredentialLibraries))
-	for _, clId := range opts.withCredentialLibraries {
+	newCredLibs := make([]interface{}, 0, len(opts.withCredentialSources))
+	for _, clId := range opts.withCredentialSources {
 		credLib, err := NewCredentialLibrary(t.PublicId, clId)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target credential library"))
@@ -75,7 +75,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	metadata := t.oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
 	var returnedHostSet []*TargetSet
-	var returnedCredLibs []*TargetLibrary
+	var returnedCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -105,10 +105,10 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 			if len(newCredLibs) > 0 {
 				credLibOplogMsgs := make([]*oplog.Message, 0, len(newCredLibs))
 				if err := w.CreateItems(ctx, newCredLibs, db.NewOplogMsgs(&credLibOplogMsgs)); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add credential libraries"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add credential sources"))
 				}
-				if returnedCredLibs, err = fetchLibraries(ctx, read, t.PublicId); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read host sets"))
+				if returnedCredSources, err = fetchCredentialSources(ctx, read, t.PublicId); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read credential sources"))
 				}
 				msgs = append(msgs, credLibOplogMsgs...)
 			}
@@ -122,7 +122,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
 	}
-	return returnedTarget.(*TcpTarget), returnedHostSet, returnedCredLibs, nil
+	return returnedTarget.(*TcpTarget), returnedHostSet, returnedCredSources, nil
 }
 
 // UpdateTcpTarget will update a target in the repository and return the written
@@ -131,7 +131,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 // included in fieldMask. Name, Description, and WorkerFilter are the only
 // updatable fields. If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
+func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
@@ -173,7 +173,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	var returnedTarget Target
 	var rowsUpdated int
 	var targetSets []*TargetSet
-	var credLibs []*TargetLibrary
+	var credSources []CredentialSource
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -181,7 +181,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			t := target.Clone().(*TcpTarget)
-			returnedTarget, targetSets, credLibs, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
+			returnedTarget, targetSets, credSources, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -194,5 +194,5 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		}
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
 	}
-	return returnedTarget.(Target), targetSets, credLibs, rowsUpdated, nil
+	return returnedTarget, targetSets, credSources, rowsUpdated, nil
 }

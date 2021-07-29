@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
@@ -38,7 +37,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "mismatched pw authmethod oidc type",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
@@ -46,7 +45,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "mismatched oidc authmethod pw type",
 			item: &pb.Account{
-				Type:         auth.PasswordSubtype.String(),
+				Type:         password.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
@@ -54,7 +53,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "missing oidc subject",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(subjectField, "This is a required field for this type."),
@@ -62,7 +61,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "read only name claim field",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"full_name": structpb.NewStringValue("something"),
@@ -73,7 +72,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "read only email claim field",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"email": structpb.NewStringValue("something"),
@@ -84,7 +83,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "missing login name for password type",
 			item: &pb.Account{
-				Type:         auth.PasswordSubtype.String(),
+				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(loginNameKey, "This is a required field for this type."),
@@ -92,7 +91,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "bad pw attributes",
 			item: &pb.Account{
-				Type:         auth.PasswordSubtype.String(),
+				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"test": structpb.NewStringValue("something"),
@@ -103,7 +102,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "bad oidc attributes",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"test": structpb.NewStringValue("something"),
@@ -114,7 +113,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "no error",
 			item: &pb.Account{
-				Type:         auth.PasswordSubtype.String(),
+				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					loginNameKey: structpb.NewStringValue("something"),
@@ -124,7 +123,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "no oidc errors",
 			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"subject": structpb.NewStringValue("no oidc errors"),
@@ -159,7 +158,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
-					Type: auth.OidcSubtype.String(),
+					Type: oidc.Subtype.String(),
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
@@ -169,7 +168,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
-					Type: auth.OidcSubtype.String(),
+					Type: oidc.Subtype.String(),
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
@@ -179,7 +178,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: oidc.AccountPrefix + "_1234567890",
 				Item: &pb.Account{
-					Type: auth.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
@@ -251,7 +250,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			nameClaimField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
-			Id:         oidc.AccountPrefix + "1234567890",
+			Id:         oidc.AccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
 
@@ -269,7 +268,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			subjectField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
-			Id:         oidc.AccountPrefix + "1234567890",
+			Id:         oidc.AccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
 

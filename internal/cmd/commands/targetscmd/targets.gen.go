@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -230,6 +230,30 @@ func (c *Command) Run(args []string) int {
 		}
 
 	case "set-credential-libraries":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "add-credential-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-credential-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-credential-sources":
 		switch c.FlagVersion {
 		case 0:
 			opts = append(opts, targets.WithAutomaticVersioning(true))

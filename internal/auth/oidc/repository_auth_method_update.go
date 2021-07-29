@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 const (
@@ -34,6 +34,8 @@ const (
 	CertificatesField                      = "Certificates"
 	ClaimsScopesField                      = "ClaimsScopes"
 	AccountClaimMapsField                  = "AccountClaimMaps"
+	TokenClaimsField                       = "TokenClaims"
+	UserinfoClaimsField                    = "UserinfoClaims"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
@@ -655,7 +657,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 // (and associated data) are validated with the retrieved document. The issuer and
 // id token signing algorithm in the configuration are validated with the
 // retrieved document. ValidateDiscoveryInfo also verifies the authorization, token,
-// and user_info endpoints by connecting to each and uses any certificates in the
+// and userinfo endpoints by connecting to each and uses any certificates in the
 // configuration as trust anchors to confirm connectivity.
 //
 // Options supported are: WithPublicId, WithAuthMethod

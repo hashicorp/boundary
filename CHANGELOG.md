@@ -4,6 +4,44 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* With respect to Target resources, _credential libraries_ that are attached to
+  the targets are being renamed to the more abstract _credential sources_. In
+  the future Boundary will gain the ability to internally store static
+  credentials that are not generated or fetched dynamically, and the _sources_
+  terminology better reflects that the IDs provided are a source of credentials,
+  whether via dynamic generation or via the credentials themselves. This will
+  allow a paradigm similar to `principals` with roles, where the principal IDs
+  can be a users, groups, and managed groups, rather than having them split out,
+  and should result in an easier user experience once those features roll out
+  compared to having separate flags and fields. In this 0.5 release the Boundary
+  CLI has gained parallel `application-credential-source` flags to the existing
+  `application-credential-library` flags, as well as `boundary targets
+  add/remove/set-credential-sources` commands that parallel `boundary targets
+  add/remove/set-credential-libraries` commands. This parallelism extends to the
+  API actions and the grants system. In 0.6, the _library_ versions of these
+  commands, flags, and actions will be removed.
+
+### New and Improved
+
+* OIDC Accounts: When performing a `read` on an `oidc` type account, the
+  original token and userinfo claims are provided in the output. This can make
+  it significantly easier to write filters to create [managed
+  groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
+  ([PR](https://github.com/hashicorp/boundary/pull/1419))
+
+### Bug Fixes
+
+* config: Fix error when populating all `kms` purposes in separate blocks (as
+  well as the error message)
+  ([issue](https://github.com/hashicorp/boundary/issues/1305),
+  [PR](https://github.com/hashicorp/boundary/pull/1384))
+
+### New and Improved
+
+* docker: Add support for muti-arch docker images (amd64/arm64) via Docker buildx
+
 ## 0.4.0 (2021/06/29)
 
 ### New and Improved
@@ -43,10 +81,12 @@ Boundary) but it's worth repeating.
 
 ### Bug Fixes
 
-* scheduler: removes a Postgres check constraint, on the length of the controller name, 
+* scheduler: removes a Postgres check constraint, on the length of the controller name,
   causing an error when the scheduler attempts to run jobs
   ([issue](https://github.com/hashicorp/boundary/issues/1309),
   [PR](https://github.com/hashicorp/boundary/pull/1310)).
+* Docker: update entrypoint script to handle more Boundary subcommands for
+  better UX
 
 ## 0.3.0 (2021/06/08)
 

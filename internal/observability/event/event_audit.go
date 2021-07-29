@@ -14,7 +14,7 @@ const auditVersion = "v0.1"
 type auditEventType string
 
 const (
-	apiRequest auditEventType = "APIRequest" // ApiRequest defines an API request audit event type
+	ApiRequest auditEventType = "APIRequest" // ApiRequest defines an API request audit event type
 )
 
 // audit defines the data of audit events
@@ -39,7 +39,7 @@ func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
-		opts.withId, err = newId(string(AuditType))
+		opts.withId, err = NewId(string(AuditType))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -55,7 +55,7 @@ func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	a := &audit{
 		Id:          opts.withId,
 		Version:     auditVersion,
-		Type:        string(apiRequest),
+		Type:        string(ApiRequest),
 		Timestamp:   dtm,
 		RequestInfo: opts.withRequestInfo,
 		Auth:        opts.withAuth,
@@ -120,7 +120,7 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		if gated.Version != auditVersion {
 			return "", nil, fmt.Errorf("%s: event %d has an invalid version: %s != %s: %w", op, i, gated.Version, auditVersion, ErrInvalidParameter)
 		}
-		if gated.Type != string(apiRequest) {
+		if gated.Type != string(ApiRequest) {
 			return "", nil, fmt.Errorf("%s: event %d has an invalid type: %s != %s: %w", op, i, gated.Type, string(AuditType), ErrInvalidParameter)
 		}
 		if gated.RequestInfo != nil {
@@ -142,6 +142,6 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 	}
 	payload.Id = validId
 	payload.Version = auditVersion
-	payload.Type = string(apiRequest)
+	payload.Type = string(ApiRequest)
 	return eventlogger.EventType(a.EventType()), payload, nil
 }

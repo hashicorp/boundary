@@ -170,6 +170,14 @@ message Account {
   // email is a string that maps to the OIDC email claim.
   // @inject_tag: `gorm:"default:null"`
   string email = 110;
+
+  // token_claims are the marshaled claims from the token.
+  // @inject_tag: `gorm:"default:null"`
+  string token_claims = 120;
+
+  // userinfo_claims are the marshaled claims from userinfo.
+  // @inject_tag: `gorm:"default:null"`
+  string userinfo_claims = 130;
 }
 
 // SigningAlg entries are the signing algorithms allowed for an oidc auth method.

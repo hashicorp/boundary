@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
@@ -32,7 +32,7 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[auth.PasswordSubtype] = action.ActionSet{
+	IdActions[password.Subtype] = action.ActionSet{
 		action.NoOp,
 		action.Read,
 		action.Update,

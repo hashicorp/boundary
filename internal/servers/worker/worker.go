@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -27,9 +27,11 @@ type Worker struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
+	tickerWg sync.WaitGroup
+
 	controllerStatusConn *atomic.Value
-	workerStartTime      time.Time
 	lastStatusSuccess    *atomic.Value
+	workerStartTime      time.Time
 
 	controllerResolver *atomic.Value
 
@@ -72,10 +74,8 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	var err error
-	if conf.RawConfig.Worker.Name == "" {
-		if conf.RawConfig.Worker.Name, err = base62.Random(10); err != nil {
-			return nil, fmt.Errorf("error auto-generating worker name: %w", err)
-		}
+	if conf.RawConfig.Worker.Name, err = w.conf.RawConfig.Worker.InitNameIfEmpty(); err != nil {
+		return nil, fmt.Errorf("error auto-generating worker name: %w", err)
 	}
 
 	if !conf.RawConfig.DisableMlock {
@@ -98,8 +98,9 @@ func New(conf *Config) (*Worker, error) {
 }
 
 func (w *Worker) Start() error {
+	const op = "worker.(Worker).Start"
 	if w.started.Load() {
-		w.logger.Info("already started, skipping")
+		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
 
@@ -116,7 +117,12 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
-	w.startStatusTicking(w.baseContext)
+	w.tickerWg.Add(1)
+	go func() {
+		defer w.tickerWg.Done()
+		w.startStatusTicking(w.baseContext)
+	}()
+
 	w.workerStartTime = time.Now()
 	w.started.Store(true)
 
@@ -128,18 +134,63 @@ func (w *Worker) Start() error {
 // to create new listeners we'd have to migrate listener setup logic here --
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
+	const op = "worker.(Worker).Shutdown"
 	if !w.started.Load() {
-		w.logger.Info("already shut down, skipping")
+		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 		return nil
 	}
+
+	// Stop listeners first to prevent new connections to the
+	// controller.
+	w.logger.Debug("beginning shutdown")
+	defer w.started.Store(false)
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 	w.baseCancel()
 	if !skipListeners {
+		w.logger.Debug("stopping listeners")
 		if err := w.stopListeners(); err != nil {
 			return fmt.Errorf("error stopping worker listeners: %w", err)
 		}
 	}
+
+	// Shut down all connections.
+	w.logger.Debug("shutting down all connections due to worker shutdown or reload")
+	w.cleanupConnections(w.baseContext, true)
+
+	// Wait for next status request to succeed. Don't wait too long;
+	// wrap the base context in a timeout equal to our status grace
+	// period.
+	w.logger.Debug("waiting for next status report to controller")
+	waitStatusStart := time.Now()
+	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	defer nextStatusCancel()
+	for {
+		if err := nextStatusCtx.Err(); err != nil {
+			w.logger.Error("error waiting for next status report to controller", "err", err)
+			break
+		}
+
+		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	// Proceed with remainder of shutdown.
+	w.logger.Debug("canceling base context and shutting down connection to controller")
+	w.baseCancel()
+	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
+
 	w.started.Store(false)
+	w.tickerWg.Wait()
+	if w.conf.Eventer != nil {
+		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
+			return fmt.Errorf("error flushing worker eventer nodes: %w", err)
+		}
+	}
+
+	w.logger.Debug("shutdown successful")
 	return nil
 }
 

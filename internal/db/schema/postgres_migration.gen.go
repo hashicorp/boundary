@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10007,
+		binarySchemaVersion: 13001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -12,7 +12,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_private_id as text
 not null
@@ -20,14 +20,14 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_private_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
 comment on domain wt_scope_id is
-'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_user_id as text
 not null
@@ -35,7 +35,7 @@ check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
-'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_role_id as text
 not null
@@ -43,7 +43,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
@@ -6076,6 +6076,66 @@ comment on domain wt_sentinel is
 
 drop function wt_to_sentinel; -- wt_to_sentinel is not needed, dropping and not re-creating
 `),
+			11001: []byte(`
+create table server_type_enm (
+  name text primary key
+    constraint only_predefined_server_types_allowed
+      check (
+        name in (
+          'controller',
+          'worker'
+        )
+      )
+);
+comment on table server_type_enm is
+  'server_type_enm is an enumeration table for server types. '
+  'It contains rows for representing servers as either a controller or worker.';
+
+insert into server_type_enm (name) values
+  ('controller'),
+  ('worker');
+
+alter table server
+    add constraint server_type_enm_fkey
+      foreign key (type) references server_type_enm(name)
+        on update cascade
+        on delete restrict;
+`),
+			12001: []byte(`
+create function wt_sub_seconds(sec integer, ts timestamp with time zone)
+        returns timestamp with time zone
+    as $$
+    select ts - sec * '1 second'::interval;
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds is
+        'wt_sub_seconds returns ts - sec.';
+
+    create function wt_sub_seconds_from_now(sec integer)
+        returns timestamp with time zone
+    as $$
+    select wt_sub_seconds(sec, current_timestamp);
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds_to_now is
+        'wt_sub_seconds_from_now returns current_timestamp - sec.';
+`),
+			13001: []byte(`
+alter table auth_oidc_account
+  add column token_claims text
+  constraint token_claims_must_not_be_empty
+  check(
+    length(trim(token_claims)) > 0
+  );
+alter table auth_oidc_account
+  add column userinfo_claims text
+  constraint userinfo_claims_must_not_be_empty
+  check(
+    length(trim(userinfo_claims)) > 0
+  );
+`),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
 create table log_migration(
@@ -7296,7 +7356,7 @@ create domain wt_plugin_id as text
                     length(trim(value)) > 10 or value = 'pi_system'
             );
     comment on domain wt_plugin_id is
-        '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+        '"pi_system", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
     create table plugin (
         public_id wt_plugin_id primary key

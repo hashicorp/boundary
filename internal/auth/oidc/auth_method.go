@@ -18,7 +18,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/go-multierror"
-	kvbuilder "github.com/hashicorp/shared-secure-libs/kv-builder"
+	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -3,9 +3,11 @@ package event_test
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,6 +50,9 @@ func Test_NewRequestInfoContext(t *testing.T) {
 	testInfoMissingId := event.TestRequestInfo(t)
 	testInfoMissingId.Id = ""
 
+	testInfoMissingEventId := event.TestRequestInfo(t)
+	testInfoMissingEventId.EventId = ""
+
 	tests := []struct {
 		name            string
 		ctx             context.Context
@@ -72,6 +78,13 @@ func Test_NewRequestInfoContext(t *testing.T) {
 			requestInfo:     testInfoMissingId,
 			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "missing request info id",
+		},
+		{
+			name:            "missing-request-info-event-id",
+			ctx:             context.Background(),
+			requestInfo:     testInfoMissingEventId,
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing request info event id",
 		},
 		{
 			name:        "valid",
@@ -146,7 +159,12 @@ func Test_RequestInfoFromContext(t *testing.T) {
 
 func Test_NewEventerContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_NewEventerContext")
-	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_NewEventerContext", testSetup.EventerConfig)
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
@@ -198,7 +216,12 @@ func Test_NewEventerContext(t *testing.T) {
 func Test_EventerFromContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_EventerFromContext")
 
-	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_EventerFromContext", testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testEventerCtx, err := event.NewEventerContext(context.Background(), testEventer)
@@ -242,51 +265,50 @@ func Test_EventerFromContext(t *testing.T) {
 }
 
 func Test_WriteObservation(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
 
 	c := event.TestEventerConfig(t, "WriteObservation")
 
-	e, err := event.NewEventer(logger, c.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, "Test_WriteObservation", c.EventerConfig)
 	require.NoError(t, err)
 
-	info := &event.RequestInfo{Id: "867-5309"}
+	info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
 
 	testCtx, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
 	testCtx, err = event.NewRequestInfoContext(testCtx, info)
 	require.NoError(t, err)
 
-	testCtxNoInfoId, err := event.NewEventerContext(context.Background(), e)
+	testCtxNoEventInfoId, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
-	noId := &event.RequestInfo{Id: "867-5309"}
-	testCtxNoInfoId, err = event.NewRequestInfoContext(testCtxNoInfoId, noId)
+	noEventId := &event.RequestInfo{Id: "867-5309", EventId: "411"}
+	testCtxNoEventInfoId, err = event.NewRequestInfoContext(testCtxNoEventInfoId, noEventId)
 	require.NoError(t, err)
-	noId.Id = ""
+	noEventId.EventId = ""
+	noEventId.Id = ""
 
 	type observationPayload struct {
-		header  map[string]interface{}
-		details map[string]interface{}
+		header  []interface{}
+		details []interface{}
 	}
 
 	testPayloads := []observationPayload{
 		{
-			header: map[string]interface{}{
-				"name": "bar",
-			},
+			header: []interface{}{"name", "bar"},
 		},
 		{
-			header: map[string]interface{}{
-				"list": []string{"1", "2"},
-			},
+			header: []interface{}{"list", []string{"1", "2"}},
 		},
 		{
-			details: map[string]interface{}{
-				"file": "temp-file.txt",
-			},
+			details: []interface{}{"file", "temp-file.txt"},
 		},
 	}
 
@@ -314,14 +336,12 @@ func Test_WriteObservation(t *testing.T) {
 		wantErrContains         string
 	}{
 		{
-			name:    "no-info-id",
+			name:    "no-info-event-id",
 			noFlush: true,
-			ctx:     testCtxNoInfoId,
+			ctx:     testCtxNoEventInfoId,
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -329,7 +349,7 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "no-info-event-id", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -370,9 +390,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     context.Background(),
 			observationPayload: []observationPayload{
 				{
-					header: map[string]interface{}{
-						"name": "bar",
-					},
+					header: []interface{}{"name", "bar"},
 				},
 			},
 			header: map[string]interface{}{
@@ -380,7 +398,29 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup: func() { event.TestResetSystEventer(t) },
+		},
+		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			observationPayload: []observationPayload{
+				{
+					header: []interface{}{"name", "bar"},
+				},
+			},
+			header: map[string]interface{}{
+				"name": "bar",
+			},
+			observationSinkFileName: c.AllEvents.Name(),
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -408,7 +448,7 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
-				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header), event.WithDetails(p.details))
+				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header...), event.WithDetails(p.details...))
 				if tt.wantErrIs != nil {
 					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
@@ -427,12 +467,13 @@ func Test_WriteObservation(t *testing.T) {
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
 				assert.NoError(err)
 
-				gotObservation := &eventJson{}
+				gotObservation := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotObservation)
 				require.NoErrorf(err, "json: %s", string(b))
 
 				actualJson, err := json.Marshal(gotObservation)
 				require.NoError(err)
+				fmt.Println(string(actualJson))
 				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation, tt.header, tt.details)
 
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -441,14 +482,15 @@ func Test_WriteObservation(t *testing.T) {
 	}
 	t.Run("not-enabled", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		logger := hclog.New(&hclog.LoggerOptions{
-			Name: "test",
-		})
 
 		c := event.TestEventerConfig(t, "WriteObservation")
 		c.EventerConfig.ObservationsEnabled = false
-
-		e, err := event.NewEventer(logger, c.EventerConfig)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, "not-enabled", c.EventerConfig)
 		require.NoError(err)
 
 		testCtx, err := event.NewEventerContext(context.Background(), e)
@@ -467,34 +509,116 @@ func Test_WriteObservation(t *testing.T) {
 	})
 }
 
-func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *eventJson, hdr, details map[string]interface{}) []byte {
+func Test_Filtering(t *testing.T) {
+	event.TestEnableEventing(t, true)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	tests := []struct {
+		name  string
+		allow []string
+		deny  []string
+		hdr   []interface{}
+		found bool
+	}{
+		{
+			name:  "allowed",
+			allow: []string{`"/Data/list" contains "1"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
+			found: true,
+		},
+		{
+			name:  "not-allowed",
+			allow: []string{`"/Data/list" contains "22"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
+			found: false,
+		},
+		{
+			name:  "deny",
+			deny:  []string{`"/Data/list" contains "1"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
+			found: false,
+		},
+		{
+			name:  "not-deny",
+			deny:  []string{`"/Data/list" contains "22"`},
+			hdr:   []interface{}{"list", []string{"1", "2"}},
+			found: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
+
+			c := event.TestEventerConfig(t, "WriteObservation-filtering")
+			c.EventerConfig.Sinks[0].AllowFilters = tt.allow
+			c.EventerConfig.Sinks[0].DenyFilters = tt.deny
+
+			e, err := event.NewEventer(testLogger, testLock, "filtering", c.EventerConfig)
+			require.NoError(err)
+
+			testCtx, err := event.NewEventerContext(context.Background(), e)
+			require.NoError(err)
+			testCtx, err = event.NewRequestInfoContext(testCtx, info)
+			require.NoError(err)
+
+			require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(tt.hdr...), event.WithFlush()))
+
+			b, err := ioutil.ReadFile(c.AllEvents.Name())
+			assert.NoError(err)
+			switch tt.found {
+			case true:
+				assert.NotEmpty(b)
+			case false:
+				assert.Empty(b)
+			}
+		})
+	}
+}
+
+func Test_DefaultEventerConfig(t *testing.T) {
+	t.Run("assert-default", func(t *testing.T) {
+		assert.Equal(t, &event.EventerConfig{
+			AuditEnabled:        false,
+			ObservationsEnabled: true,
+			SysEventsEnabled:    true,
+			Sinks:               []event.SinkConfig{event.DefaultSink()},
+		}, event.DefaultEventerConfig())
+	})
+}
+
+func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	require := require.New(t)
 
 	reqInfo, _ := event.RequestInfoFromContext(ctx)
 	// require.Truef(ok, "missing reqInfo in ctx")
 
-	j := eventJson{
-		CreatedAt: got.CreatedAt,
-		EventType: string(event.ObservationType),
-		Payload: map[string]interface{}{
-			event.IdField: got.Payload[event.IdField].(string),
-			event.HeaderField: map[string]interface{}{
-				event.RequestInfoField: reqInfo,
-				event.VersionField:     testObservationVersion,
-			},
+	j := cloudevents.Event{
+		ID:              got.ID,
+		Time:            got.Time,
+		Source:          got.Source,
+		SpecVersion:     got.SpecVersion,
+		Type:            got.Type,
+		DataContentType: got.DataContentType,
+		Data: map[string]interface{}{
+			event.RequestInfoField: reqInfo,
+			event.VersionField:     testObservationVersion,
 		},
 	}
 	if hdr != nil {
-		h := j.Payload[event.HeaderField].(map[string]interface{})
+		h := j.Data.(map[string]interface{})
 		for k, v := range hdr {
 			h[k] = v
 		}
 	}
 	if details != nil {
 		details[event.OpField] = string(caller)
-		d := got.Payload[event.DetailsField].([]interface{})[0].(map[string]interface{})
-		j.Payload[event.DetailsField] = []struct {
+		d := got.Data.(map[string]interface{})[event.DetailsField].([]interface{})[0].(map[string]interface{})
+		j.Data.(map[string]interface{})[event.DetailsField] = []struct {
 			CreatedAt string                 `json:"created_at"`
 			Type      string                 `json:"type"`
 			Payload   map[string]interface{} `json:"payload"`
@@ -511,27 +635,23 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 	return b
 }
 
-type eventJson struct {
-	CreatedAt string                 `json:"created_at"`
-	EventType string                 `json:"event_type"`
-	Payload   map[string]interface{} `json:"payload"`
-}
-
 func Test_WriteAudit(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	now := time.Now()
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
-
 	c := event.TestEventerConfig(t, "WriteAudit")
-
-	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, "Test_WriteAudit", c.EventerConfig)
 	require.NoError(t, err)
 
-	info := &event.RequestInfo{Id: "867-5309"}
+	info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
 
 	ctx, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
@@ -635,7 +755,31 @@ func Test_WriteAudit(t *testing.T) {
 				Request: testReq,
 			},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:           func() { event.TestResetSystEventer(t) },
+			auditSinkFileName: c.AllEvents.Name(),
+		},
+		{
+			name:    "use-syseventer-with-cancelled-ctx",
+			noFlush: true,
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantAudit: &testAudit{
+				Auth:    testAuth,
+				Request: testReq,
+			},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:           func() { event.TestResetSystEventer(t) },
 			auditSinkFileName: c.AllEvents.Name(),
@@ -653,7 +797,7 @@ func Test_WriteAudit(t *testing.T) {
 				},
 			},
 			wantAudit: &testAudit{
-				Id:       "867-5309",
+				Id:       "411",
 				Auth:     testAuth,
 				Request:  testReq,
 				Response: testResp,
@@ -695,19 +839,22 @@ func Test_WriteAudit(t *testing.T) {
 
 				b, err := ioutil.ReadFile(tt.auditSinkFileName)
 				require.NoError(err)
-				gotAudit := &eventJson{}
+				gotAudit := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotAudit)
 				require.NoErrorf(err, "json: %s", string(b))
 
 				actualJson, err := json.Marshal(gotAudit)
 				require.NoError(err)
-
-				wantEvent := eventJson{
-					CreatedAt: gotAudit.CreatedAt,
-					EventType: string(gotAudit.EventType),
-					Payload: map[string]interface{}{
+				wantEvent := cloudevents.Event{
+					ID:              gotAudit.ID,
+					Source:          gotAudit.Source,
+					SpecVersion:     gotAudit.SpecVersion,
+					DataContentType: gotAudit.DataContentType,
+					Time:            gotAudit.Time,
+					Type:            "audit",
+					Data: map[string]interface{}{
 						"auth":            tt.wantAudit.Auth,
-						"id":              gotAudit.Payload["id"],
+						"id":              gotAudit.Data.(map[string]interface{})["id"],
 						"timestamp":       now,
 						"request":         tt.wantAudit.Request,
 						"serialized_hmac": "",
@@ -716,13 +863,13 @@ func Test_WriteAudit(t *testing.T) {
 					},
 				}
 				if tt.wantAudit.Id != "" {
-					wantEvent.Payload["id"] = tt.wantAudit.Id
-					wantEvent.Payload["request_info"] = event.RequestInfo{
-						Id: tt.wantAudit.Id,
+					wantEvent.Data.(map[string]interface{})["id"] = tt.wantAudit.Id
+					wantEvent.Data.(map[string]interface{})["request_info"] = event.RequestInfo{
+						Id: gotAudit.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 					}
 				}
 				if tt.wantAudit.Response != nil {
-					wantEvent.Payload["response"] = tt.wantAudit.Response
+					wantEvent.Data.(map[string]interface{})["response"] = tt.wantAudit.Response
 				}
 				wantJson, err := json.Marshal(wantEvent)
 				require.NoError(err)
@@ -733,14 +880,14 @@ func Test_WriteAudit(t *testing.T) {
 	}
 	t.Run("not-enabled", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		logger := hclog.New(&hclog.LoggerOptions{
-			Name: "test",
-		})
-
 		c := event.TestEventerConfig(t, "WriteAudit")
 		c.EventerConfig.AuditEnabled = false
-
-		e, err := event.NewEventer(logger, c.EventerConfig)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, "not-enabled", c.EventerConfig)
 		require.NoError(err)
 
 		testCtx, err := event.NewEventerContext(context.Background(), e)
@@ -756,20 +903,22 @@ func Test_WriteAudit(t *testing.T) {
 }
 
 func Test_WriteError(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	now := time.Now()
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
-
 	c := event.TestEventerConfig(t, "WriteAudit")
-
-	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, "Test_WriteError", c.EventerConfig, event.WithNow(now))
 	require.NoError(t, err)
 
-	info := &event.RequestInfo{Id: "867-5309"}
+	info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
 
 	testCtx, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
@@ -778,10 +927,11 @@ func Test_WriteError(t *testing.T) {
 
 	testCtxNoInfoId, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
-	noId := &event.RequestInfo{Id: "867-5309"}
+	noId := &event.RequestInfo{Id: "867-5309", EventId: "411"}
 	testCtxNoInfoId, err = event.NewRequestInfoContext(testCtxNoInfoId, noId)
 	require.NoError(t, err)
 	noId.Id = ""
+	noId.EventId = ""
 
 	testError := fakeError{
 		Msg:  "test",
@@ -792,6 +942,7 @@ func Test_WriteError(t *testing.T) {
 		name            string
 		ctx             context.Context
 		e               error
+		opt             []event.Option
 		info            *event.RequestInfo
 		setup           func() error
 		cleanup         func()
@@ -818,7 +969,21 @@ func Test_WriteError(t *testing.T) {
 			ctx:  context.Background(),
 			e:    &testError,
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:         func() { event.TestResetSystEventer(t) },
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			e: &testError,
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),
@@ -829,7 +994,7 @@ func Test_WriteError(t *testing.T) {
 			e:    &testError,
 			info: &event.RequestInfo{},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "no-info-id", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),
@@ -838,6 +1003,22 @@ func Test_WriteError(t *testing.T) {
 			name:            "simple",
 			ctx:             testCtx,
 			e:               &testError,
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "simple-with-opt",
+			ctx:             testCtx,
+			e:               &testError,
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "stderrors",
+			ctx:             testCtx,
+			e:               stderrors.New("test std errors"),
+			opt:             []event.Option{event.WithInfo("test", "info")},
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
@@ -856,7 +1037,7 @@ func Test_WriteError(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteError(tt.ctx, event.Op(op), tt.e)
+			event.WriteError(tt.ctx, event.Op(op), tt.e, tt.opt...)
 			if tt.errSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
@@ -867,17 +1048,20 @@ func Test_WriteError(t *testing.T) {
 					return
 				}
 
-				gotError := &eventJson{}
+				gotError := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
+				fmt.Println("raw: ", string(b))
 
 				require.NoError(err)
 
-				actualError := fakeError{
-					Msg:  gotError.Payload["error"].(map[string]interface{})["Msg"].(string),
-					Code: gotError.Payload["error"].(map[string]interface{})["Code"].(string),
+				if _, ok := gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"]; ok {
+					actualError := fakeError{
+						Msg:  gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"].(string),
+						Code: gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Code"].(string),
+					}
+					assert.Equal(tt.e, &actualError)
 				}
-				assert.Equal(tt.e, &actualError)
 
 			}
 		})
@@ -899,11 +1083,17 @@ func Test_WriteSysEvent(t *testing.T) {
 
 	ctx := context.Background()
 	c := event.TestEventerConfig(t, "Test_WriteSysEvent")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
 
 	tests := []struct {
 		name         string
 		ctx          context.Context
-		data         map[string]interface{}
+		data         []interface{}
+		msg          string
 		info         *event.RequestInfo
 		setup        func() error
 		cleanup      func()
@@ -919,22 +1109,40 @@ func Test_WriteSysEvent(t *testing.T) {
 		{
 			name:        "missing-caller",
 			ctx:         ctx,
-			data:        map[string]interface{}{"data": "test-data"},
+			msg:         "hello",
+			data:        []interface{}{"data", "test-data"},
 			noOperation: true,
 		},
 		{
 			name:         "syseventer-not-initialized",
 			ctx:          context.Background(),
-			data:         map[string]interface{}{"data": "test-data"},
+			msg:          "hello",
+			data:         []interface{}{"data", "test-data"},
 			sinkFileName: c.AllEvents.Name(),
 			noOutput:     true,
 		},
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
-			data: map[string]interface{}{"data": "test-data", event.ServerName: "test-server", event.ServerAddress: "localhost"},
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+			},
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+		},
+		{
+			name: "use-syseventer-with-cancelled-ctx",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				return ctx
+			}(),
+			msg:  "hello",
+			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
+			setup: func() error {
+				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:      func() { event.TestResetSystEventer(t) },
 			sinkFileName: c.AllEvents.Name(),
@@ -954,7 +1162,7 @@ func Test_WriteSysEvent(t *testing.T) {
 			if tt.noOperation {
 				op = ""
 			}
-			event.WriteSysEvent(tt.ctx, event.Op(op), tt.data)
+			event.WriteSysEvent(tt.ctx, event.Op(op), tt.msg, tt.data...)
 			if tt.sinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.sinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.sinkFileName)
@@ -965,12 +1173,70 @@ func Test_WriteSysEvent(t *testing.T) {
 					return
 				}
 
-				gotSysEvent := &eventJson{}
+				gotSysEvent := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotSysEvent)
 				require.NoErrorf(err, "json: %s", string(b))
 
-				assert.Equal(tt.data, gotSysEvent.Payload["data"].(map[string]interface{}))
+				expected := event.ConvertArgs(tt.data...)
+				expected["msg"] = tt.msg
+				assert.Equal(expected, gotSysEvent.Data.(map[string]interface{})["data"].(map[string]interface{}))
 			}
 		})
 	}
+}
+
+func TestConvertArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		args []interface{}
+		want map[string]interface{}
+	}{
+		{
+			name: "no-args",
+			args: []interface{}{},
+			want: nil,
+		},
+		{
+			name: "nil-first-arg",
+			args: []interface{}{nil},
+			want: map[string]interface{}{
+				event.MissingKey: nil,
+			},
+		},
+		{
+			name: "odd-number-of-args",
+			args: []interface{}{1, 2, 3},
+			want: map[string]interface{}{
+				"1":              2,
+				event.MissingKey: 3,
+			},
+		},
+		{
+			name: "struct-key",
+			args: []interface{}{[]struct{ name string }{{name: "alice"}}, 1},
+			want: map[string]interface{}{
+				"[{alice}]": 1,
+			},
+		},
+		{
+			name: "test-key-with-stringer",
+			args: []interface{}{testIntKeyWithStringer(11), "eleven"},
+			want: map[string]interface{}{
+				"*11*": "eleven",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := event.ConvertArgs(tt.args...)
+			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+type testIntKeyWithStringer int
+
+func (ti testIntKeyWithStringer) String() string {
+	return fmt.Sprint("*", int(ti), "*")
 }

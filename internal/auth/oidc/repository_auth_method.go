@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -75,39 +76,23 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	values := []interface{}{pubId, am.PublicId, iss, sub}
 	var conflictClauses, fieldMasks, nullMasks []string
 
-	var foundEmail, foundName interface{}
-	switch {
-	case AccessTokenClaims[fromName] != nil:
-		foundName = AccessTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, foundName)
-	case IdTokenClaims[fromName] != nil:
-		foundName = IdTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, foundName)
-	default:
-		conflictClauses = append(conflictClauses, "full_name = NULL")
-		nullMasks = append(nullMasks, NameField)
+	{
+		marshaledTokenClaims, err := json.Marshal(IdTokenClaims)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		columns, values = append(columns, "token_claims"), append(values, string(marshaledTokenClaims))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("token_claims = $%d", len(values)))
+		fieldMasks = append(fieldMasks, TokenClaimsField)
 	}
-	switch {
-	case AccessTokenClaims[fromEmail] != nil:
-		foundEmail = AccessTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, foundEmail)
-	case IdTokenClaims[fromEmail] != nil:
-		foundEmail = IdTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, foundEmail)
-	default:
-		conflictClauses = append(conflictClauses, "email = NULL")
-		nullMasks = append(nullMasks, "Email")
-	}
-
-	if foundName != nil {
-		values = append(values, foundName)
-		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = $%d", len(values)))
-		fieldMasks = append(fieldMasks, NameField)
-	}
-	if foundEmail != nil {
-		values = append(values, foundEmail)
-		conflictClauses = append(conflictClauses, fmt.Sprintf("email = $%d", len(values)))
-		fieldMasks = append(fieldMasks, "Email")
+	{
+		marshaledAccessTokenClaims, err := json.Marshal(AccessTokenClaims)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		columns, values = append(columns, "userinfo_claims"), append(values, string(marshaledAccessTokenClaims))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("userinfo_claims = $%d", len(values)))
+		fieldMasks = append(fieldMasks, UserinfoClaimsField)
 	}
 
 	issAsUrl, err := url.Parse(iss)
@@ -119,11 +104,40 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}
 
+	var foundName interface{}
+	switch {
+	case AccessTokenClaims[fromName] != nil:
+		foundName = AccessTokenClaims[fromName]
+		columns, values = append(columns, "full_name"), append(values, foundName)
+	case IdTokenClaims[fromName] != nil:
+		foundName = IdTokenClaims[fromName]
+		columns, values = append(columns, "full_name"), append(values, foundName)
+	}
 	if foundName != nil {
 		acctForOplog.FullName = foundName.(string)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = $%d", len(values)))
+		fieldMasks = append(fieldMasks, NameField)
+	} else {
+		conflictClauses = append(conflictClauses, "full_name = NULL")
+		nullMasks = append(nullMasks, NameField)
+	}
+
+	var foundEmail interface{}
+	switch {
+	case AccessTokenClaims[fromEmail] != nil:
+		foundEmail = AccessTokenClaims[fromEmail]
+		columns, values = append(columns, "email"), append(values, foundEmail)
+	case IdTokenClaims[fromEmail] != nil:
+		foundEmail = IdTokenClaims[fromEmail]
+		columns, values = append(columns, "email"), append(values, foundEmail)
 	}
 	if foundEmail != nil {
 		acctForOplog.Email = foundEmail.(string)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("email = $%d", len(values)))
+		fieldMasks = append(fieldMasks, "Email")
+	} else {
+		conflictClauses = append(conflictClauses, "email = NULL")
+		nullMasks = append(nullMasks, "Email")
 	}
 
 	placeHolders := make([]string, 0, len(columns))
