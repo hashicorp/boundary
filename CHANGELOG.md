@@ -33,11 +33,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Controllers will now mark connections as closed in the database if the worker
   has not reported its status; this can be seen as the controller counterpart to
   the worker-side session cleanup functionality released in 0.4.0. As with the
-  worker, this timeout for this behavior is 15s. Additionally, in a split-brain
-  scenario where the worker is actually online but has not for some reason
-  already canceled the connection due to the aforementioned worker-side cleanup,
-  when the connection between worker and controller is restored, the worker will
-  close the connection on the next status update.
+  worker, this timeout for this behavior is 15s.
 * Workers will shut down connections gracefully upon shutdown of the worker,
   both closing the connection and sending a request to mark the connection as
   closed in the database.
