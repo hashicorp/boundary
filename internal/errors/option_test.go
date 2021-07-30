@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withErrWrapped = nil
 		assert.Equal(opts, testOpts)
 
-		testErr := E(WithCode(InvalidParameter), WithMsg("test error"))
+		testErr := E(context.TODO(), WithCode(InvalidParameter), WithMsg("test error"))
 
 		// try setting it
 		opts = GetOpts(WithWrap(testErr))
@@ -61,6 +62,19 @@ func Test_getOpts(t *testing.T) {
 		// try setting it
 		opts = GetOpts(WithCode(NotUnique))
 		testOpts.withCode = NotUnique
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithoutEvent", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withoutEvent = false
+		assert.Equal(opts, testOpts)
+
+		// try setting it
+		opts = GetOpts(WithoutEvent())
+		testOpts.withoutEvent = true
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -182,7 +182,7 @@ func (cs *CredentialStore) client() (*client, error) {
 
 	c, err := newClient(clientConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return c, nil
 }

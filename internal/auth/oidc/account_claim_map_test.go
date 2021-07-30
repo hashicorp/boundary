@@ -108,7 +108,7 @@ func TestAccountClaimMap_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccountClaimMap(tt.args.authMethodId, tt.args.from, tt.args.to)
+			got, err := NewAccountClaimMap(context.TODO(), tt.args.authMethodId, tt.args.from, tt.args.to)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -150,7 +150,7 @@ func TestAccountClaimMap_Delete(t *testing.T) {
 			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, fromClaim string, toClaim AccountToClaim) *AccountClaimMap {
-		c, err := NewAccountClaimMap(authMethodId, fromClaim, toClaim)
+		c, err := NewAccountClaimMap(context.TODO(), authMethodId, fromClaim, toClaim)
 		require.NoError(t, err)
 		return c
 	}
@@ -228,7 +228,7 @@ func TestAccountClaimMap_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAccountClaimMap(m.PublicId, "oid", ToSubClaim)
+		orig, err := NewAccountClaimMap(context.TODO(), m.PublicId, "oid", ToSubClaim)
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.AccountClaimMap, orig.AccountClaimMap))
@@ -240,9 +240,9 @@ func TestAccountClaimMap_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAccountClaimMap(m.PublicId, "oid", ToSubClaim)
+		orig, err := NewAccountClaimMap(context.TODO(), m.PublicId, "oid", ToSubClaim)
 		require.NoError(err)
-		orig2, err := NewAccountClaimMap(m.PublicId, "uid", ToSubClaim)
+		orig2, err := NewAccountClaimMap(context.TODO(), m.PublicId, "uid", ToSubClaim)
 		require.NoError(err)
 
 		cp := orig.Clone()

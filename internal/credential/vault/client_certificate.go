@@ -27,7 +27,7 @@ type ClientCertificate struct {
 func NewClientCertificate(certificate []byte, key KeySecret) (*ClientCertificate, error) {
 	const op = "vault.NewClientCertificate"
 	if len(certificate) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no certificate")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no certificate")
 	}
 
 	certificateCopy := make([]byte, len(certificate))
@@ -77,14 +77,14 @@ func (c *ClientCertificate) SetTableName(n string) {
 func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).encrypt"
 	if len(c.CertificateKey) == 0 {
-		errors.New(errors.InvalidParameter, op, "no certificate key defined")
+		errors.New(ctx, errors.InvalidParameter, op, "no certificate key defined")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	c.KeyId = cipher.KeyID()
 	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
-		errors.Wrap(err, op)
+		errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 func (c *ClientCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -100,15 +100,15 @@ func (c *ClientCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper
 func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).hmacCertificateKey"
 	if cipher == nil {
-		return errors.New(errors.InvalidParameter, op, "missing cipher")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(c.StoreId), nil)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return errors.New(errors.Encrypt, op, "unable to generate derived key")
+		return errors.New(ctx, errors.Encrypt, op, "unable to generate derived key")
 	}
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write(c.CertificateKey)

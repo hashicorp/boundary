@@ -97,7 +97,7 @@ func TestClaimsScope_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewClaimsScope(tt.args.authMethodId, tt.args.claimsScope)
+			got, err := NewClaimsScope(ctx, tt.args.authMethodId, tt.args.claimsScope)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)
@@ -123,6 +123,7 @@ func TestClaimsScope_Create(t *testing.T) {
 
 func TestClaimsScope_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -137,7 +138,7 @@ func TestClaimsScope_Delete(t *testing.T) {
 			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, claimsScope string) *ClaimsScope {
-		c, err := NewClaimsScope(authMethodId, claimsScope)
+		c, err := NewClaimsScope(ctx, authMethodId, claimsScope)
 		require.NoError(t, err)
 		return c
 	}
@@ -200,6 +201,7 @@ func TestClaimsScope_Delete(t *testing.T) {
 
 func TestClaimsScope_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -211,7 +213,7 @@ func TestClaimsScope_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewClaimsScope(m.PublicId, "profile")
+		orig, err := NewClaimsScope(ctx, m.PublicId, "profile")
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.ClaimsScope, orig.ClaimsScope))
@@ -223,9 +225,9 @@ func TestClaimsScope_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewClaimsScope(m.PublicId, "email")
+		orig, err := NewClaimsScope(ctx, m.PublicId, "email")
 		require.NoError(err)
-		orig2, err := NewClaimsScope(m.PublicId, "profile")
+		orig2, err := NewClaimsScope(ctx, m.PublicId, "profile")
 		require.NoError(err)
 
 		cp := orig.Clone()

@@ -31,7 +31,7 @@ func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 	const op = "target.NewTcpTarget"
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
@@ -64,17 +64,17 @@ func (t *TcpTarget) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the tcp target
 // before it's written.
-func (t *TcpTarget) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (t *TcpTarget) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "target.(TcpTarget).VetForWrite"
 	if t.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.CreateOp {
 		if t.ScopeId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing scope id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 		}
 		if t.Name == "" {
-			return errors.New(errors.InvalidParameter, op, "missing name")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing name")
 		}
 	}
 	return nil

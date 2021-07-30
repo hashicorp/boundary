@@ -23,7 +23,7 @@ type SessionKey struct {
 func NewSessionKey(rootKeyId string, _ ...Option) (*SessionKey, error) {
 	const op = "kms.NewSessionKey"
 	if rootKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	c := &SessionKey{
 		SessionKey: &store.SessionKey{
@@ -50,14 +50,14 @@ func (k *SessionKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *SessionKey) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (k *SessionKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(SessionKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	}
 	return nil

@@ -25,7 +25,7 @@ func Test_upsertAccount(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	rw := db.New(conn)
 
-	r, err := NewRepository(rw, rw, kmsCache)
+	r, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))

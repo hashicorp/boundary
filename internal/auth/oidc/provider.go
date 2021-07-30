@@ -58,7 +58,7 @@ func (c *providers) get(ctx context.Context, currentFromDb *AuthMethod) (*oidc.P
 	const op = "oidc.(providers).getProvider"
 	storedProvider, err := convertToProvider(ctx, currentFromDb)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	c.mu.RLock()
 	p, ok := c.cache[currentFromDb.PublicId]
@@ -66,11 +66,11 @@ func (c *providers) get(ctx context.Context, currentFromDb *AuthMethod) (*oidc.P
 	if ok {
 		cachedHash, err := p.ConfigHash()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to hash provider from cache"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to hash provider from cache"))
 		}
 		storedHash, err := storedProvider.ConfigHash()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to hash provider from database"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to hash provider from database"))
 		}
 		switch cachedHash == storedHash {
 		case true:
@@ -100,10 +100,10 @@ func (c *providers) delete(ctx context.Context, authMethodId string) {
 func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, error) {
 	const op = "oidc.convertToProvider"
 	if am == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method")
 	}
-	if err := am.isComplete(); err != nil {
-		return nil, errors.Wrap(err, op)
+	if err := am.isComplete(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	algs := make([]oidc.Alg, 0, len(am.SigningAlgs))
 	for _, a := range am.SigningAlgs {
@@ -119,11 +119,11 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 		oidc.WithProviderCA(strings.Join(am.Certificates, "\n")),
 	)
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider Configuration", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider Configuration", errors.WithWrap(err))
 	}
 	p, err := oidc.NewProvider(c)
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider", errors.WithWrap(err))
 	}
 	return p, nil
 }

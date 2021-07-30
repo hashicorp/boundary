@@ -25,13 +25,13 @@ type OplogKeyVersion struct {
 func NewOplogKeyVersion(oplogKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*OplogKeyVersion, error) {
 	const op = "kms.NewOplogKeyVersion"
 	if oplogKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oplog key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &OplogKeyVersion{
@@ -61,20 +61,20 @@ func (k *OplogKeyVersion) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // version before it's written.
-func (k *OplogKeyVersion) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (k *OplogKeyVersion) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(OplogKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.OplogKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing oplog key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing oplog key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key version id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil
@@ -101,7 +101,7 @@ func (k *OplogKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) 
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OplogKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.OplogKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func (k *OplogKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OplogKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.OplogKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

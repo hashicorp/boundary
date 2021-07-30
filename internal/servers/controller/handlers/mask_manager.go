@@ -37,7 +37,7 @@ func NewMaskManager(dest MaskDestination, src MaskSource) (MaskManager, error) {
 	for k, v := range srcToDest {
 		ov, ok := destToSrc[v]
 		if !ok || ov != k {
-			return nil, errors.New(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.NewDeprecated(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 		result[k] = v
 	}
@@ -45,12 +45,12 @@ func NewMaskManager(dest MaskDestination, src MaskSource) (MaskManager, error) {
 	// Now check to make sure there aren't any dangling dest mappings.
 	for k, v := range destToSrc {
 		if ov, ok := srcToDest[v]; !ok || ov != k {
-			return nil, errors.New(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.NewDeprecated(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 	}
 
 	if len(result) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "mask mapping generated is zero")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "mask mapping generated is zero")
 	}
 
 	return result, nil
@@ -67,7 +67,7 @@ func mapFromProto(ps []protoreflect.ProtoMessage) (map[string]string, error) {
 			opts := f.Options().(*descriptorpb.FieldOptions)
 			if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) && nameMap != nil {
 				if _, ok := mapping[nameMap.GetThis()]; ok {
-					return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
+					return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
 				}
 				mapping[nameMap.GetThis()] = nameMap.GetThat()
 			}

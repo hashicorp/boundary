@@ -50,6 +50,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				certs := []*x509.Certificate{cert1, cert2}
 				pems := []string{pem1, pem2}
 				am, err := NewAuthMethod(
+					ctx,
 					org.PublicId,
 					"alice-rp",
 					"alice-secret", WithAudClaims("alice-rp"),
@@ -84,6 +85,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				certs := []*x509.Certificate{cert1, cert2}
 				pems := []string{pem1, pem2}
 				am, err := NewAuthMethod(
+					ctx,
 					org.PublicId,
 					"alice-rp-custom",
 					"alice-secret-custom", WithAudClaims("alice-rp-custom"),
@@ -119,6 +121,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				certs := []*x509.Certificate{cert1, cert2}
 				pems := []string{pem1, pem2}
 				am, err := NewAuthMethod(
+					ctx,
 					org.PublicId,
 					"alice-rp-bad",
 					"alice-secret-bad", WithAudClaims("alice-rp-bad"),
@@ -147,7 +150,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		{
 			name: "bad-state",
 			am: func(t *testing.T) *AuthMethod {
-				am, err := NewAuthMethod(org.PublicId, "bad-state-rp", "alice-secret",
+				am, err := NewAuthMethod(ctx, org.PublicId, "bad-state-rp", "alice-secret",
 					WithAudClaims("alice-rp"), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 				require.NoError(t, err)
 				am.OperationalState = "not-a-valid-state"
@@ -165,7 +168,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		{
 			name: "bad-public-id",
 			am: func(t *testing.T) *AuthMethod {
-				id, err := newAuthMethodId()
+				id, err := newAuthMethodId(ctx)
 				require.NoError(t, err)
 				am := AllocAuthMethod()
 				am.PublicId = id
@@ -186,7 +189,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			am := tt.am(t)

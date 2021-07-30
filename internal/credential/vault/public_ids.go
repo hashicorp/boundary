@@ -25,7 +25,7 @@ const (
 func newCredentialStoreId() (string, error) {
 	id, err := db.NewPublicId(CredentialStorePrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "vault.newCredentialStoreId")
+		return "", errors.WrapDeprecated(err, "vault.newCredentialStoreId")
 	}
 	return id, nil
 }
@@ -33,7 +33,7 @@ func newCredentialStoreId() (string, error) {
 func newCredentialId() (string, error) {
 	id, err := db.NewPublicId(DynamicCredentialPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "vault.newCredentialId")
+		return "", errors.WrapDeprecated(err, "vault.newCredentialId")
 	}
 	return id, nil
 }
@@ -41,7 +41,7 @@ func newCredentialId() (string, error) {
 func newCredentialLibraryId() (string, error) {
 	id, err := db.NewPublicId(CredentialLibraryPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "vault.newCredentialLibraryId")
+		return "", errors.WrapDeprecated(err, "vault.newCredentialLibraryId")
 	}
 	return id, nil
 }

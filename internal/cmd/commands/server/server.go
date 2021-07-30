@@ -133,6 +133,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -453,7 +454,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	if c.Config.Controller != nil {
-		if err := c.StartController(); err != nil {
+		if err := c.StartController(ctx); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
@@ -536,14 +537,14 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *Command) StartController() error {
+func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
 	var err error
-	c.controller, err = controller.New(conf)
+	c.controller, err = controller.New(ctx, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing controller: %w", err)
 	}
@@ -735,5 +736,5 @@ func (c *Command) verifyKmsSetup() error {
 			return nil
 		}
 	}
-	return errors.New(errors.MigrationIntegrity, op, "can't find global scoped root key")
+	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

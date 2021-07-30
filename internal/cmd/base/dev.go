@@ -348,12 +348,13 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	}
 
 	// Create the auth method
-	oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
+	oidcRepo, err := oidc.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating oidc repo: %w", err)
 	}
 
 	authMethod, err := oidc.NewAuthMethod(
+		ctx,
 		scope.Global.String(),
 		b.DevOidcSetup.clientId,
 		b.DevOidcSetup.clientSecret,
@@ -395,6 +396,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	{
 		createAndLinkAccount := func(loginName, userId, accountId, typ string) error {
 			acct, err := oidc.NewAccount(
+				ctx,
 				b.DevOidcSetup.authMethod.GetPublicId(),
 				loginName,
 				oidc.WithDescription(fmt.Sprintf("Initial %s OIDC account", typ)),

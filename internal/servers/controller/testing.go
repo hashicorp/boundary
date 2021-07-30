@@ -589,7 +589,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
 
-	tc.c, err = New(conf)
+	tc.c, err = New(ctx, conf)
 	if err != nil {
 		tc.Shutdown()
 		t.Fatal(err)

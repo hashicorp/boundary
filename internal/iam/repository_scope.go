@@ -21,13 +21,13 @@ import (
 func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	const op = "iam.(Repository).CreateScope"
 	if s == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope")
 	}
 	if s.Scope == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope store")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope store")
 	}
 	if s.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 
 	var parentOplogWrapper wrapping.Wrapper
@@ -35,13 +35,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var err error
 	switch s.Type {
 	case scope.Unknown.String():
-		return nil, errors.New(errors.InvalidParameter, op, "unknown type")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown type")
 	case scope.Global.String():
-		return nil, errors.New(errors.InvalidParameter, op, "invalid type")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid type")
 	default:
 		switch s.ParentId {
 		case "":
-			return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
 		case scope.Global.String():
 			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 		default:
@@ -50,7 +50,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		externalWrappers = r.kms.GetExternalWrappers()
 	}
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "unable to get oplog wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to get oplog wrapper")
 	}
 
 	opts := getOpts(opt...)
@@ -62,13 +62,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeType := scope.Map[s.Type]
 		if opts.withPublicId != "" {
 			if !strings.HasPrefix(opts.withPublicId, scopeType.Prefix()+"_") {
-				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, scopeType.String(), scopeType.Prefix()))
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, scopeType.String(), scopeType.Prefix()))
 			}
 			scopePublicId = opts.withPublicId
 		} else {
 			scopePublicId, err = newScopeId(scopeType)
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, errors.Wrap(ctx, err, op)
 			}
 		}
 		sc := s.Clone().(*Scope)
@@ -76,7 +76,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeRaw = sc
 		scopeMetadata, err = r.stdMetadata(ctx, sc)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		scopeMetadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 	}
@@ -103,11 +103,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	default:
 		adminRole, err = NewRole(scopePublicId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error instantiating new admin role"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new admin role"))
 		}
 		adminRolePublicId, err = newRoleId()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error generating public id for new admin role"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
 		}
 		adminRole.PublicId = adminRolePublicId
 		adminRole.Name = "Administration"
@@ -129,11 +129,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	if !opts.withSkipDefaultRoleCreation {
 		defaultRole, err = NewRole(scopePublicId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error instantiating new default role"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
 		}
 		defaultRolePublicId, err = newRoleId()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error generating public id for new default role"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
 		}
 		defaultRole.PublicId = defaultRolePublicId
 		switch s.Type {
@@ -169,7 +169,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				scopeRaw,
 				db.WithOplog(parentOplogWrapper, scopeMetadata),
 			); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating scope"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope"))
 			}
 
 			s := scopeRaw.(*Scope)
@@ -177,16 +177,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			// Create the scope's keys
 			_, err = kms.CreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating scope keys"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope keys"))
 			}
 
 			kmsRepo, err := kms.NewRepository(dbr, w)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating new kms repo"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating new kms repo"))
 			}
 			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, kms.WithRepository(kmsRepo))
 			if err != nil {
-				return errors.New(errors.InvalidParameter, op, "unable to get oplog wrapper")
+				return errors.New(ctx, errors.InvalidParameter, op, "unable to get oplog wrapper")
 			}
 
 			// We create a new role, then set grants and principals on it. This
@@ -198,7 +198,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					adminRoleRaw,
 					db.WithOplog(childOplogWrapper, adminRoleMetadata),
 				); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("error creating role"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
 				}
 
 				adminRole = adminRoleRaw.(*Role)
@@ -206,38 +206,38 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				msgs := make([]*oplog.Message, 0, 3)
 				roleTicket, err := w.GetTicket(adminRole)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
 				rowsUpdated, err := w.Update(ctx, adminRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&adminRole.Version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
 				}
 
 				msgs = append(msgs, &roleOplogMsg)
 
 				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;type=*;actions=*")
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, 1)
 				if err := w.CreateItems(ctx, []interface{}{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 
 				rolePrincipal, err := NewUserRole(adminRolePublicId, userId)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role user"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 				}
 				roleUserOplogMsgs := make([]*oplog.Message, 0, 1)
 				if err := w.CreateItems(ctx, []interface{}{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleUserOplogMsgs...)
 
@@ -248,7 +248,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"resource-public-id": []string{adminRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 
@@ -261,7 +261,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					defaultRoleRaw,
 					db.WithOplog(childOplogWrapper, defaultRoleMetadata),
 				); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("error creating role"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating role"))
 				}
 
 				defaultRole = defaultRoleRaw.(*Role)
@@ -269,17 +269,17 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				msgs := make([]*oplog.Message, 0, 6)
 				roleTicket, err := w.GetTicket(defaultRole)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
 				rowsUpdated, err := w.Update(ctx, defaultRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&defaultRole.Version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
 				}
 				msgs = append(msgs, &roleOplogMsg)
 
@@ -291,39 +291,39 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					case scope.Project.String():
 						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 					default:
 						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 					}
 
 					roleGrantOplogMsgs := make([]*oplog.Message, 0, 3)
 					if err := w.CreateItems(ctx, grants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 					}
 					msgs = append(msgs, roleGrantOplogMsgs...)
 				}
@@ -337,13 +337,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role user"))
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 					}
 					principals = append(principals, rolePrincipal)
 
 					roleUserOplogMsgs := make([]*oplog.Message, 0, 2)
 					if err := w.CreateItems(ctx, principals, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 					}
 					msgs = append(msgs, roleUserOplogMsgs...)
 				}
@@ -355,7 +355,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"resource-public-id": []string{defaultRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 
@@ -365,9 +365,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))
+			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", scopePublicId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", scopePublicId)))
 	}
 	return scopeRaw.(*Scope), nil
 }
@@ -381,13 +381,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint32, fieldMaskPaths []string, _ ...Option) (*Scope, int, error) {
 	const op = "iam.(Repository).UpdateScope"
 	if scope == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope")
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if contains(fieldMaskPaths, "ParentId") {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, "you cannot change a scope's parent")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, "you cannot change a scope's parent")
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
@@ -401,14 +401,14 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	)
 	// nada to update, so reload scope from db and return it
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("%s name %s already exists", scope.PublicId, scope.Name))
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("%s name %s already exists", scope.PublicId, scope.Name))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
 	}
 	return resource.(*Scope), rowsUpdated, nil
 }
@@ -418,7 +418,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...Option) (*Scope, error) {
 	const op = "iam.(Repository).LookupScope"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	scope := AllocScope()
 	scope.PublicId = withPublicId
@@ -426,7 +426,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return &scope, nil
 }
@@ -435,10 +435,10 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteScope"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if withPublicId == scope.Global.String() {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "invalid to delete global scope")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid to delete global scope")
 	}
 	scope := AllocScope()
 	scope.PublicId = withPublicId
@@ -447,7 +447,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 		if errors.Is(err, ErrMetadataScopeNotFound) {
 			return 0, nil
 		}
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
@@ -456,12 +456,12 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, error) {
 	const op = "iam.(Repository).ListScopes"
 	if len(withParentIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
 	}
 	var items []*Scope
 	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return items, nil
 }
@@ -487,11 +487,11 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 		args = append(args, rootScopeId)
 	default:
 		// We have no idea what scope type this is so bail
-		return nil, errors.New(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
+		return nil, errors.New(ctx, errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
 	}
 	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op+":ListQuery")
+		return nil, errors.Wrap(ctx, err, op+":ListQuery")
 	}
 	return scopes, nil
 }

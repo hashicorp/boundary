@@ -23,7 +23,7 @@ func newId() (string, error) {
 	const op = "session.newId"
 	id, err := db.NewPublicId(SessionPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -32,7 +32,7 @@ func newStateId() (string, error) {
 	const op = "session.newStateId"
 	id, err := db.NewPublicId(StatePrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -41,7 +41,7 @@ func newConnectionId() (string, error) {
 	const op = "session.newConnectionId"
 	id, err := db.NewPublicId(ConnectionPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -50,7 +50,7 @@ func newConnectionStateId() (string, error) {
 	const op = "session.newConnectionStateId"
 	id, err := db.NewPublicId(ConnectionStatePrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }

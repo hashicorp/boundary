@@ -28,7 +28,7 @@ func Test_StartAuth(t *testing.T) {
 	ctx := context.Background()
 	tp := oidc.StartTestProvider(t)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -40,7 +40,7 @@ func Test_StartAuth(t *testing.T) {
 	defer testController.Close()
 
 	repoFn := func() (*Repository, error) {
-		return NewRepository(rw, rw, kmsCache)
+		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)

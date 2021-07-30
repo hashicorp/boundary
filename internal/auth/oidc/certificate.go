@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -26,7 +27,7 @@ type Certificate struct {
 
 // NewCertificate creates a new in memory certificate assigned to and OIDC auth
 // method.
-func NewCertificate(authMethodId string, certificatePem string) (*Certificate, error) {
+func NewCertificate(ctx context.Context, authMethodId string, certificatePem string) (*Certificate, error) {
 	const op = "oidc.NewCertificate"
 
 	c := &Certificate{
@@ -35,27 +36,27 @@ func NewCertificate(authMethodId string, certificatePem string) (*Certificate, e
 			Cert:         certificatePem,
 		},
 	}
-	if err := c.validate(op); err != nil {
+	if err := c.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped
 	}
 	return c, nil
 }
 
 // validate the Certifcate and on success return nil
-func (c *Certificate) validate(caller errors.Op) error {
+func (c *Certificate) validate(ctx context.Context, caller errors.Op) error {
 	if c.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if c.Cert == "" {
-		return errors.New(errors.InvalidParameter, caller, "empty cert")
+		return errors.New(ctx, errors.InvalidParameter, caller, "empty cert")
 	}
 	block, _ := pem.Decode([]byte(c.Cert))
 	if block == nil {
-		return errors.New(errors.InvalidParameter, caller, "failed to parse certificate PEM")
+		return errors.New(ctx, errors.InvalidParameter, caller, "failed to parse certificate PEM")
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
+		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
 	}
 	return nil
 }

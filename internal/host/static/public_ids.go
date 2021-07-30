@@ -25,7 +25,7 @@ const (
 func newHostCatalogId() (string, error) {
 	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "static.newHostCatalogId")
+		return "", errors.WrapDeprecated(err, "static.newHostCatalogId")
 	}
 	return id, nil
 }
@@ -33,7 +33,7 @@ func newHostCatalogId() (string, error) {
 func newHostId() (string, error) {
 	id, err := db.NewPublicId(HostPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "static.newHostId")
+		return "", errors.WrapDeprecated(err, "static.newHostId")
 	}
 	return id, nil
 }
@@ -41,7 +41,7 @@ func newHostId() (string, error) {
 func newHostSetId() (string, error) {
 	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, "static.newHostSetId")
+		return "", errors.WrapDeprecated(err, "static.newHostSetId")
 	}
 	return id, nil
 }

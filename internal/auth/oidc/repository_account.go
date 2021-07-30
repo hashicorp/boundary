@@ -29,22 +29,22 @@ import (
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	const op = "oidc.(Repository).CreateAccount"
 	if a == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.AuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	if a.Subject == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing subject")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing subject")
 	}
 	if a.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id must be empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	a = a.Clone()
@@ -59,34 +59,34 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.Issuer == "" {
 		am, err := r.LookupAuthMethod(ctx, a.AuthMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get auth method"))
 		}
 		if am.GetIssuer() == "" {
-			return nil, errors.New(errors.InvalidParameter, op, "no issuer on auth method")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "no issuer on auth method")
 		}
 		a.Issuer = am.GetIssuer()
 	}
 	if a.Issuer == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no issuer provided or defined in auth method")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no issuer provided or defined in auth method")
 	}
 
 	opts := getOpts(opt...)
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AccountPrefix+"_") {
-			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
 		}
 		a.PublicId = opts.withPublicId
 	} else {
-		id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
+		id, err := newAccountId(ctx, a.AuthMethodId, a.Issuer, a.Subject)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		a.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
 	}
 
 	var newAccount *Account
@@ -94,7 +94,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.Clone()
 			if err := w.Create(ctx, newAccount, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId))); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
@@ -102,11 +102,11 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf(
+			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf(
 				"in auth method %s: name %q already exists or subject %q already exists for issuer %q in scope %s",
 				a.AuthMethodId, a.Name, a.Subject, a.Issuer, scopeId))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(a.AuthMethodId))
 	}
 	return newAccount, nil
 }
@@ -116,7 +116,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	const op = "oidc.(Repository).LookupAccount"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	a := AllocAccount()
 	a.PublicId = withPublicId
@@ -124,7 +124,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return a, nil
 }
@@ -133,7 +133,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	const op = "oidc.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -144,7 +144,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	var accts []*Account
 	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return accts, nil
 }
@@ -154,17 +154,17 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAccount"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	ac := AllocAccount()
 	ac.PublicId = withPublicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -177,17 +177,17 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			dAc := ac.Clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(withPublicId))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(withPublicId))
 	}
 
 	return rowsDeleted, nil
@@ -207,19 +207,19 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	const op = "oidc.(Repository).UpdateAccount"
 	if a == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -227,7 +227,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold(NameField, f):
 		case strings.EqualFold(DescriptionField, f):
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -240,12 +240,12 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg(("unable to get oplog wrapper")))
 	}
 
@@ -261,10 +261,10 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -272,10 +272,10 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(a.PublicId))
 	}
 
 	return returnedAccount, rowsUpdated, nil

@@ -56,16 +56,16 @@ type Token struct {
 func newToken(storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no store id")
 	}
 	if len(token) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token")
 	}
 	if len(accessor) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token accessor")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token accessor")
 	}
 	if expiration == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no expiration")
 	}
 
 	tokenCopy := make(TokenSecret, len(token))
@@ -120,7 +120,7 @@ func (t *Token) SetTableName(n string) {
 func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(Token).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, t.Token, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	t.KeyId = cipher.KeyID()
 	return nil
@@ -129,7 +129,7 @@ func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 func (t *Token) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(Token).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, t.Token, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

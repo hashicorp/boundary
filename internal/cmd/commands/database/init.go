@@ -500,7 +500,7 @@ func (c *InitCommand) verifyOplogIsEmpty() error {
 	var empty bool
 	r.Scan(&empty)
 	if !empty {
-		return errors.New(errors.MigrationIntegrity, op, "oplog_entry is not empty")
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
 	return nil
 }

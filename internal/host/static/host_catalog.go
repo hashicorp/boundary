@@ -19,7 +19,7 @@ type HostCatalog struct {
 // ignored.
 func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, "static.NewHostCatalog", "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostCatalog", "no scope id")
 	}
 
 	opts := getOpts(opt...)

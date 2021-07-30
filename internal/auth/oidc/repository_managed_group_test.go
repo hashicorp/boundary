@@ -182,7 +182,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateManagedGroup(context.Background(), tt.scopeId, tt.in, tt.opts...)
@@ -232,7 +232,7 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 	)
 	mg := TestManagedGroup(t, conn, authMethod, TestFakeManagedGroupFilter)
 
-	newMgId, err := newManagedGroupId()
+	newMgId, err := newManagedGroupId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -261,7 +261,7 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupManagedGroup(context.Background(), tt.in)
@@ -296,7 +296,7 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	mg := TestManagedGroup(t, conn, authMethod, TestFakeManagedGroupFilter)
-	newMgId, err := newManagedGroupId()
+	newMgId, err := newManagedGroupId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -337,7 +337,7 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteManagedGroup(context.Background(), tt.scopeId, tt.in)
@@ -437,7 +437,7 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListManagedGroups(context.Background(), tt.in, tt.opts...)
@@ -531,7 +531,7 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tt.listOpts...)
@@ -918,7 +918,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 

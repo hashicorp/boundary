@@ -25,10 +25,10 @@ type RootKeyVersion struct {
 func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersion, error) {
 	const op = "kms.NewRootKeyVersion"
 	if rootKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 
 	k := &RootKeyVersion{
@@ -57,21 +57,21 @@ func (k *RootKeyVersion) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the root key
 // version before it's written.
-func (k *RootKeyVersion) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (k *RootKeyVersion) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(RootKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.RootKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	case db.UpdateOp:
-		return errors.New(errors.InvalidParameter, op, "key is immutable")
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKey directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
