@@ -149,6 +149,60 @@ service TargetService {
     };
   }
 
+  // AddTargetHostSources adds Host Sources to this Target. The provided request
+  // must include the Target ID to which the Host Sources will be added. All
+  // Host Sources added to the provided Target must be a child of a Catalog that
+  // is a child of the same scope as this Target. If the scope or Target IDs are
+  // missing, malformed, or reference non-existing resources, an error is
+  // returned. An error is returned if a Host Source is attempted to be added to a
+  // target that is already present on the Target.
+  rpc AddTargetHostSources(AddTargetHostSourcesRequest) returns (AddTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds existing Host Sources to a Target."
+    };
+  }
+
+  // SetTargetHostSources sets the Target's Host Sources. Any existing Host
+  // Sources on the Target are deleted if they are not included in this request.
+  // The provided request must include the scope, and the Target ID on which the
+  // Host Sources will be set. All Host Sources in the request must be a child
+  // of a Catalog that is in the same scope as the provided Target. If any IDs
+  // are missing, malformed, or references a non-existing resource, an error is
+  // returned.
+  rpc SetTargetHostSources(SetTargetHostSourcesRequest) returns (SetTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sources the Host Sources on the Target."
+    };
+  }
+
+  // RemoveTargetHostSources removes the Host Sources from the specified Target.
+  // The provided request must include the Target ID for the Target from which
+  // the Host Sources will be removed. If the ID is missing, malformed, or
+  // references a non-existing scope or Catalog, an error is returned.  An error
+  // is returned if a Host Source is attempted to be removed from the Target
+  // when the Target does not have the Host Set.
+  rpc RemoveTargetHostSources(RemoveTargetHostSourcesRequest) returns (RemoveTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes Host Sources from the Target."
+    };
+  }
+
+
   // AddTargetCredentialLibraries adds Credential Libraries to this Target.
   // The provided request must include the Target ID to which the Credential
   // Libraries will be added. All Credential Libraries added to the provided
@@ -337,6 +391,42 @@ message RemoveTargetHostSetsRequest {
 }
 
 message RemoveTargetHostSetsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message AddTargetHostSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message SetTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message SetTargetHostSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message RemoveTargetHostSourcesResponse {
   api.resources.targets.v1.Target item = 1;
 }
 

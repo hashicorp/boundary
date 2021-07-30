@@ -2650,6 +2650,39 @@
         ]
       }
     },
+    "/v1/targets/{id}:add-host-sources": {
+      "post": {
+        "summary": "Adds existing Host Sources to a Target.",
+        "operationId": "TargetService_AddTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSourcesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:authorize-session": {
       "post": {
         "summary": "Authorizes a Session.",
@@ -2783,6 +2816,39 @@
         ]
       }
     },
+    "/v1/targets/{id}:remove-host-sources": {
+      "post": {
+        "summary": "Removes Host Sources from the Target.",
+        "operationId": "TargetService_RemoveTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSourcesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:set-credential-libraries": {
       "post": {
         "summary": "Deprecated: use SetTargetCredentialSources instead.",
@@ -2874,6 +2940,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-host-sources": {
+      "post": {
+        "summary": "Sources the Host Sources on the Target.",
+        "operationId": "TargetService_SetTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSourcesRequest"
             }
           }
         ],
@@ -4320,6 +4419,21 @@
         }
       }
     },
+    "controller.api.resources.targets.v1.HostSource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Host Set.",
+          "readOnly": true
+        },
+        "host_catalog_id": {
+          "type": "string",
+          "description": "Output only. The Host Catalog to which this Host Source belongs.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.targets.v1.SessionAuthorization": {
       "type": "object",
       "properties": {
@@ -4481,6 +4595,21 @@
             "$ref": "#/definitions/controller.api.resources.targets.v1.HostSet"
           },
           "description": "Output only. The Host Sets associated with this Target.",
+          "readOnly": true
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IDs of the Host Sources associated with this Target."
+        },
+        "host_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.HostSource"
+          },
+          "description": "Output only. The Host Sources associated with this Target.",
           "readOnly": true
         },
         "session_max_seconds": {
@@ -4829,6 +4958,33 @@
       }
     },
     "controller.api.services.v1.AddTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {
@@ -5694,6 +5850,33 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveUserAccountsRequest": {
       "type": "object",
       "properties": {
@@ -5930,6 +6113,33 @@
       }
     },
     "controller.api.services.v1.SetTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {

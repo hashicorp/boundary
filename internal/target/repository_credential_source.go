@@ -15,7 +15,7 @@ import (
 // and the list of credential sources attached to the target, after cIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []*TargetSet, []CredentialSource, error) {
+func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
 	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -60,7 +60,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var hostSets []*TargetSet
+	var hostSources []HostSource
 	var credSources []CredentialSource
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
@@ -96,9 +96,9 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
-			hostSets, err = fetchSets(ctx, reader, targetId)
+			hostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve host sources after adding"))
 			}
 			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
@@ -110,7 +110,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return updatedTarget.(Target), hostSets, credSources, nil
+	return updatedTarget.(Target), hostSources, credSources, nil
 }
 
 // DeleteTargetCredentialSources deletes credential sources from a target in the repository.
@@ -210,7 +210,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 // SetTargetCredentialSources will set the target's credential sources. Set will add
 // and/or delete credential sources as need to reconcile the existing credential sources
 // with the request. If clIds is empty, all the credential sources will be cleared from the target.
-func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) ([]*TargetSet, []CredentialSource, int, error) {
+func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
 	const op = "target.(Repository).SetTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -225,7 +225,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	}
 	if len(changes) == 0 {
 		// Nothing needs to be changed, return early
-		hostSets, err := fetchSets(ctx, r.reader, targetId)
+		hostSets, err := fetchHostSources(ctx, r.reader, targetId)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
@@ -273,7 +273,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	}
 
 	var rowsAffected int
-	var hostSets []*TargetSet
+	var hostSources []HostSource
 	var credSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
@@ -328,7 +328,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			hostSets, err = fetchSets(ctx, reader, targetId)
+			hostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
 			}
@@ -342,7 +342,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	return hostSets, credSources, rowsAffected, nil
+	return hostSources, credSources, rowsAffected, nil
 }
 
 type change struct {

@@ -213,6 +213,30 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "add-host-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-host-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-host-sources":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	case "add-credential-libraries":
 		switch c.FlagVersion {
 		case 0:

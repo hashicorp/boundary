@@ -10,6 +10,14 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
+message HostSource {
+	// Output only. The ID of the Host Set.
+	string id = 10;
+
+	// Output only. The Host Catalog to which this Host Source belongs.
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
+}
+
 message HostSet {
 	// Output only. The ID of the Host Set.
 	string id = 10;
@@ -109,6 +117,12 @@ message Target {
 
 	// Output only. The Host Sets associated with this Target.
 	repeated HostSet host_sets = 110 [json_name="host_sets"];
+
+	// The IDs of the Host Sources associated with this Target.
+	repeated string host_source_ids = 420 [json_name="host_source_ids"];
+
+	// Output only. The Host Sources associated with this Target.
+	repeated HostSource host_sources = 430 [json_name="host_sources"];
 
 	// Maximum total lifetime of a created Session, in seconds.
 	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_max_seconds" that: "SessionMaxSeconds"}];

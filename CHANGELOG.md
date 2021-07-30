@@ -6,22 +6,34 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* With respect to Target resources, _credential libraries_ that are attached to
-  the targets are being renamed to the more abstract _credential sources_. In
-  the future Boundary will gain the ability to internally store static
-  credentials that are not generated or fetched dynamically, and the _sources_
-  terminology better reflects that the IDs provided are a source of credentials,
-  whether via dynamic generation or via the credentials themselves. This will
-  allow a paradigm similar to `principals` with roles, where the principal IDs
-  can be a users, groups, and managed groups, rather than having them split out,
-  and should result in an easier user experience once those features roll out
-  compared to having separate flags and fields. In this 0.5 release the Boundary
-  CLI has gained parallel `application-credential-source` flags to the existing
-  `application-credential-library` flags, as well as `boundary targets
-  add/remove/set-credential-sources` commands that parallel `boundary targets
-  add/remove/set-credential-libraries` commands. This parallelism extends to the
-  API actions and the grants system. In 0.6, the _library_ versions of these
-  commands, flags, and actions will be removed.
+* With respect to Target resources, two naming changes are taking place. Note
+  that these are not affecting the resources themselves, only the fields on
+  Target resources that map them to targets:
+* * _Credential Libraries_: In Target definitions, the field referring to
+    attached credential libraries is being renamed to the more abstract
+    _credential sources_. In the future Boundary will gain the ability to
+    internally store static credentials that are not generated or fetched
+    dynamically, and the _sources_ terminology better reflects that the IDs
+    provided are a source of credentials, whether via dynamic generation or via
+    the credentials themselves. This will allow a paradigm similar to
+    `principals` with roles, where the principal IDs can be a users, groups, and
+    managed groups, rather than having them split out, and should result in an
+    easier user experience once those features roll out compared to having
+    separate flags and fields. In this 0.5 release the Boundary CLI has gained
+    parallel `application-credential-source` flags to the existing
+    `application-credential-library` flags, as well as `boundary targets
+    add/remove/set-credential-sources` commands that parallel `boundary targets
+    add/remove/set-credential-libraries` commands. This parallelism extends to
+    the API actions and the grants system. In 0.6, the _library_ versions of
+    these commands, flags, and actions will be removed.
+* * _Host Sets_: Similarly, in Target definitions, the field referring to
+    attached host sets is being renamed to the more abstract _host sources_. In
+    the future Boundary will allow attaching some host types directly, and
+    possibly other mechanisms for gathering hosts for targets, so the _sources_
+    terminology better reflects that the IDs provided are a source of hosts,
+    whether via sets or via the hosts themselves. Like with credential sources,
+    in this 0.5 release the Boundary CLI and API have gained parallel API
+    actions and fields, and the _set_ versions of these will be removed in 0.6.
 
 ### New and Improved
 

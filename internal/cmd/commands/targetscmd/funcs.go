@@ -30,6 +30,7 @@ func init() {
 
 type extraCmdVars struct {
 	flagHostSets                       []string
+	flagHostSources                    []string
 	flagApplicationCredentialLibraries []string
 	flagApplicationCredentialSources   []string
 	flagHostId                         string
@@ -42,6 +43,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-host-sets":               {"id", "host-set", "version"},
 		"remove-host-sets":            {"id", "host-set", "version"},
 		"set-host-sets":               {"id", "host-set", "version"},
+		"add-host-sources":            {"id", "host-source", "version"},
+		"remove-host-sources":         {"id", "host-source", "version"},
+		"set-host-sources":            {"id", "host-source", "version"},
 		"add-credential-libraries":    {"id", "application-credential-library", "version"},
 		"remove-credential-libraries": {"id", "application-credential-library", "version"},
 		"set-credential-libraries":    {"id", "application-credential-library", "version"},
@@ -62,6 +66,18 @@ func extraSynopsisFuncImpl(c *Command) string {
 			in = "Set the full contents of the host sets on"
 		case strings.HasPrefix(c.Func, "remove"):
 			in = "Remove host sets from"
+		}
+		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
+
+	case "add-host-sources", "set-host-sources", "remove-host-sources":
+		var in string
+		switch {
+		case strings.HasPrefix(c.Func, "add"):
+			in = "Add host sources to"
+		case strings.HasPrefix(c.Func, "set"):
+			in = "Set the full contents of the host sources on"
+		case strings.HasPrefix(c.Func, "remove"):
+			in = "Remove host sources from"
 		}
 		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
 
@@ -140,6 +156,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target add-host-sets [options] [args]",
 			"",
+			"  DEPRECATED: Use add-host-sources instead.",
+			"",
 			"  This command allows adding host-set resources to target resources. Example:",
 			"",
 			"    Add host-set resources to a tcp-type target:",
@@ -152,11 +170,13 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target remove-host-sets [options] [args]",
 			"",
+			"  DEPRECATED: Use remove-host-sources instead.",
+			"",
 			"  This command allows removing host-set resources from target resources. Example:",
 			"",
 			"    Remove host-set resources from a tcp-type target:",
 			"",
-			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
+			`      $ boundary targets remove-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
 			"",
 			"",
 		})
@@ -164,11 +184,49 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target set-host-sets [options] [args]",
 			"",
+			"  DEPRECATED: Use set-host-sources instead.",
+			"",
 			"  This command allows setting the complete set of host-set resources on a target resource. Example:",
 			"",
 			"    Set host-set resources on a tcp-type target:",
 			"",
 			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
+			"",
+			"",
+		})
+	case "add-host-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target add-host-sources [options] [args]",
+			"",
+			"  This command allows adding host sources to target resources. Example:",
+			"",
+			"    Add host sources to a tcp-type target:",
+			"",
+			`      $ boundary targets add-host-sources -id ttcp_1234567890 -host-source hsst_1234567890 -host-source hsst_0987654321`,
+			"",
+			"",
+		})
+	case "remove-host-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target remove-host-sources [options] [args]",
+			"",
+			"  This command allows removing host sources from target resources. Example:",
+			"",
+			"    Remove host sources from a tcp-type target:",
+			"",
+			`      $ boundary targets remove-host-sources -id ttcp_1234567890 -host-source hsst_1234567890 -host-source hsst_0987654321`,
+			"",
+			"",
+		})
+	case "set-host-sources":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target set-host-sources [options] [args]",
+			"",
+			"  This command allows setting the complete set of host sources on a target resource. Example:",
+			"",
+			"    Set host sources on a tcp-type target:",
+			"",
+			`      $ boundary targets set-host-sources -id ttcp_1234567890 -host-source hsst_1234567890`,
 			"",
 			"",
 		})
@@ -279,6 +337,12 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagHostSets,
 				Usage:  "The host-set resources to add, remove, or set. May be specified multiple times.",
 			})
+		case "host-source":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "host-source",
+				Target: &c.flagHostSources,
+				Usage:  "The host sources to add, remove, or set. May be specified multiple times.",
+			})
 		case "host-id":
 			f.StringVar(&base.StringVar{
 				Name:   "host-id",
@@ -367,6 +431,12 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			return false
 		}
 
+	case "add-host-sources", "remove-host-sources":
+		if len(c.flagHostSources) == 0 {
+			c.UI.Error("No host sources supplied via -host-source")
+			return false
+		}
+
 	case "set-host-sets":
 		switch len(c.flagHostSets) {
 		case 0:
@@ -375,6 +445,17 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		case 1:
 			if c.flagHostSets[0] == "null" {
 				c.flagHostSets = nil
+			}
+		}
+
+	case "set-host-sources":
+		switch len(c.flagHostSources) {
+		case 0:
+			c.UI.Error("No host sources supplied via -host-source")
+			return false
+		case 1:
+			if c.flagHostSources[0] == "null" {
+				c.flagHostSources = nil
 			}
 		}
 
@@ -443,6 +524,12 @@ func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError
 		return targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
 	case "set-host-sets":
 		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+	case "add-host-sources":
+		return targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+	case "remove-host-sources":
+		return targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+	case "set-host-sources":
+		return targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
 	case "add-credential-libraries":
 		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, opts...)
 	case "remove-credential-libraries":
@@ -560,14 +647,26 @@ func printItemTable(result api.GenericResult) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
-	var hostSetMaps []map[string]interface{}
+	var hostSourceMaps []map[string]interface{}
+	if len(item.HostSources) > 0 {
+		for _, set := range item.HostSources {
+			m := map[string]interface{}{
+				"ID":              set.Id,
+				"Host Catalog ID": set.HostCatalogId,
+			}
+			hostSourceMaps = append(hostSourceMaps, m)
+		}
+		if l := len("Host Catalog ID"); l > maxLength {
+			maxLength = l
+		}
+	}
 	if len(item.HostSets) > 0 {
 		for _, set := range item.HostSets {
 			m := map[string]interface{}{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
-			hostSetMaps = append(hostSetMaps, m)
+			hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
@@ -636,11 +735,11 @@ func printItemTable(result api.GenericResult) string {
 		"",
 	)
 
-	if len(item.HostSets) > 0 {
+	if len(hostSourceMaps) > 0 {
 		ret = append(ret,
-			"  Host Sets:",
+			"  Host Sources:",
 		)
-		for _, m := range hostSetMaps {
+		for _, m := range hostSourceMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
 				"",

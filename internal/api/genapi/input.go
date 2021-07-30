@@ -556,6 +556,10 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto: &targets.HostSource{},
+		outFile: "targets/host_source.gen.go",
+	},
+	{
 		inProto: &targets.CredentialLibrary{},
 		outFile: "targets/credential_library.gen.go",
 	},
@@ -608,6 +612,10 @@ var inputStructs = []*structInfo{
 			"HostSets": {
 				SliceType: "[]string",
 				VarName:   "hostSetIds",
+			},
+			"HostSources": {
+				SliceType: "[]string",
+				VarName:   "hostSourceIds",
 			},
 			"CredentialLibraries": {},
 			"CredentialSources":   {},
