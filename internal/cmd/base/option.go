@@ -28,6 +28,7 @@ type Options struct {
 	withSkipTargetCreation         bool
 	withContainerImage             string
 	withDialect                    string
+	withDatabaseTemplate           string
 	withEventerConfig              *event.EventerConfig
 	withEventFlags                 *EventFlags
 	withAttributeFieldPrefix       string
@@ -147,5 +148,13 @@ func WithAttributeFieldPrefix(p string) Option {
 func WithStatusCode(statusCode int) Option {
 	return func(o *Options) {
 		o.withStatusCode = statusCode
+	}
+}
+
+// WithDatabaseTemplate allows for using an existing database template for
+// initializing the boundary database.
+func WithDatabaseTemplate(template string) Option {
+	return func(o *Options) {
+		o.withDatabaseTemplate = template
 	}
 }
