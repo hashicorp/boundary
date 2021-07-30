@@ -18,6 +18,7 @@ type Options struct {
 	withErrWrapped error
 	withErrMsg     string
 	withOp         Op
+	withoutEvent   bool
 }
 
 func getDefaultOptions() Options {
@@ -53,5 +54,11 @@ func WithOp(op Op) Option {
 func WithCode(code Code) Option {
 	return func(o *Options) {
 		o.withCode = code
+	}
+}
+
+func WithoutEvent() Option {
+	return func(o *Options) {
+		o.withoutEvent = true
 	}
 }

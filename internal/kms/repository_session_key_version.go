@@ -15,32 +15,32 @@ import (
 func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, key []byte, _ ...Option) (*SessionKeyVersion, error) {
 	const op = "kms.(Repository).CreateSessionKeyVersion"
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 	}
 	if sessionKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session key id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocSessionKeyVersion()
 	id, err := newSessionKeyVersionId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyVersionId = rootKeyVersionId
 	kv.Key = key
 	kv.SessionKeyId = sessionKeyId
 	if err := kv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var returnedKey interface{}
@@ -52,13 +52,13 @@ func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wra
 			returnedKey = kv.Clone()
 			// no session entries for root key version
 			if err := w.Create(ctx, returnedKey); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s session key id", kv.SessionKeyId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s session key id", kv.SessionKeyId)))
 	}
 	return returnedKey.(*SessionKeyVersion), nil
 }
@@ -68,18 +68,18 @@ func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wra
 func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*SessionKeyVersion, error) {
 	const op = "kms.(Repository).LookupSessionKeyVersion"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	if err := k.Decrypt(ctx, keyWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &k, nil
 }
@@ -90,12 +90,12 @@ func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wra
 func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteSessionKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -108,16 +108,16 @@ func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId stri
 			// no session entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -128,20 +128,20 @@ func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId stri
 func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, _ ...Option) (*SessionKeyVersion, error) {
 	const op = "kms.(Repository).LatestSessionKeyVersion"
 	if sessionKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session key id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*SessionKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "session_key_id = ?", []interface{}{sessionKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionKeyId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return foundKeys[0], nil
 }
@@ -150,19 +150,19 @@ func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wra
 func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) ([]DekVersion, error) {
 	const op = "kms.(Repository).ListSessionKeyVersions"
 	if sessionKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session key id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*SessionKeyVersion
 	err := r.list(ctx, &versions, "session_key_id = ?", []interface{}{sessionKeyId}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for i, k := range versions {
 		if err := k.Decrypt(ctx, rkvWrapper); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
 		}
 	}
 	dekVersions := make([]DekVersion, 0, len(versions))

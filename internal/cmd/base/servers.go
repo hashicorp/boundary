@@ -145,18 +145,18 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 	const op = "base.(Server).SetupEventing"
 
 	if logger == nil {
-		return berrors.New(berrors.InvalidParameter, op, "missing logger")
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing logger")
 	}
 	if serializationLock == nil {
-		return berrors.New(berrors.InvalidParameter, op, "missing serialization lock")
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing serialization lock")
 	}
 	if serverName == "" {
-		return berrors.New(berrors.InvalidParameter, op, "missing server name")
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server name")
 	}
 	opts := getOpts(opt...)
 	if opts.withEventerConfig != nil {
 		if err := opts.withEventerConfig.Validate(); err != nil {
-			return berrors.Wrap(err, op, berrors.WithMsg("invalid eventer config"))
+			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid eventer config"))
 		}
 	}
 	if opts.withEventerConfig == nil {
@@ -165,7 +165,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 
 	if opts.withEventFlags != nil {
 		if err := opts.withEventFlags.Validate(); err != nil {
-			return berrors.Wrap(err, op, berrors.WithMsg("invalid event flags"))
+			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid event flags"))
 		}
 		if opts.withEventFlags.Format != "" {
 			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
@@ -195,12 +195,12 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 
 	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
 	if err != nil {
-		return berrors.Wrap(err, op, berrors.WithMsg("unable to create eventer"))
+		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
 	b.Eventer = e
 
 	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventer(e)); err != nil {
-		return berrors.Wrap(err, op, berrors.WithMsg("unable to initialize system eventer"))
+		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to initialize system eventer"))
 	}
 
 	return nil
@@ -210,11 +210,11 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 func (b *Server) AddEventerToContext(ctx context.Context) (context.Context, error) {
 	const op = "base.(Server).AddEventerToContext"
 	if b.Eventer == nil {
-		return nil, berrors.New(berrors.InvalidParameter, op, "missing server eventer")
+		return nil, berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server eventer")
 	}
 	e, err := event.NewEventerContext(ctx, b.Eventer)
 	if err != nil {
-		return nil, berrors.Wrap(err, op, berrors.WithMsg("unable to add eventer to context"))
+		return nil, berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to add eventer to context"))
 	}
 	return e, nil
 }

@@ -67,6 +67,7 @@ var authorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 func TestGet(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -75,7 +76,7 @@ func TestGet(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -204,6 +205,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -212,7 +214,7 @@ func TestList(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -385,6 +387,7 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -393,7 +396,7 @@ func TestDelete(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -461,6 +464,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -470,7 +474,7 @@ func TestDelete_twice(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
@@ -497,6 +501,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -508,7 +513,7 @@ func TestCreate(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)

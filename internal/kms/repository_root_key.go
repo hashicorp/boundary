@@ -21,13 +21,13 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		func(_ db.Reader, w db.Writer) error {
 			var err error
 			if returnedRk, returnedKv, err = createRootKeyTx(ctx, w, keyWrapper, scopeId, key); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", scopeId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", scopeId)))
 	}
 	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), nil
 }
@@ -38,41 +38,41 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
 	const op = "kms.createRootKeyTx"
 	if scopeId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	if keyWrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	if len(key) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	rk := AllocRootKey()
 	kv := AllocRootKeyVersion()
 	id, err := newRootKeyId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	rk.PrivateId = id
 	rk.ScopeId = scopeId
 
 	id, err = newRootKeyVersionId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyId = rk.PrivateId
 	kv.Key = key
 	if err := kv.Encrypt(ctx, keyWrapper); err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	// no oplog entries for root keys
 	if err := w.Create(ctx, &rk); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("root keys"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("root keys"))
 	}
 	// no oplog entries for root key versions
 	if err := w.Create(ctx, &kv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("key versions"))
 	}
 
 	return &rk, &kv, nil
@@ -83,15 +83,15 @@ func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKey, error) {
 	const op = "kms.(Repository).LookupRootKey"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return &k, nil
 }
@@ -102,12 +102,12 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKey"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -120,16 +120,16 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...O
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -140,7 +140,7 @@ func (r *Repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*RootKe
 	var keys []*RootKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return keys, nil
 }

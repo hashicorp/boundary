@@ -25,11 +25,11 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	const op = "static.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
 	}
 
 	opts := getOpts(opt...)

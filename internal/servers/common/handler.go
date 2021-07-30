@@ -42,13 +42,13 @@ func (w *writerWrapper) StatusCode() int {
 // an http.ResponseWriter that satisfies those optional interfaces.
 //
 // See: https://medium.com/@cep21/interface-wrapping-method-erasure-c523b3549912
-func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.ResponseWriter, error) {
+func WrapWithOptionals(ctx context.Context, with *writerWrapper, wrap http.ResponseWriter) (http.ResponseWriter, error) {
 	const op = "common.WrapWithOptionals"
 	if with == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing writer wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing writer wrapper")
 	}
 	if wrap == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing response writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing response writer")
 	}
 	flusher, _ := wrap.(http.Flusher)
 	pusher, _ := wrap.(http.Pusher)
@@ -105,13 +105,13 @@ func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.Resp
 func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
 	if h == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing handler")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing handler")
 	}
 	if e == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing eventer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -157,7 +157,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 				return
 			}
 
-			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
+			wrapper, err := WrapWithOptionals(ctx, &writerWrapper{w, http.StatusOK}, w)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to wrap handler with optional interfaces"))
@@ -185,12 +185,12 @@ func startGatedEvents(ctx context.Context, method, url string, startTime time.Ti
 	}
 	err := event.WriteObservation(ctx, "handler", event.WithHeader("start", startTime))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write observation event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write observation event"))
 	}
 
 	err = event.WriteAudit(ctx, "handler")
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write audit event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write audit event"))
 	}
 	return nil
 }
@@ -213,11 +213,11 @@ func flushGatedEvents(ctx context.Context, method, url string, statusCode int, s
 		),
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush observation event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush observation event"))
 	}
 	err = event.WriteAudit(ctx, "handler", event.WithFlush())
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush audit event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush audit event"))
 	}
 	return nil
 }

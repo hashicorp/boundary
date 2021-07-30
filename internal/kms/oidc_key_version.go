@@ -26,13 +26,13 @@ type OidcKeyVersion struct {
 func NewOidcKeyVersion(oidcKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*OidcKeyVersion, error) {
 	const op = "kms.NewOidcKeyVersion"
 	if oidcKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oidc key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &OidcKeyVersion{
@@ -65,21 +65,21 @@ func (k *OidcKeyVersion) Clone() interface{} {
 func (k *OidcKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "kms.(OidcKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.OidcKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing oidc key id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing oidc key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key version id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	case db.UpdateOp:
-		return errors.New(errors.InvalidParameter, op, "key is immutable")
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ func (k *OidcKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OidcKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.OidcKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -116,7 +116,7 @@ func (k *OidcKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OidcKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.OidcKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

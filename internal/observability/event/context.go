@@ -318,6 +318,8 @@ func newSendCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	var sendCtx context.Context
 	var sendCancel context.CancelFunc
 	switch {
+	case ctx == nil:
+		return context.Background(), nil
 	case ctx.Err() == context.Canceled:
 		sendCtx, sendCancel = context.WithTimeout(context.Background(), cancelledSendTimeout)
 		info, ok := RequestInfoFromContext(ctx)

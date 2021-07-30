@@ -65,7 +65,7 @@ var _ pbs.HostServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -144,7 +144,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -182,7 +182,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -223,7 +223,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -292,16 +292,16 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for creation"))
 	}
 
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to create host"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to create host"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")
@@ -327,7 +327,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for update"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -340,7 +340,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist or incorrect version provided.", id)
@@ -356,7 +356,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteHost(ctx, scopeId, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }

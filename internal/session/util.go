@@ -22,7 +22,7 @@ func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.P
 
 	reader, err := kms.NewDerivedReader(wrapper, 32, uId, jId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	return ed25519.GenerateKey(reader)
 }

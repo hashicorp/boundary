@@ -30,10 +30,10 @@ var _ db.VetForWriter = (*TargetHostSet)(nil)
 func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, error) {
 	const op = "target.NewTargetHostSet"
 	if targetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if hostSetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing hostSetId id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing hostSetId id")
 	}
 	t := &TargetHostSet{
 		TargetHostSet: &store.TargetHostSet{
@@ -61,14 +61,14 @@ func (t *TargetHostSet) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the target
 // host set before it's written.
-func (t *TargetHostSet) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+func (t *TargetHostSet) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "target.(TargetHostSet).VetForWrite"
 	if opType == db.CreateOp {
 		if t.TargetId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing target id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 		}
 		if t.HostSetId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing host set id")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
 		}
 	}
 	return nil

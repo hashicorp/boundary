@@ -18,20 +18,20 @@ import (
 func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
 	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if len(cIds) == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing credential source ids")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential source ids")
 	}
 
 	addCredLibs := make([]interface{}, 0, len(cIds))
 	for _, id := range cIds {
 		cl, err := NewCredentialLibrary(targetId, id)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory credential library"))
 		}
 		addCredLibs = append(addCredLibs, cl)
 	}
@@ -39,7 +39,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -52,12 +52,12 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 	default:
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var hostSources []HostSource
@@ -71,44 +71,44 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(target)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedTarget = target.(Cloneable).Clone()
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.New(ctx, errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
 			credLibsOplogMsgs := make([]*oplog.Message, 0, len(addCredLibs))
 			if err := w.CreateItems(ctx, addCredLibs, db.NewOplogMsgs(&credLibsOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create target credential sources"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target credential sources"))
 			}
 			msgs = append(msgs, credLibsOplogMsgs...)
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 			hostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve host sources after adding"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve host sources after adding"))
 			}
 			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return updatedTarget.(Target), hostSources, credSources, nil
 }
@@ -118,20 +118,20 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTargetCredentialSources"
 	if targetId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if len(csIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing credential source ids")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing credential source ids")
 	}
 
 	deleteCredLibs := make([]interface{}, 0, len(csIds))
 	for _, id := range csIds {
 		cl, err := NewCredentialLibrary(targetId, id)
 		if err != nil {
-			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
+			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory credential library"))
 		}
 		deleteCredLibs = append(deleteCredLibs, cl)
 	}
@@ -139,7 +139,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -152,12 +152,12 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 	default:
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -169,40 +169,40 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(target)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedTarget := target.(Cloneable).Clone()
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.New(ctx, errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
 			credLibsOplogMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
 			rowsDeleted, err = w.DeleteItems(ctx, deleteCredLibs, db.NewOplogMsgs(&credLibsOplogMsgs))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential sources"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target credential sources"))
 			}
 			if rowsDeleted != len(deleteCredLibs) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("credential sources deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("credential sources deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
 			}
 			msgs = append(msgs, credLibsOplogMsgs...)
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return rowsDeleted, nil
 }
@@ -213,25 +213,25 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
 	const op = "target.(Repository).SetTargetCredentialSources"
 	if targetId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
 	changes, err := r.changes(ctx, targetId, csIds)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	if len(changes) == 0 {
 		// Nothing needs to be changed, return early
 		hostSets, err := fetchHostSources(ctx, r.reader, targetId)
 		if err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		credSources, err := fetchCredentialSources(ctx, r.reader, targetId)
 		if err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		return hostSets, credSources, db.NoRowsAffected, nil
 	}
@@ -240,7 +240,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	for _, c := range changes {
 		cl, err := NewCredentialLibrary(targetId, c.LibraryId)
 		if err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target credential library"))
 		}
 		switch c.Action {
 		case "delete":
@@ -253,7 +253,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -265,11 +265,11 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 		target = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	default:
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsAffected int
@@ -283,19 +283,19 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(target)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedTarget := target.(Cloneable).Clone()
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.New(ctx, errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -303,7 +303,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 			if len(addCredLibs) > 0 {
 				addMsgs := make([]*oplog.Message, 0, len(addCredLibs))
 				if err := w.CreateItems(ctx, addCredLibs, db.NewOplogMsgs(&addMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add target credential libraries"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add target credential libraries"))
 				}
 				rowsAffected += len(addMsgs)
 				msgs = append(msgs, addMsgs...)
@@ -315,32 +315,32 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 				delMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteCredLibs, db.NewOplogMsgs(&delMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential libraries"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target credential libraries"))
 				}
 				if rowsDeleted != len(delMsgs) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
 				}
 				rowsAffected += rowsDeleted
 				msgs = append(msgs, delMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			hostSources, err = fetchHostSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
 			}
 			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential sources after add/delete"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target credential sources after add/delete"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return hostSources, credSources, rowsAffected, nil
 }
@@ -370,7 +370,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("query failed"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("query failed"))
 	}
 	defer rows.Close()
 
@@ -378,7 +378,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	for rows.Next() {
 		var chg change
 		if err := r.reader.ScanRows(rows, &chg); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &chg)
 	}
@@ -389,7 +389,7 @@ func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) (
 	const op = "target.fetchCredentialSources"
 	var libraries []*TargetLibrary
 	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	// FIXME: When we have static creds, there will need to be an updated view
 	// that unions between libs and creds, at which point the type above will

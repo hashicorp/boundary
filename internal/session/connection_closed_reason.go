@@ -39,6 +39,6 @@ func convertToClosedReason(s string) (ClosedReason, error) {
 	case ConnectionSystemError.String():
 		return ConnectionSystemError, nil
 	default:
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

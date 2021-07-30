@@ -20,7 +20,7 @@ import (
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).LookupAuthMethod"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
 	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
@@ -32,11 +32,11 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope IDs")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope IDs")
 	}
 	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return authMethods, nil
 }
@@ -47,13 +47,13 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	var err error
 	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	switch {
 	case len(ams) == 0:
 		return nil, nil // not an error to return no rows for a "lookup"
 	case len(ams) > 1:
-		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
+		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
 	default:
 		return ams[0], nil
 	}
@@ -73,10 +73,10 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).getAuthMethods"
 	if authMethodId == "" && len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
 	}
 	if authMethodId != "" && len(scopeIds) > 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
 	}
 
 	const aggregateDelimiter = "|"
@@ -114,7 +114,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	var aggAuthMethods []*authMethodAgg
 	err := r.reader.SearchWhere(ctx, &aggAuthMethods, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	if len(aggAuthMethods) == 0 { // we're done if nothing is found.
@@ -125,10 +125,10 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	for _, agg := range aggAuthMethods {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, agg.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(agg.KeyId))
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := structwrapping.UnwrapStruct(ctx, databaseWrapper, agg, nil); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 		}
 		am := AllocAuthMethod()
 		am.PublicId = agg.PublicId

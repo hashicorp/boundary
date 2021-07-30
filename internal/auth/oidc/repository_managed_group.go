@@ -22,35 +22,35 @@ import (
 func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg *ManagedGroup, opt ...Option) (*ManagedGroup, error) {
 	const op = "oidc.(Repository).CreateManagedGroup"
 	if mg == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing ManagedGroup")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing ManagedGroup")
 	}
 	if mg.ManagedGroup == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing embedded ManagedGroup")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded ManagedGroup")
 	}
 	if mg.AuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	if mg.Filter == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing filter")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter")
 	}
 	if mg.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id must be empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	mg = mg.Clone()
 
-	id, err := newManagedGroupId()
+	id, err := newManagedGroupId(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	mg.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
 	}
 
 	var newManagedGroup *ManagedGroup
@@ -58,7 +58,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 		func(_ db.Reader, w db.Writer) error {
 			newManagedGroup = mg.Clone()
 			if err := w.Create(ctx, newManagedGroup, db.WithOplog(oplogWrapper, mg.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId))); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
@@ -66,11 +66,11 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf(
+			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf(
 				"in auth method %s: name %q already exists",
 				mg.AuthMethodId, mg.Name))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(mg.AuthMethodId))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(mg.AuthMethodId))
 	}
 	return newManagedGroup, nil
 }
@@ -80,7 +80,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string, opt ...Option) (*ManagedGroup, error) {
 	const op = "oidc.(Repository).LookupManagedGroup"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	a := AllocManagedGroup()
 	a.PublicId = withPublicId
@@ -88,7 +88,7 @@ func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return a, nil
 }
@@ -97,7 +97,7 @@ func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string
 func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*ManagedGroup, error) {
 	const op = "oidc.(Repository).ListManagedGroups"
 	if withAuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -108,7 +108,7 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 	var mgs []*ManagedGroup
 	err := r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return mgs, nil
 }
@@ -119,17 +119,17 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteManagedGroup"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	mg := AllocManagedGroup()
 	mg.PublicId = withPublicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -142,17 +142,17 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 			dMg := mg.Clone()
 			rowsDeleted, err = w.Delete(ctx, dMg, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(withPublicId))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(withPublicId))
 	}
 
 	return rowsDeleted, nil
@@ -172,19 +172,19 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg *ManagedGroup, version uint32, fieldMaskPaths []string, opt ...Option) (*ManagedGroup, int, error) {
 	const op = "oidc.(Repository).UpdateManagedGroup"
 	if mg == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing ManagedGroup")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing ManagedGroup")
 	}
 	if mg.ManagedGroup == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded ManagedGroup")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing embedded ManagedGroup")
 	}
 	if mg.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -193,7 +193,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 		case strings.EqualFold(DescriptionField, f):
 		case strings.EqualFold(FilterField, f):
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -207,12 +207,12 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg(("unable to get oplog wrapper")))
 	}
 
@@ -230,10 +230,10 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedManagedGroup, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -241,10 +241,10 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", mg.Name, mg.PublicId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(mg.PublicId))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(mg.PublicId))
 	}
 
 	return returnedManagedGroup, rowsUpdated, nil

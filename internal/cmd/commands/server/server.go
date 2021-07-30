@@ -5,8 +5,11 @@ import (
 	stderrors "errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -130,6 +133,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -450,7 +454,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	if c.Config.Controller != nil {
-		if err := c.StartController(); err != nil {
+		if err := c.StartController(ctx); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
@@ -459,9 +463,6 @@ func (c *Command) Run(args []string) int {
 	if c.Config.Worker != nil {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
-			if err := c.controller.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-			}
 			return base.CommandCliError
 		}
 	}
@@ -536,14 +537,14 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *Command) StartController() error {
+func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
 	var err error
-	c.controller, err = controller.New(conf)
+	c.controller, err = controller.New(ctx, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing controller: %w", err)
 	}
@@ -592,14 +593,31 @@ func (c *Command) WaitForInterrupt() int {
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered")
+			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
 
+			// Add a force-shutdown goroutine to consume another interrupt
+			abortForceShutdownCh := make(chan struct{})
+			defer close(abortForceShutdownCh)
+			go func() {
+				shutdownCh := make(chan os.Signal, 4)
+				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+				select {
+				case <-shutdownCh:
+					c.UI.Error("Second interrupt received, forcing shutdown")
+					os.Exit(base.CommandUserError)
+				case <-abortForceShutdownCh:
+					// No-op, we just use this to shut down the goroutine
+				}
+			}()
+
+			// Do worker shutdown
 			if c.Config.Worker != nil {
 				if err := c.worker.Shutdown(false); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
 
+			// Do controller shutdown
 			if c.Config.Controller != nil {
 				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
@@ -718,5 +736,5 @@ func (c *Command) verifyKmsSetup() error {
 			return nil
 		}
 	}
-	return errors.New(errors.MigrationIntegrity, op, "can't find global scoped root key")
+	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

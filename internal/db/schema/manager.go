@@ -63,10 +63,10 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB, opt ...Option) 
 		var err error
 		dbM.driver, err = postgres.New(ctx, db)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	default:
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown dialect %q", dialect))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	return &dbM, nil
 }
@@ -92,7 +92,7 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 
 	v, initialized, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	dbS.InitializationStarted = initialized
 	dbS.DatabaseSchemaVersion = v
@@ -106,7 +106,7 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 func (b *Manager) SharedLock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedLock"
 	if err := b.driver.TrySharedLock(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 func (b *Manager) SharedUnlock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedUnlock"
 	if err := b.driver.UnlockShared(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -127,7 +127,7 @@ func (b *Manager) SharedUnlock(ctx context.Context) error {
 func (b *Manager) ExclusiveLock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveLock"
 	if err := b.driver.TryLock(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func (b *Manager) ExclusiveLock(ctx context.Context) error {
 func (b *Manager) ExclusiveUnlock(ctx context.Context) error {
 	const op = "schema.(Manager).ExclusiveUnlock"
 	if err := b.driver.Unlock(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -151,27 +151,27 @@ func (b *Manager) RollForward(ctx context.Context) error {
 
 	// Capturing a lock that this session to the db already possesses is okay.
 	if err := b.driver.Lock(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	defer func() {
 		if err := b.driver.Unlock(ctx); err != nil {
 			// I'm not sure this is ideal, but we have to rollback the current
 			// transaction if we're unable to release the lock
-			panic(errors.Wrap(err, op))
+			panic(errors.Wrap(ctx, err, op))
 		}
 	}()
 
 	curVersion, _, dirty, err := b.driver.CurrentState(ctx)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	if dirty {
-		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
+		return errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
 	if err = b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion, WithMigrationStates(b.migrationStates))); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -187,10 +187,10 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 	const op = "schema.(Manager).runMigrations"
 
 	if err := b.driver.StartRun(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err := b.driver.EnsureVersionTable(ctx); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	for qp.Next() {
 		select {
@@ -201,16 +201,16 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 					err = multierror.Append(err, rbErr)
 				}
 			}
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
 		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp()), qp.Version()); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := b.driver.CommitRun(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -230,11 +230,11 @@ func GetMigrationLog(ctx context.Context, d *sql.DB, opt ...Option) ([]LogEntry,
 	const op = "schema.GetMigrationLog"
 	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
 	if d == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql db")
 	}
 	rows, err := d.QueryContext(ctx, sql)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 
@@ -242,19 +242,19 @@ func GetMigrationLog(ctx context.Context, d *sql.DB, opt ...Option) ([]LogEntry,
 	for rows.Next() {
 		var e LogEntry
 		if err := rows.Scan(&e.Id, &e.CreateTime, &e.MigrationVersion, &e.Entry); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		entries = append(entries, e)
 	}
 	if rows.Err() != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	opts := getOpts(opt...)
 	if opts.withDeleteLog {
 		// this truncate could change to a delete if FKs are needed in the future
 		_, err = d.ExecContext(ctx, "truncate log_migration")
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 	return entries, nil

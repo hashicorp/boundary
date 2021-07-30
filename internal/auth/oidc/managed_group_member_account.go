@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +21,7 @@ type ManagedGroupMemberAccount struct {
 // NewManagedGroupMemberAccount creates a new in memory
 // ManagedGroupMemberAccount assigned to a managed group within an OIDC
 // AuthMethod. Supported options are withName and withDescription.
-func NewManagedGroupMemberAccount(managedGroupId string, memberId string, opt ...Option) (*ManagedGroupMemberAccount, error) {
+func NewManagedGroupMemberAccount(ctx context.Context, managedGroupId string, memberId string, opt ...Option) (*ManagedGroupMemberAccount, error) {
 	const op = "oidc.NewManagedGroupMemberAccount"
 	mg := &ManagedGroupMemberAccount{
 		ManagedGroupMemberAccount: &store.ManagedGroupMemberAccount{
@@ -27,7 +29,7 @@ func NewManagedGroupMemberAccount(managedGroupId string, memberId string, opt ..
 			MemberId:       memberId,
 		},
 	}
-	if err := mg.validate(op); err != nil {
+	if err := mg.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
 
@@ -35,12 +37,12 @@ func NewManagedGroupMemberAccount(managedGroupId string, memberId string, opt ..
 }
 
 // validate the ManagedGroupMemberAccount. On success, it will return nil.
-func (mg *ManagedGroupMemberAccount) validate(caller errors.Op) error {
+func (mg *ManagedGroupMemberAccount) validate(ctx context.Context, caller errors.Op) error {
 	if mg.ManagedGroupId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing managed group id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing managed group id")
 	}
 	if mg.MemberId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing member id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing member id")
 	}
 
 	return nil

@@ -45,12 +45,13 @@ var oidcAuthorizedActions = []string{
 }
 
 func TestNewService(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	cases := []struct {
@@ -86,7 +87,7 @@ func TestGet(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -187,7 +188,7 @@ func TestListOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -335,7 +336,7 @@ func TestDelete(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -399,6 +400,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -406,7 +408,7 @@ func TestDelete_twice(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -444,7 +446,7 @@ func TestCreateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -629,7 +631,7 @@ func TestUpdateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)

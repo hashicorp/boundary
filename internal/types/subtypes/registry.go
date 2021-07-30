@@ -25,7 +25,7 @@ func (t Subtype) String() string {
 // Registry is not thread safe.
 type Registry struct {
 	subtypesPrefixes map[string]Subtype
-	knownSubtypes map[Subtype]interface{}
+	knownSubtypes    map[Subtype]interface{}
 }
 
 // New Registry creates a new boundary resource subtype registry.
@@ -68,14 +68,14 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 func (r *Registry) Register(subtype Subtype, prefixes ...string) error {
 	const op = "subtypes.(Registry).Register"
 	if _, present := r.knownSubtypes[subtype]; present {
-		return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
+		return errors.NewDeprecated(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
 	}
 	r.knownSubtypes[subtype] = nil
 
 	for _, prefix := range prefixes {
 		prefix = strings.TrimSpace(prefix)
 		if st, ok := r.subtypesPrefixes[prefix]; ok {
-			return errors.New(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("prefix %q is already registered to subtype %q", prefix, st))
+			return errors.NewDeprecated(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("prefix %q is already registered to subtype %q", prefix, st))
 		}
 		r.subtypesPrefixes[prefix] = subtype
 	}

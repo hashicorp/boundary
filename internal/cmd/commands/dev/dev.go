@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -318,6 +321,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -576,7 +580,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(conf)
+		c.controller, err = controller.New(ctx, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError
@@ -626,7 +630,23 @@ func (c *Command) Run(args []string) int {
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary dev environment shutdown triggered")
+			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+
+			// Add a force-shutdown goroutine to consume another interrupt
+			abortForceShutdownCh := make(chan struct{})
+			defer close(abortForceShutdownCh)
+			go func() {
+				shutdownCh := make(chan os.Signal, 4)
+				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+				select {
+				case <-shutdownCh:
+					c.UI.Error("Second interrupt received, forcing shutdown")
+					os.Exit(base.CommandUserError)
+
+				case <-abortForceShutdownCh:
+					// No-op, we just use this to shut down the goroutine
+				}
+			}()
 
 			if !c.flagControllerOnly {
 				if err := c.worker.Shutdown(false); err != nil {

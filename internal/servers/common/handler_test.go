@@ -28,6 +28,7 @@ import (
 
 func Test_WrapWithOptionals(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	w := httptest.NewRecorder()
 	testWriterWrapper := writerWrapper{w, 0}
 
@@ -132,7 +133,7 @@ func Test_WrapWithOptionals(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			wrapped, err := WrapWithOptionals(tt.with, tt.wrap)
+			wrapped, err := WrapWithOptionals(ctx, tt.with, tt.wrap)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(wrapped)
@@ -472,11 +473,11 @@ func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payl
 	_, isGateable := payload.(gated.Gateable)
 	switch {
 	case b.errorOnFlush && isGateable && payload.(gated.Gateable).FlushEvent():
-		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
+		return eventlogger.Status{}, errors.New(ctx, errors.Internal, op, "unable to flush event")
 	case b.errorOnSendAudit && t == eventlogger.EventType(event.AuditType):
-		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send audit event")
+		return eventlogger.Status{}, errors.New(ctx, errors.Internal, op, "unable to send audit event")
 	case b.errorOnSendObservation && t == eventlogger.EventType(event.ObservationType):
-		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send observation event")
+		return eventlogger.Status{}, errors.New(ctx, errors.Internal, op, "unable to send observation event")
 	}
 	return eventlogger.Status{}, nil
 }

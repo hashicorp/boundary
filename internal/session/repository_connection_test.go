@@ -512,7 +512,7 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	{
 		// First, test the error/validation case.
 		result, err := repo.CloseConnectionsForDeadWorkers(ctx, 0)
-		require.Equal(err, errors.E(
+		require.Equal(err, errors.E(ctx,
 			errors.WithCode(errors.InvalidParameter),
 			errors.WithOp("session.(Repository).CloseConnectionsForDeadWorkers"),
 			errors.WithMsg(fmt.Sprintf("gracePeriod must be at least %d seconds", DeadWorkerConnCloseMinGrace)),

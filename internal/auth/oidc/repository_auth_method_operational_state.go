@@ -17,7 +17,7 @@ func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, vers
 	const op = "oidc.(Repository).MakeInactive"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, InactiveState, version)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return updated, nil
 }
@@ -32,7 +32,7 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, versi
 	const op = "oidc.(Repository).MakePrivate"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState, version, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return updated, nil
 }
@@ -47,7 +47,7 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, versio
 	const op = "oidc.(Repository).MakePublic"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState, version, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return updated, nil
 }
@@ -55,17 +55,17 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, versio
 func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, version uint32, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).transitionAuthMethodTo"
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	if !validState(string(desiredState)) {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if am == nil {
-		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
+		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
 	}
 	opts := getOpts(opt...)
 	if am.OperationalState == string(desiredState) && am.DisableDiscoveredConfigValidation == opts.withForce {
@@ -76,17 +76,17 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			updatedAm := am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updatedAm)); err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, errors.Wrap(ctx, err, op)
 			}
 		}
-		if err := am.isComplete(); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
+		if err := am.isComplete(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var updatedAm *AuthMethod
@@ -102,14 +102,14 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			switch {
 			case err != nil:
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update auth method"))
 			case err == nil && rowsUpdated > 1:
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			case err == nil && rowsUpdated == 0:
 				// this is different than how "no rows updated" is handled in
 				// the typical update pattern since we are not returning the
 				// number of rows updated, we need to raise an error here.
-				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			default:
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
@@ -122,16 +122,16 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			}
 			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if updatedAm == nil {
-				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
+				return errors.New(ctx, errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return err
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return updatedAm, nil
 }

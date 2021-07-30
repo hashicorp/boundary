@@ -35,12 +35,12 @@ func Test_UpdateAuthMethod(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(tpCert))
 
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -428,7 +428,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			setup: func() *AuthMethod { return nil },
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				a := AllocAuthMethod()
-				id, _ := newAuthMethodId()
+				id, _ := newAuthMethodId(ctx)
 				a.PublicId = id
 				return &a
 			},
@@ -441,7 +441,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			setup: func() *AuthMethod { return nil },
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				a := AllocAuthMethod()
-				id, _ := newAuthMethodId()
+				id, _ := newAuthMethodId(ctx)
 				a.PublicId = id
 				return &a
 			},
@@ -453,7 +453,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			setup: func() *AuthMethod { return nil },
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				a := AllocAuthMethod()
-				id, _ := newAuthMethodId()
+				id, _ := newAuthMethodId(ctx)
 				a.PublicId = id
 				return &a
 			},
@@ -601,12 +601,12 @@ func Test_DisableDiscoveredConfigValidation(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(err)
 	require.Equal(1, len(tpCert))
 
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -661,7 +661,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(tpCert))
 
@@ -670,7 +670,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -772,6 +772,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 
 func Test_valueObjectChanges(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	_, pem1 := testGenerateCA(t, "localhost")
 	_, pem2 := testGenerateCA(t, "127.0.0.1")
 	_, pem3 := testGenerateCA(t, "www.example.com")
@@ -795,18 +796,18 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
 			wantAdd: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", ES256)
+				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", ES384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
 				return []interface{}{a, a2}
 			}(),
 			wantDel: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", RS256)
+				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", RS384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
-				a3, err := NewSigningAlg("am-public-id", RS512)
+				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -819,14 +820,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{pem3},
 			dbMask: []string{string(CertificateVO)},
 			wantAdd: func() []interface{} {
-				c, err := NewCertificate("am-public-id", pem1)
+				c, err := NewCertificate(ctx, "am-public-id", pem1)
 				require.NoError(t, err)
-				c2, err := NewCertificate("am-public-id", pem2)
+				c2, err := NewCertificate(ctx, "am-public-id", pem2)
 				require.NoError(t, err)
 				return []interface{}{c, c2}
 			}(),
 			wantDel: func() []interface{} {
-				c, err := NewCertificate("am-public-id", pem3)
+				c, err := NewCertificate(ctx, "am-public-id", pem3)
 				require.NoError(t, err)
 				return []interface{}{c}
 			}(),
@@ -839,18 +840,18 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{"old-aud1", "old-aud2", "old-aud3"},
 			dbMask: []string{string(AudClaimVO)},
 			wantAdd: func() []interface{} {
-				a, err := NewAudClaim("am-public-id", "new-aud1")
+				a, err := NewAudClaim(ctx, "am-public-id", "new-aud1")
 				require.NoError(t, err)
-				a2, err := NewAudClaim("am-public-id", "new-aud2")
+				a2, err := NewAudClaim(ctx, "am-public-id", "new-aud2")
 				require.NoError(t, err)
 				return []interface{}{a, a2}
 			}(),
 			wantDel: func() []interface{} {
-				a, err := NewAudClaim("am-public-id", "old-aud1")
+				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
-				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
-				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -864,11 +865,11 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
 			wantDel: func() []interface{} {
-				a, err := NewAudClaim("am-public-id", "old-aud1")
+				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
-				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
-				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -881,18 +882,18 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{"old-scope1", "old-scope2", "old-scope3"},
 			dbMask: []string{string(ClaimsScopesVO)},
 			wantAdd: func() []interface{} {
-				cs, err := NewClaimsScope("am-public-id", "new-scope1")
+				cs, err := NewClaimsScope(ctx, "am-public-id", "new-scope1")
 				require.NoError(t, err)
-				cs2, err := NewClaimsScope("am-public-id", "new-scope2")
+				cs2, err := NewClaimsScope(ctx, "am-public-id", "new-scope2")
 				require.NoError(t, err)
 				return []interface{}{cs, cs2}
 			}(),
 			wantDel: func() []interface{} {
-				cs, err := NewClaimsScope("am-public-id", "old-scope1")
+				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
-				cs2, err := NewClaimsScope("am-public-id", "old-scope2")
+				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
-				cs3, err := NewClaimsScope("am-public-id", "old-scope3")
+				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
 				return []interface{}{cs, cs2, cs3}
 			}(),
@@ -905,11 +906,11 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:        []string{"old-scope1", "old-scope2", "old-scope3"},
 			nullFields: []string{string(ClaimsScopesVO)},
 			wantDel: func() []interface{} {
-				cs, err := NewClaimsScope("am-public-id", "old-scope1")
+				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
-				cs2, err := NewClaimsScope("am-public-id", "old-scope2")
+				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
-				cs3, err := NewClaimsScope("am-public-id", "old-scope3")
+				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
 				return []interface{}{cs, cs2, cs3}
 			}(),
@@ -921,11 +922,11 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
 			wantDel: func() []interface{} {
-				a, err := NewAudClaim("am-public-id", "old-aud1")
+				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
-				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
-				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -939,11 +940,11 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
 			wantDel: func() []interface{} {
-				a, err := NewAudClaim("am-public-id", "old-aud1")
+				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
-				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
-				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -957,18 +958,18 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
 			wantAdd: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", ES256)
+				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", ES384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
 				return []interface{}{a, a2}
 			}(),
 			wantDel: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", RS256)
+				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", RS384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
-				a3, err := NewSigningAlg("am-public-id", RS512)
+				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -982,18 +983,18 @@ func Test_valueObjectChanges(t *testing.T) {
 			old:    []string{"RS256", "RS256", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
 			wantAdd: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", ES256)
+				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", ES384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
 				return []interface{}{a, a2}
 			}(),
 			wantDel: func() []interface{} {
-				a, err := NewSigningAlg("am-public-id", RS256)
+				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
-				a2, err := NewSigningAlg("am-public-id", RS384)
+				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
-				a3, err := NewSigningAlg("am-public-id", RS512)
+				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
 			}(),
@@ -1003,7 +1004,7 @@ func Test_valueObjectChanges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotAdd, gotDel, err := valueObjectChanges(tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
+			gotAdd, gotDel, err := valueObjectChanges(context.TODO(), tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
@@ -1075,7 +1076,7 @@ func Test_validateFieldMask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			err := validateFieldMask(tt.fieldMask)
+			err := validateFieldMask(context.TODO(), tt.fieldMask)
 			if tt.wantErr {
 				require.Error(err)
 				return
