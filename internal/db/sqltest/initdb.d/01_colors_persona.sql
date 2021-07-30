@@ -117,6 +117,11 @@ begin;
     ('p____bcolors', 'c___cb-sthcl', 'Blue Color Static Catalog'),
     ('p____rcolors', 'c___cr-sthcl', 'Red Color Static Catalog');
 
+  insert into auth_token
+    (key_id, auth_account_id, public_id, token)
+  values
+    ('key', 'apa____clare', 'tok____clare', 'tok____clare'::bytea);
+
   insert into static_host
     (catalog_id, public_id, address)
   values
@@ -169,4 +174,14 @@ begin;
     ('t_________cb', 's___2cb-sths'),
     ('t_________cr', 's___1cr-sths'),
     ('t_________cr', 's___2cr-sths');
+
+  insert into session
+    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+  values
+    ('p____bcolors' , 't_________cb' , 's___1cb-sths' , 'h_____cb__01' , 'u______clare' , 'tok____clare' , 'abc'::bytea , 'ep1'    , 's1_____clare');
+
+  insert into session_connection
+    (session_id, public_id)
+  values
+    ('s1_____clare', 'sc1_____clare');
 commit;

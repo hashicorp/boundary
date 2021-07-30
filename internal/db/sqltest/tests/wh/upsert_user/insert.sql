@@ -6,12 +6,12 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension;
+  select is(count(*), 0::bigint) from wh_user_dimension where user_id = 'u_____walter';
 
   select lives_ok($$select wh_upsert_user('u_____walter', 'tok___walter')$$);
 
   -- upsert should insert a user_dimension
-  select is(count(*), 1::bigint) from wh_user_dimension;
+  select is(count(*), 1::bigint) from wh_user_dimension where user_id = 'u_____walter';
 
   select * from finish();
 rollback;
