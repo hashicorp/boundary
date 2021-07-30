@@ -54,6 +54,45 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   down non-gracefully. This may leave various parts of the Boundary deployment
   (namely sessions or connections) in an inconsistent state.
 
+* Events: Boundary has moved from writing hclog entries to emitting events.
+  There are four types of Boundary events: `error`, `system`, `observation` and
+  `audit`. All events are emitted as
+  [cloudevents](https://github.com/cloudevents/spec/blob/v1.0.1/spec.md) and we
+  support both a `cloudevents-json` format and custom Boundary
+  `cloudevents-text` format.   
+  
+  **Notes**: 
+  * There are still a few lingering hclog bits within Boundary. If you wish to
+    only output json from Boundary logging/events then you should specify both
+    `"-log-format json"` and `"-event-format cloudevents-json"` when starting
+    Boundary. 
+  * Filtering events: hclog log levels have been replaced by optional sets
+    of allow and deny event
+    [filters](https://www.boundaryproject.io/docs/concepts/filtering) which are
+    specified via configuration, or in the case of "boundary dev" there are new
+    new cmd flags. 
+  * Observation events are MVP and contain a minimal set of observations about a
+    request. Observations are aggregated for each request, so only one
+    observation event will be emitted per request. We anticipate that a rich set
+    of aggregate data about each request will be developed over time.   
+  * Audit events are a WIP and will only be emitted if they are both enabled
+    and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true.  We
+    anticipate many changes for audit events before they are generally available
+    including what data is included and different options for
+    redacting/encrypting that data.   
+
+
+  PRs: [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
+    [convert from hclog to events](https://github.com/hashicorp/boundary/pull/1409),
+    [event filtering](https://github.com/hashicorp/boundary/pull/1404),
+    [cloudevents node](https://github.com/hashicorp/boundary/pull/1390),
+    [system events](https://github.com/hashicorp/boundary/pull/1360),
+    [convert errors to events](https://github.com/hashicorp/boundary/pull/1358),
+    [integrate events into servers](https://github.com/hashicorp/boundary/pull/1355),
+    [event pkg name](https://github.com/hashicorp/boundary/pull/1284),
+    [events using ctx](https://github.com/hashicorp/boundary/pull/1277),
+    [add eventer](https://github.com/hashicorp/boundary/pull/1276),
+    [and base event types](https://github.com/hashicorp/boundary/pull/1275)
 ### Bug Fixes
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as
