@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
@@ -60,7 +59,6 @@ type TestSession struct {
 	transport       *http.Transport
 	tofuToken       string
 	connectionsLeft int32
-	logger          hclog.Logger
 }
 
 // NewTestSession authorizes a session and creates all of the data
@@ -68,7 +66,6 @@ type TestSession struct {
 func NewTestSession(
 	ctx context.Context,
 	t *testing.T,
-	logger hclog.Logger,
 	tcl *targets.Client,
 	targetId string,
 ) *TestSession {
@@ -80,7 +77,6 @@ func NewTestSession(
 
 	s := &TestSession{
 		sessionId: sar.Item.SessionId,
-		logger:    logger,
 	}
 	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -232,7 +228,7 @@ func (s *TestSession) ExpectConnectionStateOnController(
 
 	// Assert
 	require.Equal(expectStates, actualStates)
-	s.logger.Debug("successfully asserted all connection states on controller", "expected_states", expectStates, "actual_states", actualStates)
+	t.Log("successfully asserted all connection states on controller", "expected_states", expectStates, "actual_states", actualStates)
 }
 
 // ExpectConnectionStateOnWorker waits until all connections in a
@@ -288,7 +284,7 @@ func (s *TestSession) ExpectConnectionStateOnWorker(
 
 	// Assert
 	require.Equal(expectStates, actualStates)
-	s.logger.Debug("successfully asserted all connection states on worker", "expected_states", expectStates, "actual_states", actualStates)
+	t.Log("successfully asserted all connection states on worker", "expected_states", expectStates, "actual_states", actualStates)
 }
 
 func (s *TestSession) testWorkerConnectionInfo(t *testing.T, tw *worker.TestWorker) map[string]worker.TestConnectionInfo {
@@ -319,8 +315,7 @@ func (s *TestSession) testWorkerConnectionIds(t *testing.T, tw *worker.TestWorke
 
 // TestSessionConnection abstracts a connected session.
 type TestSessionConnection struct {
-	conn   net.Conn
-	logger hclog.Logger
+	conn net.Conn
 }
 
 // Connect returns a TestSessionConnection for a TestSession. Check
@@ -339,8 +334,7 @@ func (s *TestSession) Connect(
 	require.NotNil(conn)
 
 	return &TestSessionConnection{
-		conn:   conn,
-		logger: s.logger,
+		conn: conn,
 	}
 }
 
@@ -364,7 +358,7 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		// Shuttle over the sequence number as base64.
 		err := binary.Write(c.conn, binary.LittleEndian, i)
 		if err != nil {
-			c.logger.Debug("received error during write", "err", err)
+			t.Log("received error during write", "err", err)
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
 				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
@@ -378,7 +372,7 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		var j uint32
 		err = binary.Read(c.conn, binary.LittleEndian, &j)
 		if err != nil {
-			c.logger.Debug("received error during read", "err", err, "num_successfully_sent", i)
+			t.Log("received error during read", "err", err, "num_successfully_sent", i)
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
 				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
@@ -394,7 +388,7 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		// time.Sleep(time.Second)
 	}
 
-	c.logger.Debug("finished send/recv successfully", "num_successfully_sent", testSendRecvSendMax)
+	t.Log("finished send/recv successfully", "num_successfully_sent", testSendRecvSendMax)
 	return true
 }
 
@@ -403,7 +397,7 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 func (c *TestSessionConnection) TestSendRecvAll(t *testing.T) {
 	t.Helper()
 	require.True(t, c.testSendRecv(t))
-	c.logger.Debug("successfully asserted send/recv as passing")
+	t.Log("successfully asserted send/recv as passing")
 }
 
 // TestSendRecvFail asserts that we were able to send/recv all pings
@@ -411,15 +405,15 @@ func (c *TestSessionConnection) TestSendRecvAll(t *testing.T) {
 func (c *TestSessionConnection) TestSendRecvFail(t *testing.T) {
 	t.Helper()
 	require.False(t, c.testSendRecv(t))
-	c.logger.Debug("successfully asserted send/recv as failing")
+	t.Log("successfully asserted send/recv as failing")
 }
 
 // TestTcpServer defines a simple testing TCP server. Data is simply
 // copied from its input to its output.
 type TestTcpServer struct {
-	logger hclog.Logger
-	ln     net.Listener
-	conns  map[string]net.Conn
+	t     *testing.T
+	ln    net.Listener
+	conns map[string]net.Conn
 }
 
 // Port returns the port number for the test server listener.
@@ -458,7 +452,7 @@ func (ts *TestTcpServer) run() {
 		conn, err := ts.ln.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				ts.logger.Error("Accept() error in TestTcpServer", "err", err)
+				ts.t.Error("Accept() error in TestTcpServer", "err", err)
 			}
 
 			return
@@ -474,12 +468,12 @@ func (ts *TestTcpServer) run() {
 }
 
 // NewTestTcpServer creates a TestTcpServer and runs it.
-func NewTestTcpServer(t *testing.T, logger hclog.Logger) *TestTcpServer {
+func NewTestTcpServer(t *testing.T) *TestTcpServer {
 	t.Helper()
 	require := require.New(t)
 	ts := &TestTcpServer{
-		logger: logger,
-		conns:  make(map[string]net.Conn),
+		t:     t,
+		conns: make(map[string]net.Conn),
 	}
 	var err error
 	ts.ln, err = net.Listen("tcp", ":0")

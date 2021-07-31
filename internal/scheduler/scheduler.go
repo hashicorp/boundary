@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/go-hclog"
 	ua "go.uber.org/atomic"
 )
 
@@ -25,7 +24,6 @@ type runningJob struct {
 type Scheduler struct {
 	serverId  string
 	jobRepoFn jobRepoFactory
-	logger    hclog.Logger
 
 	registeredJobs *sync.Map
 	runningJobs    *sync.Map
@@ -43,11 +41,9 @@ type Scheduler struct {
 //
 // • jobRepoFn must be provided and is a function that returns the job repository
 //
-// • logger must be provided and is used to log errors that occur during scheduling and running of jobs
-//
 // WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
+func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
@@ -55,15 +51,11 @@ func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...
 	if jobRepoFn == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
 	}
-	if logger == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
-	}
 
 	opts := getOpts(opt...)
 	return &Scheduler{
 		serverId:           serverId,
 		jobRepoFn:          jobRepoFn,
-		logger:             logger,
 		registeredJobs:     new(sync.Map),
 		runningJobs:        new(sync.Map),
 		runJobsLimit:       opts.withRunJobsLimit,

@@ -203,7 +203,6 @@ func TestList_FilterNonPublic(t *testing.T) {
 			reqCtx: func() context.Context {
 				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
 				return auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
-					nil,
 					iamRepoFn,
 					atRepoFn,
 					serversRepoFn,

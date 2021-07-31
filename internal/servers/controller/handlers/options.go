@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/go-hclog"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -24,7 +23,6 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withDiscardUnknownFields        bool
-	WithLogger                      hclog.Logger
 	WithUserIsAnonymous             bool
 	WithOutputFields                *perms.OutputFieldsMap
 	WithScope                       *scopes.ScopeInfo
@@ -44,13 +42,6 @@ func getDefaultOptions() options {
 func WithDiscardUnknownFields(discard bool) Option {
 	return func(o *options) {
 		o.withDiscardUnknownFields = discard
-	}
-}
-
-// WithLogger provides an option include a logger
-func WithLogger(logger hclog.Logger) Option {
-	return func(o *options) {
-		o.WithLogger = logger
 	}
 }
 

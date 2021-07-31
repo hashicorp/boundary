@@ -2,7 +2,6 @@ package kms
 
 import (
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -21,7 +20,6 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit             int
-	withLogger            hclog.Logger
 	withRootWrapper       wrapping.Wrapper
 	withWorkerAuthWrapper wrapping.Wrapper
 	withRecoveryWrapper   wrapping.Wrapper
@@ -40,13 +38,6 @@ func getDefaultOptions() options {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// WithLogger provides a logger to be used when needed
-func WithLogger(l hclog.Logger) Option {
-	return func(o *options) {
-		o.withLogger = l
 	}
 }
 

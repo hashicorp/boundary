@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -148,7 +147,6 @@ func TestList_Self(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	logger := hclog.New(nil)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	rw := db.New(conn)
@@ -220,7 +218,7 @@ func TestList_Self(t *testing.T) {
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			got, err := s.ListSessions(ctx, &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()})
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())

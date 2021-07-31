@@ -135,6 +135,7 @@ func (w *Worker) Start() error {
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
 	const op = "worker.(Worker).Shutdown"
+	ctx := context.TODO()
 	if !w.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 		return nil
@@ -142,31 +143,27 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 
 	// Stop listeners first to prevent new connections to the
 	// controller.
-	w.logger.Debug("beginning shutdown")
 	defer w.started.Store(false)
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 	w.baseCancel()
 	if !skipListeners {
-		w.logger.Debug("stopping listeners")
 		if err := w.stopListeners(); err != nil {
 			return fmt.Errorf("error stopping worker listeners: %w", err)
 		}
 	}
 
 	// Shut down all connections.
-	w.logger.Debug("shutting down all connections due to worker shutdown or reload")
 	w.cleanupConnections(w.baseContext, true)
 
 	// Wait for next status request to succeed. Don't wait too long;
 	// wrap the base context in a timeout equal to our status grace
 	// period.
-	w.logger.Debug("waiting for next status report to controller")
 	waitStatusStart := time.Now()
 	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {
-			w.logger.Error("error waiting for next status report to controller", "err", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
 			break
 		}
 
@@ -178,7 +175,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	}
 
 	// Proceed with remainder of shutdown.
-	w.logger.Debug("canceling base context and shutting down connection to controller")
 	w.baseCancel()
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 
@@ -190,7 +186,6 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		}
 	}
 
-	w.logger.Debug("shutdown successful")
 	return nil
 }
 

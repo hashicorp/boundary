@@ -225,7 +225,6 @@ func TestListingScopeIds(t *testing.T) {
 			o, p := iam.TestScopes(t, iamRepo)
 			at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 			ctx := auth.NewVerifierContext(context.Background(),
-				nil,
 				iamRepoFn,
 				authTokenRepoFn,
 				serversRepoFn,

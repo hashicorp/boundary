@@ -27,7 +27,7 @@ func TestListenCloseErrMsg(t *testing.T) {
 func TestRegistrationErrors(t *testing.T) {
 	listener := getListener(t)
 	defer listener.Close()
-	mux := New(listener, nil)
+	mux := New(listener)
 	p1config := getTestTLS(t, []string{"p1"})
 	if _, err := mux.RegisterProto("p1", nil); err.Error() != "nil tls config given" {
 		t.Fatal(err)
@@ -78,10 +78,7 @@ func TestListening(t *testing.T) {
 	}
 	listener := getListener(t)
 
-	logger := hclog.Default()
-	logger.SetLevel(hclog.Trace)
-	// log.SetOutput(logger.StandardWriter(new(hclog.StandardLoggerOptions)))
-	mux := New(listener, logger)
+	mux := New(listener)
 	defer mux.Close()
 
 	emptyconns := atomic.NewUint32(0)

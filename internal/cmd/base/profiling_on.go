@@ -8,8 +8,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
-
-	"github.com/hashicorp/go-hclog"
 )
 
 func StartMemProfiler(ctx context.Context) {

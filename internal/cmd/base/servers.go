@@ -395,7 +395,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			}
 		}
 
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
+		lnMux, props, reloadFunc, err := NewListener(lnConfig, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}

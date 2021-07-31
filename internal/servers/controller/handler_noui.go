@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/go-hclog"
 )
 
-func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Handler {
+func devPassthroughHandler(passthroughDir string) http.Handler {
 	const op = "controller.devPassthroughHandler"
 	ctx := context.TODO()
 	// Panic may not be ideal but this is never a production call and it'll
@@ -28,7 +27,7 @@ func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Hand
 
 var handleUi = func(c *Controller) http.Handler {
 	if c.conf.RawConfig.PassthroughDirectory != "" {
-		return devPassthroughHandler(c.logger, c.conf.RawConfig.PassthroughDirectory)
+		return devPassthroughHandler(c.conf.RawConfig.PassthroughDirectory)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/recovery"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
@@ -105,7 +104,6 @@ type VerifyResults struct {
 }
 
 type verifier struct {
-	logger          hclog.Logger
 	iamRepoFn       common.IamRepoFactory
 	authTokenRepoFn common.AuthTokenRepoFactory
 	serversRepoFn   common.ServersRepoFactory
@@ -122,14 +120,12 @@ type verifier struct {
 // HTTP handler and should exist for every request that reaches the service
 // handlers.
 func NewVerifierContext(ctx context.Context,
-	logger hclog.Logger,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
 	kms *kms.Kms,
 	requestInfo RequestInfo) context.Context {
 	return context.WithValue(ctx, verifierKey, &verifier{
-		logger:          logger,
 		iamRepoFn:       iamRepoFn,
 		authTokenRepoFn: authTokenRepoFn,
 		serversRepoFn:   serversRepoFn,
