@@ -18,12 +18,13 @@ import (
 
 func (w *Worker) startListeners() error {
 	const op = "worker.(Worker).startListeners"
+	ctx := context.TODO()
 	servers := make([]func(), 0, len(w.conf.Listeners))
 	e := event.SysEventer()
 	if e == nil {
 		return fmt.Errorf("%s: sys eventer not initialized", op)
 	}
-	logger, err := e.StandardLogger("listeners", event.ErrorType)
+	logger, err := e.StandardLogger(ctx, "listeners", event.ErrorType)
 	if err != nil {
 		return fmt.Errorf("%s: unable to initialize std logger: %w", op, err)
 	}

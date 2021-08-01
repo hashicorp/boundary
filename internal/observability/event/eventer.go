@@ -558,32 +558,45 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 	return nil
 }
 
-func (e *Eventer) StandardLogger(loggerName string, typ Type) (*log.Logger, error) {
+// StandardLogger will create *log.Logger that will emit events through this
+// Logger.  This allows packages that require the stdlib log to emit events
+// instead.
+func (e *Eventer) StandardLogger(ctx context.Context, loggerName string, typ Type) (*log.Logger, error) {
 	const op = "event.(Eventer).StandardLogger"
 	if e == nil {
-		return nil, fmt.Errorf("%s: eventer is nil: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
 	}
 	if typ == "" {
-		return nil, fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
 	}
-	w, err := e.StandardWriter(typ)
+	w, err := e.StandardWriter(ctx, typ)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return log.New(w, loggerName, 0), nil
 }
 
-func (e *Eventer) StandardWriter(typ Type, opts ...Option) (io.Writer, error) {
+// StandardWriter will create an io.Writer that will emit events through this
+// io.Writer.
+func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, error) {
 	const op = "event.(Eventer).StandardErrorWriter"
+	if e == nil {
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
 	if typ == "" {
-		return nil, fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
 	}
 	if err := typ.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	newEventer := *e
-
-	ctx, err := NewEventerContext(context.Background(), e)
+	ctx, err := NewEventerContext(ctx, e)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -600,8 +613,8 @@ type logAdapter struct {
 	emitEventType  Type
 }
 
-// Take the data, infer the levels if configured, and send it through
-// a regular Logger.
+// Write satisfies the io.Writer interface and will take the data, infer the
+// type of event and then emit an event.
 func (s *logAdapter) Write(data []byte) (int, error) {
 	const op = "event.(stdlogAdapter).Write"
 	var caller Op
