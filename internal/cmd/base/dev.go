@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -262,10 +263,6 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 
 	// Create the subject information and testing provider
 	{
-		logger, err := capoidc.NewTestingLogger(b.Logger.Named("dev-oidc"))
-		if err != nil {
-			return fmt.Errorf("unable to create logger: %w", err)
-		}
 
 		subInfo := map[string]*capoidc.TestSubject{
 			b.DevLoginName: {
@@ -289,7 +286,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		clientSecret := string(b.DevOidcSetup.clientSecret)
 
 		b.DevOidcSetup.testProvider = capoidc.StartTestProvider(
-			logger,
+			&oidcLogger{},
 			capoidc.WithNoTLS(),
 			capoidc.WithTestHost(b.DevOidcSetup.hostAddr),
 			capoidc.WithTestPort(b.DevOidcSetup.oidcPort),
@@ -442,4 +439,30 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	}
 
 	return nil, nil
+}
+
+type oidcLogger struct{}
+
+func (l *oidcLogger) Errorf(format string, args ...interface{}) {
+	event.WriteError(context.TODO(), l.caller(), fmt.Errorf(format, args...))
+}
+
+func (l *oidcLogger) Infof(format string, args ...interface{}) {
+	event.WriteSysEvent(context.TODO(), l.caller(), fmt.Sprintf(format, args...))
+}
+
+func (_ *oidcLogger) FailNow() {
+	panic("sys eventer failed, see logs for output (if any)")
+}
+
+func (_ *oidcLogger) caller() event.Op {
+	var caller event.Op
+	pc, _, _, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = event.Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+	return caller
 }
