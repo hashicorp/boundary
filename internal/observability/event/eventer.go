@@ -1,10 +1,16 @@
 package event
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/url"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -550,4 +556,114 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (e *Eventer) StandardLogger(loggerName string, typ Type) (*log.Logger, error) {
+	const op = "event.(Eventer).StandardLogger"
+	if e == nil {
+		return nil, fmt.Errorf("%s: eventer is nil: %w", op, ErrInvalidParameter)
+	}
+	if typ == "" {
+		return nil, fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+	}
+	w, err := e.StandardWriter(typ)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return log.New(w, loggerName, 0), nil
+}
+
+func (e *Eventer) StandardWriter(typ Type, opts ...Option) (io.Writer, error) {
+	const op = "event.(Eventer).StandardErrorWriter"
+	if typ == "" {
+		return nil, fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+	}
+	if err := typ.validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	newEventer := *e
+
+	ctx, err := NewEventerContext(context.Background(), e)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &logAdapter{
+		ctxWithEventer: ctx,
+		e:              &newEventer,
+		emitEventType:  typ,
+	}, nil
+}
+
+type logAdapter struct {
+	ctxWithEventer context.Context
+	e              *Eventer
+	emitEventType  Type
+}
+
+// Take the data, infer the levels if configured, and send it through
+// a regular Logger.
+func (s *logAdapter) Write(data []byte) (int, error) {
+	const op = "event.(stdlogAdapter).Write"
+	var caller Op
+	pc, _, _, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+
+	str := string(bytes.TrimRight(data, " \t\n"))
+	switch s.emitEventType {
+	case ErrorType, SystemType:
+		if err := s.send(s.emitEventType, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	default:
+		t, str := s.pickType(str)
+		if err := s.send(t, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return len(data), nil
+}
+
+func (s *logAdapter) send(typ Type, caller Op, str string) error {
+	const op = "events.(stdlogAdapter).send"
+	if typ == "" {
+		return fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+	}
+	if caller == "" {
+		return fmt.Errorf("%s: missing caller: %w", op, ErrInvalidParameter)
+	}
+	switch typ {
+	case ErrorType:
+		WriteError(s.ctxWithEventer, caller, errors.New(str))
+		return nil
+	case SystemType:
+		WriteSysEvent(s.ctxWithEventer, caller, str)
+		return nil
+	default:
+		return fmt.Errorf("%s: unsupported event type %s: %w", op, typ, ErrInvalidParameter)
+	}
+}
+
+func (s *logAdapter) pickType(str string) (Type, string) {
+	switch {
+	case strings.HasPrefix(str, "[DEBUG]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[TRACE]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[INFO]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[WARN]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[ERROR]"):
+		return ErrorType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[ERR]"):
+		return ErrorType, strings.TrimSpace(str[5:])
+	default:
+		return SystemType, str
+	}
 }
