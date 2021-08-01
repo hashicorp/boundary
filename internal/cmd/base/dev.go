@@ -441,23 +441,29 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	return nil, nil
 }
 
-type oidcLogger struct{}
+// oidcLogger satisfies the interface requirements for the oidc.TestProvider logger.
+type oidcLogger struct {
+	Ctx context.Context // nil ctx is allowed/okay
+}
 
+// Errorf will use the sys eventer to emit an error event
 func (l *oidcLogger) Errorf(format string, args ...interface{}) {
-	event.WriteError(context.TODO(), l.caller(), fmt.Errorf(format, args...))
+	event.WriteError(l.Ctx, l.caller(), fmt.Errorf(format, args...))
 }
 
+// Infof will use the sys eventer to emit an system event
 func (l *oidcLogger) Infof(format string, args ...interface{}) {
-	event.WriteSysEvent(context.TODO(), l.caller(), fmt.Sprintf(format, args...))
+	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf(format, args...))
 }
 
+// FailNow will panic (as required by the interface it's implementing)
 func (_ *oidcLogger) FailNow() {
 	panic("sys eventer failed, see logs for output (if any)")
 }
 
 func (_ *oidcLogger) caller() event.Op {
 	var caller event.Op
-	pc, _, _, ok := runtime.Caller(1)
+	pc, _, _, ok := runtime.Caller(2)
 	details := runtime.FuncForPC(pc)
 	if ok && details != nil {
 		caller = event.Op(details.Name())
