@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +30,6 @@ func TestScheduler_New(t *testing.T) {
 	type args struct {
 		serverId    string
 		jobRepo     jobRepoFactory
-		logger      hclog.Logger
 		runLimit    uint
 		runInterval time.Duration
 	}
@@ -60,21 +58,10 @@ func TestScheduler_New(t *testing.T) {
 			wantErrMsg:  "scheduler.New: missing job repo function: parameter violation: error #100",
 		},
 		{
-			name: "with-no-logger",
-			args: args{
-				serverId: "test-server",
-				jobRepo:  jobRepoFn,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "scheduler.New: missing logger: parameter violation: error #100",
-		},
-		{
 			name: "valid",
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				logger:   hclog.L(),
 			},
 			want: args{
 				serverId:    "test-server",
@@ -87,7 +74,6 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -103,7 +89,6 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsLimit(20),
@@ -119,7 +104,6 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -137,7 +121,7 @@ func TestScheduler_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.args.logger, tt.opts...)
+			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)

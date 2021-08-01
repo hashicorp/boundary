@@ -178,7 +178,7 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(c.Logger)
+	base.StartMemProfiler(ctx)
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())

@@ -105,7 +105,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	c.kms, err = kms.NewKms(kmsRepo, kms.WithLogger(c.logger.Named("kms")))
+	c.kms, err = kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -121,7 +121,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
 	// currently caps the scheduler at running 10 jobs per interval.
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger, scheduler.WithRunJobsLimit(10))
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, scheduler.WithRunJobsLimit(10))
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -203,7 +203,7 @@ func (c *Controller) Start() error {
 
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
-	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.logger); err != nil {
+	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
 		return err
 	}
 
@@ -217,7 +217,7 @@ func (c *Controller) registerJobs() error {
 // registerSessionCleanupJob is a helper method to abstract
 // registering the session cleanup job specifically.
 func (c *Controller) registerSessionCleanupJob() error {
-	sessionCleanupJob, err := newSessionCleanupJob(c.logger, c.SessionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
+	sessionCleanupJob, err := newSessionCleanupJob(c.SessionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
 	if err != nil {
 		return fmt.Errorf("error creating session cleanup job: %w", err)
 	}

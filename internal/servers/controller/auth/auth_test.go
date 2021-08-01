@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +20,6 @@ import (
 func TestAuthTokenAuthenticator(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	logger := hclog.New(nil)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	tokenRepo, err := authtoken.NewRepository(rw, rw, kms)
@@ -119,7 +117,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			if tc.userId == "" {
 				return
 			}
-			ctx := NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)

@@ -146,7 +146,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NotNil(tgt)
 
 		// Create test server, update default port on target
-		ts := helper.NewTestTcpServer(t, logger)
+		ts := helper.NewTestTcpServer(t)
 		require.NotNil(t, ts)
 		defer ts.Close()
 		tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
@@ -154,7 +154,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NotNil(tgt)
 
 		// Authorize and connect
-		sess := helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890")
+		sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
@@ -222,7 +222,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 
 		// Proceed with new connection test
 		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
-		sess = helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+		sess = helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
 	}
@@ -329,7 +329,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		require.NotNil(tgt)
 
 		// Create test server, update default port on target
-		ts := helper.NewTestTcpServer(t, logger)
+		ts := helper.NewTestTcpServer(t)
 		require.NotNil(ts)
 		defer ts.Close()
 		tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
@@ -337,7 +337,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		require.NotNil(tgt)
 
 		// Authorize and connect
-		sess := helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890")
+		sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
 		sConn := sess.Connect(ctx, t)
 
 		// Run initial send/receive test, make sure things are working
@@ -424,7 +424,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 
 		// Proceed with new connection test
 		event.WriteSysEvent(ctx, op, "connecting to new session after resuming controller/worker link")
-		sess = helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+		sess = helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 		sConn = sess.Connect(ctx, t)
 		sConn.TestSendRecvAll(t)
 	}

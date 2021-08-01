@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -185,7 +184,7 @@ func backendErrorToApiError(inErr error) *apiError {
 	}
 }
 
-func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
+func ErrorHandler() runtime.ErrorHandlerFunc {
 	const op = "handlers.ErrorHandler"
 	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, mar runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {

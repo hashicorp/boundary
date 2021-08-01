@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	ua "go.uber.org/atomic"
 )
@@ -28,37 +27,37 @@ const (
 	renewalWindow    = 10 * time.Minute
 )
 
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms) error {
 	const op = "vault.RegisterJobs"
-	tokenRenewal, err := newTokenRenewalJob(r, w, kms, logger)
+	tokenRenewal, err := newTokenRenewalJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRenewal); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("token renewal job"))
 	}
-	tokenRevoke, err := newTokenRevocationJob(r, w, kms, logger)
+	tokenRevoke, err := newTokenRevocationJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRevoke); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("token revocation job"))
 	}
-	credRenewal, err := newCredentialRenewalJob(r, w, kms, logger)
+	credRenewal, err := newCredentialRenewalJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRenewal); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("credential renewal job"))
 	}
-	credRevoke, err := newCredentialRevocationJob(r, w, kms, logger)
+	credRevoke, err := newCredentialRevocationJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("credential revocation job"))
 	}
-	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms, logger)
+	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -82,7 +81,6 @@ type TokenRenewalJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -93,7 +91,7 @@ type TokenRenewalJob struct {
 // newTokenRenewalJob creates a new in-memory TokenRenewalJob.
 //
 // WithLimit is the only supported option.
-func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
+func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRenewalJob, error) {
 	const op = "vault.newTokenRenewalJob"
 	switch {
 	case r == nil:
@@ -102,8 +100,6 @@ func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Log
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -115,7 +111,6 @@ func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Log
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -308,7 +303,6 @@ type TokenRevocationJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -319,7 +313,7 @@ type TokenRevocationJob struct {
 // newTokenRevocationJob creates a new in-memory TokenRevocationJob.
 //
 // WithLimit is the only supported option.
-func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRevocationJob, error) {
+func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRevocationJob, error) {
 	const op = "vault.newTokenRevocationJob"
 	switch {
 	case r == nil:
@@ -328,8 +322,6 @@ func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -341,7 +333,6 @@ func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -476,7 +467,6 @@ type CredentialRenewalJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -487,7 +477,7 @@ type CredentialRenewalJob struct {
 // newCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRenewalJob, error) {
+func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRenewalJob, error) {
 	const op = "vault.newCredentialRenewalJob"
 	switch {
 	case r == nil:
@@ -496,8 +486,6 @@ func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclo
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -509,7 +497,6 @@ func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclo
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -644,7 +631,6 @@ type CredentialRevocationJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -655,7 +641,7 @@ type CredentialRevocationJob struct {
 // newCredentialRevocationJob creates a new in-memory CredentialRevocationJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRevocationJob, error) {
+func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRevocationJob, error) {
 	const op = "vault.newCredentialRevocationJob"
 	switch {
 	case r == nil:
@@ -664,8 +650,6 @@ func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger h
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -677,7 +661,6 @@ func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger h
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -790,7 +773,6 @@ type CredentialStoreCleanupJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 
 	limit        int
 	running      ua.Bool
@@ -801,7 +783,7 @@ type CredentialStoreCleanupJob struct {
 // newCredentialStoreCleanupJob creates a new in-memory CredentialStoreCleanupJob.
 //
 // No options are supported.
-func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialStoreCleanupJob, error) {
+func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialStoreCleanupJob, error) {
 	const op = "vault.newCredentialStoreCleanupJob"
 	switch {
 	case r == nil:
@@ -810,8 +792,6 @@ func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -823,7 +803,6 @@ func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }

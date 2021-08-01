@@ -82,7 +82,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: handlers.JSONMarshaler(),
 		}),
-		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
 	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
@@ -113,7 +113,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, handlers.WithLogger(c.logger.Named("authmethod_service")))
+	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
@@ -243,7 +243,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
-		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
+		ctx = auth.NewVerifierContext(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Add general request information to the context. The information from
 		// the auth verifier context is pretty specifically curated to

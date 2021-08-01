@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-bexpr"
-	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -26,7 +25,6 @@ type workerServiceServer struct {
 	pbs.UnimplementedServerCoordinationServiceServer
 	pbs.UnimplementedSessionServiceServer
 
-	logger        hclog.Logger
 	serversRepoFn common.ServersRepoFactory
 	sessionRepoFn common.SessionRepoFactory
 	updateTimes   *sync.Map
@@ -34,13 +32,11 @@ type workerServiceServer struct {
 }
 
 func NewWorkerServiceServer(
-	logger hclog.Logger,
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms) *workerServiceServer {
 	return &workerServiceServer{
-		logger:        logger,
 		serversRepoFn: serversRepoFn,
 		sessionRepoFn: sessionRepoFn,
 		updateTimes:   updateTimes,

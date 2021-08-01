@@ -499,7 +499,7 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(c.Logger)
+	base.StartMemProfiler(ctx)
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey

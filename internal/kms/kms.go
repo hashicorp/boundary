@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
@@ -51,7 +50,6 @@ func (e *ExternalWrappers) Recovery() wrapping.Wrapper {
 // never change, only be added or (eventually) removed, it opportunistically
 // caches, going to the database as needed.
 type Kms struct {
-	logger hclog.Logger
 
 	// scopePurposeCache holds a per-scope-purpose multiwrapper containing the
 	// current encrypting key and all previous key versions, for decryption
@@ -65,17 +63,14 @@ type Kms struct {
 	repo *Repository
 }
 
-// NewKms takes in a repo and returns a Kms. Supported options: WithLogger.
+// NewKms takes in a repo and returns a Kms.
 func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
 	const op = "kms.NewKms"
 	if repo == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying repo")
 	}
 
-	opts := getOpts(opt...)
-
 	return &Kms{
-		logger:             opts.withLogger,
 		externalScopeCache: make(map[string]*ExternalWrappers),
 		repo:               repo,
 	}, nil
