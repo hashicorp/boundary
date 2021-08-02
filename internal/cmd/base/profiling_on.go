@@ -27,7 +27,7 @@ func StartMemProfiler(ctx context.Context) {
 			}
 			runtime.GC()
 			if err := pprof.WriteHeapProfile(f); err != nil {
-				event.WriteError(ctx, op, err, "could not write memory profile"))
+				event.WriteError(ctx, op, err, "could not write memory profile")
 			}
 			f.Close()
 			event.WriteSysEvent(ctx, op, "wrote memory profile", "filename", filename)
