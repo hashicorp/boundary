@@ -192,9 +192,24 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	allSinkFilenames := map[string]bool{}
 
 	for _, s := range c.Sinks {
-		fmtId, fmtNode, err := newFmtFilterNode(serverName, s)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+		var fmtId eventlogger.NodeID
+		var fmtNode eventlogger.Node
+		var err error
+		switch s.Format {
+		case TextHclogSinkFormat, JSONHclogSinkFormat:
+			fmtNode = &HclogFormatter{
+				JSONFormat: s.Format == JSONHclogSinkFormat,
+			}
+			id, err := NewId(string(s.Format))
+			if err != nil {
+				return nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+			}
+			fmtId = eventlogger.NodeID(id)
+		default:
+			fmtId, fmtNode, err = newFmtFilterNode(serverName, s)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
 		}
 		err = e.broker.RegisterNode(eventlogger.NodeID(fmtId), fmtNode)
 		if err != nil {

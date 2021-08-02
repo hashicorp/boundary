@@ -67,6 +67,11 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		os.Remove(tmpErrFile.Name())
 	})
 
+	opts := getOpts(opt...)
+	if opts.withSinkFormat == "" {
+		opts.withSinkFormat = JSONSinkFormat
+	}
+
 	c := TestConfig{
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
@@ -76,7 +81,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					Name:       "every-type-file-sink",
 					SinkType:   FileSink,
 					EventTypes: []Type{EveryType},
-					Format:     JSONSinkFormat,
+					Format:     opts.withSinkFormat,
 					Path:       "./",
 					FileName:   tmpAllFile.Name(),
 				},
@@ -84,13 +89,13 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					Name:       "stderr",
 					SinkType:   StderrSink,
 					EventTypes: []Type{EveryType},
-					Format:     JSONSinkFormat,
+					Format:     opts.withSinkFormat,
 				},
 				{
 					Name:       "err-file-sink",
 					SinkType:   FileSink,
 					EventTypes: []Type{ErrorType},
-					Format:     JSONSinkFormat,
+					Format:     opts.withSinkFormat,
 					Path:       "./",
 					FileName:   tmpErrFile.Name(),
 				},
@@ -99,7 +104,6 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		AllEvents:   tmpAllFile,
 		ErrorEvents: tmpErrFile,
 	}
-	opts := getOpts(opt...)
 	if opts.withAuditSink {
 		tmpFile, err := ioutil.TempFile("./", "tmp-audit-"+testName)
 		require.NoError(err)
@@ -110,7 +114,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Name:       "audit-file-sink",
 			SinkType:   FileSink,
 			EventTypes: []Type{AuditType},
-			Format:     JSONSinkFormat,
+			Format:     opts.withSinkFormat,
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
@@ -126,7 +130,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Name:       "err-observation-sink",
 			SinkType:   FileSink,
 			EventTypes: []Type{ObservationType},
-			Format:     JSONSinkFormat,
+			Format:     opts.withSinkFormat,
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
@@ -142,7 +146,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Name:       "err-sysevents-sink",
 			SinkType:   FileSink,
 			EventTypes: []Type{SystemType},
-			Format:     JSONSinkFormat,
+			Format:     opts.withSinkFormat,
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
@@ -226,6 +230,14 @@ func testWithSysSink(t *testing.T) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true
+	}
+}
+
+// testWithSinkFormat is an unexported and a test option
+func testWithSinkFormat(t *testing.T, fmt SinkFormat) Option {
+	t.Helper()
+	return func(o *options) {
+		o.withSinkFormat = fmt
 	}
 }
 

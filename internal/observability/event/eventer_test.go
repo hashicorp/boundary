@@ -354,6 +354,8 @@ func Test_NewEventer(t *testing.T) {
 
 	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t), testWithSysSink(t))
 
+	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", testWithSinkFormat(t, TextHclogSinkFormat))
+
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
@@ -521,6 +523,46 @@ func Test_NewEventer(t *testing.T) {
 				"system":      3,
 				"observation": 3,
 				"audit":       3,
+			},
+		},
+		{
+			name:       "testSetup-with-hclog",
+			config:     testHclogSetup.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup",
+			want: &Eventer{
+				logger: testLogger,
+				conf:   testHclogSetup.EventerConfig,
+			},
+			wantRegistered: []string{
+				"hclog-text",        // stderr
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
+				"hclog-text",        // every-type-file-sync
+				"tmp-all-events",    // every-type-file-sync
+				"gated-observation", // every-type-file-sync
+				"gated-audit",       // every-type-file-sync
+				"hclog-text",        // error-file-sink
+				"tmp-errors",        // error-file-sink
+			},
+			wantPipelines: []string{
+				"audit",       // every-type-file-sync
+				"audit",       // stderr
+				"observation", // every-type-file-sync
+				"observation", // stderr
+				"error",       // every-type-file-sync
+				"error",       // stderr
+				"error",       // error-file-sink
+				"system",      // stderr
+				"system",      // stderr
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"error":       3,
+				"system":      2,
+				"observation": 2,
+				"audit":       2,
 			},
 		},
 	}
