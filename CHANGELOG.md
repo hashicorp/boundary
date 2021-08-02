@@ -83,6 +83,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 
   PRs: 
+    [hclog json,text formats](https://github.com/hashicorp/boundary/pull/1440),
     [log adapters](https://github.com/hashicorp/boundary/pull/1434),
     [unneeded log deps](https://github.com/hashicorp/boundary/pull/1433),
     [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
