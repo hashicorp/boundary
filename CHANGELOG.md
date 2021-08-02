@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.5.0 (2021/08/02)
+
 ### Deprecations/Changes
 
 * With respect to Target resources, two naming changes are taking place. Note
