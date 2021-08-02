@@ -617,6 +617,9 @@ type logAdapter struct {
 // type of event and then emit an event.
 func (s *logAdapter) Write(data []byte) (int, error) {
 	const op = "event.(stdlogAdapter).Write"
+	if s == nil {
+		return 0, fmt.Errorf("%s: nil log adapter: %w", op, ErrInvalidParameter)
+	}
 	var caller Op
 	pc, _, _, ok := runtime.Caller(1)
 	details := runtime.FuncForPC(pc)

@@ -102,7 +102,6 @@ func Test_oidcLogger_Infof(t *testing.T) {
 			require.NoErrorf(err, "json: %s", string(b))
 			expected := gotEvent.Data.(map[string]interface{})
 			expected["msg"] = fmt.Sprintf(tt.fmt, tt.args...)
-			fmt.Println(expected)
 			assert.Equal(expected, gotEvent.Data.(map[string]interface{}))
 		})
 	}
