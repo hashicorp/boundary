@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/go-hclog"
 )
 
 // sessionCleanupJob defines a periodic job that monitors workers for
@@ -24,7 +23,6 @@ import (
 // the controller will win out and order that the connections be
 // closed on the worker.
 type sessionCleanupJob struct {
-	logger        hclog.Logger
 	sessionRepoFn common.SessionRepoFactory
 
 	// The amount of time to give disconnected workers before marking
@@ -37,14 +35,11 @@ type sessionCleanupJob struct {
 
 // newSessionCleanupJob instantiates the session cleanup job.
 func newSessionCleanupJob(
-	logger hclog.Logger,
 	sessionRepoFn common.SessionRepoFactory,
 	gracePeriod int,
 ) (*sessionCleanupJob, error) {
 	const op = "controller.newNewSessionCleanupJob"
 	switch {
-	case logger == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	case sessionRepoFn == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing sessionRepoFn")
 	case gracePeriod < session.DeadWorkerConnCloseMinGrace:
@@ -53,7 +48,6 @@ func newSessionCleanupJob(
 	}
 
 	return &sessionCleanupJob{
-		logger:        logger,
 		sessionRepoFn: sessionRepoFn,
 		gracePeriod:   gracePeriod,
 	}, nil

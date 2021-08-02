@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -74,8 +73,6 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
-
-	oidcLogger hclog.Logger
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
@@ -97,10 +94,7 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
 	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
-	opts := handlers.GetOpts(opt...)
-	if opts.WithLogger != nil {
-		s.oidcLogger = opts.WithLogger.Named("oidc")
-	}
+
 	return s, nil
 }
 

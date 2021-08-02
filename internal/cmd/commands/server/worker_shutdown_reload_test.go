@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
-	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -86,10 +85,6 @@ listener "tcp" {
 `
 
 func TestServer_ShutdownWorker(t *testing.T) {
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:  t.Name(),
-		Level: hclog.Trace,
-	})
 	require := require.New(t)
 	controllerKey, workerAuthKey, _ := config.DevKeyGeneration()
 
@@ -144,7 +139,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Create test server, update default port on target
-	ts := helper.NewTestTcpServer(t, logger)
+	ts := helper.NewTestTcpServer(t)
 	require.NotNil(ts)
 	defer ts.Close()
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
@@ -152,11 +147,11 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := helper.NewTestSession(ctx, t, logger, tcl, "ttcp_1234567890")
+	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
 	sConn := sess.Connect(ctx, t)
 
 	// Run initial send/receive test, make sure things are working
-	logger.Debug("running initial send/recv test")
+	t.Log("running initial send/recv test")
 	sConn.TestSendRecvAll(t)
 
 	// Now, shut the worker down.

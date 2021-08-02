@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	_ "crypto/sha512"
 
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
@@ -39,7 +37,7 @@ type WorkerAuthInfo struct {
 }
 
 // Factory is the factory function to create a listener.
-type ListenerFactory func(string, *listenerutil.ListenerConfig, hclog.Logger, cli.Ui) (string, net.Listener, error)
+type ListenerFactory func(string, *listenerutil.ListenerConfig, cli.Ui) (string, net.Listener, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
@@ -49,7 +47,7 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
@@ -69,7 +67,7 @@ func NewListener(l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui)
 		l.TLSDisable = true
 	}
 
-	finalAddr, ln, err := f(purpose, l, logger, ui)
+	finalAddr, ln, err := f(purpose, l, ui)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -83,10 +81,7 @@ func NewListener(l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui)
 		"addr": finalAddr,
 	}
 
-	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
-		logger = nil
-	}
-	alpnMux := alpnmux.New(ln, logger)
+	alpnMux := alpnmux.New(ln)
 
 	if l.TLSDisable {
 		return alpnMux, props, nil, nil
@@ -115,7 +110,7 @@ func NewListener(l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui)
 	return alpnMux, props, reloadFunc, nil
 }
 
-func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {
 	if l.Address == "" {
 		switch purpose {
 		case "cluster":
@@ -180,7 +175,7 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, logger h
 	return finalListenAddr, ln, nil
 }
 
-func unixListenerFactory(purpose string, l *listenerutil.ListenerConfig, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+func unixListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {
 	var uConfig *listenerutil.UnixSocketsConfig
 	if l.SocketMode != "" &&
 		l.SocketUser != "" &&

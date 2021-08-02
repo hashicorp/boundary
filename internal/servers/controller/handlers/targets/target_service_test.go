@@ -36,7 +36,6 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -2497,7 +2496,6 @@ func TestAuthorizeSession(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
-		nil,
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,
@@ -2556,7 +2554,7 @@ func TestAuthorizeSession(t *testing.T) {
 	require.NoError(t, err)
 
 	// Tell our DB that there is a worker ready to serve the data
-	workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+	workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
 	_, err = workerService.Status(ctx, &spbs.StatusRequest{
 		Worker: &spb.Server{
 			PrivateId: "testworker",
@@ -2665,7 +2663,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	// Authorized user gets full permissions
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
-		nil,
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,
@@ -2685,7 +2682,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
 	workerExists := func(tar *target.TcpTarget) (version uint32) {
-		workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
 			Worker: &spb.Server{
 				PrivateId: "testworker",

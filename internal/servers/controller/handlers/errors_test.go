@@ -13,7 +13,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -28,7 +27,7 @@ func TestApiErrorHandler(t *testing.T) {
 	mux := runtime.NewServeMux()
 	inMarsh, outMarsh := runtime.MarshalerForRequest(mux, req)
 
-	tested := ErrorHandler(hclog.L())
+	tested := ErrorHandler()
 
 	testCases := []struct {
 		name     string

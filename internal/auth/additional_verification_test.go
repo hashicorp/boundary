@@ -88,7 +88,6 @@ func TestFetchActionSetForId(t *testing.T) {
 			req := require.New(t)
 			ctx := auth.NewVerifierContext(
 				context.Background(),
-				tc.Logger(),
 				iamRepoFn,
 				authTokenRepoFn,
 				serversRepoFn,

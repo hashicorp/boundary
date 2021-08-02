@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,15 +27,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts = getDefaultOptions()
 		testOpts.withDiscardUnknownFields = false
 		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithLogger", func(t *testing.T) {
-		assert := assert.New(t)
-
-		opts := GetOpts()
-		assert.Nil(opts.WithLogger)
-
-		opts = GetOpts(WithLogger(hclog.New(nil)))
-		assert.NotNil(opts.WithLogger)
 	})
 	t.Run("WithUserIsAnonymous", func(t *testing.T) {
 		assert := assert.New(t)

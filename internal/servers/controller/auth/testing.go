@@ -22,5 +22,5 @@ func DisabledAuthTestContext(iamRepoFn common.IamRepoFactory, scopeId string, op
 		reqInfo.userIdOverride = "u_auth"
 	}
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
-	return NewVerifierContext(requestContext, nil, iamRepoFn, nil, nil, opts.withKms, reqInfo)
+	return NewVerifierContext(requestContext, iamRepoFn, nil, nil, opts.withKms, reqInfo)
 }

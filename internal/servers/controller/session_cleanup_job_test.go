@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,7 +95,6 @@ func TestSessionCleanupJob(t *testing.T) {
 
 	// Create the job.
 	job, err := newSessionCleanupJob(
-		hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
 		func() (*session.Repository, error) { return sessionRepo, nil },
 		session.DeadWorkerConnCloseMinGrace,
 	)
@@ -145,16 +143,7 @@ func TestSessionCleanupJobNewJobErr(t *testing.T) {
 	const op = "controller.newNewSessionCleanupJob"
 	require := require.New(t)
 
-	job, err := newSessionCleanupJob(nil, nil, 0)
-	require.Equal(err, errors.E(
-		ctx,
-		errors.WithCode(errors.InvalidParameter),
-		errors.WithOp(op),
-		errors.WithMsg("missing logger"),
-	))
-	require.Nil(job)
-
-	job, err = newSessionCleanupJob(hclog.New(nil), nil, 0)
+	job, err := newSessionCleanupJob(nil, 0)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
@@ -163,7 +152,7 @@ func TestSessionCleanupJobNewJobErr(t *testing.T) {
 	))
 	require.Nil(job)
 
-	job, err = newSessionCleanupJob(hclog.New(nil), func() (*session.Repository, error) { return nil, nil }, 0)
+	job, err = newSessionCleanupJob(func() (*session.Repository, error) { return nil, nil }, 0)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),

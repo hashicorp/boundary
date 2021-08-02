@@ -329,7 +329,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
