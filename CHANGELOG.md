@@ -102,6 +102,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   well as the error message)
   ([issue](https://github.com/hashicorp/boundary/issues/1305),
   [PR](https://github.com/hashicorp/boundary/pull/1384))
+* server: Fix panic on worker startup failure when the server was not also
+  configured as a controller
+  ([PR](https://github.com/hashicorp/boundary/pull/1432))
 
 ### New and Improved
 
