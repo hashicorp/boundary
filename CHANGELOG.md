@@ -82,7 +82,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     redacting/encrypting that data.   
 
 
-  PRs: [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
+  PRs: 
+    [log adapters](https://github.com/hashicorp/boundary/pull/1434),
+    [unneeded log deps](https://github.com/hashicorp/boundary/pull/1433),
+    [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
     [convert from hclog to events](https://github.com/hashicorp/boundary/pull/1409),
     [event filtering](https://github.com/hashicorp/boundary/pull/1404),
     [cloudevents node](https://github.com/hashicorp/boundary/pull/1390),

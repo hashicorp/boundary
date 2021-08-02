@@ -1,10 +1,16 @@
 package event
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/url"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -550,4 +556,130 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// StandardLogger will create *log.Logger that will emit events through this
+// Logger.  This allows packages that require the stdlib log to emit events
+// instead.
+func (e *Eventer) StandardLogger(ctx context.Context, loggerName string, typ Type) (*log.Logger, error) {
+	const op = "event.(Eventer).StandardLogger"
+	if e == nil {
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
+	if typ == "" {
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
+	}
+	w, err := e.StandardWriter(ctx, typ)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return log.New(w, loggerName, 0), nil
+}
+
+// StandardWriter will create an io.Writer that will emit events through this
+// io.Writer.
+func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, error) {
+	const op = "event.(Eventer).StandardErrorWriter"
+	if e == nil {
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
+	if typ == "" {
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
+	}
+	if err := typ.validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	newEventer := *e
+	ctx, err := NewEventerContext(ctx, e)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &logAdapter{
+		ctxWithEventer: ctx,
+		e:              &newEventer,
+		emitEventType:  typ,
+	}, nil
+}
+
+type logAdapter struct {
+	ctxWithEventer context.Context
+	e              *Eventer
+	emitEventType  Type
+}
+
+// Write satisfies the io.Writer interface and will take the data, infer the
+// type of event and then emit an event.
+func (s *logAdapter) Write(data []byte) (int, error) {
+	const op = "event.(stdlogAdapter).Write"
+	if s == nil {
+		return 0, fmt.Errorf("%s: nil log adapter: %w", op, ErrInvalidParameter)
+	}
+	var caller Op
+	pc, _, _, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+
+	str := string(bytes.TrimRight(data, " \t\n"))
+	switch s.emitEventType {
+	case ErrorType, SystemType:
+		if err := s.send(s.emitEventType, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	default:
+		t, str := s.pickType(str)
+		if err := s.send(t, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return len(data), nil
+}
+
+func (s *logAdapter) send(typ Type, caller Op, str string) error {
+	const op = "events.(stdlogAdapter).send"
+	if typ == "" {
+		return fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+	}
+	if caller == "" {
+		return fmt.Errorf("%s: missing caller: %w", op, ErrInvalidParameter)
+	}
+	switch typ {
+	case ErrorType:
+		WriteError(s.ctxWithEventer, caller, errors.New(str))
+		return nil
+	case SystemType:
+		WriteSysEvent(s.ctxWithEventer, caller, str)
+		return nil
+	default:
+		return fmt.Errorf("%s: unsupported event type %s: %w", op, typ, ErrInvalidParameter)
+	}
+}
+
+func (s *logAdapter) pickType(str string) (Type, string) {
+	switch {
+	case strings.HasPrefix(str, "[DEBUG]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[TRACE]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[INFO]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[WARN]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[ERROR]"):
+		return ErrorType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[ERR]"):
+		return ErrorType, strings.TrimSpace(str[5:])
+	default:
+		return SystemType, str
+	}
 }

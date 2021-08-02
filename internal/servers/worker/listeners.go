@@ -12,12 +12,22 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 )
 
 func (w *Worker) startListeners() error {
+	const op = "worker.(Worker).startListeners"
+	ctx := context.TODO()
 	servers := make([]func(), 0, len(w.conf.Listeners))
-
+	e := event.SysEventer()
+	if e == nil {
+		return fmt.Errorf("%s: sys eventer not initialized", op)
+	}
+	logger, err := e.StandardLogger(ctx, "listeners", event.ErrorType)
+	if err != nil {
+		return fmt.Errorf("%s: unable to initialize std logger: %w", op, err)
+	}
 	for _, ln := range w.conf.Listeners {
 		for _, purpose := range ln.Config.Purpose {
 			switch purpose {
@@ -42,7 +52,7 @@ func (w *Worker) startListeners() error {
 				Handler:           handler,
 				ReadHeaderTimeout: 10 * time.Second,
 				ReadTimeout:       30 * time.Second,
-				ErrorLog:          w.logger.StandardLogger(nil),
+				ErrorLog:          logger,
 				BaseContext: func(net.Listener) context.Context {
 					return cancelCtx
 				},

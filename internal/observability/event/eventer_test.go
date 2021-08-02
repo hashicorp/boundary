@@ -2,12 +2,18 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -660,4 +666,348 @@ func (t *testFlushNode) FlushAll(_ context.Context) error {
 		return fmt.Errorf("%s: test error: flush-all", ErrInvalidParameter)
 	}
 	return nil
+}
+
+func Test_StandardLogger(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	testCtx := context.Background()
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	tests := []struct {
+		name            string
+		eventer         *Eventer
+		ctx             context.Context
+		eventType       Type
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+		wantLogger      *log.Logger
+	}{
+		{
+			name:            "missing-eventer",
+			ctx:             testCtx,
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "nil eventer",
+		},
+		{
+			name:            "missing-ctx",
+			eventer:         SysEventer(),
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing type",
+		},
+		{
+			name:            "invalid-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			eventType:       "invalid",
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "'invalid' is not a valid event type",
+		},
+		{
+			name:      "okay",
+			ctx:       testCtx,
+			eventer:   SysEventer(),
+			eventType: ErrorType,
+			wantLogger: func() *log.Logger {
+				w, err := SysEventer().StandardWriter(testCtx, ErrorType)
+				require.NoError(t, err)
+				return log.New(w, "okay", 0)
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			e := SysEventer()
+			require.NotNil(e)
+			l, err := tt.eventer.StandardLogger(tt.ctx, tt.name, tt.eventType)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(l)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(l)
+			assert.Equal(tt.wantLogger, l)
+		})
+	}
+}
+
+func Test_StandardWriter(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	testCtx, err := NewEventerContext(context.Background(), SysEventer())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		eventer         *Eventer
+		ctx             context.Context
+		eventType       Type
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+		wantWriter      io.Writer
+	}{
+		{
+			name:            "missing-eventer",
+			ctx:             testCtx,
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "nil eventer",
+		},
+		{
+			name:            "missing-ctx",
+			eventer:         SysEventer(),
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing type",
+		},
+		{
+			name:            "invalid-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			eventType:       "invalid",
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "'invalid' is not a valid event type",
+		},
+		{
+			name:      "okay",
+			ctx:       context.Background(),
+			eventer:   SysEventer(),
+			eventType: ErrorType,
+			wantWriter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  ErrorType,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			e := SysEventer()
+			require.NotNil(e)
+			l, err := tt.eventer.StandardWriter(tt.ctx, tt.eventType)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(l)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(l)
+			assert.Equal(tt.wantWriter, l)
+		})
+	}
+}
+
+func Test_logAdapter_Write(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	testCtx, err := NewEventerContext(context.Background(), SysEventer())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		adapter         *logAdapter
+		data            []byte
+		wantErr         bool
+		wantIsError     error
+		wantErrContains string
+		wantErrorEvent  string
+		wantSystemEvent string
+	}{
+		{
+			name:            "nil-adapter",
+			data:            []byte("nil-adapter"),
+			wantErr:         true,
+			wantIsError:     ErrInvalidParameter,
+			wantErrContains: "nil log adapter",
+		},
+		{
+			name: "emit-sys-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  SystemType,
+			},
+			data:            []byte("emit-sys-event"),
+			wantSystemEvent: "emit-sys-event",
+		},
+		{
+			name: "pick-type-DEBUG",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[DEBUG] pick-type-DEBUG"),
+			wantSystemEvent: "pick-type-DEBUG",
+		},
+		{
+			name: "pick-type-TRACE",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[TRACE] pick-type-TRACE"),
+			wantSystemEvent: "pick-type-TRACE",
+		},
+		{
+			name: "pick-type-INFO",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[INFO] pick-type-INFO"),
+			wantSystemEvent: "pick-type-INFO",
+		},
+		{
+			name: "pick-type-WARN",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[WARN] pick-type-WARN"),
+			wantSystemEvent: "pick-type-WARN",
+		},
+		{
+			name: "emit-error-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  ErrorType,
+			},
+			data:           []byte("emit-error-event"),
+			wantErrorEvent: "emit-error-event",
+		},
+		{
+			name: "pick-type-ERR",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:           []byte("[ERR] pick-type-ERR"),
+			wantErrorEvent: "pick-type-ERR",
+		},
+		{
+			name: "pick-type-ERROR",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:           []byte("[ERROR] pick-type-ERROR"),
+			wantErrorEvent: "pick-type-ERROR",
+		},
+		{
+			name: "emit-every-type-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  EveryType,
+			},
+			data:            []byte("emit-every-type-event"),
+			wantSystemEvent: "emit-every-type-event",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			i, err := tt.adapter.Write(tt.data)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Zero(i)
+				if tt.wantIsError != nil {
+					assert.ErrorIs(err, tt.wantIsError)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(len(tt.data), i)
+
+			sinkFileName := c.AllEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotEvent := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotEvent)
+			require.NoErrorf(err, "json: %s", string(b))
+
+			if tt.wantErrorEvent != "" {
+				gotData := gotEvent.Data.(map[string]interface{})
+				t.Log(tt.name, gotData)
+				assert.Equal(tt.wantErrorEvent, gotData["error"])
+			}
+			if tt.wantSystemEvent != "" {
+				gotData := gotEvent.Data.(map[string]interface{})["data"].(map[string]interface{})
+				t.Log(tt.name, gotData)
+				assert.Equal(tt.wantSystemEvent, gotData["msg"])
+			}
+		})
+	}
 }

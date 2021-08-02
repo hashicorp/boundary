@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -262,10 +263,6 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 
 	// Create the subject information and testing provider
 	{
-		logger, err := capoidc.NewTestingLogger(b.Logger.Named("dev-oidc"))
-		if err != nil {
-			return fmt.Errorf("unable to create logger: %w", err)
-		}
 
 		subInfo := map[string]*capoidc.TestSubject{
 			b.DevLoginName: {
@@ -289,7 +286,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		clientSecret := string(b.DevOidcSetup.clientSecret)
 
 		b.DevOidcSetup.testProvider = capoidc.StartTestProvider(
-			logger,
+			&oidcLogger{},
 			capoidc.WithNoTLS(),
 			capoidc.WithTestHost(b.DevOidcSetup.hostAddr),
 			capoidc.WithTestPort(b.DevOidcSetup.oidcPort),
@@ -442,4 +439,36 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	}
 
 	return nil, nil
+}
+
+// oidcLogger satisfies the interface requirements for the oidc.TestProvider logger.
+type oidcLogger struct {
+	Ctx context.Context // nil ctx is allowed/okay
+}
+
+// Errorf will use the sys eventer to emit an error event
+func (l *oidcLogger) Errorf(format string, args ...interface{}) {
+	event.WriteError(l.Ctx, l.caller(), fmt.Errorf(format, args...))
+}
+
+// Infof will use the sys eventer to emit an system event
+func (l *oidcLogger) Infof(format string, args ...interface{}) {
+	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf(format, args...))
+}
+
+// FailNow will panic (as required by the interface it's implementing)
+func (_ *oidcLogger) FailNow() {
+	panic("sys eventer failed, see logs for output (if any)")
+}
+
+func (_ *oidcLogger) caller() event.Op {
+	var caller event.Op
+	pc, _, _, ok := runtime.Caller(2)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = event.Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+	return caller
 }
