@@ -1,4 +1,4 @@
--- source tests teh whx_user_dimension_source view.
+-- source tests the whx_user_dimension_source view.
 begin;
   select plan(5);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
