@@ -192,3 +192,24 @@ func TestHclogFormatter_Process(t *testing.T) {
 		})
 	}
 }
+
+func Test_hclogFormatterFilter_Name(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		ff := &hclogFormatterFilter{}
+		assert.Equal(t, hclogNodeName, ff.Name())
+	})
+}
+
+func Test_hclogFormatterFilter_Reopen(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		ff := &hclogFormatterFilter{}
+		assert.Equal(t, nil, ff.Reopen())
+	})
+}
+
+func Test_hclogFormatterFilter_Type(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		ff := &hclogFormatterFilter{}
+		assert.Equal(t, eventlogger.NodeTypeFormatterFilter, ff.Type())
+	})
+}
