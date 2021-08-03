@@ -288,6 +288,19 @@
       {
         "title": "worker",
         "path": "configuration/worker"
+      },
+      {
+        "title": "events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/events/overview"
+          },
+          {
+            "title": "File Sink",
+            "path": "configuration/events/file"
+          }
+        ]
       }
     ]
   },

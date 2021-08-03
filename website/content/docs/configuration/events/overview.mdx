@@ -1,0 +1,31 @@
+---
+layout: docs
+page_title: Controller - Events
+description: |-
+  The events stanza configures events-specifc parameters.
+---
+
+# `events` Stanza
+
+The `events` stanza configures Boundary events-specific parameters.
+
+```hcl
+events {
+  observations_enabled = true
+  sysevents_enabled = true
+  sinks = {
+    name = "error_sink"
+    description = "Errors sent to stderr"
+    event_types = ["error"]
+    type = "stderr"
+    format = "hclog-text"
+  }
+  sinks = {
+    name = "obs_sink"
+    description = "Observations sent to a file"
+    event_types = ["observation"]
+    type = "file"
+    format = "cloudevents-json"
+  }
+}
+```
