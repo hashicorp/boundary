@@ -58,7 +58,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[INFO]  system event:",
-				"Data=map[msg:hello]",
+				"Data:msg=hello",
 				"Id=1",
 				"Version=v0.1",
 				"Op=text",
@@ -167,7 +167,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 				"Error=\"invalid parameter\"",
 				"Id=1",
 				"Version=v0.1",
-				"Info=map[name:alice]",
+				"Info:name=alice",
 				"Op=text",
 			},
 		},
@@ -190,7 +190,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[INFO]  system event:",
-				"Data=map[msg:hello]",
+				"Data:msg=hello",
 				"Id=1",
 				"Version=v0.1",
 				"Op=match-filter",
