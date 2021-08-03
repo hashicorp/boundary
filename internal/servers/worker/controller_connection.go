@@ -96,7 +96,7 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 }
 
 func (w *Worker) createClientConn(addr string) error {
-	const op = "worker.(Worker)createClientConn"
+	const op = "worker.(Worker).createClientConn"
 	defaultTimeout := (time.Second + time.Nanosecond).String()
 	defServiceConfig := fmt.Sprintf(`
 	  {
