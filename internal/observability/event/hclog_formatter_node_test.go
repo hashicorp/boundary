@@ -12,6 +12,12 @@ import (
 func TestHclogFormatter_Process(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+
+	f, e := newFilter(`Op == "match-filter"`)
+	require.NoError(t, e)
+
+	testPredicate := newPredicate([]*filter{f}, nil)
+
 	tests := []struct {
 		name            string
 		formatter       *hclogFormatterFilter
@@ -165,6 +171,49 @@ func TestHclogFormatter_Process(t *testing.T) {
 				"Op=text",
 			},
 		},
+		{
+			name: "filter-match",
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
+				predicate:  testPredicate,
+			},
+			e: &eventlogger.Event{
+				Type: eventlogger.EventType(SystemType),
+				Payload: &sysEvent{
+					Id:      "1",
+					Version: errorVersion,
+					Op:      Op("match-filter"),
+					Data: map[string]interface{}{
+						"msg": "hello",
+					},
+				},
+			},
+			want: []string{
+				"[INFO]  system event:",
+				"Data=map[msg:hello]",
+				"Id=1",
+				"Version=v0.1",
+				"Op=match-filter",
+			},
+		},
+		{
+			name: "filter-no-match",
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
+				predicate:  testPredicate,
+			},
+			e: &eventlogger.Event{
+				Type: eventlogger.EventType(SystemType),
+				Payload: &sysEvent{
+					Id:      "1",
+					Version: errorVersion,
+					Op:      Op("doesn't match"),
+					Data: map[string]interface{}{
+						"msg": "hello",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -176,6 +225,10 @@ func TestHclogFormatter_Process(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			if len(tt.want) == 0 {
+				assert.Nil(e)
+				return
+			}
 			assert.NotNil(e)
 			var b []byte
 			var ok bool
@@ -190,6 +243,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			for _, txt := range tt.want {
 				assert.Contains(string(b), txt)
 			}
+
 		})
 	}
 }
