@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_newCloudEventsNode(t *testing.T) {
+func Test_newCloudEventsFormatterFilter(t *testing.T) {
 	t.Parallel()
 	testSource, err := url.Parse("https://localhost:9200")
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func Test_newCloudEventsNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newCloudEventsNode(tt.source, tt.format, tt.opt...)
+			got, err := newCloudEventsFormatterFilter(tt.source, tt.format, tt.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -144,7 +144,7 @@ func TestNode_Process(t *testing.T) {
 	require.NoError(t, err)
 	now := time.Now()
 
-	testNode, err := newCloudEventsNode(testUrl, cloudevents.FormatJSON, WithSchema(testUrl))
+	testNode, err := newCloudEventsFormatterFilter(testUrl, cloudevents.FormatJSON, WithSchema(testUrl))
 	require.NoError(t, err)
 
 	f, err := newFilter(`Data == "match-filter"`)

@@ -452,7 +452,7 @@ func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, even
 				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
 			}
 		}
-		fmtNode, err = newCloudEventsNode(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		fmtNode, err = newCloudEventsFormatterFilter(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
 		if err != nil {
 			return "", nil, fmt.Errorf("%s: %w", op, err)
 		}

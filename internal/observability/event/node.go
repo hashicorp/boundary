@@ -19,9 +19,9 @@ type cloudEventsFormatterFilter struct {
 	deny  []*filter
 }
 
-// newCloudEventsNode creates a new filter node using the optional allow and deny filters
+// newCloudEventsFormatterFilter creates a new filter node using the optional allow and deny filters
 // provided. Support for WithAllow and WithDeny options.
-func newCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Option) (*cloudEventsFormatterFilter, error) {
+func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, opt ...Option) (*cloudEventsFormatterFilter, error) {
 	const op = "event.NewCloudEventsNode"
 	if source == nil {
 		return nil, fmt.Errorf("%s: missing source: %w", op, ErrInvalidParameter)
