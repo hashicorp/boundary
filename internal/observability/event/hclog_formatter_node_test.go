@@ -13,30 +13,30 @@ func TestHclogFormatter_Process(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name            string
-		formatter       *HclogFormatter
+		formatter       *hclogFormatterFilter
 		e               *eventlogger.Event
 		wantErrContains string
 		want            []string
 	}{
 		{
 			name: "nil event",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			wantErrContains: "event is nil",
 		},
 		{
 			name: "invalid-event-type",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			e:               &eventlogger.Event{Type: eventlogger.EventType("invalid-type")},
 			wantErrContains: "unknown event type invalid-type",
 		},
 		{
 			name: "sys-text",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(SystemType),
@@ -59,8 +59,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 		},
 		{
 			name: "observation-text",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ObservationType),
@@ -79,8 +79,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 		},
 		{
 			name: "observation-json",
-			formatter: &HclogFormatter{
-				JSONFormat: true,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: true,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ObservationType),
@@ -99,8 +99,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 		},
 		{
 			name: "err-text",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ErrorType),
@@ -121,8 +121,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 		},
 		{
 			name: "err-json",
-			formatter: &HclogFormatter{
-				JSONFormat: true,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: true,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ErrorType),
@@ -142,8 +142,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 		},
 		{
 			name: "err-text-with-optional",
-			formatter: &HclogFormatter{
-				JSONFormat: false,
+			formatter: &hclogFormatterFilter{
+				jsonFormat: false,
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ErrorType),
@@ -178,7 +178,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			assert.NotNil(e)
 			var b []byte
 			var ok bool
-			switch tt.formatter.JSONFormat {
+			switch tt.formatter.jsonFormat {
 			case true:
 				b, ok = e.Format(string(JSONHclogSinkFormat))
 			case false:
