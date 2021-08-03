@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/eventlogger"
@@ -15,6 +16,7 @@ const (
 	infoField        = "Info"
 	errorFields      = "ErrorFields"
 	requestInfoField = "RequestInfo"
+	wrappedField     = "Wrapped"
 	hclogNodeName    = "hclog-formatter-filter"
 )
 
@@ -116,12 +118,32 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 		if k == requestInfoField && v == nil {
 			continue
 		}
-		switch string(e.Type) {
-		case string(ErrorType):
-			if k == errorFields && v == nil {
+		if !f.jsonFormat && v != nil {
+			valueKind := reflect.TypeOf(v).Kind()
+			if valueKind == reflect.Ptr {
+				valueKind = reflect.TypeOf(v).Elem().Kind()
+			}
+			switch valueKind {
+			case reflect.Map:
+				for sk, sv := range v.(map[string]interface{}) {
+					args = append(args, k+":"+sk, sv)
+				}
+				continue
+			case reflect.Struct:
+				for sk, sv := range structs.Map(v) {
+					args = append(args, k+":"+sk, sv)
+				}
 				continue
 			}
-			if k == infoField && len(v.(map[string]interface{})) == 0 {
+		}
+		switch string(e.Type) {
+		case string(ErrorType):
+			switch {
+			case k == errorFields && v == nil:
+				continue
+			case k == infoField && len(v.(map[string]interface{})) == 0:
+				continue
+			case k == wrappedField && v == nil:
 				continue
 			}
 		}
