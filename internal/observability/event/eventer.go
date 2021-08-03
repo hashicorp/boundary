@@ -417,29 +417,47 @@ func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, even
 	if serverName == "" {
 		return "", nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
-	id, err := NewId("cloudevents")
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
-	}
-	var sourceUrl *url.URL
-	switch {
-	case c.EventSourceUrl != "":
-		sourceUrl, err = url.Parse(c.EventSourceUrl)
+	var fmtId eventlogger.NodeID
+	var fmtNode eventlogger.Node
+	switch c.Format {
+	case TextHclogSinkFormat, JSONHclogSinkFormat:
+		id, err := NewId(string(c.Format))
 		if err != nil {
-			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
 		}
+		fmtId = eventlogger.NodeID(id)
+
+		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
+		}
+
 	default:
-		s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
-		sourceUrl, err = url.Parse(s)
+		id, err := NewId("cloudevents")
 		if err != nil {
-			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+		}
+		fmtId = eventlogger.NodeID(id)
+		var sourceUrl *url.URL
+		switch {
+		case c.EventSourceUrl != "":
+			sourceUrl, err = url.Parse(c.EventSourceUrl)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+			}
+		default:
+			s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
+			sourceUrl, err = url.Parse(s)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+			}
+		}
+		fmtNode, err = newCloudEventsFormatterFilter(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
-	fmtNode, err := NewCloudEventsNode(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: %w", op, err)
-	}
-	return eventlogger.NodeID(id), fmtNode, nil
+	return fmtId, fmtNode, nil
 }
 
 func DefaultEventerConfig() *EventerConfig {

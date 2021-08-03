@@ -473,7 +473,6 @@ func Test_WriteObservation(t *testing.T) {
 
 				actualJson, err := json.Marshal(gotObservation)
 				require.NoError(err)
-				fmt.Println(string(actualJson))
 				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation, tt.header, tt.details)
 
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -1051,9 +1050,6 @@ func Test_WriteError(t *testing.T) {
 				gotError := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
-				fmt.Println("raw: ", string(b))
-
-				require.NoError(err)
 
 				if _, ok := gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"]; ok {
 					actualError := fakeError{

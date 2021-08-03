@@ -276,7 +276,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:       "event-format",
 		Target:     &c.flagEventFormat,
-		Completion: complete.PredictSet("cloudevents-json", "cloudevents-text"),
+		Completion: complete.PredictSet("cloudevents-json", "cloudevents-text", "hclog-text", "hclog-json"),
 		Usage:      `Event format. Supported values are "cloudevents-json" and "cloudevents-text".`,
 	})
 	f.StringVar(&base.StringVar{
