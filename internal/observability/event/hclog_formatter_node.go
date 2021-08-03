@@ -15,37 +15,90 @@ const (
 	infoField        = "Info"
 	errorFields      = "ErrorFields"
 	requestInfoField = "RequestInfo"
+	hclogNodeName    = "hclog-formatter-filter"
 )
 
-// HclogFormatter will format a boundary event an an hclog entry.
-type HclogFormatter struct {
-	// JSONFormat allows you to specify that the hclog entry should be in JSON
+// hclogFormatterFilter will format a boundary event an an hclog entry.
+type hclogFormatterFilter struct {
+	// jsonFormat allows you to specify that the hclog entry should be in JSON
 	// fmt.
-	JSONFormat bool
+	jsonFormat bool
+	predicate  func(ctx context.Context, i interface{}) (bool, error)
+	allow      []*filter
+	deny       []*filter
+}
+
+func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
+	const op = "event.NewHclogFormatter"
+	n := hclogFormatterFilter{
+		jsonFormat: jsonFormat,
+	}
+	opts := getOpts(opt...)
+	// intentionally not checking if allow and/or deny optional filters were
+	// supplied since having a filter node with no filters is okay.
+
+	if len(opts.withAllow) > 0 {
+		n.allow = make([]*filter, 0, len((opts.withAllow)))
+		for i := range opts.withAllow {
+			f, err := newFilter(opts.withAllow[i])
+			if err != nil {
+				return nil, fmt.Errorf("%s: invalid allow filter '%s': %w", op, opts.withAllow[i], err)
+			}
+			n.allow = append(n.allow, f)
+		}
+	}
+	if len(opts.withDeny) > 0 {
+		n.deny = make([]*filter, 0, len((opts.withDeny)))
+		for i := range opts.withDeny {
+			f, err := newFilter(opts.withDeny[i])
+			if err != nil {
+				return nil, fmt.Errorf("%s: invalid deny filter '%s': %w", op, opts.withDeny[i], err)
+			}
+			n.deny = append(n.deny, f)
+		}
+	}
+	n.predicate = newPredicate(n.allow, n.deny)
+
+	return &n, nil
+
 }
 
 // Reopen is a no op
-func (_ *HclogFormatter) Reopen() error { return nil }
+func (_ *hclogFormatterFilter) Reopen() error { return nil }
 
 // Type describes the type of the node as a Formatter.
-func (_ *HclogFormatter) Type() eventlogger.NodeType {
-	return eventlogger.NodeTypeFormatter
+func (_ *hclogFormatterFilter) Type() eventlogger.NodeType {
+	return eventlogger.NodeTypeFormatterFilter
 }
 
 // Name returns a representation of the HclogFormatter's name
-func (_ *HclogFormatter) Name() string {
-	const name = "hclog-formatter"
-	return name
+func (_ *hclogFormatterFilter) Name() string {
+	return hclogNodeName
 }
 
 // Process formats the Boundary event as an hclog entry and stores that
 // formatted data in Event.Formatted with a key of either "hclog-text"
 // (TextHclogSinkFormat) or "hclog-json" (JSONHclogSinkFormat) based on the
 // HclogFormatter.JSONFormat value.
-func (f *HclogFormatter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
+//
+// If the node has a Predicate, then the filter will be applied to event.Payload
+func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(HclogFormatter).Process"
 	if e == nil {
 		return nil, errors.New("event is nil")
+	}
+
+	if f.predicate != nil {
+		// Use the predicate to see if we want to keep the event using it's
+		// formatted struct as a parmeter to the predicate.
+		keep, err := f.predicate(ctx, e.Payload)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to filter: %w", op, err)
+		}
+		if !keep {
+			// Return nil to signal that the event should be discarded.
+			return nil, nil
+		}
 	}
 
 	var m map[string]interface{}
@@ -79,7 +132,7 @@ func (f *HclogFormatter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	logger := hclog.New(&hclog.LoggerOptions{
 		Output:     &buf,
 		Level:      hclog.Trace,
-		JSONFormat: f.JSONFormat,
+		JSONFormat: f.jsonFormat,
 	})
 	const eventMarker = " event"
 	switch string(e.Type) {
@@ -90,7 +143,7 @@ func (f *HclogFormatter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	default:
 		logger.Trace(string(e.Type)+eventMarker, args...)
 	}
-	switch f.JSONFormat {
+	switch f.jsonFormat {
 	case true:
 		e.FormattedAs(string(JSONHclogSinkFormat), buf.Bytes())
 	case false:

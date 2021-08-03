@@ -427,7 +427,7 @@ func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, even
 		}
 		fmtId = eventlogger.NodeID(id)
 
-		fmtNode, err = newHclogFormatter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
 		if err != nil {
 			return "", nil, fmt.Errorf("%s: %w", op, err)
 		}
