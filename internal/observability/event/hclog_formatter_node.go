@@ -141,6 +141,9 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 	case string(ObservationType), string(SystemType), string(AuditType):
 		logger.Info(string(e.Type)+eventMarker, args...)
 	default:
+		// well, we should ever hit this, since we should be specific about the
+		// event type we're processing, but adding this default to just be sure
+		// we haven't missed anything.
 		logger.Trace(string(e.Type)+eventMarker, args...)
 	}
 	switch f.jsonFormat {
