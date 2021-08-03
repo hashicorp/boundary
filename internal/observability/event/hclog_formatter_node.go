@@ -123,13 +123,13 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 			if valueKind == reflect.Ptr {
 				valueKind = reflect.TypeOf(v).Elem().Kind()
 			}
-			switch valueKind {
-			case reflect.Map:
+			switch {
+			case valueKind == reflect.Map:
 				for sk, sv := range v.(map[string]interface{}) {
 					args = append(args, k+":"+sk, sv)
 				}
 				continue
-			case reflect.Struct:
+			case valueKind == reflect.Struct && v != nil && !reflect.ValueOf(v).IsNil():
 				for sk, sv := range structs.Map(v) {
 					args = append(args, k+":"+sk, sv)
 				}
