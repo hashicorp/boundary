@@ -419,10 +419,10 @@ func Parse(d string) (*Config, error) {
 		result.Eventing = event.DefaultEventerConfig()
 	case 1:
 		if result.Eventing, err = parseEventing(eventList.Items[0]); err != nil {
-			return nil, fmt.Errorf("error parsing \"events\": %w", err)
+			return nil, fmt.Errorf(`error parsing "events": %w`, err)
 		}
 	default:
-		return nil, fmt.Errorf("too many \"events\" nodes (max 1, got %d)", len(eventList.Items))
+		return nil, fmt.Errorf(`too many "events" nodes (max 1, got %d)`, len(eventList.Items))
 	}
 
 	return result, nil
