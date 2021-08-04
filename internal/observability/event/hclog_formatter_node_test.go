@@ -145,7 +145,8 @@ func TestHclogFormatter_Process(t *testing.T) {
 				"\"Error\":\"invalid parameter\"",
 				"\"Id\":\"1\"",
 				"\"Version\":\"v0.1\"",
-				"\"Op\":\"text\""},
+				"\"Op\":\"text\"",
+			},
 		},
 		{
 			name: "err-text-with-optional",
@@ -243,7 +244,6 @@ func TestHclogFormatter_Process(t *testing.T) {
 			for _, txt := range tt.want {
 				assert.Contains(string(b), txt)
 			}
-
 		})
 	}
 }

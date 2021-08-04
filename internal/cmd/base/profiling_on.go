@@ -14,7 +14,7 @@ func StartMemProfiler(ctx context.Context) {
 	const op = "base.StartMemProfiler"
 	profileDir := filepath.Join(os.TempDir(), "boundaryprof")
 	if err := os.MkdirAll(profileDir, 0o700); err != nil {
-		event.WriteError(ctx, op, err,"could not create profile directory")
+		event.WriteError(ctx, op, err, "could not create profile directory")
 		return
 	}
 

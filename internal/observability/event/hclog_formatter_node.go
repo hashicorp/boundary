@@ -62,7 +62,6 @@ func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFil
 	n.predicate = newPredicate(n.allow, n.deny)
 
 	return &n, nil
-
 }
 
 // Reopen is a no op
