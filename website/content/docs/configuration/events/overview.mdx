@@ -2,30 +2,58 @@
 layout: docs
 page_title: Controller - Events
 description: |-
-  The events stanza configures events-specifc parameters.
+  The events stanza configures events-specific parameters.
 ---
 
 # `events` Stanza
 
-The `events` stanza configures Boundary events-specific parameters.
+The `events` stanza configures Boundary events-specific parameters.  
+
+Example:
 
 ```hcl
 events {
   observations_enabled = true
   sysevents_enabled = true
-  sinks = {
+  sink "stderr" = {
     name = "error_sink"
     description = "Errors sent to stderr"
     event_types = ["error"]
-    type = "stderr"
     format = "hclog-text"
   }
-  sinks = {
+  sink = {
     name = "obs_sink"
     description = "Observations sent to a file"
     event_types = ["observation"]
-    type = "file"
     format = "cloudevents-json"
+    file {
+      file_name = "file-name"
+    }
   }
 }
+```
+
+- `audit_enabled` - Specifies if audit events should be emitted. 
+
+- `observation_enabled` - Specifies if observation events should be emitted. 
+
+- `sysevents_enabled` - Specifies if system events should be emitted. 
+
+- `sink` - Specifies the configuration of an event sink. Currently, two types of
+  sink are supported: [file](/docs/configuration/events/file) and [stderr](/docs/configuration/events/stderr). If no sinks are configured then all
+  events will be sent to a default [stderr](/docs/configuration/events/stderr) sink. Events may be sent to multiple
+  sinks.  
+
+##  Default Events Stanza
+If no event stanza is specified then the following default is used:
+```hcl
+events {
+  audit_enabled = false
+  observations_enabled = true
+  sysevents_enabled = true
+  sink "stderr" = {
+    name = "default"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
 ```
