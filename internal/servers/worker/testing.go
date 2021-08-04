@@ -240,7 +240,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	}
 	tw.name = opts.Config.Worker.Name
 
-	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, opts.Config.Worker.Name+"/test-worker", base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, opts.Config.Worker.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
