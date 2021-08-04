@@ -203,7 +203,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
-		switch s.SinkType {
+		switch s.Type {
 		case StderrSink:
 			sinkNode = &writer.Sink{
 				Format: string(s.Format),
@@ -214,23 +214,26 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
-		default:
-			if _, found := allSinkFilenames[s.Path+s.FileName]; found {
-				return nil, fmt.Errorf("%s: duplicate file sink: %s %s", op, s.Path, s.FileName)
+		case FileSink:
+			fsc := s.ParsedTypeConfig.(*FileSinkTypeConfig)
+			if _, found := allSinkFilenames[fsc.Path+fsc.FileName]; found {
+				return nil, fmt.Errorf("%s: duplicate file sink: %s %s", op, fsc.Path, fsc.FileName)
 			}
 			sinkNode = &eventlogger.FileSink{
 				Format:      string(s.Format),
-				Path:        s.Path,
-				FileName:    s.FileName,
-				MaxBytes:    s.RotateBytes,
-				MaxDuration: s.RotateDuration,
-				MaxFiles:    s.RotateMaxFiles,
+				Path:        fsc.Path,
+				FileName:    fsc.FileName,
+				MaxBytes:    fsc.RotateBytes,
+				MaxDuration: fsc.RotateDuration,
+				MaxFiles:    fsc.RotateMaxFiles,
 			}
-			id, err := NewId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
+			id, err := NewId(fmt.Sprintf("file_%s_%s_", fsc.Path, fsc.FileName))
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
+		default:
+			return nil, fmt.Errorf("%s: unknown sink type %s", op, s.Type)
 		}
 		err = e.broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
@@ -474,7 +477,7 @@ func DefaultSink() SinkConfig {
 		Name:       "default",
 		EventTypes: []Type{EveryType},
 		Format:     JSONSinkFormat,
-		SinkType:   StderrSink,
+		Type:       StderrSink,
 	}
 }
 
@@ -610,7 +613,7 @@ func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, erro
 	if typ == "" {
 		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
 	}
-	if err := typ.validate(); err != nil {
+	if err := typ.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	newEventer := *e

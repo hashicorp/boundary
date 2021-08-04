@@ -19,7 +19,7 @@ func TestEventerConfig_validate(t *testing.T) {
 			c: EventerConfig{
 				Sinks: []SinkConfig{
 					{
-						SinkType: "invalid",
+						Type: "invalid",
 					},
 				},
 			},

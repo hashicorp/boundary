@@ -79,25 +79,29 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Sinks: []SinkConfig{
 				{
 					Name:       "every-type-file-sink",
-					SinkType:   FileSink,
+					Type:       FileSink,
 					EventTypes: []Type{EveryType},
 					Format:     opts.withSinkFormat,
-					Path:       "./",
-					FileName:   tmpAllFile.Name(),
+					ParsedTypeConfig: &FileSinkTypeConfig{
+						Path:     "./",
+						FileName: tmpAllFile.Name(),
+					},
 				},
 				{
 					Name:       "stderr",
-					SinkType:   StderrSink,
+					Type:       StderrSink,
 					EventTypes: []Type{EveryType},
 					Format:     opts.withSinkFormat,
 				},
 				{
 					Name:       "err-file-sink",
-					SinkType:   FileSink,
+					Type:       FileSink,
 					EventTypes: []Type{ErrorType},
 					Format:     opts.withSinkFormat,
-					Path:       "./",
-					FileName:   tmpErrFile.Name(),
+					ParsedTypeConfig: &FileSinkTypeConfig{
+						Path:     "./",
+						FileName: tmpErrFile.Name(),
+					},
 				},
 			},
 		},
@@ -112,11 +116,13 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		})
 		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
 			Name:       "audit-file-sink",
-			SinkType:   FileSink,
+			Type:       FileSink,
 			EventTypes: []Type{AuditType},
 			Format:     opts.withSinkFormat,
-			Path:       "./",
-			FileName:   tmpFile.Name(),
+			ParsedTypeConfig: &FileSinkTypeConfig{
+				Path:     "./",
+				FileName: tmpFile.Name(),
+			},
 		})
 		c.AuditEvents = tmpFile
 	}
@@ -128,11 +134,13 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		})
 		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
 			Name:       "err-observation-sink",
-			SinkType:   FileSink,
+			Type:       FileSink,
 			EventTypes: []Type{ObservationType},
 			Format:     opts.withSinkFormat,
-			Path:       "./",
-			FileName:   tmpFile.Name(),
+			ParsedTypeConfig: &FileSinkTypeConfig{
+				Path:     "./",
+				FileName: tmpFile.Name(),
+			},
 		})
 		c.ObservationEvents = tmpFile
 	}
@@ -144,11 +152,13 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		})
 		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
 			Name:       "err-sysevents-sink",
-			SinkType:   FileSink,
+			Type:       FileSink,
 			EventTypes: []Type{SystemType},
 			Format:     opts.withSinkFormat,
-			Path:       "./",
-			FileName:   tmpFile.Name(),
+			ParsedTypeConfig: &FileSinkTypeConfig{
+				Path:     "./",
+				FileName: tmpFile.Name(),
+			},
 		})
 	}
 	return c

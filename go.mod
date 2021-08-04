@@ -11,7 +11,7 @@ require (
 	github.com/bufbuild/buf v0.37.0
 	github.com/dhui/dktest v0.3.4
 	github.com/fatih/color v1.12.0
-	github.com/fatih/structs v1.1.0 // indirect
+	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe

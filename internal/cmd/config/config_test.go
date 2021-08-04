@@ -329,7 +329,7 @@ func TestController_EventingConfig(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		config            string
+		config            []string
 		wantEventerConfig *event.EventerConfig
 		wantErrMatch      *errors.Template
 	}{
@@ -339,11 +339,11 @@ func TestController_EventingConfig(t *testing.T) {
 		},
 		{
 			name: "audit-enabled",
-			config: `
+			config: []string{`
 			events {
 				audit_enabled = true
 			}
-			`,
+			`},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        true,
 				ObservationsEnabled: false,
@@ -354,11 +354,11 @@ func TestController_EventingConfig(t *testing.T) {
 		},
 		{
 			name: "observations-enabled",
-			config: `
+			config: []string{`
 			events {
 				observations_enabled = true
 			}
-			`,
+			`},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
@@ -369,27 +369,86 @@ func TestController_EventingConfig(t *testing.T) {
 		},
 		{
 			name: "sinks-configured",
-			config: `
-			events {
+			config: []string{
+				`events {
 				audit_enabled = false
 				observations_enabled = true
-				sinks = [
-					{
-						name = "configured-sink"
+				sink {
+					type = "file"
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					type_config {
 						file_name = "file-name"
-						event_types = [ "audit", "observation" ] 
 					}
-				]
-			}
-			`,
+				}
+				sink {
+					type = "stderr"
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+				}
+			}`,
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink "file" {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					type_config {
+						file_name = "file-name"
+					}
+				}
+				sink "stderr" {
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+				}
+			}`,
+				`{
+					"events": {
+						"audit_enabled": false,
+						"observations_enabled": true,
+						"sink": [
+							{
+								"type": "file",
+								"format": "cloudevents-json",
+								"name": "configured-sink",
+								"event_types": ["audit", "observation"],
+								"type_config": {
+									"file_name": "file-name"
+								}
+							},
+							{
+								"type": "stderr",
+								"format": "hclog-text",
+								"name": "stderr-sink",
+								"event_types": ["error"],
+							}
+						]
+					}
+				}`,
+			},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
 				Sinks: []event.SinkConfig{
 					{
+						Type:       "file",
 						Name:       "configured-sink",
-						FileName:   "file-name",
+						Format:     "cloudevents-json",
 						EventTypes: []event.Type{"audit", "observation"},
+						TypeConfig: map[string]interface{}{"file_name": "file-name"},
+						ParsedTypeConfig: &event.FileSinkTypeConfig{
+							FileName: "file-name",
+						},
+					},
+					{
+						Type:       "stderr",
+						Name:       "stderr-sink",
+						Format:     "hclog-text",
+						EventTypes: []event.Type{"error"},
 					},
 				},
 			},
@@ -398,16 +457,18 @@ func TestController_EventingConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			c, err := Parse(tt.config)
-			if tt.wantErrMatch != nil {
+			for i, conf := range tt.config {
+				c, err := Parse(conf)
+				if tt.wantErrMatch != nil {
+					require.NoError(err)
+					assert.Empty(c)
+					assert.Truef(errors.Match(tt.wantErrMatch, err), "config %d want %q and got %q", i, tt.wantErrMatch.Code, err.Error())
+					return
+				}
 				require.NoError(err)
-				assert.Empty(c)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch.Code, err.Error())
-				return
+				assert.NotEmpty(c)
+				assert.Equal(tt.wantEventerConfig, c.Eventing)
 			}
-			require.NoError(err)
-			assert.NotEmpty(c)
-			assert.Equal(tt.wantEventerConfig, c.Eventing)
 		})
 	}
 }

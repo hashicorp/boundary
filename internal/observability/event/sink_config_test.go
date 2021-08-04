@@ -19,9 +19,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			name: "missing-name",
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing sink name",
@@ -29,10 +31,12 @@ func TestSinkConfig_validate(t *testing.T) {
 		{
 			name: "missing-EventType",
 			sc: SinkConfig{
-				Name:     "sink-name",
-				SinkType: FileSink,
-				FileName: "tmp.file",
-				Format:   JSONSinkFormat,
+				Name: "sink-name",
+				Type: FileSink,
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing event types",
@@ -42,9 +46,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{"invalid"},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid event type",
@@ -54,8 +60,10 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink type",
@@ -65,9 +73,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
-				SinkType:   "invalid",
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       "invalid",
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink type",
@@ -76,9 +86,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			name: "missing-format",
 			sc: SinkConfig{
 				Name:       "sink-name",
-				SinkType:   FileSink,
+				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink format",
@@ -88,9 +100,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				Format:     "invalid",
-				SinkType:   FileSink,
+				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink format",
@@ -98,9 +112,10 @@ func TestSinkConfig_validate(t *testing.T) {
 		{
 			name: "file-sink-with-no-file-name",
 			sc: SinkConfig{
-				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
-				Format:     JSONSinkFormat,
+				EventTypes:       []Type{EveryType},
+				Type:             FileSink,
+				Format:           JSONSinkFormat,
+				ParsedTypeConfig: &FileSinkTypeConfig{},
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing sink file name",
@@ -110,16 +125,18 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "valid",
 				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				ParsedTypeConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := tt.sc.validate()
+			err := tt.sc.Validate()
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.ErrorIs(err, tt.wantErrIs)

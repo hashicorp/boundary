@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
+	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -277,7 +278,6 @@ func Parse(d string) (*Config, error) {
 		return nil, err
 	}
 
-	// Nothing to do here right now
 	result := New()
 	if err := hcl.DecodeObject(result, obj); err != nil {
 		return nil, err
@@ -408,15 +408,78 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
-	if result.Eventing == nil {
+	list, ok := obj.Node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+	}
+
+	eventList := list.Filter("events")
+	switch len(eventList.Items) {
+	case 0:
 		result.Eventing = event.DefaultEventerConfig()
-	} else {
-		if result.Eventing.Sinks == nil {
-			result.Eventing.Sinks = []event.SinkConfig{event.DefaultSink()}
+	case 1:
+		if result.Eventing, err = parseEventing(eventList.Items[0]); err != nil {
+			return nil, fmt.Errorf("error parsing \"events\": %w", err)
 		}
+	default:
+		return nil, fmt.Errorf("too many \"events\" nodes (max 1, got %d)", len(eventList.Items))
 	}
 
 	return result, nil
+}
+
+func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
+	// Decode the outside struct
+	var result event.EventerConfig
+	if err := hcl.DecodeObject(&result, eventObj.Val); err != nil {
+		return nil, fmt.Errorf("error decoding \"events\" node: %w", err)
+	}
+	// Now, find the sinks
+	eventObjType, ok := eventObj.Val.(*ast.ObjectType)
+	if !ok {
+		return nil, fmt.Errorf("error interpreting \"events\" node as an object type")
+	}
+	list := eventObjType.List
+	sinkList := list.Filter("sink")
+	// Go through each sink and decode
+	for i, item := range sinkList.Items {
+		var s event.SinkConfig
+		if err := hcl.DecodeObject(&s, item.Val); err != nil {
+			return nil, fmt.Errorf("error decoding eventer sink entry %d", i)
+		}
+
+		// Fix up type and validate
+		switch {
+		case s.Type != "":
+		case len(item.Keys) == 1:
+			s.Type = event.SinkType(item.Keys[0].Token.Value().(string))
+		}
+		s.Type = event.SinkType(strings.ToLower(string(s.Type)))
+
+		// Pre-parse known types
+		switch s.Type {
+		case event.FileSink:
+			if s.TypeConfig == nil {
+				return nil, fmt.Errorf("file sink has no configuration")
+			}
+			fsc := new(event.FileSinkTypeConfig)
+			if err := mapstructure.Decode(s.TypeConfig, fsc); err != nil {
+				return nil, fmt.Errorf("unable to interpret file sink config: %w", err)
+			}
+			s.ParsedTypeConfig = fsc
+		}
+
+		if err := s.Validate(); err != nil {
+			return nil, err
+		}
+
+		// Append to result
+		result.Sinks = append(result.Sinks, s)
+	}
+	if len(result.Sinks) == 0 {
+		result.Sinks = []event.SinkConfig{event.DefaultSink()}
+	}
+	return &result, nil
 }
 
 // Sanitized returns a copy of the config with all values that are considered
