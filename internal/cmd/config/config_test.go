@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/configutil"
@@ -394,6 +395,7 @@ func TestController_EventingConfig(t *testing.T) {
 					event_types = [ "audit", "observation" ]
 					file {
 						file_name = "file-name"
+						rotate_duration = "2m"
 					}
 				}
 				sink {
@@ -412,6 +414,7 @@ func TestController_EventingConfig(t *testing.T) {
 					event_types = [ "audit", "observation" ]
 					file {
 						file_name = "file-name"
+						rotate_duration = "2m"
 					}
 				}
 				sink "stderr" {
@@ -429,6 +432,7 @@ func TestController_EventingConfig(t *testing.T) {
 					event_types = [ "audit", "observation" ]
 					file {
 						file_name = "file-name"
+						rotate_duration = "2m"
 					}
 				}
 				sink {
@@ -449,7 +453,8 @@ func TestController_EventingConfig(t *testing.T) {
 								"name": "configured-sink",
 								"event_types": ["audit", "observation"],
 								"file": {
-									"file_name": "file-name"
+									"file_name": "file-name",
+									"rotate_duration": "2m"
 								}
 							},
 							{
@@ -472,7 +477,9 @@ func TestController_EventingConfig(t *testing.T) {
 						Format:     "cloudevents-json",
 						EventTypes: []event.Type{"audit", "observation"},
 						FileConfig: &event.FileSinkTypeConfig{
-							FileName: "file-name",
+							FileName:          "file-name",
+							RotateDurationHCL: "2m",
+							RotateDuration:    2 * time.Minute,
 						},
 					},
 					{

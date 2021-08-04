@@ -473,6 +473,15 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 			s.StderrConfig = new(event.StderrSinkTypeConfig)
 		}
 
+		// parse the duration string specified in a file config into a time.Duration
+		if s.FileConfig != nil && s.FileConfig.RotateDurationHCL != "" {
+			var err error
+			s.FileConfig.RotateDuration, err = time.ParseDuration(s.FileConfig.RotateDurationHCL)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse rotation duration %s", s.FileConfig.RotateDurationHCL)
+			}
+		}
+
 		if err := s.Validate(); err != nil {
 			return nil, err
 		}
