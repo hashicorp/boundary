@@ -406,7 +406,7 @@ func Test_NewEventer(t *testing.T) {
 						Type:       FileSink,
 						EventTypes: []Type{ErrorType},
 						Format:     JSONSinkFormat,
-						ParsedTypeConfig: &FileSinkTypeConfig{
+						FileConfig: &FileSinkTypeConfig{
 							Path:     "./",
 							FileName: dupFileConfig.ErrorEvents.Name(),
 						},

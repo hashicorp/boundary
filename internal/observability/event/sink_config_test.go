@@ -20,7 +20,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
 				Type:       FileSink,
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,
@@ -33,7 +33,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 			sc: SinkConfig{
 				Name: "sink-name",
 				Type: FileSink,
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,
@@ -47,7 +47,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Name:       "sink-name",
 				EventTypes: []Type{"invalid"},
 				Type:       FileSink,
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,
@@ -60,7 +60,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,
@@ -74,7 +74,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
 				Type:       "invalid",
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,
@@ -88,7 +88,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Name:       "sink-name",
 				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 			},
@@ -102,7 +102,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Format:     "invalid",
 				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 			},
@@ -112,13 +112,59 @@ func TestSinkConfig_Validate(t *testing.T) {
 		{
 			name: "file-sink-with-no-file-name",
 			sc: SinkConfig{
-				EventTypes:       []Type{EveryType},
-				Type:             FileSink,
-				Format:           JSONSinkFormat,
-				ParsedTypeConfig: &FileSinkTypeConfig{},
+				EventTypes: []Type{EveryType},
+				Type:       FileSink,
+				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{},
 			},
 			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "missing sink file name",
+			wantErrContains: "missing file name",
+		},
+		{
+			name: "type mismatch file type stderr config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         FileSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `missing "file" block`,
+		},
+		{
+			name: "type mismatch stderr type file config",
+			sc: SinkConfig{
+				EventTypes: []Type{EveryType},
+				Type:       StderrSink,
+				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `mismatch between sink type and sink configuration block`,
+		},
+		{
+			name: "type mismatch both types file config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         FileSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+				FileConfig:   &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `too many sink type config blocks`,
+		},
+		{
+			name: "type mismatch both types stderr config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         StderrSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+				FileConfig:   &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `too many sink type config blocks`,
 		},
 		{
 			name: "valid",
@@ -126,7 +172,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Name:       "valid",
 				EventTypes: []Type{EveryType},
 				Type:       FileSink,
-				ParsedTypeConfig: &FileSinkTypeConfig{
+				FileConfig: &FileSinkTypeConfig{
 					FileName: "tmp.file",
 				},
 				Format: JSONSinkFormat,

@@ -432,12 +432,12 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 	// Decode the outside struct
 	var result event.EventerConfig
 	if err := hcl.DecodeObject(&result, eventObj.Val); err != nil {
-		return nil, fmt.Errorf("error decoding \"events\" node: %w", err)
+		return nil, fmt.Errorf(`error decoding "events" node: %w`, err)
 	}
 	// Now, find the sinks
 	eventObjType, ok := eventObj.Val.(*ast.ObjectType)
 	if !ok {
-		return nil, fmt.Errorf("error interpreting \"events\" node as an object type")
+		return nil, fmt.Errorf(`error interpreting "events" node as an object type`)
 	}
 	list := eventObjType.List
 	sinkList := list.Filter("sink")
@@ -453,20 +453,24 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 		case s.Type != "":
 		case len(item.Keys) == 1:
 			s.Type = event.SinkType(item.Keys[0].Token.Value().(string))
+		default:
+			switch {
+			case s.StderrConfig != nil:
+				// If we haven't found the type any other way, they _must_
+				// specify this block even though there are no config parameters
+				s.Type = event.StderrSink
+			case s.FileConfig != nil:
+				s.Type = event.FileSink
+			default:
+				return nil, fmt.Errorf("sink type could not be determined")
+			}
 		}
 		s.Type = event.SinkType(strings.ToLower(string(s.Type)))
 
-		// Pre-parse known types
-		switch s.Type {
-		case event.FileSink:
-			if s.TypeConfig == nil {
-				return nil, fmt.Errorf("file sink has no configuration")
-			}
-			fsc := new(event.FileSinkTypeConfig)
-			if err := mapstructure.Decode(s.TypeConfig, fsc); err != nil {
-				return nil, fmt.Errorf("unable to interpret file sink config: %w", err)
-			}
-			s.ParsedTypeConfig = fsc
+		if s.Type == event.StderrSink && s.StderrConfig == nil {
+			// StderrConfig is optional as it has no values, but ensure it's
+			// always populated if it's the type
+			s.StderrConfig = new(event.StderrSinkTypeConfig)
 		}
 
 		if err := s.Validate(); err != nil {

@@ -215,7 +215,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 			}
 			sinkId = eventlogger.NodeID(id)
 		case FileSink:
-			fsc := s.ParsedTypeConfig.(*FileSinkTypeConfig)
+			fsc := s.FileConfig
 			if _, found := allSinkFilenames[fsc.Path+fsc.FileName]; found {
 				return nil, fmt.Errorf("%s: duplicate file sink: %s %s: %w", op, fsc.Path, fsc.FileName, ErrInvalidParameter)
 			}

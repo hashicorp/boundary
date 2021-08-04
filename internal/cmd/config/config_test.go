@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -331,7 +330,7 @@ func TestController_EventingConfig(t *testing.T) {
 		name              string
 		config            []string
 		wantEventerConfig *event.EventerConfig
-		wantErrMatch      *errors.Template
+		wantErr           string
 	}{
 		{
 			name:              "default",
@@ -368,6 +367,21 @@ func TestController_EventingConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "no-sink-type-determined",
+			config: []string{
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+				}
+			}`,
+			},
+			wantErr: `error parsing "events": sink type could not be determined`,
+		},
+		{
 			name: "sinks-configured",
 			config: []string{
 				`events {
@@ -378,7 +392,7 @@ func TestController_EventingConfig(t *testing.T) {
 					format = "cloudevents-json"
 					name = "configured-sink"
 					event_types = [ "audit", "observation" ]
-					type_config {
+					file {
 						file_name = "file-name"
 					}
 				}
@@ -396,7 +410,7 @@ func TestController_EventingConfig(t *testing.T) {
 					format = "cloudevents-json"
 					name = "configured-sink"
 					event_types = [ "audit", "observation" ]
-					type_config {
+					file {
 						file_name = "file-name"
 					}
 				}
@@ -404,6 +418,24 @@ func TestController_EventingConfig(t *testing.T) {
 					format = "hclog-text"
 					name = "stderr-sink"
 					event_types = [ "error" ]
+				}
+			}`,
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					file {
+						file_name = "file-name"
+					}
+				}
+				sink {
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+					stderr = {}
 				}
 			}`,
 				`{
@@ -416,15 +448,15 @@ func TestController_EventingConfig(t *testing.T) {
 								"format": "cloudevents-json",
 								"name": "configured-sink",
 								"event_types": ["audit", "observation"],
-								"type_config": {
+								"file": {
 									"file_name": "file-name"
 								}
 							},
 							{
-								"type": "stderr",
 								"format": "hclog-text",
 								"name": "stderr-sink",
 								"event_types": ["error"],
+								"stderr": {}
 							}
 						]
 					}
@@ -439,16 +471,16 @@ func TestController_EventingConfig(t *testing.T) {
 						Name:       "configured-sink",
 						Format:     "cloudevents-json",
 						EventTypes: []event.Type{"audit", "observation"},
-						TypeConfig: map[string]interface{}{"file_name": "file-name"},
-						ParsedTypeConfig: &event.FileSinkTypeConfig{
+						FileConfig: &event.FileSinkTypeConfig{
 							FileName: "file-name",
 						},
 					},
 					{
-						Type:       "stderr",
-						Name:       "stderr-sink",
-						Format:     "hclog-text",
-						EventTypes: []event.Type{"error"},
+						Type:         "stderr",
+						Name:         "stderr-sink",
+						Format:       "hclog-text",
+						EventTypes:   []event.Type{"error"},
+						StderrConfig: &event.StderrSinkTypeConfig{},
 					},
 				},
 			},
@@ -459,10 +491,10 @@ func TestController_EventingConfig(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for i, conf := range tt.config {
 				c, err := Parse(conf)
-				if tt.wantErrMatch != nil {
-					require.NoError(err)
+				if tt.wantErr != "" {
+					require.Error(err)
 					assert.Empty(c)
-					assert.Truef(errors.Match(tt.wantErrMatch, err), "config %d want %q and got %q", i, tt.wantErrMatch.Code, err.Error())
+					assert.Equal(tt.wantErr, err.Error(), "config %d want %q and got %q", i, tt.wantErr, err.Error())
 					return
 				}
 				require.NoError(err)

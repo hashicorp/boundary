@@ -82,7 +82,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					Type:       FileSink,
 					EventTypes: []Type{EveryType},
 					Format:     opts.withSinkFormat,
-					ParsedTypeConfig: &FileSinkTypeConfig{
+					FileConfig: &FileSinkTypeConfig{
 						Path:     "./",
 						FileName: tmpAllFile.Name(),
 					},
@@ -98,7 +98,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					Type:       FileSink,
 					EventTypes: []Type{ErrorType},
 					Format:     opts.withSinkFormat,
-					ParsedTypeConfig: &FileSinkTypeConfig{
+					FileConfig: &FileSinkTypeConfig{
 						Path:     "./",
 						FileName: tmpErrFile.Name(),
 					},
@@ -119,7 +119,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Type:       FileSink,
 			EventTypes: []Type{AuditType},
 			Format:     opts.withSinkFormat,
-			ParsedTypeConfig: &FileSinkTypeConfig{
+			FileConfig: &FileSinkTypeConfig{
 				Path:     "./",
 				FileName: tmpFile.Name(),
 			},
@@ -137,7 +137,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Type:       FileSink,
 			EventTypes: []Type{ObservationType},
 			Format:     opts.withSinkFormat,
-			ParsedTypeConfig: &FileSinkTypeConfig{
+			FileConfig: &FileSinkTypeConfig{
 				Path:     "./",
 				FileName: tmpFile.Name(),
 			},
@@ -155,7 +155,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Type:       FileSink,
 			EventTypes: []Type{SystemType},
 			Format:     opts.withSinkFormat,
-			ParsedTypeConfig: &FileSinkTypeConfig{
+			FileConfig: &FileSinkTypeConfig{
 				Path:     "./",
 				FileName: tmpFile.Name(),
 			},
