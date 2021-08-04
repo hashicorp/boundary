@@ -37,8 +37,8 @@ func Test_GetOpts(t *testing.T) {
 				// not a valid sink, but it doesn't need to be to test the
 				// option is properly supported.
 				{
-					Name:     "test-sink",
-					SinkType: "Stderr",
+					Name: "test-sink",
+					Type: "Stderr",
 				},
 			},
 		}
