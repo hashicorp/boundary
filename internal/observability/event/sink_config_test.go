@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSinkConfig_validate(t *testing.T) {
+func TestSinkConfig_Validate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name            string

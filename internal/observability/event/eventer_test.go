@@ -397,6 +397,29 @@ func Test_NewEventer(t *testing.T) {
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
+			name: "dup-sink-filename",
+			config: func() EventerConfig {
+				dupFileConfig := TestEventerConfig(t, "dup-sink-filename")
+				dupFileConfig.EventerConfig.Sinks = append(dupFileConfig.EventerConfig.Sinks,
+					SinkConfig{
+						Name:       "err-file-sink",
+						Type:       FileSink,
+						EventTypes: []Type{ErrorType},
+						Format:     JSONSinkFormat,
+						ParsedTypeConfig: &FileSinkTypeConfig{
+							Path:     "./",
+							FileName: dupFileConfig.ErrorEvents.Name(),
+						},
+					},
+				)
+				return dupFileConfig.EventerConfig
+			}(),
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "dup-sink-filename",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
 			name:       "success-with-default-config",
 			config:     EventerConfig{},
 			logger:     testLogger,
