@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEventerConfig_validate(t *testing.T) {
+func TestEventerConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name            string
 		c               EventerConfig
