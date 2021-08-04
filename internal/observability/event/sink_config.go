@@ -77,7 +77,7 @@ type StderrSinkTypeConfig struct{}
 type FileSinkTypeConfig struct {
 	Path              string        `hcl:"path"             mapstructure:"path"`             // Path defines the file path for the sink
 	FileName          string        `hcl:"file_name"        mapstructure:"file_name"`        // FileName defines the file name for the sink
-	RotateBytes       int           `hcl:"rotate_bytes"     mapstructure:"rotate_bytes"`     // RotateByes defines the number of bytes that should trigger rotation of a FileSink
+	RotateBytes       int           `hcl:"rotate_bytes"     mapstructure:"rotate_bytes"`     // RotateBytes defines the number of bytes that should trigger rotation of a FileSink
 	RotateDuration    time.Duration `mapstructure:"rotate_duration"`                         // RotateDuration defines how often a FileSink should be rotated
 	RotateDurationHCL string        `hcl:"rotate_duration" json:"-"`                         // RotateDurationHCL defines hcl string version of RotationDuration
 	RotateMaxFiles    int           `hcl:"rotate_max_files" mapstructure:"rotate_max_files"` // RotateMaxFiles defines how may historical rotated files should be kept for a FileSink
