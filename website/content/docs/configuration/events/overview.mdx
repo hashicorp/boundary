@@ -16,13 +16,13 @@ events {
   observations_enabled = true
   sysevents_enabled = true
   sink "stderr" = {
-    name = "error_sink"
-    description = "Errors sent to stderr"
-    event_types = ["error"]
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
     format = "hclog-text"
   }
   sink = {
-    name = "obs_sink"
+    name = "obs-sink"
     description = "Observations sent to a file"
     event_types = ["observation"]
     format = "cloudevents-json"

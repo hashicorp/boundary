@@ -9,11 +9,26 @@ description: |-
 
 These parameters are shared across all sink types:
 
-- `name` - 
-- `description` -
-- `event_types` -
-- `event_source_url` -
-- `allow_filters` -
-- `deny-filters` -
-- `format` - 
-- `type` - 
+- `name` - Specify a name for the sink.
+
+- `description` - Specify a description for the sink.
+
+- `event_types` - Specifies a list of event types that will be sent to the sink.
+  Can be `*`, `error`, `system`, `observation` or `audit` 
+
+- `event_source_url` - Specifies an optional event source URL for the sink.  If
+  not specified a default source will be composed of the
+  https://hashicorp.com/boundary.io/ServerName/Path/FileName.
+
+- `allow_filters` - Specifies a set predicates for including an event in the
+  sink. If any filter matches, the event will be included. The filter should be
+  in a format supported by hashicorp/go-bexpr.
+  
+- `deny-filters` - Specifies a set predicates for excluding an event in the
+  sink. If any filter matches, the event will be excluded. The filter should be
+  in a format supported by hashicorp/go-bexpr.
+
+- `format` - Specifies the format for the sink. Can be `cloudevents-json`,
+  `cloudevents-text`, `hclog-json`, or `hclog-text`.
+
+- `type` - Specifies the type of sink.  Can be `stderr` or `file`.
