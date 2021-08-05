@@ -299,6 +299,10 @@
           {
             "title": "File Sink",
             "path": "configuration/events/file"
+          },
+          {
+            "title": "Stderr Sink",
+            "path": "configuration/events/stderr"
           }
         ]
       }
