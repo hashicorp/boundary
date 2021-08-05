@@ -6205,7 +6205,7 @@ create table event_type_enm (
         )
 );
 comment on table event_type_enm is
-'event_type_enm is an enumeration table for the valid event types within the '
+'event_type_enm is an enumeration table for the valid event types within '
 'the domain';
 
 create table event_sink_type_enm (
@@ -6236,7 +6236,7 @@ create table event_format_type_enm (
         )
 );
 comment on table event_format_type_enm is
-'event_format_type_enm is an enumeration table for the valid event format types'
+'event_format_type_enm is an enumeration table for the valid event format types '
 'within the domain';
 
 create table event_config (
@@ -6348,7 +6348,7 @@ create table event_file_sink(
 );
 comment on table event_file_sink is 
 'event_file_sink is a table where each entry represents a configured event file '
-' sink';
+'sink';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
