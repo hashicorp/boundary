@@ -215,7 +215,6 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 	const op = "workers.(workerServiceServer).LookupSession"
-	event.WriteSysEvent(ctx, op, "got validate session request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -316,7 +315,6 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 
 func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
 	const op = "workers.(workerServiceServer).CancelSession"
-	event.WriteSysEvent(ctx, op, "got cancel session request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -340,7 +338,6 @@ func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.Cance
 
 func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
 	const op = "workers.(workerServiceServer).ActivateSession"
-	event.WriteSysEvent(ctx, op, "got activate session request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -364,14 +361,6 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Error(codes.Internal, "Invalid session state in activate response.")
 	}
 
-	event.WriteSysEvent(ctx, op, "session activated",
-		"session_id", sessionInfo.PublicId,
-		"target_id", sessionInfo.TargetId,
-		"user_id", sessionInfo.UserId,
-		"host_set_id", sessionInfo.HostSetId,
-		"host_id", sessionInfo.HostId,
-	)
-
 	return &pbs.ActivateSessionResponse{
 		Status: sessionStates[0].Status.ProtoVal(),
 	}, nil
@@ -379,7 +368,6 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 
 func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
 	const op = "workers.(workerServiceServer"
-	event.WriteSysEvent(ctx, op, "got authorize connection request from worker", "session_id", req.GetSessionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -406,18 +394,11 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	event.WriteSysEvent(ctx, op, "authorized connection",
-		"session_id", req.GetSessionId(),
-		"connection_id", ret.ConnectionId,
-		"connections_left", ret.ConnectionsLeft,
-	)
-
 	return ret, nil
 }
 
 func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
 	const op = "workers.(workerServiceServer).ConnectConnection"
-	event.WriteSysEvent(ctx, op, "got connection established information from worker", "connection_id", req.GetConnectionId())
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -456,8 +437,6 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 		)
 	}
 
-	event.WriteSysEvent(ctx, op, "connection established", "logger_pairs", loggerPairs)
-
 	return ret, nil
 }
 
@@ -480,8 +459,6 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 			ClosedReason: session.ClosedReason(v.GetReason()),
 		})
 	}
-	event.WriteSysEvent(ctx, op, "got connection close information from worker", "connection_ids", closeIds)
-
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
@@ -507,10 +484,6 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 			ConnectionId: v.Connection.GetPublicId(),
 			Status:       v.ConnectionStates[0].Status.ProtoVal(),
 		})
-	}
-
-	for _, v := range req.GetCloseRequestData() {
-		event.WriteSysEvent(ctx, op, "connection closed", "connection_id", v.ConnectionId)
 	}
 
 	ret := &pbs.CloseConnectionResponse{
