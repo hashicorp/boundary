@@ -6152,9 +6152,12 @@ alter table auth_oidc_account
 ├─────────────────┤           │event_type_enabled│   
 │ public_id       │          ╱├──────────────────┤   
 │ scope_id        │┼────────○─│config_id         │   
-│                 │          ╲│event_type        │   
-│                 │           │                  │   
-└─────────────────┘           └──────────────────┘   
+│ name            |          ╲|event_type        |
+| description     │           │                  │   
+│ create_time     │           │                  │   
+| update_time     |           └──────────────────┘
+| version         |                     |
+└─────────────────┘                     |
          ┼                              ┼            
          ┼                              │            
          │                              │            
@@ -6165,16 +6168,18 @@ alter table auth_oidc_account
 │   event_sink    │     │     ╲│                 │   
 ├─────────────────┤     │      └─────────────────┘   
 │public_id        │┼────┤                            
-│config_id        │     │     ┌─────────────────────┐
-│                 │     │    ╱│ event_sink_type_enm │
+│config_id        │     │ 
+│event_type       |     |      
+|sink_type        |     |     ┌─────────────────────┐       
+|format_type      │     │    ╱│ event_sink_type_enm │
 └─────────────────┘     ├─────├─────────────────────┤
          ┼              │    ╲│                     │
          │              │     └─────────────────────┘
-         │              │     ┌─────────────────┐    
-         ○              │    ╱│event_format_type│    
-        ╱│╲             └─────├─────────────────┤    
-┌─────────────────┐          ╲│                 │    
-│ event_file_sink │           └─────────────────┘    
+         │              │     ┌───────────────────────┐    
+         ○              │    ╱│ event_format_type_enm │    
+        ╱│╲             └─────├───────────────────────┤    
+┌─────────────────┐          ╲│                       │    
+│ event_file_sink │           └───────────────────────┘    
 ├─────────────────┤                                  
 │ public_id       │                                  
 │ sink_id         │                                  
@@ -6214,7 +6219,7 @@ create table event_sink_type_enm (
         )
 );
 comment on table event_type_enm is
-'event_sink_type_enm is an enumeration table for the valid sink types within the '
+'event_sink_type_enm is an enumeration table for the valid sink types within '
 'the domain';
 
 create table event_format_type_enm (
@@ -6223,7 +6228,10 @@ create table event_format_type_enm (
         check (
             name in (
                 'json',
-                'text'
+                'text',
+                'cloudevent',
+                'hclogtext',
+                'hclogjson'
             )
         )
 );
@@ -6243,11 +6251,12 @@ create table event_config (
     name wt_name,
     description wt_description,
     create_time wt_timestamp,
-    update_time wt_timestamp
+    update_time wt_timestamp,
+    version wt_version
 );
 comment on table event_config is
 'event_config is a table where each entry defines the event configuration for '
-'a scope.  Currently, the only support scope is global';
+'a scope.  Currently, the only supported scope is global';
 
 create table event_type_enabled (
     config_id wt_public_id
@@ -6260,8 +6269,10 @@ create table event_type_enabled (
             references event_type_enm (name)
             on delete restrict
             on update cascade,
-    constraint config_id_event_type_uq
-        unique (config_id, event_type) -- only allow an event type to be enable once
+    --constraint config_id_event_type_uq
+        --unique (config_id, event_type) -- only allow an event type to be enable once
+        --do we still need this ^ if we have what is below?
+    primary key (config_id, event_type)
 );
 comment on table event_type_enabled is
 'event_type_enable is a table where each entry represents that eventing has '
