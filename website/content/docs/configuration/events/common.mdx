@@ -23,12 +23,12 @@ These parameters are shared across all sink types:
   https://hashicorp.com/boundary.io/ServerName/Path/FileName.
 
 - `allow_filters` - Specifies a set predicates for including an event in the
-  sink. If any filter matches, the event will be included. The filter should be
-  in a format supported by hashicorp/go-bexpr.
+  sink. If any filter matches, the event will be included. For more information,
+  on using filters see: [event filtering](/docs/concepts/filtering/events)
   
 - `deny-filters` - Specifies a set predicates for excluding an event in the
-  sink. If any filter matches, the event will be excluded. The filter should be
-  in a format supported by hashicorp/go-bexpr.
+  sink. If any filter matches, the event will be excluded. For more information
+  on using filters see: [event filtering](/docs/concepts/filtering/events)
 
 - `format` - Specifies the format for the sink. Can be `cloudevents-json`,
   `cloudevents-text`, `hclog-json`, or `hclog-text`.

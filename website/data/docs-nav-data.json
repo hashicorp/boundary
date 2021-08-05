@@ -195,6 +195,10 @@
           {
             "title": "Worker Tags",
             "path": "concepts/filtering/worker-tags"
+          },
+          {
+            "title": "Events",
+            "path": "concepts/filtering/events"
           }
         ]
       }
