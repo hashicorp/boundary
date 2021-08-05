@@ -303,10 +303,6 @@
           {
             "title": "Stderr Sink",
             "path": "configuration/events/stderr"
-          },
-          {
-            "title": "Event Filtering",
-            "path": "configuration/events/filtering"
           }
         ]
       }
