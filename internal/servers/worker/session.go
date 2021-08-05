@@ -67,7 +67,6 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	// event.WriteSysEvent(ctx, op, "looking up session", "session_id", sessionId)
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
 		ServerId:  w.conf.RawConfig.Worker.Name,
 		SessionId: sessionId,
