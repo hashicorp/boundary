@@ -110,7 +110,7 @@ create table event_config (
 );
 comment on table event_config is
 'event_config is a table where each entry defines the event configuration for '
-'a scope.  Currently, the only support scope is global';
+'a scope.  Currently, the only supported scope is global';
 
 create table event_type_enabled (
     config_id wt_public_id
