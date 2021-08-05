@@ -314,7 +314,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if opts.newOplogMsg != nil {
 		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
 		}
 		*opts.newOplogMsg = *msg
 	}
