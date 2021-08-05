@@ -43,7 +43,6 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	var sessionId string
 	switch {
 	case strings.HasPrefix(hello.ServerName, "s_"):
-		event.WriteSysEvent(ctx, op, "got valid session in SNI", "session_id", hello.ServerName)
 		sessionId = hello.ServerName
 	default:
 		event.WriteSysEvent(ctx, op, "invalid session in SNI", "session_id", hello.ServerName)
@@ -68,7 +67,6 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, validateSessionTimeout)
 	defer cancel()
 
-	event.WriteSysEvent(ctx, op, "looking up session", "session_id", sessionId)
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
 		ServerId:  w.conf.RawConfig.Worker.Name,
 		SessionId: sessionId,
@@ -127,7 +125,6 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		actualSi.Unlock()
 	}
 
-	event.WriteSysEvent(ctx, op, "returning TLS configuration", "session_id", sessionId)
 	return tlsConf, nil
 }
 
@@ -270,8 +267,6 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 		return
 	}
 
-	event.WriteSysEvent(ctx, op, "marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeInfo))
-
 	// How we handle close info depends on whether or not we succeeded with
 	// marking them closed on the controller.
 	var sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
@@ -304,14 +299,13 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	}
 
 	// Mark connections as closed
-	closedIds, errs := w.setCloseTimeForResponse(sessionCloseInfo)
+	_, errs := w.setCloseTimeForResponse(sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
 		}
 	}
 
-	event.WriteSysEvent(ctx, op, "connections successfully marked closed", "connection_ids", closedIds)
 }
 
 // makeCloseConnectionRequest creates a CloseConnectionRequest for

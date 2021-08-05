@@ -67,17 +67,15 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 	connWg.Add(2)
 	go func() {
 		defer connWg.Done()
-		_, err := io.Copy(netConn, tcpRemoteConn)
+		_, _ = io.Copy(netConn, tcpRemoteConn)
 		netConn.Close()
 		tcpRemoteConn.Close()
-		event.WriteSysEvent(ctx, op, "copy from client to endpoint done", "error", err)
 	}()
 	go func() {
 		defer connWg.Done()
-		_, err := io.Copy(tcpRemoteConn, netConn)
+		_, _ = io.Copy(tcpRemoteConn, netConn)
 		tcpRemoteConn.Close()
 		netConn.Close()
-		event.WriteSysEvent(ctx, op, "copy from endpoint to client done", "error", err)
 	}()
 	connWg.Wait()
 }

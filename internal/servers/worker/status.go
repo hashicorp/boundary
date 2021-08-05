@@ -188,7 +188,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 		for _, request := range result.GetJobsRequests() {
-			event.WriteSysEvent(statusCtx, op, "got job request from controller", "request", request)
 			switch request.GetRequestType() {
 			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 				switch request.GetJob().GetType() {
