@@ -195,6 +195,10 @@
           {
             "title": "Worker Tags",
             "path": "concepts/filtering/worker-tags"
+          },
+          {
+            "title": "Events",
+            "path": "concepts/filtering/events"
           }
         ]
       }
@@ -288,6 +292,27 @@
       {
         "title": "worker",
         "path": "configuration/worker"
+      },
+      {
+        "title": "events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/events/overview"
+          },
+          {
+            "title": "Common Sink Parameters",
+            "path": "configuration/events/common"
+          },
+          {
+            "title": "File Sink",
+            "path": "configuration/events/file"
+          },
+          {
+            "title": "Stderr Sink",
+            "path": "configuration/events/stderr"
+          }
+        ]
       }
     ]
   },
