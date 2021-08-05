@@ -77,7 +77,7 @@ create table event_sink_type_enm (
         )
 );
 comment on table event_type_enm is
-'event_sink_type_enm is an enumeration table for the valid sink types within the '
+'event_sink_type_enm is an enumeration table for the valid sink types within '
 'the domain';
 
 create table event_format_type_enm (
