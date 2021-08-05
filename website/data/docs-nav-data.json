@@ -301,6 +301,10 @@
             "path": "configuration/events/overview"
           },
           {
+            "title": "Common Sink Parameters",
+            "path": "configuration/events/common"
+          },
+          {
             "title": "File Sink",
             "path": "configuration/events/file"
           },
