@@ -24,9 +24,28 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
+build-gkw-plugins-ifne:
+ifeq (,$(wildcard internal/kms/plugins/assets/gkw-aead))
+	@echo "==> No KMS plugins found, building..."
+	@$(MAKE) build-gkw-plugins
+else
+	@echo "==> KMS plugins found, use build-gkw-plugins target to update"
+endif
+
+build-gkw-plugins:
+	@$(MAKE) --environment-overrides -C internal/kms/plugins plugins
+
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
+dev: build-gkw-plugins-ifne
 dev: build-ui-ifne
+	@echo "==> Building Boundary with dev and UI features enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+
+cleandev: BUILD_TAGS+=dev
+cleandev: BUILD_TAGS+=ui
+cleandev: build-gkw-plugins
+cleandev: build-ui
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 

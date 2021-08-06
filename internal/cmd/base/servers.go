@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"os"
 	"os/signal"
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	kmsplugins "github.com/hashicorp/boundary/internal/kms/plugins"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -465,6 +467,15 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 }
 
 func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
+	// Find available plugins
+	kmspluginsFs := kmsplugins.FileSystem()
+	dirs, err := fs.ReadDir(kmspluginsFs, ".")
+	if err != nil {
+		return fmt.Errorf("error scanning KMS plugins: %w", err)
+	}
+	for _, entry := range dirs {
+		fmt.Println(entry.Name())
+	}
 	sharedConfig := config.SharedConfig
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
@@ -521,7 +532,6 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 	}
 
 	// prepare a secure random reader
-	var err error
 	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err

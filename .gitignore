@@ -123,4 +123,7 @@ update-ui-assets*
 # Test config file
 test*.hcl
 
+# KMS plugin binaries
+/internal/kms/plugins/assets/
+
 # vim: set filetype=conf :
