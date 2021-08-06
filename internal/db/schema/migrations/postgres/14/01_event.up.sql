@@ -166,7 +166,7 @@ create table event_sink(
         on update cascade
 );
 comment on table event_sink is 
-'event_sink is a table where each entry represents a configured event sink';
+'event_sink is a table where each row represents a configured event sink';
 
 create table event_file_sink(
     public_id wt_public_id primary key,
