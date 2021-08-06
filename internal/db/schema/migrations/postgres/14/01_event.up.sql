@@ -138,7 +138,7 @@ create table event_type_enabled (
     primary key (config_id, event_type)
 );
 comment on table event_type_enabled is
-'event_type_enable is a table where each entry represents that eventing has '
+'event_type_enabled is a table where each row represents that eventing has '
 'been enabled for the specified event type in an event configuration';
 
 
