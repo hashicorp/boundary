@@ -118,7 +118,7 @@ create table event_config (
     version wt_version
 );
 comment on table event_config is
-'event_config is a table where each entry defines the event configuration for '
+'event_config is a table where each row defines the event configuration for '
 'a scope.  Currently, the only supported scope is global';
 
 create table event_type_enabled (
