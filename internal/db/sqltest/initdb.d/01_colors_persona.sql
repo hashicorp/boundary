@@ -175,10 +175,26 @@ begin;
     ('t_________cr', 's___1cr-sths'),
     ('t_________cr', 's___2cr-sths');
 
-  insert into session
-    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+
+  insert into credential_vault_store
+    (scope_id,       public_id,      name,                description, vault_address, namespace)
   values
-    ('p____bcolors' , 't_________cb' , 's___1cb-sths' , 'h_____cb__01' , 'u______clare' , 'tok____clare' , 'abc'::bytea , 'ep1'    , 's1_____clare');
+    ('p____bcolors', 'vs_______cvs', 'color vault store', 'None',      'https://vault.color', 'blue');
+
+  insert into credential_vault_library
+    (store_id,       public_id,     name,                  description, vault_path, http_method)
+  values
+    ('vs_______cvs', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
+
+  insert into target_credential_library
+    (target_id,      credential_library_id, credential_purpose)
+  values
+    ('t_________cb', 'vl______cvl',         'application');
+
+  insert into session
+    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+  values
+    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare');
 
   insert into session_connection
     (session_id, public_id)
