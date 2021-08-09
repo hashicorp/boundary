@@ -90,11 +90,10 @@ create table event_format_type_enm (
         constraint only_predefined_event_format_types_allowed
         check (
             name in (
-                'json',
-                'text',
-                'cloudevent',
-                'hclogtext',
-                'hclogjson'
+                'cloudevents-json',
+                'cloudevents-text',
+                'hclog-text',
+                'hclog-json'
             )
         )
 );
@@ -132,9 +131,6 @@ create table event_type_enabled (
             references event_type_enm (name)
             on delete restrict
             on update cascade,
-    --constraint config_id_event_type_uq
-        --unique (config_id, event_type) -- only allow an event type to be enable once
-        --do we still need this ^ if we have what is below?
     primary key (config_id, event_type)
 );
 comment on table event_type_enabled is
