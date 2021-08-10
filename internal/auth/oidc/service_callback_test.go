@@ -679,10 +679,11 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	tp.SetExpectedSubject(sub)
 	tp.SetCustomAudience("foo", "alice-rp")
 	info := map[string]interface{}{
-		"roles": []string{"user", "operator"},
-		"sub":   "alice@example.com",
-		"email": "alice-alias@example.com",
-		"name":  "alice doe joe foe",
+		"roles":  []string{"user", "operator"},
+		"sub":    "alice@example.com",
+		"email":  "alice-alias@example.com",
+		"name":   "alice doe joe foe",
+		"co:lon": "colon",
 	}
 	tp.SetUserInfoReply(info)
 
@@ -730,6 +731,14 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			filters: []string{
 				`"/token/nonce" == "not-nonce"`,
 				`"/userinfo/email" == "alice-alias@example.com"`,
+			},
+			matchingMgs: mgs[1:2],
+		},
+		{
+			name: "colon test",
+			filters: []string{
+				TestFakeManagedGroupFilter,
+				`"/userinfo/co:lon" == "colon"`,
 			},
 			matchingMgs: mgs[1:2],
 		},
