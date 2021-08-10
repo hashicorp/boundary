@@ -5,7 +5,7 @@ begin;
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
 
-  create or replace function wh_insert_session()
+  create function wh_insert_session()
     returns trigger
   as $$
   declare
