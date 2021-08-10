@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // CreateTokenKeyVersion inserts into the repository and returns the new key
@@ -17,7 +17,10 @@ func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 	if rkvWrapper == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
-	rootKeyVersionId := rkvWrapper.KeyID()
+	rootKeyVersionId, err := rkvWrapper.KeyId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to fetch key id"))
+	}
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))

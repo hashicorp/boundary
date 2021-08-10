@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/wrapper"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

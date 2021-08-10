@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 func testWrapper(t *testing.T) wrapping.Wrapper {
@@ -21,12 +20,8 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	require.NoError(t, err)
 	require.Equal(t, n, 32)
 
-	opts, err := structpb.NewStruct(map[string]interface{}{
-		"key_id": base64.StdEncoding.EncodeToString(rootKey),
-	})
-	require.NoError(t, err)
 	root := aead.NewWrapper()
-	_, err = root.SetConfig(context.Background(), wrapping.WithWrapperOptions(opts))
+	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)))
 	if err != nil {
 		t.Fatal(err)
 	}

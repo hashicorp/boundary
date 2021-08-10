@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -62,7 +63,9 @@ func Test_testInitDbInDocker(t *testing.T) {
 func Test_testWrapper(t *testing.T) {
 	w := testWrapper(t)
 	require.NotNil(t, w)
-	assert.Equal(t, "aead", w.Type())
+	typ, err := w.Type(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "aead", typ)
 }
 
 func Test_testInitStore(t *testing.T) {

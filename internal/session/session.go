@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -389,7 +389,11 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	s.KeyId = cipher.KeyID()
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error getting cipher key id"))
+	}
+	s.KeyId = keyId
 	return nil
 }
 

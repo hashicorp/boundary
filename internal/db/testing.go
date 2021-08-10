@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,14 +66,12 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 	if n != 32 {
 		t.Fatal(n)
 	}
-	root := aead.NewWrapper(nil)
-	_, err = root.SetConfig(map[string]string{
-		"key_id": base64.StdEncoding.EncodeToString(rootKey),
-	})
+	root := aead.NewWrapper()
+	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+	if err := root.SetAesGcmKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
 	}
 	return root

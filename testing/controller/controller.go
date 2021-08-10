@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {

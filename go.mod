@@ -18,8 +18,8 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
-	github.com/hashicorp/boundary/api v0.0.14
-	github.com/hashicorp/boundary/sdk v0.0.6
+	github.com/hashicorp/boundary/api v0.0.16-0.20210810184749-e53ec3127222
+	github.com/hashicorp/boundary/sdk v0.0.7-0.20210810184729-c674d142c3fb
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -27,13 +27,13 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.8
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.3
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210806010406-654b92dca269
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210810171353-2a298deaeb2d
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210810171353-2a298deaeb2d
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil v0.1.1
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210810171518-2e89ea49c1ea
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1

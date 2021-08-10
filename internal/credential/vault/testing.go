@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"

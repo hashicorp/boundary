@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
+	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -253,19 +253,24 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 
 	var multi *multiwrapper.MultiWrapper
 	for i, key := range rootKeyVersions {
-		wrapper := aead.NewWrapper(nil)
-		if _, err := wrapper.SetConfig(map[string]string{
-			"key_id": key.GetPrivateId(),
-		}); err != nil {
+		var err error
+		wrapper := aead.NewWrapper()
+		if _, err = wrapper.SetConfig(ctx, wrapping.WithKeyId(key.GetPrivateId())); err != nil {
 			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
 		}
-		if err := wrapper.SetAESGCMKeyBytes(key.GetKey()); err != nil {
+		if err = wrapper.SetAesGcmKeyBytes(key.GetKey()); err != nil {
 			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 		}
 		if i == 0 {
-			multi = multiwrapper.NewMultiWrapper(wrapper)
+			multi, err = multiwrapper.NewMultiWrapper(ctx, wrapper)
+			if err != nil {
+				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root multiwrapper for key version 0 in scope %s", scopeId)))
+			}
 		} else {
-			multi.AddWrapper(wrapper)
+			_, err = multi.AddWrapper(ctx, wrapper)
+			if err != nil {
+				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error adding multiwrapper for key version %d in scope %s", i, scopeId)))
+			}
 		}
 	}
 
@@ -353,19 +358,24 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 
 	var multi *multiwrapper.MultiWrapper
 	for i, keyVersion := range keyVersions {
-		wrapper := aead.NewWrapper(nil)
-		if _, err := wrapper.SetConfig(map[string]string{
-			"key_id": keyVersion.GetPrivateId(),
-		}); err != nil {
+		var err error
+		wrapper := aead.NewWrapper()
+		if _, err = wrapper.SetConfig(ctx, wrapping.WithKeyId(keyVersion.GetPrivateId())); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
-		if err := wrapper.SetAESGCMKeyBytes(keyVersion.GetKey()); err != nil {
+		if err = wrapper.SetAesGcmKeyBytes(keyVersion.GetKey()); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
 		if i == 0 {
-			multi = multiwrapper.NewMultiWrapper(wrapper)
+			multi, err = multiwrapper.NewMultiWrapper(ctx, wrapper)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version 0 in scope %s", purpose.String(), scopeId)))
+			}
 		} else {
-			multi.AddWrapper(wrapper)
+			_, err = multi.AddWrapper(ctx, wrapper)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version %d in scope %s", purpose.String(), i, scopeId)))
+			}
 		}
 	}
 

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -76,7 +76,10 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
-	newSession.KeyId = sessionWrapper.KeyID()
+	newSession.KeyId, err = sessionWrapper.KeyId(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get session wrapper key id"))
+	}
 
 	var returnedSession *Session
 	_, err = r.writer.DoTx(

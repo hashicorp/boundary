@@ -25,7 +25,7 @@ cleangen:
 	@rm -f ${GENERATED_CODE}
 
 build-gkw-plugins-ifne:
-ifeq (,$(wildcard internal/kms/plugins/assets/gkw-aead))
+ifeq (,$(wildcard sdk/kms/assets/gkw-aead))
 	@echo "==> No KMS plugins found, building..."
 	@$(MAKE) build-gkw-plugins
 else
@@ -33,7 +33,7 @@ else
 endif
 
 build-gkw-plugins:
-	@$(MAKE) --environment-overrides -C internal/kms/plugins plugins
+	@$(MAKE) --environment-overrides -C sdk/kms plugins
 
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui

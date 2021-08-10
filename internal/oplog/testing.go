@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +73,7 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	require.NoError(t, err)
 	require.Equal(t, n, 32)
 	root := aead.NewWrapper(nil)
-	err = root.SetAESGCMKeyBytes(rootKey)
+	err = root.SetAesGcmKeyBytes(rootKey)
 	require.NoError(t, err)
 	return root
 }
