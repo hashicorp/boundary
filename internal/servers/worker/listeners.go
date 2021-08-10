@@ -110,7 +110,7 @@ func (w *Worker) stopListeners() error {
 			defer shutdownKillCancel()
 
 			if localLn.HTTPServer != nil {
-				localLn.HTTPServer.Shutdown(shutdownKill)
+				_ = localLn.HTTPServer.Shutdown(shutdownKill)
 			}
 		}()
 	}

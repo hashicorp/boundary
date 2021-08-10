@@ -1,4 +1,4 @@
-package worker
+package tcp
 
 import (
 	"context"
@@ -7,34 +7,56 @@ import (
 	"net/url"
 	"sync"
 
-	"nhooyr.io/websocket"
-
+	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers/worker/common"
+	"github.com/hashicorp/boundary/internal/servers/worker/proxy"
+	"github.com/hashicorp/boundary/internal/servers/worker/session"
+	"nhooyr.io/websocket"
 )
 
-func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAddr, conn *websocket.Conn, si *sessionInfo, connectionId, endpoint string) {
-	const op = "worker.(Worker).handleTcpProxyV1"
+func init() {
+	err := proxy.RegisterHandler(globals.TcpProxyV1, HandleTcpProxyV1)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// HandleTcpProxyV1 creates a tcp proxy between the incoming websocket conn and the
+// connection it creates with the remote endpoint. HandleTcpProxyV1 sets the connectionId
+// as connected in the repository.
+//
+// HandleTcpProxyV1 blocks until an error (EOF on happy path) is received on either
+// connection.
+func HandleTcpProxyV1(connCtx context.Context,
+	clientAddr *net.TCPAddr,
+	conn *websocket.Conn,
+	_ common.CredentialData,
+	sessionClient pbs.SessionServiceClient,
+	si *session.Info,
+	connectionId, endpoint string) {
+	const op = "tcp.HandleTcpProxyV1"
 	ctx := context.TODO()
 	si.RLock()
-	sessionId := si.lookupSessionResponse.GetAuthorization().GetSessionId()
+	sessionId := si.LookupSessionResponse.GetAuthorization().GetSessionId()
 	si.RUnlock()
 
 	sessionUrl, err := url.Parse(endpoint)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error parsing endpoint information", "session_id", sessionId, "endpoint", endpoint))
-		conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
+		_ = conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
 		return
 	}
 	if sessionUrl.Scheme != "tcp" {
 		event.WriteError(ctx, op, err, event.WithInfo("session_id", sessionId, "endpoint", endpoint))
-		conn.Close(websocket.StatusInternalError, "invalid scheme for type")
+		_ = conn.Close(websocket.StatusInternalError, "invalid scheme for type")
 		return
 	}
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error dialing endpoint", "endpoint", endpoint))
-		conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
+		_ = conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
 		return
 	}
 	// Assert this for better Go 1.11 splice support
@@ -50,14 +72,14 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 		Type:               "tcp",
 	}
 
-	connStatus, err := w.connectConnection(connCtx, connectionInfo)
+	connStatus, err := session.ConnectConnection(connCtx, sessionClient, connectionInfo)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection as connected"))
-		conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
+		_ = conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
 		return
 	}
 	si.Lock()
-	si.connInfoMap[connectionId].status = connStatus
+	si.ConnInfoMap[connectionId].Status = connStatus
 	si.Unlock()
 
 	// Get a wrapped net.Conn so we can use io.Copy
@@ -68,14 +90,14 @@ func (w *Worker) handleTcpProxyV1(connCtx context.Context, clientAddr *net.TCPAd
 	go func() {
 		defer connWg.Done()
 		_, _ = io.Copy(netConn, tcpRemoteConn)
-		netConn.Close()
-		tcpRemoteConn.Close()
+		_ = netConn.Close()
+		_ = tcpRemoteConn.Close()
 	}()
 	go func() {
 		defer connWg.Done()
 		_, _ = io.Copy(tcpRemoteConn, netConn)
-		tcpRemoteConn.Close()
-		netConn.Close()
+		_ = tcpRemoteConn.Close()
+		_ = netConn.Close()
 	}()
 	connWg.Wait()
 }

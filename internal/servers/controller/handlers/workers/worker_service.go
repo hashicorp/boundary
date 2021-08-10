@@ -367,8 +367,7 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 }
 
 func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
-	const op = "workers.(workerServiceServer"
-
+	const op = "workers.(workerServiceServer).AuthorizeConnection"
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
@@ -399,7 +398,6 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
 	const op = "workers.(workerServiceServer).ConnectConnection"
-
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
@@ -419,25 +417,9 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 		return nil, status.Error(codes.Internal, "Invalid connect connection response.")
 	}
 
-	ret := &pbs.ConnectConnectionResponse{
+	return &pbs.ConnectConnectionResponse{
 		Status: connStates[0].Status.ProtoVal(),
-	}
-
-	loggerPairs := []interface{}{
-		"session_id", connectionInfo.SessionId,
-		"connection_id", req.ConnectionId,
-		"client_tcp_address", req.ClientTcpAddress,
-		"client_tcp_port", req.ClientTcpPort,
-	}
-	switch req.GetType() {
-	case "tcp":
-		loggerPairs = append(loggerPairs,
-			"endpoint_tcp_address", connectionInfo.EndpointTcpAddress,
-			"endpoint_tcp_port", connectionInfo.EndpointTcpPort,
-		)
-	}
-
-	return ret, nil
+	}, nil
 }
 
 func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {

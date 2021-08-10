@@ -59,7 +59,7 @@ func (w *Worker) startControllerConnections() error {
 	return nil
 }
 
-func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
 	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		tlsConf, authInfo, err := w.workerAuthTLSConfig()
@@ -134,7 +134,7 @@ func (w *Worker) createClientConn(addr string) error {
 	return nil
 }
 
-func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
 		Name:        w.conf.RawConfig.Worker.Name,

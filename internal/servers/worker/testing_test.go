@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,14 +21,14 @@ func TestTestWorkerLookupSession(t *testing.T) {
 	tw.w = &Worker{
 		sessionInfoMap: new(sync.Map),
 	}
-	tw.w.sessionInfoMap.Store("foo", &sessionInfo{
-		id:     "foo",
-		status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
-		connInfoMap: map[string]*connInfo{
+	tw.w.sessionInfoMap.Store("foo", &session.Info{
+		Id:     "foo",
+		Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+		ConnInfoMap: map[string]*session.ConnInfo{
 			"one": {
-				id:        "one",
-				status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
-				closeTime: refTime,
+				Id:        "one",
+				Status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+				CloseTime: refTime,
 			},
 		},
 	})
