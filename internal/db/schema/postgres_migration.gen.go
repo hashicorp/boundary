@@ -6283,7 +6283,11 @@ comment on table event_sink is
 
 create table event_file_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null,
+    sink_id wt_public_id not null
+        constraint sink_id_fkey
+        references event_sink(public_id)
+        on delete restrict
+        on update cascade, 
     path text not null 
         constraint path_not_empty
         check (
@@ -6326,10 +6330,14 @@ comment on table event_file_sink is
 
 create table event_stderr_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null,
+    sink_id wt_public_id not null
+        constraint sink_id_fkey
+        references event_sink(public_id)
+        on delete restrict
+        on update cascade, 
     event_type text not null
         constraint event_type_enm_fkey
-            references event_type_enm (name)
+            references event_type_enm(name)
             on delete restrict
             on update cascade,
     format_type text not null
