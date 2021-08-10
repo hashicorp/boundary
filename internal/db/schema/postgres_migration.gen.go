@@ -6283,7 +6283,7 @@ comment on table event_sink is
 
 create table event_file_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null
+    sink_id wt_public_id not null,
     path text not null 
         constraint path_not_empty
         check (
@@ -6326,7 +6326,7 @@ comment on table event_file_sink is
 
 create table event_stderr_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null
+    sink_id wt_public_id not null,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm (name)
@@ -6343,7 +6343,7 @@ create table event_stderr_sink(
 
 comment on table event_stderr_sink is
 'event_stderr_sink is a table where each entry represents a configured stderr '
-'sink'
+'sink';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
