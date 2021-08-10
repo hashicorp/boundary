@@ -7,30 +7,30 @@ import (
 	"testing"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 func testWrapper(t *testing.T) wrapping.Wrapper {
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != 32 {
-		t.Fatal(n)
-	}
-	root := aead.NewWrapper(nil)
-	_, err = root.SetConfig(map[string]string{
+	require.NoError(t, err)
+	require.Equal(t, n, 32)
+
+	opts, err := structpb.NewStruct(map[string]interface{}{
 		"key_id": base64.StdEncoding.EncodeToString(rootKey),
 	})
+	require.NoError(t, err)
+	root := aead.NewWrapper()
+	_, err = root.SetConfig(context.Background(), wrapping.WithWrapperOptions(opts))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+	if err := root.SetAesGcmKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
 	}
 	return root

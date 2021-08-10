@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
@@ -94,7 +94,7 @@ func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, versioned
 		return nil, fmt.Errorf("length zero after base58-decoding token")
 	}
 
-	blobInfo := new(wrapping.EncryptedBlobInfo)
+	blobInfo := new(wrapping.BlobInfo)
 	if err := proto.Unmarshal(marshaledBlob, blobInfo); err != nil {
 		return nil, fmt.Errorf("error decoding encrypted blob: %w", err)
 	}
