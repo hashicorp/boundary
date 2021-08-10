@@ -55,8 +55,14 @@ begin;
   );
 
   create table wh_credential_group_membership (
-    credential_group_key wh_dim_id not null,
-    credential_key       wh_dim_id not null,
+    credential_group_key wh_dim_id not null
+      references wh_credential_group (key)
+      on delete restrict
+      on update cascade,
+    credential_key       wh_dim_id not null
+      references wh_credential_dimension (key)
+      on delete restrict
+      on update cascade,
     credential_purpose   wh_dim_text
   );
 commit;
