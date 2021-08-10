@@ -170,7 +170,8 @@ begin;
    where current_row_indicator = 'Current'
   ;
 
-  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+  drop function wh_upsert_host;
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
     returns wh_dim_id
   as $$
   declare
@@ -235,7 +236,7 @@ begin;
 
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
-  create or replace function wh_insert_session()
+  create function wh_insert_session()
     returns trigger
   as $$
   declare
@@ -276,7 +277,7 @@ begin;
 
   drop trigger wh_insert_session_connection on session_connection;
   drop function wh_insert_session_connection;
-  create or replace function wh_insert_session_connection()
+  create function wh_insert_session_connection()
     returns trigger
   as $$
   declare
@@ -337,7 +338,7 @@ begin;
 
   drop trigger wh_insert_session_state on session_state;
   drop function wh_insert_session_state;
-  create or replace function wh_insert_session_state()
+  create function wh_insert_session_state()
     returns trigger
   as $$
   declare
@@ -379,7 +380,7 @@ begin;
 
   drop trigger wh_insert_session_connection_state on session_connection_state;
   drop function wh_insert_session_connection_state;
-  create or replace function wh_insert_session_connection_state()
+  create function wh_insert_session_connection_state()
     returns trigger
   as $$
   declare
