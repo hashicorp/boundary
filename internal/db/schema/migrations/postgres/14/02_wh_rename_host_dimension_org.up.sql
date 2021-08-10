@@ -87,7 +87,8 @@ begin;
    where current_row_indicator = 'Current'
   ;
 
-  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+  drop function wh_upsert_host;
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
     returns wh_dim_id
   as $$
   declare
@@ -126,7 +127,7 @@ begin;
              target_id,                  target_type,                target_name,                     target_description,
              target_default_port_number, target_session_max_seconds, target_session_connection_limit,
              project_id,                 project_name,               project_description,
-             organization_id,       organization_name,     organization_description,
+             organization_id,            organization_name,          organization_description,
              current_row_indicator,      row_effective_time,         row_expiration_time
       )
       select host_id,                    host_type,                  host_name,                       host_description,         host_address,
@@ -135,7 +136,7 @@ begin;
              target_id,                  target_type,                target_name,                     target_description,
              target_default_port_number, target_session_max_seconds, target_session_connection_limit,
              project_id,                 project_name,               project_description,
-             organization_id,       organization_name,     organization_description,
+             organization_id,            organization_name,          organization_description,
              'Current',                  current_timestamp,          'infinity'::timestamptz
         from whx_host_dimension_source
        where host_id               = p_host_id
