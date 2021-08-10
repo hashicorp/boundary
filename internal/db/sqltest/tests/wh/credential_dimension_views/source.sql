@@ -35,4 +35,5 @@ begin;
   )::whx_credential_dimension_source)
     from whx_credential_dimension_source as s
    where s.target_id         = 't_________cb';
+
 rollback;

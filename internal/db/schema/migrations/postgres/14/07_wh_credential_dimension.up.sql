@@ -1,6 +1,12 @@
 begin;
   alter table wh_session_accumulating_fact
-    add column credential_group_key wh_public_id;
+    add column credential_group_key wh_dim_id not null
+    default 'no credentials'
+    references wh_credential_group (key)
+    on delete restrict
+    on update cascade;
+  alter table wh_session_accumulating_fact
+    alter column credential_group_key drop default;
 
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
@@ -16,7 +22,7 @@ begin;
       select wh_date_id(start_time), wh_time_id(start_time), start_time
         from session_state
        where session_id = new.public_id
-         and state = 'pending'
+         and state      = 'pending'
     )
     insert into wh_session_accumulating_fact (
            session_id,

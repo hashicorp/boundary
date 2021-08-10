@@ -1,25 +1,11 @@
 begin;
-  create function _distinct_credentials(p_target_id wt_public_id)
+  create function _wh_distinct_credentials(p_target_id wt_public_id)
     returns bool
   as $$
   declare
-    src_count    bigint;
-    target_count bigint;
     src          whx_credential_group_target%rowtype;
     target       whx_credential_group_target%rowtype;
   begin
-    select count(*) into target_count
-      from whx_credential_group_target as t
-      where t.target_id = p_target_id;
-
-    select count(*) into src_count
-      from whx_credential_group_source as s
-    where s.target_id = p_target_id;
-
-    if target_count != src_count then
-      return true;
-    end if;
-
     for target in
       select *
         from whx_credential_group_target as t
@@ -43,12 +29,22 @@ begin;
     returns wh_dim_id
   as $$
   declare
+    src_count    bigint;
+    target_count bigint;
     src           whx_credential_dimension_source%rowtype;
     target        whx_credential_group_target%rowtype;
     new_row       wh_credential_group%rowtype;
     dimension_key wh_dim_id;
   begin
-    if _distinct_credentials(p_target_id) then
+    select count(*) into target_count
+      from whx_credential_group_target as t
+      where t.target_id = p_target_id;
+
+    select count(*) into src_count
+      from whx_credential_group_source as s
+    where s.target_id = p_target_id;
+
+    if target_count != src_count or _wh_distinct_credentials(p_target_id) then
       -- expire the current rows
       for target in
         select * from whx_credential_group_target as t
@@ -61,7 +57,12 @@ begin;
           and current_row_indicator = 'Current';
       end loop;
 
-      -- insert new group
+      if src_count = 0 then
+        return 'no credentials';
+      end if;
+
+      -- insert new credentials
+
       insert into wh_credential_group default values returning * into new_row;
 
       for src in
@@ -94,6 +95,14 @@ begin;
 
       return new_row.key;
     end if;
+
+    if target_count = 0 then
+      return 'no credentials';
+    end if;
+
+    select * into target
+      from whx_credential_group_target as t
+      where t.target_id = p_target_id;
 
     return target.credential_group_key;
   end;
