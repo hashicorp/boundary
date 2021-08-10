@@ -6138,57 +6138,72 @@ alter table auth_oidc_account
 `),
 			14001: []byte(`
 /*
-┌─────────────────┐                                  
-│iam_scope_global │                                  
-├─────────────────┤                                  
-│                 │                                  
-└─────────────────┘                                  
-         ┼                                           
-         │                                           
-         ┼                                           
-         ┼                                           
-┌─────────────────┐                                  
-│  event_config   │           ┌──────────────────┐   
-├─────────────────┤           │event_type_enabled│   
-│ public_id       │          ╱├──────────────────┤   
-│ scope_id        │┼────────○─│config_id         │   
-│ name            |          ╲|event_type        |
-| description     │           │                  │   
-│ create_time     │           │                  │   
-| update_time     |           └──────────────────┘
-| version         |                     |
+┌─────────────────┐                               
+│iam_scope_global │                               
+├─────────────────┤                               
+│                 │                               
+└─────────────────┘                               
+         ┼                                        
+         │                                        
+         ┼                                        
+         ┼                                        
+┌─────────────────┐                               
+│  event_config   │           ┌──────────────────┐
+├─────────────────┤           │event_type_enabled│
+│ public_id       │          ╱├──────────────────┤
+│ scope_id        │┼────────○─│config_id         │
+| name            │          ╲│event_type        │
+│ description     |           |                  |
+| create_time     |           └──────────────────┘
+| update_time     │                     |
+│ version         |                     |
 └─────────────────┘                     |
-         ┼                              ┼            
-         ┼                              │            
-         │                              │            
-         │                             ╱│╲           
-         ○                     ┌─────────────────┐   
-        ╱│╲                   ╱│ event_type_enm  │   
-┌─────────────────┐     ┌──────├─────────────────┤   
-│   event_sink    │     │     ╲│                 │   
-├─────────────────┤     │      └─────────────────┘   
-│public_id        │┼────┤                            
-│config_id        │     │ 
-│event_type       |     |      
-|sink_type        |     |     ┌─────────────────────┐       
-|format_type      │     │    ╱│ event_sink_type_enm │
-└─────────────────┘     ├─────├─────────────────────┤
-         ┼              │    ╲│                     │
-         │              │     └─────────────────────┘
-         │              │     ┌───────────────────────┐    
-         ○              │    ╱│ event_format_type_enm │    
-        ╱│╲             └─────├───────────────────────┤    
-┌─────────────────┐          ╲│                       │    
-│ event_file_sink │           └───────────────────────┘    
-├─────────────────┤                                  
-│ public_id       │                                  
-│ sink_id         │                                  
-│ path            │                                  
-│ file_name       │                                  
-│ rotate_bytes    │                                  
-│ rotate_duration │                                  
-│ rotate_max_files│                                  
-└─────────────────┘                                                                                      
+         ┼                              ┼         
+         ┼                              │         
+         │                              │         
+         │                             ╱│╲        
+         ○                     ┌─────────────────┐
+        ╱│╲                   ╱│ event_type_enm  │
+┌─────────────────┐     ┌───┬──├─────────────────┤
+│   event_sink    │     │   │ ╲│                 │
+├─────────────────┤     │   │  └─────────────────┘
+│public_id        │     │   │                     
+│config_id        │     │   │                     
+│                 │     │   │                     
+└─────────────────┘     │   │                     
+         ┼ ┼            │   │                     
+         │ │            │   │                     
+         │ │            │   │                     
+         │ │            │   │                     
+         │ │            │   │                     
+         │ │            │   └────────────────┐    
+         │ │            │                    │    
+         │ └────────────┼────────┐           │    
+         ○              │        │           │    
+        ╱│╲             │        │           │    
+┌─────────────────┐     │        │           │    
+│ event_file_sink │     │        │           │    
+├─────────────────┤     │        │           │    
+│ public_id       │┼────┘        ○           │    
+│ sink_id         │             ╱│╲          │    
+│ event_type      │     ┌─────────────────┐  │    
+│ format_type     │     │event_stderr_sink│  │    
+│ allow_filters   │     ├─────────────────┤  │    
+│ deny_filters    │     │ public_id       │  │    
+│ path            │     │ sink_id         │  │    
+│ file_name       │     │ event_type      │┼─┘    
+│ rotate_bytes    │     │ format_type     │       
+│ rotate_duration │     │ allow_filters   │       
+│ rotate_max_files│     │ deny_filters    │       
+└─────────────────┘     └─────────────────┘       
+         ┼                        ┼               
+         │                        │               
+         │                        │               
+         │  ┌─────────────────┐   │               
+         │ ╱│event_format_type│╲  │               
+         └──├─────────────────┤───┘               
+           ╲│                 │╱                  
+            └─────────────────┘                                                                                     
 */
 
 create table event_type_enm (
@@ -6231,8 +6246,8 @@ create table event_config (
             references iam_scope_global(scope_id)
             on delete cascade
             on update cascade,
-    constraint scope_id_uq -- only allow one config per scope
-        unique (scope_id),   
+        constraint scope_id_uq -- only allow one config per scope
+            unique (scope_id),
     name wt_name,
     description wt_description,
     create_time wt_timestamp,
@@ -6243,13 +6258,19 @@ comment on table event_config is
 'event_config is a table where each row defines the event configuration for '
 'a scope.  Currently, the only supported scope is global';
 
-  create trigger update_version_column after update on event_config
+create trigger 
+    update_version_column 
+after update on event_config
     for each row execute procedure update_version_column();
 
-  create trigger update_time_column before update on event_config
+create trigger
+    update_time_column 
+before update on event_config
     for each row execute procedure update_time_column();
 
-  create trigger default_create_time_column before insert on event_config
+create trigger
+    default_create_time_column 
+before insert on event_config
     for each row execute procedure default_create_time();
 
 create table event_type_enabled (
@@ -6274,9 +6295,9 @@ create table event_sink(
     public_id wt_public_id primary key,
     config_id wt_public_id 
         constraint event_config_fkey
-        references event_config(public_id)
-        on delete cascade
-        on update cascade
+            references event_config(public_id)
+            on delete cascade
+            on update cascade
 );
 comment on table event_sink is 
 'event_sink is a table where each row represents a configured event sink';
@@ -6285,44 +6306,54 @@ create table event_file_sink(
     public_id wt_public_id primary key,
     sink_id wt_public_id not null
         constraint sink_id_fkey
-        references event_sink(public_id)
-        on delete restrict
-        on update cascade, 
+            references event_sink(public_id)
+            on delete cascade
+            on update cascade,
+    event_type text not null
+        constraint event_type_enm_fkey
+            references event_type_enm(name)
+            on delete restrict
+            on update cascade,
+    format_type text not null
+        constraint event_format_type_enm_fkey
+            references event_format_type_enm(name)
+            on delete restrict
+            on update cascade,
+    allow_filter wt_bexprfilter,
+    deny_filter wt_bexprfilter,
     path text not null 
         constraint path_not_empty
-        check (
-            length(trim(path)) > 0
-        ),
+            check (
+                length(trim(path)) > 0
+            ),
     filename text not null
         constraint filename_not_empty
-        check (
-            length(trim(filename)) > 0
-        ),
-    rotate_bytes int 
+            check (
+                length(trim(filename)) > 0
+            ),
+        constraint path_filename_uq
+            unique(path, filename), -- ensure each sink is writing to a unique file
+    rotate_bytes int
         constraint rotate_bytes_null_or_greater_than_zero
-        check(
-            rotate_bytes is null 
-                or 
-            rotate_bytes > 0
-        ),
+            check(
+                rotate_bytes is null
+                    or
+                rotate_bytes > 0
+            ),
     rotate_duration interval
         constraint rotate_duration_null_or_greater_than_zero
-        check(
-            rotate_duration is null 
-                or 
-            rotate_duration > '0'::interval
-        ),
-    rotate_max_files int 
+            check(
+                rotate_duration is null
+                    or
+                rotate_duration > '0'::interval
+            ),
+    rotate_max_files int
         constraint rotate_max_files_null_or_greater_than_zero
-        check(
-            rotate_max_files is null 
-                or 
-            rotate_max_files > 0
-        ),
-    constraint path_filename_uq
-        unique(path, filename), -- ensure each sink is writing to a unique file
-    allow_filter wt_bexprfilter,
-    deny_filter wt_bexprfilter
+            check(
+                rotate_max_files is null
+                    or
+                rotate_max_files > 0
+            )
 );
 comment on table event_file_sink is 
 'event_file_sink is a table where each entry represents a configured event file '
@@ -6333,7 +6364,7 @@ create table event_stderr_sink(
     sink_id wt_public_id not null
         constraint sink_id_fkey
         references event_sink(public_id)
-        on delete restrict
+        on delete cascade
         on update cascade, 
     event_type text not null
         constraint event_type_enm_fkey

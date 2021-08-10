@@ -121,13 +121,19 @@ comment on table event_config is
 'event_config is a table where each row defines the event configuration for '
 'a scope.  Currently, the only supported scope is global';
 
-create trigger update_version_column after update on event_config
+create trigger
+    update_version_column
+after update on event_config
     for each row execute procedure update_version_column();
 
-create trigger update_time_column before update on event_config
+create trigger
+    update_time_column
+before update on event_config
     for each row execute procedure update_time_column();
 
-create trigger default_create_time_column before insert on event_config
+create trigger
+    default_create_time_column
+before insert on event_config
     for each row execute procedure default_create_time();
 
 create table event_type_enabled (
@@ -188,6 +194,8 @@ create table event_file_sink(
             check (
                 length(trim(filename)) > 0
             ),
+        constraint path_filename_uq
+            unique(path, filename), -- ensure each sink is writing to a unique file
     rotate_bytes int
         constraint rotate_bytes_null_or_greater_than_zero
             check(
@@ -209,8 +217,6 @@ create table event_file_sink(
                     or
                 rotate_max_files > 0
             )
-    constraint path_filename_uq
-        unique(path, filename), -- ensure each sink is writing to a unique file
 );
 comment on table event_file_sink is 
 'event_file_sink is a table where each entry represents a configured event file '
