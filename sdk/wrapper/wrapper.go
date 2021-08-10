@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	kmsplugins "github.com/hashicorp/boundary/sdk/kms/plugins"
+	kmsplugins "github.com/hashicorp/boundary/sdk/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
