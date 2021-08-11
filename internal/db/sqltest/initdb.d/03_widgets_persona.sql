@@ -163,21 +163,24 @@ begin;
       ('key', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
 
     insert into auth_oidc_method
-      (scope_id,       public_id,      client_id,      name,          state,            key_id)
+      (scope_id,       public_id,      client_id,      name,          state,            key_id,          issuer)
     values
-      ('o_____widget', 'aom___widget', 'aomc__widget', 'Widget OIDC', 'active-private', 'kdkv___widget');
+      ('o_____widget', 'aom___widget', 'aomc__widget', 'Widget OIDC', 'active-private', 'kdkv___widget', 'https://oidc.widget.test');
 
     insert into auth_oidc_account
-      (auth_method_id, public_id,      full_name, email,                issuer,                subject)
+      (auth_method_id, public_id,      name,             description,           full_name, email,                issuer,                subject)
     values
-      ('aom___widget', 'aoa___walter', 'Walter',  'walter@widget.test', 'https://widget.test', 'aoa___widget');
+      ('aom___widget', 'aoa___walter', 'walter account', 'Walter OIDC Account', 'Walter',  'walter@widget.test', 'https://widget.test', 'sub___walter'),
+      ('aom___widget', 'aoa___warren', 'warren account', 'Warren OIDC Account', null,      null,                 'https://widget.test', 'sub___warren');
 
     update auth_account set iam_user_id = 'u_____walter' where public_id = 'aoa___walter';
+    update auth_account set iam_user_id = 'u_____warren' where public_id = 'aoa___warren';
 
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea);
+      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
+      ('key', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
 
   end;
   $$ language plpgsql;
