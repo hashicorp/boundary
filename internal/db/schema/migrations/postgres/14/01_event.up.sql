@@ -213,7 +213,7 @@ begin
 insert into event_sink
     (public_id, config_id)
 values
-    (new.public_id, new.sink_id);
+    (new.public_id, new.config_id);
 return new;
 end;
 $$ language plpgsql;
