@@ -5,6 +5,16 @@
 # Orb 'circleci/slack@3.4.2' resolved to 'circleci/slack@3.4.2'
 version: 2
 jobs:
+  test-sql-13-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=13-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   bundle-releases:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -237,6 +247,16 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-11-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=11-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   build-common-layers:
     machine:
       image: ubuntu-1604:202007-01
@@ -865,6 +885,16 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-12-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=12-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   solaris_amd64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -1435,6 +1465,16 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-latest:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
 workflows:
   build-7cb7957a6e75af58:
     jobs:
@@ -1504,6 +1544,10 @@ workflows:
   default:
     jobs:
     - build
+    - test-sql-latest
+    - test-sql-11-alpine
+    - test-sql-12-alpine
+    - test-sql-13-alpine
     - algolia-index:
         filters:
           branches:

@@ -174,6 +174,9 @@ website-start:
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
+test-sql:
+	$(MAKE) -C internal/db/sqltest/ test
+
 test: 
 	~/.go/bin/go test ./... -timeout 30m
 
