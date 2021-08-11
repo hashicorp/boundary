@@ -198,8 +198,9 @@ github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjh
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210810171224-a451a9fcfdda/go.mod h1:McSAFxyTrUAIoMcu+SBWiGaQUyK4IsSq7R35aTvwZD4=
-github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210810171353-2a298deaeb2d h1:RrGHyyWdsRb0+beiU5sdQui/YTr8msHhTeB+WEbtarA=
-github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210810171353-2a298deaeb2d/go.mod h1:McSAFxyTrUAIoMcu+SBWiGaQUyK4IsSq7R35aTvwZD4=
+github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210811161017-d54b12be8805/go.mod h1:McSAFxyTrUAIoMcu+SBWiGaQUyK4IsSq7R35aTvwZD4=
+github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210811161805-534c0925130c h1:WHbcUcxCgdTJc+odDxTGxona4StqBwZwp9E6R6ODPXw=
+github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210811161805-534c0925130c/go.mod h1:McSAFxyTrUAIoMcu+SBWiGaQUyK4IsSq7R35aTvwZD4=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210810171146-be99e747bc2b/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210810171353-2a298deaeb2d h1:D4IeE0g7KE7nsV0/V0LATM0Fqs5v04GbtzxtcMKui80=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210810171353-2a298deaeb2d/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
@@ -220,7 +221,7 @@ github.com/hashicorp/go-rootcerts v1.0.1/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR3
 github.com/hashicorp/go-rootcerts v1.0.2 h1:jzhAVGtqPKbwpyCPELlgNWhE1znq+qwJtW5Oi2viEzc=
 github.com/hashicorp/go-rootcerts v1.0.2/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR319Vf4pU3K5EGc8=
 github.com/hashicorp/go-secure-stdlib/awsutil v0.1.1/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210810171518-2e89ea49c1ea/go.mod h1:231aPEqOziMnn2RGeSqqmdxHbWH0qhUyXqdNgFDUA6w=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210811161342-9fd1ddbf8022/go.mod h1:Rb0OujpW+6z3yhyATHAcxaHrLeu1F82ay94BS6q850U=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1/go.mod h1:irE9ILwhE8VooWdhHhBy0qXzOMRlHKoWoMlr31mAFCE=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1 h1:78ki3QBevHwYrVxnyVeaEz+7WtifHhauYF23es/0KlI=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1/go.mod h1:QmrqtbKuxxSWTN3ETMPuB+VtEiBJ/A9XhoYGv8E1uD8=
