@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* events: Fix panic when using the `hclog-text` event's format.
+  ([PR](https://github.com/hashicorp/boundary/pull/1456))
+
 ## 0.5.0 (2021/08/02)
 
 ### Deprecations/Changes
