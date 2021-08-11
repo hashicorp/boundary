@@ -216,7 +216,9 @@ func Test_requestWrappingWrapper(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			scopeId, authMethodId := tt.setupFn()
 
-			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+			keyId, err := oidcWrapper.KeyId(ctx)
+			require.NoError(err)
+			wantKeyId := derivedKeyId(derivedKeyPurposeState, keyId, authMethodId)
 			kmsCache.GetDerivedPurposeCache().Delete(wantKeyId)
 
 			reqWrapper, err := requestWrappingWrapper(ctx, repo.kms, scopeId, authMethodId, tt.opt...)
@@ -230,8 +232,12 @@ func Test_requestWrappingWrapper(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(requestWrappingWrapper)
-			assert.Equalf(wantKeyId, reqWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, reqWrapper.KeyID())
-			assert.Equalf(wrapping.AEAD, reqWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, reqWrapper.Type())
+			keyId, err = reqWrapper.KeyId(ctx)
+			require.NoError(err)
+			wrapperType, err := reqWrapper.Type(ctx)
+			require.NoError(err)
+			assert.Equalf(wantKeyId, keyId, "expected key id %s and got: %s", wantKeyId, keyId)
+			assert.Equalf(wrapping.WrapperTypeAead, wrapperType, "expected type %s and got: %s", wrapping.WrapperTypeAead, wrapperType)
 			assert.NotEmpty(reqWrapper.(*aead.Wrapper).GetKeyBytes())
 
 			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)

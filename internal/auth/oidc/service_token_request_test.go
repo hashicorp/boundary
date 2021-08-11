@@ -184,10 +184,12 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				keyId, err := testRequestWrapper.KeyId(ctx)
+				require.NoError(t, err)
 				w := request.Wrapper{
 					ScopeId:      testAuthMethod.ScopeId,
 					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: testRequestWrapper.KeyID(),
+					WrapperKeyId: keyId,
 					Ct:           marshaledBlob,
 				}
 				require.NoError(t, err)
@@ -214,10 +216,12 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				keyId, err := testRequestWrapper.KeyId(ctx)
+				require.NoError(t, err)
 				w := request.Wrapper{
 					ScopeId:      testAuthMethod.ScopeId,
 					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: testRequestWrapper.KeyID(),
+					WrapperKeyId: keyId,
 					Ct:           marshaledBlob,
 				}
 				require.NoError(t, err)
@@ -243,10 +247,12 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				keyId, err := testRequestWrapper.KeyId(ctx)
+				require.NoError(t, err)
 				w := request.Wrapper{
 					ScopeId:      testAuthMethod.ScopeId,
 					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: testRequestWrapper.KeyID(),
+					WrapperKeyId: keyId,
 					Ct:           marshaledBlob,
 				}
 				require.NoError(t, err)
@@ -273,10 +279,12 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				keyId, err := testRequestWrapper.KeyId(ctx)
+				require.NoError(t, err)
 				w := request.Wrapper{
 					ScopeId:      testAuthMethod.ScopeId,
 					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: testRequestWrapper.KeyID(),
+					WrapperKeyId: keyId,
 					Ct:           marshaledBlob,
 				}
 				require.NoError(t, err)

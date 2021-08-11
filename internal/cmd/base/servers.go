@@ -466,7 +466,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
+func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	// Find available plugins
 	kmspluginsFs := kmsplugins.FileSystem()
 	dirs, err := fs.ReadDir(kmspluginsFs, ".")
@@ -492,12 +492,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
 
-			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
-
-			origPurpose := kms.Purpose
-			kms.Purpose = []string{purpose}
-			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
-			kms.Purpose = origPurpose
+			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(ctx, kms, &b.InfoKeys, &b.Info)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
 					"Error parsing KMS configuration: %s", wrapperConfigError)
@@ -506,7 +501,25 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return fmt.Errorf(
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
+			if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+				// Ensure that the seal finalizer is called, even if using verify-only
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					if err := ifWrapper.Finalize(context.Background()); err != nil {
+						return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
+					}
 
+					return nil
+				})
+			}
+			if cleanupFunc != nil {
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					return cleanupFunc()
+				})
+			}
+
+			origPurpose := kms.Purpose
+			kms.Purpose = []string{purpose}
+			kms.Purpose = origPurpose
 			switch purpose {
 			case "root":
 				b.RootKms = wrapper
@@ -520,14 +533,6 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 
-			// Ensure that the seal finalizer is called, even if using verify-only
-			b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-				if err := wrapper.Finalize(context.Background()); err != nil {
-					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
-				}
-
-				return nil
-			})
 		}
 	}
 
@@ -587,6 +592,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return fmt.Errorf("error adding config keys to kms: %w", err)

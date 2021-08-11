@@ -211,7 +211,11 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	a.KeyId = cipher.KeyID()
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to read cipher key id"))
+	}
+	a.KeyId = keyId
 	if err := a.hmacClientSecret(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

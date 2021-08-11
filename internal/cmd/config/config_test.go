@@ -42,7 +42,7 @@ func TestDevController(t *testing.T) {
 				{
 					Type:    "aead",
 					Purpose: []string{"root"},
-					Config: map[string]string{
+					Config: map[string]interface{}{
 						"aead_type": "aes-gcm",
 						"key_id":    "global_root",
 					},
@@ -50,7 +50,7 @@ func TestDevController(t *testing.T) {
 				{
 					Type:    "aead",
 					Purpose: []string{"worker-auth"},
-					Config: map[string]string{
+					Config: map[string]interface{}{
 						"aead_type": "aes-gcm",
 						"key_id":    "global_worker-auth",
 					},
@@ -58,7 +58,7 @@ func TestDevController(t *testing.T) {
 				{
 					Type:    "aead",
 					Purpose: []string{"recovery"},
-					Config: map[string]string{
+					Config: map[string]interface{}{
 						"aead_type": "aes-gcm",
 						"key_id":    "global_recovery",
 					},
@@ -77,9 +77,9 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
-	exp.DevControllerKey = actual.Seals[0].Config["key"]
-	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevControllerKey = actual.Seals[0].Config["key"].(string)
+	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"].(string)
+	exp.DevRecoveryKey = actual.Seals[2].Config["key"].(string)
 
 	assert.Equal(t, exp, actual)
 

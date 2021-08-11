@@ -186,7 +186,11 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	}
 
 	// What derived key are we looking for?
-	keyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+	keyId, err := oidcWrapper.KeyId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oidc wrapper key id"))
+	}
+	keyId = derivedKeyId(derivedKeyPurposeState, keyId, authMethodId)
 	derivedWrapper, ok := k.GetDerivedPurposeCache().Load(keyId)
 	if ok {
 		return derivedWrapper.(*aead.Wrapper), nil

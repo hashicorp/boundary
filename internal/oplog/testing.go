@@ -72,7 +72,7 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	n, err := rand.Read(rootKey)
 	require.NoError(t, err)
 	require.Equal(t, n, 32)
-	root := aead.NewWrapper(nil)
+	root := aead.NewWrapper()
 	err = root.SetAesGcmKeyBytes(rootKey)
 	require.NoError(t, err)
 	return root

@@ -249,7 +249,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	case opts.WorkerAuthKms != nil:
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
 	default:
-		if err := tw.b.SetupKMSes(nil, opts.Config); err != nil {
+		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
 		}
 	}

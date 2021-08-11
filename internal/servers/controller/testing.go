@@ -501,7 +501,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.RootKms = opts.RootKms
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
 	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(nil, opts.Config); err != nil {
+		if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
 		}
 	default:

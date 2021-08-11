@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/wrapper"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -143,7 +144,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		kmsDefFile = strings.TrimSpace(c.flagConfigKms)
 	}
 
-	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, kmsDefFile, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -152,16 +153,25 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		c.UI.Error(`No wrapper with "config" purpose found"`)
 		return base.CommandUserError
 	}
-
-	if err := wrapper.Init(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
-		return base.CommandUserError
+	if cleanupFunc != nil {
+		defer func() {
+			if err := cleanupFunc(); err != nil {
+				c.UI.Warn(fmt.Errorf("Error cleaning up KMS wrapper: %w", err).Error())
+			}
+		}()
 	}
-	defer func() {
-		if err := wrapper.Finalize(c.Context); err != nil {
-			c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
+
+	if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+		if err := ifWrapper.Init(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
+			return base.CommandUserError
 		}
-	}()
+		defer func() {
+			if err := ifWrapper.Finalize(c.Context); err != nil {
+				c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
+			}
+		}()
+	}
 
 	d, err := ioutil.ReadFile(c.flagConfig)
 	if err != nil {

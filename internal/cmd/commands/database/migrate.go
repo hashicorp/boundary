@@ -29,7 +29,7 @@ type MigrateCommand struct {
 
 	Config *config.Config
 
-	configWrapper wrapping.Wrapper
+	configWrapperCleanupFunc func() error
 
 	flagConfig             string
 	flagConfigKms          string
@@ -120,10 +120,10 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return result
 	}
 
-	if c.configWrapper != nil {
+	if c.configWrapperCleanupFunc != nil {
 		defer func() {
-			if err := c.configWrapper.Finalize(c.Context); err != nil {
-				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
+			if err := c.configWrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error finalizing config kms: %w", err))
 			}
 		}()
 	}
@@ -227,16 +227,27 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
 	if wrapper != nil {
-		c.configWrapper = wrapper
-		if err := wrapper.Init(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return base.CommandUserError
+		c.configWrapperCleanupFunc = cleanupFunc
+		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+			if err := ifWrapper.Init(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
+				return base.CommandUserError
+			}
+			c.configWrapperCleanupFunc = func() error {
+				if err := ifWrapper.Finalize(c.Context); err != nil {
+					c.UI.Warn(fmt.Errorf("Could not finalize kms: %w", err).Error())
+				}
+				if cleanupFunc != nil {
+					return cleanupFunc()
+				}
+				return nil
+			}
 		}
 	}
 

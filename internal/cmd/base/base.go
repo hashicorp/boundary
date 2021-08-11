@@ -16,6 +16,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -84,6 +85,8 @@ type Command struct {
 	FlagFilter            string
 
 	client *api.Client
+
+	WrapperCleanupFunc func() error
 }
 
 // New returns a new instance of a base.Command type
@@ -188,30 +191,32 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, err := wrapper.GetWrapperFromPath(c.FlagRecoveryConfig, "recovery")
+		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, c.FlagRecoveryConfig, "recovery")
 		if err != nil {
 			return nil, err
 		}
 		if wrapper == nil {
 			return nil, errors.New(`No "kms" block with purpose "recovery" found`)
 		}
-		if err := wrapper.Init(c.Context); err != nil {
-			return nil, fmt.Errorf("Error initializing kms: %w", err)
+		if cleanupFunc != nil {
+			c.WrapperCleanupFunc = cleanupFunc
 		}
-		/*
-			// NOTE: ideally we should call this but at the same time we want to
-			give a wrapper to the client, not a token, so it doesn't try to use
-			it for two subsequent calls. This then becomes a question of
-			how/when to finalize the wrapper. Probably it needs to be stored in
-			the base and then at the end of the command run we finalize it if it
-			exists.
+		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+			if err := ifWrapper.Init(c.Context); err != nil {
+				return nil, fmt.Errorf("Error initializing kms: %w", err)
+			}
 
-			defer func() {
-				if err := wrapper.Finalize(c.Context); err != nil {
-					c.UI.Error(fmt.Errorf("An error was encountered finalizing the kms: %w", err).Error())
+			currCleanupFunc := c.WrapperCleanupFunc
+			c.WrapperCleanupFunc = func() error {
+				if err := ifWrapper.Finalize(c.Context); err != nil {
+					c.PrintCliError(fmt.Errorf("An error was encountered finalizing the kms: %w", err))
 				}
-			}()
-		*/
+				if currCleanupFunc != nil {
+					return currCleanupFunc()
+				}
+				return nil
+			}
+		}
 
 		c.client.SetRecoveryKmsWrapper(wrapper)
 

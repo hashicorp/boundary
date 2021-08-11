@@ -41,9 +41,7 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	require.NoError(err)
 	err = rw.Create(context.Background(), k)
 	require.NoError(err)
-	_, err = rootKeyVersionWrapper.(*aead.Wrapper).SetConfig(map[string]string{
-		"key_id": k.GetPrivateId(),
-	})
+	_, err = rootKeyVersionWrapper.(*aead.Wrapper).SetConfig(context.Background(), wrapping.WithKeyId(k.GetPrivateId()))
 	require.NoError(err)
 	return k, rootKeyVersionWrapper
 }
@@ -56,7 +54,7 @@ func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
 	require.NoError(err)
 	kms, err := NewKms(kmsRepo)
 	require.NoError(err)
-	err = kms.AddExternalWrappers(WithRootWrapper(rootWrapper))
+	err = kms.AddExternalWrappers(context.Background(), WithRootWrapper(rootWrapper))
 	require.NoError(err)
 	return kms
 }
@@ -81,7 +79,9 @@ func TestDatabaseKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper w
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	rootKeyId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	rootKeyVersionId := rootKeyId
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewDatabaseKeyVersion(databaseKeyId, key, rootKeyVersionId)
 	require.NoError(err)
@@ -115,7 +115,9 @@ func TestOplogKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	rootKeyId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	rootKeyVersionId := rootKeyId
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewOplogKeyVersion(oplogKeyId, key, rootKeyVersionId)
 	require.NoError(err)
@@ -149,7 +151,9 @@ func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	rootKeyId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	rootKeyVersionId := rootKeyId
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewTokenKeyVersion(tokenKeyId, key, rootKeyVersionId)
 	require.NoError(err)
@@ -183,7 +187,9 @@ func TestSessionKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wr
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	rootKeyId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	rootKeyVersionId := rootKeyId
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewSessionKeyVersion(sessionKeyId, key, rootKeyVersionId)
 	require.NoError(err)
@@ -217,7 +223,9 @@ func TestOidcKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapp
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	rootKeyId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	rootKeyVersionId := rootKeyId
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewOidcKeyVersion(oidcKeyId, key, rootKeyVersionId)
 	require.NoError(err)

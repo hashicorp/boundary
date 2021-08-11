@@ -89,15 +89,19 @@ func TestKms(t *testing.T) {
 					require.NoError(err)
 					multi, ok := wrapper.(*multiwrapper.MultiWrapper)
 					require.True(ok)
-					aeadWrapper, ok := multi.WrapperForKeyID(multi.KeyID()).(*aead.Wrapper)
+					mKeyId, err := multi.KeyId(ctx)
+					require.NoError(err)
+					aeadWrapper, ok := multi.WrapperForKeyId(mKeyId).(*aead.Wrapper)
 					require.True(ok)
+					aeadKeyId, err := aeadWrapper.KeyId(ctx)
+					require.NoError(err)
 					foundKeyBytes := keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())]
-					foundKeyId := keyIds[aeadWrapper.KeyID()]
+					foundKeyId := keyIds[aeadKeyId]
 					if i == 1 {
 						assert.False(foundKeyBytes)
 						assert.False(foundKeyId)
 						keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())] = true
-						keyIds[aeadWrapper.KeyID()] = true
+						keyIds[aeadKeyId] = true
 					} else {
 						assert.True(foundKeyBytes)
 						assert.True(foundKeyId)

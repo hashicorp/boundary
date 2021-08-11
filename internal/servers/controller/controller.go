@@ -110,6 +110,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := c.kms.AddExternalWrappers(
+		ctx,
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),

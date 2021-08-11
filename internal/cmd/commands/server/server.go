@@ -49,8 +49,6 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	configWrapper wrapping.Wrapper
-
 	flagConfig      string
 	flagConfigKms   string
 	flagLogLevel    string
@@ -140,14 +138,6 @@ func (c *Command) Run(args []string) int {
 		return result
 	}
 
-	if c.configWrapper != nil {
-		defer func() {
-			if err := c.configWrapper.Finalize(c.Context); err != nil {
-				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
-			}
-		}()
-	}
-
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -180,7 +170,7 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(ctx)
 
-	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -495,36 +485,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return base.CommandUserError
 	}
 
-	switch {
-	case c.presetConfig != nil:
-		c.Config, err = config.Parse(c.presetConfig.Load())
-
-	default:
-		wrapperPath := c.flagConfig
-		if c.flagConfigKms != "" {
-			wrapperPath = c.flagConfigKms
-		}
-		var configWrapper wrapping.Wrapper
-		if wrapperPath != "" {
-			configWrapper, err = wrapper.GetWrapperFromPath(wrapperPath, "config")
-			if err != nil {
-				c.UI.Error(err.Error())
-				return base.CommandUserError
-			}
-			if configWrapper != nil {
-				c.configWrapper = configWrapper
-				if err := configWrapper.Init(c.Context); err != nil {
-					c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-					return base.CommandCliError
-				}
-			}
-		}
-		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+	cfg, out := c.reloadConfig()
+	if out > 0 {
+		return out
 	}
-	if err != nil {
-		c.UI.Error("Error parsing config: " + err.Error())
-		return base.CommandUserError
-	}
+	c.Config = cfg
 
 	if c.Config.Controller == nil && c.Config.Worker == nil {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
@@ -540,6 +505,61 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *Command) reloadConfig() (*config.Config, int) {
+	const op = "server.(Command).reloadConfig"
+
+	var err error
+	var cfg *config.Config
+	switch {
+	case c.presetConfig != nil:
+		cfg, err = config.Parse(c.presetConfig.Load())
+
+	default:
+		wrapperPath := c.flagConfig
+		if c.flagConfigKms != "" {
+			wrapperPath = c.flagConfigKms
+		}
+		var configWrapper wrapping.Wrapper
+		var ifWrapper wrapping.InitFinalizer
+		var cleanupFunc func() error
+		if wrapperPath != "" {
+			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(c.Context, wrapperPath, "config")
+			if err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
+				return nil, base.CommandUserError
+			}
+			if cleanupFunc != nil {
+				defer func() {
+					if err := cleanupFunc(); err != nil {
+						event.WriteError(c.Context, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", c.flagConfig))
+					}
+				}()
+			}
+			if configWrapper != nil {
+				ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
+			}
+		}
+		if ifWrapper != nil {
+			if err := ifWrapper.Init(c.Context); err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
+				return nil, base.CommandCliError
+			}
+		}
+		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+		if ifWrapper != nil {
+			if err := ifWrapper.Finalize(c.Context); err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
+				return nil, base.CommandCliError
+			}
+		}
+	}
+	if err != nil {
+		event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse config", "path", c.flagConfig))
+		return nil, base.CommandUserError
+	}
+	return cfg, 0
 }
 
 func (c *Command) StartController(ctx context.Context) error {
@@ -636,20 +656,15 @@ func (c *Command) WaitForInterrupt() int {
 
 			// Check for new log level
 			var level hclog.Level
-			var err error
 			var newConf *config.Config
+			var out int
 
 			if c.flagConfig == "" && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
-			if c.presetConfig != nil {
-				newConf, err = config.Parse(c.presetConfig.Load())
-			} else {
-				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
-			}
-			if err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
+			newConf, out = c.reloadConfig()
+			if out > 0 {
 				goto RUNRELOADFUNCS
 			}
 
