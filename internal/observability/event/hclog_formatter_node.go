@@ -118,8 +118,10 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 			continue
 		}
 		if !f.jsonFormat && v != nil {
+			var underlyingPtr bool
 			valueKind := reflect.TypeOf(v).Kind()
 			if valueKind == reflect.Ptr {
+				underlyingPtr = true
 				valueKind = reflect.TypeOf(v).Elem().Kind()
 			}
 			switch {
@@ -128,7 +130,10 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 					args = append(args, k+":"+sk, sv)
 				}
 				continue
-			case valueKind == reflect.Struct && v != nil && !reflect.ValueOf(v).IsNil():
+			case valueKind == reflect.Struct:
+				if underlyingPtr && (v == nil || reflect.ValueOf(v).IsNil()) {
+					continue
+				}
 				for sk, sv := range structs.Map(v) {
 					args = append(args, k+":"+sk, sv)
 				}
