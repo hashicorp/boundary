@@ -8,6 +8,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * events: Fix panic when using the `hclog-text` event's format.
   ([PR](https://github.com/hashicorp/boundary/pull/1456))
+* oidc managed groups: Allow colons in selector paths
+  ([PR](https://github.com/hashicorp/boundary/pull/1453))
 
 ## 0.5.0 (2021/08/02)
 
