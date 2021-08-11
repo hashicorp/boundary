@@ -79,13 +79,13 @@ begin;
     project_id,            project_name,            project_description,
     organization_id,       organization_name,       organization_description,
     current_row_indicator, row_effective_time,      row_expiration_time
-  ) values (
+  )                        values                   (
     'no credential',
-    'not applicable',      'not applicable',        'not applicable',         'not applicable',               'not applicable',                 'not applicable',                     'not applicable',
-    'not applicable',      'not applicable',        'not applicable',         'not applicable',               'not applicable',                 'not applicable',
-    'not applicable',      'not applicable',        'not applicable',         'not applicable',               0,                                0,                                    0,
-    'not applicable',      'not applicable',        'not applicable',
-    'not applicable',      'not applicable',        'not applicable',
+    'None',                'None',                  'None',                   'None',                         'None',                           'None',                               'None',
+    'None',                'None',                  'None',                   'None',                         'None',                           'None',
+    'None',                'None',                  'None',                   'None',                         -1,                               -1,                                   -1,
+    '00000000000',         'None',                  'None',
+    '00000000000',         'None',                  'None',
     'Current',             now(),                   'infinity'::timestamptz
   );
 
