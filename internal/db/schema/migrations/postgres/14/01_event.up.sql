@@ -135,7 +135,7 @@ create table event_config (
             references iam_scope_global(scope_id)
             on delete cascade
             on update cascade,
-        constraint scope_id_uq -- only allow one config per scope
+        constraint event_config_scope_id_uq -- only allow one config per scope
             unique(scope_id),
     name wt_name,
     constraint name_uq
