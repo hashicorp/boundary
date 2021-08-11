@@ -42,7 +42,13 @@ func getWrapper(ctx context.Context, kmses []*configutil.KMS, purpose string) (w
 		return nil, nil, nil
 	}
 
-	wrapper, cleanup, err := configutil.ConfigureWrapper(ctx, kms, nil, nil, configutil.WithKmsPlugins(kmsplugins.FileSystem()))
+	wrapper, cleanup, err := configutil.ConfigureWrapper(
+		ctx,
+		kms,
+		nil,
+		nil,
+		configutil.WithKmsPlugins(kmsplugins.FileSystem()),
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error configuring kms: %w", err)
 	}

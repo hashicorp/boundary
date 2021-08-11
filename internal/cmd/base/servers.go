@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net"
 	"os"
 	"os/signal"
@@ -467,15 +466,6 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 }
 
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
-	// Find available plugins
-	kmspluginsFs := kmsplugins.FileSystem()
-	dirs, err := fs.ReadDir(kmspluginsFs, ".")
-	if err != nil {
-		return fmt.Errorf("error scanning KMS plugins: %w", err)
-	}
-	for _, entry := range dirs {
-		fmt.Println(entry.Name())
-	}
 	sharedConfig := config.SharedConfig
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
@@ -492,7 +482,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
 
-			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(ctx, kms, &b.InfoKeys, &b.Info)
+			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
+				ctx,
+				kms,
+				&b.InfoKeys,
+				&b.Info,
+				configutil.WithKmsPlugins(kmsplugins.FileSystem()),
+			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
 					"Error parsing KMS configuration: %s", wrapperConfigError)
@@ -537,6 +533,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	}
 
 	// prepare a secure random reader
+	var err error
 	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err
