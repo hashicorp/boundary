@@ -138,7 +138,7 @@ create table event_config (
         constraint event_config_scope_id_uq -- only allow one config per scope
             unique(scope_id),
     name wt_name,
-    constraint name_uq
+    constraint event_config_name_scope_id_uq
         unique(name, scope_id), 
     description wt_description,
     create_time wt_timestamp,
