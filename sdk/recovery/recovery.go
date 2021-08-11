@@ -51,7 +51,7 @@ func formatToken(ctx context.Context, wrapper wrapping.Wrapper, info *Info) (str
 		return "", fmt.Errorf("error marshaling recovery info: %w", err)
 	}
 
-	blobInfo, err := wrapper.Encrypt(ctx, marshaledInfo, nil)
+	blobInfo, err := wrapper.Encrypt(ctx, marshaledInfo)
 	if err != nil {
 		return "", fmt.Errorf("error encrypting recovery info: %w", err)
 	}
@@ -99,7 +99,7 @@ func ParseRecoveryToken(ctx context.Context, wrapper wrapping.Wrapper, versioned
 		return nil, fmt.Errorf("error decoding encrypted blob: %w", err)
 	}
 
-	marshaledInfo, err := wrapper.Decrypt(ctx, blobInfo, nil)
+	marshaledInfo, err := wrapper.Decrypt(ctx, blobInfo)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting recovery info: %w", err)
 	}

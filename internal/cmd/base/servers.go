@@ -488,6 +488,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				&b.InfoKeys,
 				&b.Info,
 				configutil.WithKmsPlugins(kmsplugins.FileSystem()),
+				configutil.WithLogger(hclog.NewNullLogger()),
 			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(

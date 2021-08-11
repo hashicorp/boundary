@@ -350,7 +350,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 			return
 		}
 
-		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, wrapping.WithAad([]byte(v.requestInfo.PublicId)))
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error decrypting encrypted token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = AuthTokenTypeUnknown

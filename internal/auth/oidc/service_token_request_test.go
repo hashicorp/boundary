@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,7 +182,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
 				keyId, err := testRequestWrapper.KeyId(ctx)
@@ -213,7 +214,7 @@ func Test_TokenRequest(t *testing.T) {
 				}
 				marshaledReqTk, err := proto.Marshal(&reqTk)
 				require.NoError(t, err)
-				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
 				keyId, err := testRequestWrapper.KeyId(ctx)
@@ -244,7 +245,7 @@ func Test_TokenRequest(t *testing.T) {
 				}
 				marshaledReqTk, err := proto.Marshal(&reqTk)
 				require.NoError(t, err)
-				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
 				keyId, err := testRequestWrapper.KeyId(ctx)
@@ -276,7 +277,7 @@ func Test_TokenRequest(t *testing.T) {
 				}
 				marshaledReqTk, err := proto.Marshal(&reqTk)
 				require.NoError(t, err)
-				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
 				keyId, err := testRequestWrapper.KeyId(ctx)

@@ -151,7 +151,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
-	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
+	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), wrapping.WithAad([]byte(publicId)))
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}

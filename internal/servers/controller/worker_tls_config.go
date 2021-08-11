@@ -60,7 +60,7 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	if err := proto.Unmarshal(marshaledEncInfo, encInfo); err != nil {
 		return nil, nil, err
 	}
-	marshaledInfo, err := c.conf.WorkerAuthKms.Decrypt(context.Background(), encInfo, nil)
+	marshaledInfo, err := c.conf.WorkerAuthKms.Decrypt(context.Background(), encInfo)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -27,13 +27,13 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.9
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210810171353-2a298deaeb2d
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210811161805-534c0925130c
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210811210616-0aaf8919030a
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210811211723-df21fc5f6a57
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210811161342-9fd1ddbf8022
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210811212036-e8613569ca1f
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1
