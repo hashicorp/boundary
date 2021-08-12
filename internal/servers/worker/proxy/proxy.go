@@ -7,14 +7,47 @@ import (
 	"sync"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/servers/worker/common"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"nhooyr.io/websocket"
 )
 
+// Config provides the core parameters needed for a worker to create a proxy between
+// a provided ClientConn and the RemoteEndpoint, as well as the parameters to update
+// the connection in the connection repository.
+type Config struct {
+	ClientAddress  *net.TCPAddr
+	ClientConn     *websocket.Conn
+	RemoteEndpoint string
+
+	SessionClient pbs.SessionServiceClient
+	SessionInfo   *session.Info
+	ConnectionId  string
+}
+
+// Validate checks that the provided config is valid. If invalid, an error is returned
+// specifying the error.
+func (c Config) Validate() error {
+	switch {
+	case c.ClientAddress == nil:
+		return errors.New("missing client address")
+	case c.ClientConn == nil:
+		return errors.New("missing client connection")
+	case c.RemoteEndpoint == "":
+		return errors.New("missing remote endpoint")
+	case c.SessionClient == nil:
+		return errors.New("missing session client")
+	case c.SessionInfo == nil:
+		return errors.New("missing session info")
+	case c.ConnectionId == "":
+		return errors.New("missing connection id")
+	default:
+		return nil
+	}
+}
+
 // Handler is the type that all proxies need to implement to be called by the worker
 // when a new client connection is created.
-type Handler func(ctx context.Context, clientAddr *net.TCPAddr, conn *websocket.Conn, cred common.CredentialData, sessionClient pbs.SessionServiceClient, si *session.Info, connectionId, endpoint string)
+type Handler func(ctx context.Context, config Config, opt ...Option)
 
 var (
 	// handlers is the map of registered handlers

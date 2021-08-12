@@ -142,7 +142,6 @@ func (w *Worker) Start() error {
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
 	const op = "worker.(Worker).Shutdown"
-	ctx := context.TODO()
 	if !w.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 		return nil
@@ -170,7 +169,7 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
 			break
 		}
 
@@ -237,7 +236,7 @@ func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	const op = "worker.(Worker).getSessionTls"
-	ctx := context.TODO()
+	ctx := w.baseContext
 	var sessionId string
 	switch {
 	case strings.HasPrefix(hello.ServerName, "s_"):

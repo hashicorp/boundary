@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/servers/worker/proxy"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +95,16 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		},
 	}
 
-	go HandleTcpProxyV1(ctx, clientAddr, proxyConn, nil, sessClient, si, "mock-connection", fmt.Sprintf("tcp://localhost:%d", port))
+	conf := proxy.Config{
+		ClientAddress:  clientAddr,
+		ClientConn:     proxyConn,
+		RemoteEndpoint: fmt.Sprintf("tcp://localhost:%d", port),
+		SessionClient:  sessClient,
+		SessionInfo:    si,
+		ConnectionId:   "mock-connection",
+	}
+
+	go HandleTcpProxyV1(ctx, conf)
 
 	// wait for HandleTcpProxyV1 to dial endpoint
 	<-ready

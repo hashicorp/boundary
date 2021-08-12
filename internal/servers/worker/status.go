@@ -40,7 +40,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	for {
 		select {
 		case <-cancelCtx.Done():
-			event.WriteSysEvent(context.TODO(), op, "status ticking shutting down")
+			event.WriteSysEvent(w.baseContext, op, "status ticking shutting down")
 			return
 
 		case <-timer.C:

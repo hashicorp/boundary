@@ -97,7 +97,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		sessClient, err := w.ControllerSessionConn()
 		if err != nil {
 			event.WriteError(ctx, op, err)
-			_ = conn.Close(websocket.StatusInternalError, "unable to get controller session client")
+			conn.Close(websocket.StatusInternalError, "unable to get controller session client")
 			return
 		}
 		workerId := w.conf.RawConfig.Worker.Name
@@ -184,7 +184,22 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 
-		handleProxyFn(connCtx, clientAddr, conn, nil, sessClient, si, ci.Id, endpoint)
+		conf := proxyHandlers.Config{
+			ClientAddress:  clientAddr,
+			ClientConn:     conn,
+			RemoteEndpoint: endpoint,
+			SessionClient:  sessClient,
+			SessionInfo:    si,
+			ConnectionId:   ci.Id,
+		}
+
+		if err := conf.Validate(); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error validating proxy config"))
+			_ = conn.Close(websocket.StatusInternalError, "unable to validate proxy parameters")
+			return
+		}
+
+		handleProxyFn(connCtx, conf)
 	}
 }
 
