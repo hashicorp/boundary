@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -41,6 +42,7 @@ func testWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *webso
 		assert.NoError(err)
 	}()
 
+	time.Sleep(time.Duration(1.5 * float64(time.Second)))
 	clientConn, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://localhost:%d", port), nil)
 	require.NoError(err)
 	wg.Wait()
@@ -68,9 +70,7 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		ready <- struct{}{}
 
 		// block waiting for test to complete
-		select {
-		case <-ctx.Done():
-		}
+		<-ctx.Done()
 	}()
 
 	// Create mock data for session management section of HandleTcpProxyV1
