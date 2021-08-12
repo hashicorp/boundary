@@ -54,9 +54,7 @@ function OpenApiPage({
               <h1 className={`${styles.categoryHeading} g-type-display-4`}>
                 {operationCategory.name}
               </h1>
-              {/* @TODO: remove g-type-body-long className once https://github.com/hashicorp/react-components/pull/280 lands,
-              and has been pulled into this project. Until then, this className is needed to correct a typo in the g-content component. */}
-              <div className="g-type-long-body" ref={operationsRef}>
+              <div ref={operationsRef}>
                 {operationCategory.operations.map((op) => {
                   const isExpanded =
                     expandedOperations.indexOf(op.operationId) !== -1
