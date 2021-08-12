@@ -20,6 +20,7 @@
     "@hashicorp/react-head": "^3.1.1",
     "@hashicorp/react-hero": "7.3.3",
     "@hashicorp/react-image": "^4.0.2",
+    "@hashicorp/react-markdown-page": "^1.4.1",
     "@hashicorp/react-product-downloads-page": "2.3.2",
     "@hashicorp/react-product-features-list": "^4.1.2",
     "@hashicorp/react-section-header": "^5.0.3",
