@@ -19,7 +19,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.16-0.20210811162320-6409d36fca32
-	github.com/hashicorp/boundary/sdk v0.0.7-0.20210811172233-d885008bf520
+	github.com/hashicorp/boundary/sdk v0.0.7-0.20210812153804-34aa7e19dd9c
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -27,8 +27,8 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.9
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210811210616-0aaf8919030a
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210811211723-df21fc5f6a57
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210812152405-51d6e60cb729
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210812153428-cc6f3f5d1dd7
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
