@@ -50,10 +50,13 @@ func testWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *webso
 }
 
 func TestHandleTcpProxyV1(t *testing.T) {
+	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	clientConn, proxyConn := testWsConn(t, ctx)
+	require.NotNil(clientConn)
+	require.NotNil(proxyConn)
 
 	port := testutil.TestFreePort(t)
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
