@@ -6185,12 +6185,12 @@ alter table auth_oidc_account
 │ event_file_sink │     │        │           │    
 ├─────────────────┤     │        │           │    
 │ public_id       │┼────┘        ○           │    
-│ sink_id         │             ╱│╲          │    
+│ config_id       │             ╱│╲          │    
 │ event_type      │     ┌─────────────────┐  │    
 │ format_type     │     │event_stderr_sink│  │    
 │ allow_filters   │     ├─────────────────┤  │    
 │ deny_filters    │     │ public_id       │  │    
-│ path            │     │ sink_id         │  │    
+│ path            │     │ config_id       │  │    
 │ file_name       │     │ event_type      │┼─┘    
 │ rotate_bytes    │     │ format_type     │       
 │ rotate_duration │     │ allow_filters   │       
@@ -6228,14 +6228,7 @@ create trigger
   immutable_columns
 before
 update on event_type_enm
-  for each row execute procedure immutable_columns(
-      'every',
-      'error',
-      'audit',
-      'observation',
-      'system'
-      );
-
+  for each row execute procedure immutable_columns('name');
 
 create table event_format_type_enm (
     name text primary key
@@ -6258,12 +6251,7 @@ create trigger
   immutable_columns
 before
 update on event_format_type_enm
-  for each row execute procedure immutable_columns(
-      'cloudevents-json',
-      'cloudevents-text',
-      'hclog-text',
-      'hclog-json'
-      );
+  for each row execute procedure immutable_columns('name');
 
 create table event_config (
     public_id wt_public_id primary key,
@@ -6272,11 +6260,11 @@ create table event_config (
             references iam_scope_global(scope_id)
             on delete cascade
             on update cascade,
-        constraint scope_id_uq -- only allow one config per scope
+        constraint event_config_scope_id_uq -- only allow one config per scope
             unique(scope_id),
     name wt_name,
-    constraint name_uq
-        unique(name, scope_id), 
+    constraint event_config_name_scope_id_uq
+        unique(scope_id, name), 
     description wt_description,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -6292,9 +6280,10 @@ create trigger
 before
 update on event_config
   for each row execute procedure immutable_columns(
+      'public_id',
       'scope_id',
       'create_time'
-      );
+);
 
 create trigger
     update_version_column
@@ -6322,7 +6311,7 @@ create table event_type_enabled (
             references event_type_enm(name)
             on delete restrict
             on update cascade,
-    primary key(config_id, event_type)
+    primary key(event_type, config_id)
 );
 
 comment on table event_type_enabled is
@@ -6335,7 +6324,9 @@ create table event_sink(
         constraint event_config_fkey
             references event_config(public_id)
             on delete cascade
-            on update cascade
+            on update cascade,
+    constraint event_sink_config_id_public_id_uq
+      unique(config_id, public_id)
 );
 
 comment on table event_sink is 
@@ -6344,36 +6335,32 @@ comment on table event_sink is
 -- insert_event_sink_subtype() is a before insert trigger
 -- function for subtypes of event_sink
 create function insert_event_sink_subtype()
-returns trigger
+    returns trigger
 as $$
 begin
-insert into event_sink
-    (public_id, sink_id)
-values
-    (new.public_id, new.sink_id);
-return new;
+    insert into event_sink
+        (public_id, config_id)
+    values
+        (new.public_id, new.config_id);
+    return new;
 end;
 $$ language plpgsql;
 
 -- delete_event_sink_subtype() is an after delete trigger
 -- function for subtypes of event_sink
 create function delete_event_sink_subtype()
-returns trigger
+    returns trigger
 as $$
 begin
-delete from event_sink
-where public_id = old.public_id;
-return null; -- result is ignored since this is an after trigger
+    delete from event_sink
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
 end;
 $$ language plpgsql;
 
 create table event_file_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null
-        constraint event_sink_fkey
-            references event_sink(public_id)
-            on delete cascade
-            on update cascade,
+    config_id wt_public_id not null,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm(name)
@@ -6412,7 +6399,12 @@ create table event_file_sink(
         constraint rotate_max_files_null_or_greater_than_zero
             check(
                 rotate_max_files > 0
-            )
+            ),
+    constraint event_sink_fkey
+      foreign key(config_id, public_id)
+      references event_sink(config_id, public_id)
+      on delete cascade
+      on update cascade
 );
 
 comment on table event_file_sink is 
@@ -6425,8 +6417,8 @@ before
 update on event_file_sink
   for each row execute procedure immutable_columns(
       'public_id', 
-      'sink_id'
-      );
+      'config_id'
+);
 
 create trigger
     insert_event_sink_subtype 
@@ -6440,11 +6432,7 @@ after delete on event_file_sink
 
 create table event_stderr_sink(
     public_id wt_public_id primary key,
-    sink_id wt_public_id not null
-        constraint event_sink_fkey
-        references event_sink(public_id)
-        on delete cascade
-        on update cascade, 
+    config_id wt_public_id not null,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm(name)
@@ -6456,11 +6444,16 @@ create table event_stderr_sink(
         on delete restrict
         on update cascade,
     allow_filter wt_bexprfilter,
-    deny_filter wt_bexprfilter
+    deny_filter wt_bexprfilter,
+    constraint event_sink_fkey
+      foreign key(config_id, public_id)
+      references event_sink(config_id, public_id)
+      on delete cascade
+      on update cascade
 );
 
 comment on table event_stderr_sink is
-'event_sink_stderr is a table where each entry represents a configured stderr '
+'event_stderr_sink is a table where each entry represents a configured stderr '
 'sink';
 
 create trigger
@@ -6469,8 +6462,8 @@ before
 update on event_stderr_sink
   for each row execute procedure immutable_columns(
       'public_id', 
-      'sink_id'
-      );
+      'config_id'
+);
 
 create trigger
     insert_event_sink_subtype
