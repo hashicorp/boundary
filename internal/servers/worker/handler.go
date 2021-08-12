@@ -97,7 +97,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		sessClient, err := w.ControllerSessionConn()
 		if err != nil {
 			event.WriteError(ctx, op, err)
-			conn.Close(websocket.StatusInternalError, "unable to get controller session client")
+			if err = conn.Close(websocket.StatusInternalError, "unable to get controller session client"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 		workerId := w.conf.RawConfig.Worker.Name
@@ -105,32 +107,42 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error reading handshake from client"))
-			_ = conn.Close(websocket.StatusPolicyViolation, "invalid handshake received")
+			if err = conn.Close(websocket.StatusPolicyViolation, "invalid handshake received"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 		if len(handshake.GetTofuToken()) < 20 {
 			event.WriteError(ctx, op, errors.New("invalid tofu token"))
-			_ = conn.Close(websocket.StatusUnsupportedData, "invalid tofu token")
+			if err = conn.Close(websocket.StatusUnsupportedData, "invalid tofu token"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
 		if tofuToken != "" {
 			if tofuToken != handshake.GetTofuToken() {
 				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
-				_ = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed")
+				if err = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
 		} else {
 			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("no tofu token but not in correct session state"))
-				_ = conn.Close(websocket.StatusInternalError, "refusing to activate session")
+				if err = conn.Close(websocket.StatusInternalError, "refusing to activate session"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
 				sessStatus, err = session.Activate(ctx, sessClient, workerId, sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
-					_ = conn.Close(websocket.StatusInternalError, "unable to activate session")
+					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+					}
 					return
 				}
 			}
@@ -140,10 +152,14 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			_, err := session.Cancel(ctx, sessClient, sessionId)
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
-				_ = conn.Close(websocket.StatusInternalError, "unable to cancel session")
+				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
-			_ = conn.Close(websocket.StatusNormalClosure, "session canceled")
+			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
@@ -151,7 +167,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		handleProxyFn, err := proxyHandlers.GetHandler(conn.Subprotocol())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol %s", conn.Subprotocol()))
-			_ = conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
+			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
@@ -160,7 +178,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
-			_ = conn.Close(websocket.StatusInternalError, "unable to authorize connection")
+			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 		defer session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id})
@@ -180,7 +200,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error sending handshake result to client"))
-			_ = conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
+			if err = conn.Close(websocket.StatusProtocolError, "unable to send handshake result"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
@@ -195,7 +217,9 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 
 		if err := conf.Validate(); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error validating proxy config"))
-			_ = conn.Close(websocket.StatusInternalError, "unable to validate proxy parameters")
+			if err = conn.Close(websocket.StatusInternalError, "unable to validate proxy parameters"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 

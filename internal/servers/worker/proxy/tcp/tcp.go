@@ -39,18 +39,24 @@ func HandleTcpProxyV1(ctx context.Context, conf proxy.Config, _ ...proxy.Option)
 	sessionUrl, err := url.Parse(conf.RemoteEndpoint)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error parsing endpoint information", "session_id", sessionId, "endpoint", conf.RemoteEndpoint))
-		_ = conn.Close(websocket.StatusInternalError, "cannot parse endpoint url")
+		if err = conn.Close(websocket.StatusInternalError, "cannot parse endpoint url"); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+		}
 		return
 	}
 	if sessionUrl.Scheme != "tcp" {
 		event.WriteError(ctx, op, err, event.WithInfo("session_id", sessionId, "endpoint", conf.RemoteEndpoint))
-		_ = conn.Close(websocket.StatusInternalError, "invalid scheme for type")
+		if err = conn.Close(websocket.StatusInternalError, "invalid scheme for type"); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+		}
 		return
 	}
 	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error dialing endpoint", "endpoint", conf.RemoteEndpoint))
-		_ = conn.Close(websocket.StatusInternalError, "endpoint dialing failed")
+		if err = conn.Close(websocket.StatusInternalError, "endpoint dialing failed"); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+		}
 		return
 	}
 	// Assert this for better Go 1.11 splice support
@@ -69,7 +75,9 @@ func HandleTcpProxyV1(ctx context.Context, conf proxy.Config, _ ...proxy.Option)
 	connStatus, err := session.ConnectConnection(ctx, conf.SessionClient, connectionInfo)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection as connected"))
-		_ = conn.Close(websocket.StatusInternalError, "failed to mark connection as connected")
+		if err = conn.Close(websocket.StatusInternalError, "failed to mark connection as connected"); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+		}
 		return
 	}
 	si.Lock()
