@@ -24,27 +24,27 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
-build-gkw-plugins-ifne:
+build-kms-plugins-ifne:
 ifeq (,$(wildcard sdk/kms/assets/gkw-aead))
 	@echo "==> No KMS plugins found, building..."
-	@$(MAKE) build-gkw-plugins
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 else
-	@echo "==> KMS plugins found, use build-gkw-plugins target to update"
+	@echo "==> KMS plugins found, use build-kms-plugins target to update"
 endif
 
-build-gkw-plugins:
-	@$(MAKE) --environment-overrides -C sdk/kms plugins
+build-kms-plugins:
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
-dev: build-gkw-plugins-ifne
+dev: build-kms-plugins-ifne
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 cleandev: BUILD_TAGS+=dev
 cleandev: BUILD_TAGS+=ui
-cleandev: build-gkw-plugins
+cleandev: build-kms-plugins
 cleandev: build-ui
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
