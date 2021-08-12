@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
@@ -20,14 +21,18 @@ func testWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *webso
 	t.Helper()
 	require, assert := require.New(t), assert.New(t)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	port := testutil.TestFreePort(t)
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf(":%d", port), http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				var err error
+
 				proxyConn, err = websocket.Accept(w, r, nil)
 				require.NoError(err)
 
+				wg.Done()
 				// block waiting for test to complete
 				select {
 				case <-ctx.Done():
@@ -38,6 +43,7 @@ func testWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *webso
 
 	clientConn, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://localhost:%d", port), nil)
 	require.NoError(err)
+	wg.Wait()
 	return
 }
 
@@ -49,18 +55,15 @@ func TestHandleTcpProxyV1(t *testing.T) {
 
 	port := testutil.TestFreePort(t)
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 	defer l.Close()
 
 	var endpointConn net.Conn
 	ready := make(chan struct{})
 	go func() {
 		endpointConn, err = l.Accept()
-		if err != nil {
-			return
-		}
+		require.NoError(err)
+
 		defer endpointConn.Close()
 		ready <- struct{}{}
 
