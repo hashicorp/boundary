@@ -38,6 +38,10 @@ endif
 build-kms-plugins-dev:
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 
+build-kms-plugins:
+	@echo "==> Building Boundary KMS plugins"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
+
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-kms-plugins-ifne-dev
@@ -47,15 +51,14 @@ dev: build-ui-ifne
 
 cleandev: BUILD_TAGS+=dev
 cleandev: BUILD_TAGS+=ui
-cleandev: build-kms-plugins
+cleandev: build-kms-plugins-dev
 cleandev: build-ui
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 bin: BUILD_TAGS+=ui
 bin: build-ui
-	@echo "==> Building Boundary KMS plugins"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
+bin: build-kms-plugins
 	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
