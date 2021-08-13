@@ -5,10 +5,10 @@ import (
 	"io/fs"
 )
 
-const contentDir = "assets"
+const contentDir = "assets/linux_amd64"
 
 // content is our static web server content.
-//go:embed assets
+//go:embed assets/linux_amd64
 var content embed.FS
 
 func FileSystem() fs.FS {

@@ -125,6 +125,5 @@ test*.hcl
 
 # KMS plugin binaries
 /sdk/kms/assets/
-/sdk/kms/.tmp/
 
 # vim: set filetype=conf :

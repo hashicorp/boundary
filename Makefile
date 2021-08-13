@@ -12,6 +12,9 @@ CGO_ENABLED?=0
 
 export GEN_BASEPATH := $(shell pwd)
 
+GOOS:=$(shell go env GOOS)
+GOARCH:=$(shell go env GOARCH)
+
 api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
@@ -24,20 +27,20 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
-build-kms-plugins-ifne:
-ifeq (,$(wildcard sdk/kms/assets/gkw-aead))
+build-kms-plugins-ifne-dev:
+ifeq (,$(wildcard ${THIS_DIR}sdk/kms/assets/${GOOS}_${GOARCH}/gkw-aead))
 	@echo "==> No KMS plugins found, building..."
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 else
-	@echo "==> KMS plugins found, use build-kms-plugins target to update"
+	@echo "==> KMS plugins found, use build-kms-plugins-dev target to update"
 endif
 
-build-kms-plugins:
+build-kms-plugins-dev:
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
-dev: build-kms-plugins-ifne
+dev: build-kms-plugins-ifne-dev
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
@@ -51,6 +54,8 @@ cleandev: build-ui
 
 bin: BUILD_TAGS+=ui
 bin: build-ui
+	@echo "==> Building Boundary KMS plugins"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
