@@ -25,7 +25,7 @@ The general architecture for the server infrastructure requires 3 controllers an
 ![](/img/production.png)
 
 As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
-3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate availability zones, with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
+3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate availability zones, with the controller API and UI being publically exposed by a [load balancer (LB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
 
 The workers must be able to establish a connection to the hosts with which they interact. In the architecture above, we place them in the public subnet so our remote client can establish a session between them and the target VM.
 
@@ -35,7 +35,7 @@ Boundary requires an external [Postgres](https://www.postgresql.org/) and [KMS](
 
 ### API and Console Load Balancer
 
-Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary servers in private networks and using load balancing techniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 7 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
+Load balancing the controller allows operators to secure the ingress to the Boundary system. We recommend placing all Boundary servers in private networks and using load balancing techniques to expose services such as the API and administrative console to public networks. In the high availability architecture, we recommend load balancing using a layer 4 load balancer and further constraining ingress to that load balancer with layer 4 constraints such as [security groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html) or [IP tables](https://wiki.archlinux.org/index.php/Iptables).
 
 For general configuration, we recommend the following:
 
