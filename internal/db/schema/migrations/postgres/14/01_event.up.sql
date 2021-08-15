@@ -295,7 +295,11 @@ after delete on event_file_sink
 
 create table event_stderr_sink(
     public_id wt_public_id primary key,
-    config_id wt_public_id not null,
+    config_id wt_public_id not null
+        constraint event_config_fkey
+            references event_config(public_id)
+            on delete cascade
+            on update cascade,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm(name)
