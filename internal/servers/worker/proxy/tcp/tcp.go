@@ -16,19 +16,19 @@ import (
 )
 
 func init() {
-	err := proxy.RegisterHandler(globals.TcpProxyV1, HandleTcpProxyV1)
+	err := proxy.RegisterHandler(globals.TcpProxyV1, handleTcpProxyV1)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// HandleTcpProxyV1 creates a tcp proxy between the incoming websocket conn and the
-// connection it creates with the remote endpoint. HandleTcpProxyV1 sets the connectionId
+// handleTcpProxyV1 creates a tcp proxy between the incoming websocket conn and the
+// connection it creates with the remote endpoint. handleTcpProxyV1 sets the connectionId
 // as connected in the repository.
 //
-// HandleTcpProxyV1 blocks until an error (EOF on happy path) is received on either
+// handleTcpProxyV1 blocks until an error (EOF on happy path) is received on either
 // connection.
-func HandleTcpProxyV1(ctx context.Context, conf proxy.Config, _ ...proxy.Option) {
+func handleTcpProxyV1(ctx context.Context, conf proxy.Config, _ ...proxy.Option) {
 	const op = "tcp.HandleTcpProxyV1"
 	si := conf.SessionInfo
 	si.RLock()

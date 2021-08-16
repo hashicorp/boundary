@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -19,43 +16,12 @@ import (
 	"nhooyr.io/websocket"
 )
 
-func testWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *websocket.Conn) {
-	t.Helper()
-	require, assert := require.New(t), assert.New(t)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	port := testutil.TestFreePort(t)
-	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", port), http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				var err error
-
-				proxyConn, err = websocket.Accept(w, r, nil)
-				require.NoError(err)
-
-				wg.Done()
-				// block waiting for test to complete
-				select {
-				case <-ctx.Done():
-				}
-			}))
-		assert.NoError(err)
-	}()
-
-	time.Sleep(time.Duration(1.5 * float64(time.Second)))
-	clientConn, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://localhost:%d", port), nil)
-	require.NoError(err)
-	wg.Wait()
-	return
-}
-
 func TestHandleTcpProxyV1(t *testing.T) {
 	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
-	clientConn, proxyConn := testWsConn(t, ctx)
+	clientConn, proxyConn := proxy.TestWsConn(t, ctx)
 	require.NotNil(clientConn)
 	require.NotNil(proxyConn)
 
