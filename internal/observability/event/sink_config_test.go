@@ -16,6 +16,44 @@ func TestSinkConfig_Validate(t *testing.T) {
 		wantErrContains string
 	}{
 		{
+			name: "invalid-everytype-audit-config",
+			sc: SinkConfig{
+				Name:       "sink-name",
+				EventTypes: []Type{EveryType},
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
+				AuditConfig: &AuditConfig{
+					FilterOverrides: AuditFilterOperations{
+						SensitiveClassification: EncryptOperation,
+					},
+				},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "invalid audit config",
+		},
+		{
+			name: "invalid-auditaudit-config",
+			sc: SinkConfig{
+				Name:       "sink-name",
+				EventTypes: []Type{AuditType},
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
+				AuditConfig: &AuditConfig{
+					FilterOverrides: AuditFilterOperations{
+						SensitiveClassification: EncryptOperation,
+					},
+				},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "invalid audit config",
+		},
+		{
 			name: "missing-name",
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
@@ -189,6 +227,51 @@ func TestSinkConfig_Validate(t *testing.T) {
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
+				return
+			}
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestSinkFilter_Validate(t *testing.T) {
+	tests := []struct {
+		name            string
+		sf              *SinkFilter
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "invalid-type",
+			sf: &SinkFilter{
+				Type:   "invalid",
+				Filter: `"/Data" ==1`,
+			},
+			wantErrContains: "invalid filter type",
+		},
+		{
+			name: "invalid-filter-bad-path",
+			sf: &SinkFilter{
+				Type:   AllowFilter,
+				Filter: `"data" == 1`,
+			},
+			wantErrContains: "invalid filter '\"data\" == 1'",
+		},
+		{
+			name: "valid",
+			sf: &SinkFilter{
+				Type:   DenyFilter,
+				Filter: `"/Data" ==1`,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := tt.sf.Validate()
+			if tt.wantErrContains != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tt.wantErrContains)
 				return
 			}
 			assert.NoError(err)
