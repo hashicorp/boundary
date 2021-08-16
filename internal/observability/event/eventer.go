@@ -477,10 +477,11 @@ func DefaultSink() SinkConfig {
 	return SinkConfig{
 func DefaultSink() *SinkConfig {
 	return &SinkConfig{
-		Name:       "default",
-		EventTypes: []Type{EveryType},
-		Format:     JSONSinkFormat,
-		Type:       StderrSink,
+		Name:        "default",
+		EventTypes:  []Type{EveryType},
+		Format:      JSONSinkFormat,
+		Type:        StderrSink,
+		AuditConfig: DefaultAuditConfig(),
 	}
 }
 
