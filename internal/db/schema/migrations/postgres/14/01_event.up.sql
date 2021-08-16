@@ -365,6 +365,15 @@ create table event_allow_filter(
     filter wt_bexprfilter
 );
 
+create trigger
+  immutable_columns
+before
+update on event_allow_filter
+  for each row execute procedure immutable_columns(
+      'public_id',
+      'config_id',
+);
+
 comment on table event_allow_filter is
 'event_allow_filter is a table where each entry represents a configured allow_filter';
 
@@ -376,6 +385,15 @@ create table event_deny_filter(
             on delete cascade
             on update cascade,
     filter wt_bexprfilter
+);
+
+create trigger
+  immutable_columns
+before
+update on event_deny_filter
+  for each row execute procedure immutable_columns(
+      'public_id',
+      'config_id',
 );
 
 comment on table event_deny_filter is
