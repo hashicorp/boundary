@@ -584,7 +584,7 @@ func Test_DefaultEventerConfig(t *testing.T) {
 			AuditEnabled:        false,
 			ObservationsEnabled: true,
 			SysEventsEnabled:    true,
-			Sinks:               []event.SinkConfig{event.DefaultSink()},
+			Sinks:               []*event.SinkConfig{event.DefaultSink()},
 		}, event.DefaultEventerConfig())
 	})
 }

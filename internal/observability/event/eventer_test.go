@@ -82,7 +82,7 @@ func Test_InitSysEventer(t *testing.T) {
 		},
 		{
 			name:       "bad-config",
-			opt:        []Option{WithEventerConfig(&EventerConfig{Sinks: []SinkConfig{{Format: "bad-format"}}})},
+			opt:        []Option{WithEventerConfig(&EventerConfig{Sinks: []*SinkConfig{{Format: "bad-format"}}})},
 			log:        testLogger,
 			lock:       testLock,
 			serverName: "success-with-config",
@@ -109,6 +109,7 @@ func Test_InitSysEventer(t *testing.T) {
 				logger: testLogger,
 				conf: EventerConfig{
 					Sinks: []SinkConfig{
+					Sinks: []*SinkConfig{
 						{
 							Name:       "default",
 							EventTypes: []Type{EveryType},

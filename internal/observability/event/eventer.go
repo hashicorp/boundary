@@ -475,6 +475,8 @@ func DefaultEventerConfig() *EventerConfig {
 
 func DefaultSink() SinkConfig {
 	return SinkConfig{
+func DefaultSink() *SinkConfig {
+	return &SinkConfig{
 		Name:       "default",
 		EventTypes: []Type{EveryType},
 		Format:     JSONSinkFormat,
