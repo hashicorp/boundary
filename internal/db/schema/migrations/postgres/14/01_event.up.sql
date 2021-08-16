@@ -1,72 +1,85 @@
 begin;
 
 /*
-┌─────────────────┐                               
-│iam_scope_global │                               
-├─────────────────┤                               
-│                 │                               
-└─────────────────┘                               
-         ┼                                        
-         │                                        
-         ┼                                        
-         ┼                                        
-┌─────────────────┐                               
-│  event_config   │           ┌──────────────────┐
-├─────────────────┤           │event_type_enabled│
-│ public_id       │          ╱├──────────────────┤
-│ scope_id        │┼────────○─│config_id         │
-| name            │          ╲│event_type        │
-│ description     |           |                  |
-| create_time     |           └──────────────────┘
-| update_time     │                     |
-│ version         |                     |
-└─────────────────┘                     |
-         ┼                              ┼         
-         ┼                              │         
-         │                              │         
-         │                             ╱│╲        
-         ○                     ┌─────────────────┐
-        ╱│╲                   ╱│ event_type_enm  │
-┌─────────────────┐     ┌───┬──├─────────────────┤
-│   event_sink    │     │   │ ╲│                 │
-├─────────────────┤     │   │  └─────────────────┘
-│public_id        │     │   │                     
-│config_id        │     │   │                     
-│                 │     │   │                     
-└─────────────────┘     │   │                     
-         ┼ ┼            │   │                     
-         │ │            │   │                     
-         │ │            │   │                     
-         │ │            │   │                     
-         │ │            │   │                     
-         │ │            │   └────────────────┐    
-         │ │            │                    │    
-         │ └────────────┼────────┐           │    
-         ○              │        │           │    
-        ╱│╲             │        │           │    
-┌─────────────────┐     │        │           │    
-│ event_file_sink │     │        │           │    
-├─────────────────┤     │        │           │    
-│ public_id       │┼────┘        ○           │    
-│ config_id       │             ╱│╲          │    
-│ event_type      │     ┌─────────────────┐  │    
-│ format_type     │     │event_stderr_sink│  │    
-│ allow_filters   │     ├─────────────────┤  │    
-│ deny_filters    │     │ public_id       │  │    
-│ path            │     │ config_id       │  │    
-│ file_name       │     │ event_type      │┼─┘    
-│ rotate_bytes    │     │ format_type     │       
-│ rotate_duration │     │ allow_filters   │       
-│ rotate_max_files│     │ deny_filters    │       
-└─────────────────┘     └─────────────────┘       
-         ┼                        ┼               
-         │                        │               
-         │                        │               
-         │  ┌─────────────────┐   │               
-         │ ╱│event_format_type│╲  │               
-         └──├─────────────────┤───┘               
-           ╲│                 │╱                  
-            └─────────────────┘                                                                                     
+   ┌─────────────────┐                               
+   │iam_scope_global │                               
+   ├─────────────────┤                               
+   │                 │                               
+   └─────────────────┘                               
+            ┼                                        
+            │                                        
+            ┼                                        
+            ┼                                        
+   ┌─────────────────┐                               
+   │  event_config   │           ┌──────────────────┐
+   ├─────────────────┤           │event_type_enabled│
+   │ public_id       │          ╱├──────────────────┤
+   │ scope_id        │┼────────○─│config_id         │
+   │                 │          ╲│event_type        │
+   │                 │           │                  │
+   └─────────────────┘           └──────────────────┘
+            ┼                              ┼         
+            ┼                              │         
+            │                              │         
+            │                             ╱│╲        
+            ○                     ┌─────────────────┐
+           ╱│╲                   ╱│ event_type_enm  │
+   ┌─────────────────┐     ┌───┬──├─────────────────┤
+   │   event_sink    │     │   │ ╲│                 │
+   ├─────────────────┤     │   │  └─────────────────┘
+┌┼┼│public_id        │     │   │                     
+│  │config_id        │     │   │                     
+│  │                 │     │   │                     
+│  └─────────────────┘     │   │                     
+│           ┼ ┼            │   │                     
+│           │ │            │   │                     
+│           │ │            │   │                     
+│           │ │            │   │                     
+│           │ │            │   │                     
+│           │ │            │   └────────────────┐    
+│           │ │            │                    │    
+│           │ └────────────┼────────┐           │    
+│           ○              │        │           │    
+│          ╱│╲             │        │           │    
+│  ┌─────────────────┐     │        │           │    
+│  │ event_file_sink │     │        │           │    
+│  ├─────────────────┤     │        │           │    
+│  │                 │┼────┘        ○           │    
+│  │ public_id       │             ╱│╲          │    
+│  │ config_id       │     ┌─────────────────┐  │    
+│  │ event_type      │     │event_stderr_sink│  │    
+│  │ format_type     │     ├─────────────────┤  │    
+│  │ path            │     │ public_id       │  │    
+│  │ file_name       │     │ config_id       │  │    
+│  │ rotate_bytes    │     │ event_type      │┼─┘    
+│  │ rotate_duration │     │ format_type     │       
+│  │ rotate_max_files│     │                 │       
+│  │                 │     │                 │       
+│  └─────────────────┘     └─────────────────┘       
+│           ┼                                        
+│           │                        ┼               
+│           │                        │               
+│           │  ┌─────────────────┐   │               
+│           │ ╱│event_format_type│╲  │               
+│           └──├─────────────────┤───┘               
+│             ╲│                 │╱                  
+│              └─────────────────┘                   
+│                                                    
+│                                                    
+│            ┌────────────────────────┐                    
+│            │event_allow_filter_sink │                    
+│           ╱├────────────────────────┤                    
+├──────────○─│ public_id              │                    
+│           ╲│ config_id              │                    
+│            │ filter                 │                    
+│            └────────────────────────┘                    
+│            ┌────────────────────────┐                    
+│            │event_deny_filter_sink  │                    
+│           ╱├────────────────────────┤                    
+└──────────○─│ public_id              │                    
+            ╲│ config_id              │                    
+             │ filter                 │                    
+             └────────────────────────┘                                                                                 
 */
 
 create table event_type_enm (
@@ -238,8 +251,6 @@ create table event_file_sink(
             references event_format_type_enm(name)
             on delete restrict
             on update cascade,
-    allow_filter wt_bexprfilter,
-    deny_filter wt_bexprfilter,
     path text not null 
         constraint path_not_empty
             check (
@@ -314,8 +325,6 @@ create table event_stderr_sink(
         references event_format_type_enm(name)
         on delete restrict
         on update cascade,
-    allow_filter wt_bexprfilter,
-    deny_filter wt_bexprfilter,
     constraint event_sink_fkey
       foreign key(config_id, public_id)
       references event_sink(config_id, public_id)
@@ -344,6 +353,70 @@ before insert on event_stderr_sink
 create trigger 
     delete_event_sink_subtype
 after delete on event_stderr_sink
+    for each row execute procedure delete_event_sink_subtype();
+
+create table event_allow_filter_sink(
+    public_id wt_public_id primary key,
+    config_id wt_public_id not null
+        constraint event_config_fkey
+            references event_config(public_id)
+            on delete cascade
+            on update cascade,
+    filter wt_bexprfilter
+);
+
+comment on table event_allow_filter_sink is
+'event_allow_filter_sink is a table where which contains the allow_filter';
+
+create trigger
+  immutable_columns
+before
+update on event_allow_filter_sink
+  for each row execute procedure immutable_columns(
+      'public_id',
+      'config_id'
+);
+
+create trigger
+    insert_event_allow_filter_sink_subtype
+before insert on event_allow_filter_sink
+    for each row execute procedure insert_event_sink_subtype();
+
+create trigger
+    delete_event_allow_filter_sink_subtype
+after delete on event_allow_filter_sink
+    for each row execute procedure delete_event_sink_subtype();
+
+create table event_deny_filter_sink(
+    public_id wt_public_id primary key,
+    config_id wt_public_id not null
+        constraint event_config_fkey
+            references event_config(public_id)
+            on delete cascade
+            on update cascade,
+    filter wt_bexprfilter
+);
+
+comment on table event_deny_filter_sink is
+'event_deny_filter_sink is a table where which contains the deny_filter';
+
+create trigger
+  immutable_columns
+before
+update on event_deny_filter_sink
+  for each row execute procedure immutable_columns(
+      'public_id',
+      'config_id'
+);
+
+create trigger
+    insert_event_deny_filter_sink_subtype
+before insert on event_deny_filter_sink
+    for each row execute procedure insert_event_sink_subtype();
+
+create trigger
+    delete_event_deny_filter_sink_subtype
+after delete on event_deny_filter_sink
     for each row execute procedure delete_event_sink_subtype();
 
 commit;
