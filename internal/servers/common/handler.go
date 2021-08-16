@@ -167,7 +167,8 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 
 			i, _ := wrapper.(interface{ StatusCode() int })
 			if err := flushGatedEvents(ctx, method, url, i.StatusCode(), start); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				// Intentionally not writing the header/response here, since the
+				// header and response have already been written.
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to flush gated events"))
 				return
 			}
