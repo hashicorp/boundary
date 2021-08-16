@@ -180,7 +180,9 @@ website-start:
 	@npm start --prefix website/
 
 test-ci: install-go
+test-ci: export CI_BUILD=1
 test-ci: build-kms-plugins-dev
+test-ci:
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:

@@ -3,6 +3,10 @@
 # This script builds the application from source for multiple platforms.
 set -e
 
+if [ "${CI_BUILD}x" != "x" ]; then
+    source /home/circleci/.bashrc
+fi
+
 # Get the parent directory of where this script is.
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
