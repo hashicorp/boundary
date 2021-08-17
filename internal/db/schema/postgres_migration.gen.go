@@ -6204,14 +6204,14 @@ alter table auth_oidc_account
 │                                                    
 │                                                    
 │            ┌────────────────────────┐                    
-│            │event_allow_filter_sink │                    
+│            │event_allow_filter      │                    
 │           ╱├────────────────────────┤                    
 ├──────────○─│ public_id              │                    
 │           ╲│ config_id              │                    
 │            │ filter                 │                    
 │            └────────────────────────┘                    
 │            ┌────────────────────────┐                    
-│            │event_deny_filter_sink  │                    
+│            │event_deny_filter       │                    
 │           ╱├────────────────────────┤                    
 └──────────○─│ public_id              │                    
             ╲│ config_id              │                    
@@ -6492,7 +6492,7 @@ create trigger
 after delete on event_stderr_sink
     for each row execute procedure delete_event_sink_subtype();
 
-create table event_allow_filter_sink(
+create table event_allow_filter(
     public_id wt_public_id primary key,
     config_id wt_public_id not null
         constraint event_config_fkey
@@ -6502,29 +6502,19 @@ create table event_allow_filter_sink(
     filter wt_bexprfilter
 );
 
-comment on table event_allow_filter_sink is
-'event_allow_filter_sink is a table where which contains the allow_filter';
-
 create trigger
   immutable_columns
 before
-update on event_allow_filter_sink
+update on event_allow_filter
   for each row execute procedure immutable_columns(
-      'public_id', 
+      'public_id',
       'config_id'
 );
 
-create trigger
-    insert_event_allow_filter_sink_subtype
-before insert on event_allow_filter_sink
-    for each row execute procedure insert_event_sink_subtype();
+comment on table event_allow_filter is
+'event_allow_filter is a table where each entry represents a configured allow_filter';
 
-create trigger 
-    delete_event_allow_filter_sink_subtype
-after delete on event_allow_filter_sink
-    for each row execute procedure delete_event_sink_subtype();
-
-create table event_deny_filter_sink(
+create table event_deny_filter(
     public_id wt_public_id primary key,
     config_id wt_public_id not null
         constraint event_config_fkey
@@ -6534,27 +6524,17 @@ create table event_deny_filter_sink(
     filter wt_bexprfilter
 );
 
-comment on table event_deny_filter_sink is
-'event_deny_filter_sink is a table where which contains the deny_filter';
-
 create trigger
   immutable_columns
 before
-update on event_deny_filter_sink
+update on event_deny_filter
   for each row execute procedure immutable_columns(
-      'public_id', 
+      'public_id',
       'config_id'
 );
 
-create trigger
-    insert_event_deny_filter_sink_subtype
-before insert on event_deny_filter_sink
-    for each row execute procedure insert_event_sink_subtype();
-
-create trigger 
-    delete_event_deny_filter_sink_subtype
-after delete on event_deny_filter_sink
-    for each row execute procedure delete_event_sink_subtype();
+comment on table event_deny_filter is
+'event_allow_filter is a table where each entry represents a configured deny_filter';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

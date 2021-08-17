@@ -67,14 +67,14 @@ begin;
 │                                                    
 │                                                    
 │            ┌────────────────────────┐                    
-│            │event_allow_filter_sink │                    
+│            │event_allow_filter      │                    
 │           ╱├────────────────────────┤                    
 ├──────────○─│ public_id              │                    
 │           ╲│ config_id              │                    
 │            │ filter                 │                    
 │            └────────────────────────┘                    
 │            ┌────────────────────────┐                    
-│            │event_deny_filter_sink  │                    
+│            │event_deny_filter       │                    
 │           ╱├────────────────────────┤                    
 └──────────○─│ public_id              │                    
             ╲│ config_id              │                    
@@ -371,7 +371,7 @@ before
 update on event_allow_filter
   for each row execute procedure immutable_columns(
       'public_id',
-      'config_id',
+      'config_id'
 );
 
 comment on table event_allow_filter is
@@ -393,7 +393,7 @@ before
 update on event_deny_filter
   for each row execute procedure immutable_columns(
       'public_id',
-      'config_id',
+      'config_id'
 );
 
 comment on table event_deny_filter is
