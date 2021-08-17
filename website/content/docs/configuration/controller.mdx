@@ -14,7 +14,7 @@ controller {
   name = "example-controller"
   description = "An example controller"
   database {
-    url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>"
+    url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>?sslmode=disable"
     max_open_connections = 5
   }
 }
