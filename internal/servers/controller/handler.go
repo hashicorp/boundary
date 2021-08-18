@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,11 +15,12 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
@@ -27,9 +29,9 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -43,7 +45,7 @@ import (
 )
 
 type HandlerProperties struct {
-	ListenerConfig *configutil.Listener
+	ListenerConfig *listenerutil.ListenerConfig
 	CancelCtx      context.Context
 }
 
@@ -64,7 +66,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
-	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.logger, c.kms)
+	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +82,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: handlers.JSONMarshaler(),
 		}),
-		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
 	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
@@ -111,7 +113,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, handlers.WithLogger(c.logger.Named("authmethod_service")))
+	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
@@ -200,6 +202,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
+	const op = "controller.wrapHandlerWithCommonFuncs"
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -213,19 +216,13 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
 
-	logUrls := os.Getenv("BOUNDARY_LOG_URLS") != ""
-
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
 		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
-		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
+		event.WriteSysEvent(context.TODO(), op, "AUTHORIZATION CHECKING DISABLED")
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if logUrls {
-			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
-		}
-
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
@@ -245,8 +242,8 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			DisableAuthzFailures: disableAuthzFailures,
 		}
 
-		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
-		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
+		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
+		ctx = auth.NewVerifierContext(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Add general request information to the context. The information from
 		// the auth verifier context is pretty specifically curated to
@@ -318,7 +315,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			err := handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "origin forbidden")
 
 			enc := json.NewEncoder(w)
-			enc.Encode(err)
+			_ = enc.Encode(err)
 			return
 		}
 
@@ -353,6 +350,28 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 	logCallbackErrors := os.Getenv("BOUNDARY_LOG_CALLBACK_ERRORS") != ""
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		const op = "controller.wrapHandlerWithCallbackInterceptor"
+		ctx := req.Context()
+		var err error
+		id, err := event.NewId(event.IdField)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", req.Method, "url", req.URL.RequestURI()))
+			return
+		}
+		info := &event.RequestInfo{
+			EventId:  id,
+			Id:       common.GeneratedTraceId(ctx),
+			PublicId: "unknown",
+			Method:   req.Method,
+			Path:     req.URL.RequestURI(),
+		}
+		ctx, err = event.NewRequestInfoContext(ctx, info)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(req.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", req.Method, "url", req.URL.RequestURI()))
+			return
+		}
 		// If this doesn't have a callback suffix on a supported action, serve
 		// normally
 		if !strings.HasSuffix(req.URL.Path, ":authenticate:callback") {
@@ -373,7 +392,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		case http.MethodGet:
 			if err := req.ParseForm(); err != nil {
 				if logCallbackErrors && c != nil {
-					c.logger.Trace("callback error", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+					event.WriteError(ctx, op, err, event.WithInfoMsg("callback error"))
 				}
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -399,19 +418,19 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 					if s, ok := values["state"].(string); ok {
 						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
 						if err != nil {
-							c.logger.Trace("callback error marshaling state", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+							event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling state"))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 						if stateWrapper.AuthMethodId == "" {
-							c.logger.Trace("callback error: missing auth method id", "method", req.Method, "url", req.URL.RequestURI())
+							event.WriteError(ctx, op, err, event.WithInfoMsg("missing auth method id"))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 						stripped := strings.TrimSuffix(req.URL.Path, "oidc:authenticate")
 						req.URL.Path = fmt.Sprintf("%s%s:authenticate", stripped, stateWrapper.AuthMethodId)
 					} else {
-						c.logger.Trace("callback error: missing state parameter", "method", req.Method, "url", req.URL.RequestURI())
+						event.WriteError(ctx, op, errors.New("missing state parameter"))
 						w.WriteHeader(http.StatusInternalServerError)
 						return
 					}
@@ -422,7 +441,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			attrBytes, err := json.Marshal(attrs)
 			if err != nil {
 				if logCallbackErrors && c != nil {
-					c.logger.Trace("callback error marshaling json", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling json"))
 				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -434,7 +453,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			if req.Body != nil {
 				if err := req.Body.Close(); err != nil {
 					if logCallbackErrors && c != nil {
-						c.logger.Trace("callback error closing original request body", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing original request body"))
 					}
 				}
 			}

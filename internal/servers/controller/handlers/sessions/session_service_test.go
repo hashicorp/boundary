@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,12 +18,12 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -58,7 +57,7 @@ func TestGetSession(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -148,7 +147,6 @@ func TestList_Self(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	logger := hclog.New(nil)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	rw := db.New(conn)
@@ -176,7 +174,7 @@ func TestList_Self(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	// By default a user can read/cancel their own sessions.
 	session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -220,7 +218,7 @@ func TestList_Self(t *testing.T) {
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			got, err := s.ListSessions(ctx, &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()})
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())
@@ -260,13 +258,13 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSets([]string{hsOther.GetPublicId()}))
+	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
@@ -471,7 +469,7 @@ func TestCancel(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,

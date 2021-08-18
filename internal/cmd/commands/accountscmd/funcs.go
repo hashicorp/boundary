@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/vault/sdk/helper/password"
+	"github.com/hashicorp/go-secure-stdlib/password"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 func init() {

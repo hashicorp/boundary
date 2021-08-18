@@ -19,7 +19,7 @@ service SessionService {
 	// CancelSession allows a worker to request that the controller cancel a session.
 	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {}
 
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 
 	// ConnectConnection updates a connection to set it to connected

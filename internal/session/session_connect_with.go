@@ -17,19 +17,19 @@ type ConnectWith struct {
 func (c ConnectWith) validate() error {
 	const op = "session.(ConnectWith).validate"
 	if c.ConnectionId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing session id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return errors.New(errors.InvalidParameter, op, "missing client tcp address")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client tcp address")
 	}
 	if c.ClientTcpPort == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing client ctp port")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client ctp port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint tcp address")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint tcp address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint ctp port")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint ctp port")
 	}
 	return nil
 }

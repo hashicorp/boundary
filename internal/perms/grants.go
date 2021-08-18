@@ -149,7 +149,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encode))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encode))
 	}
 	return b, nil
 }
@@ -161,29 +161,29 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	const op = "perms.(Grant).unmarshalJSON"
 	raw := make(map[string]interface{}, 4)
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decode))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decode))
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
 		}
 		g.id = id
 	}
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "type"))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "type"))
 		}
 		g.typ = resource.Map[typ]
 		if g.typ == resource.Unknown {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typ))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typ))
 		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "actions"))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "actions"))
 		}
 		if len(interfaceActions) > 0 {
 			g.actionsBeingParsed = make([]string, 0, len(interfaceActions))
@@ -191,9 +191,9 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				actionStr, ok := v.(string)
 				switch {
 				case !ok:
-					return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
+					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
 				case actionStr == "":
-					return errors.New(errors.InvalidParameter, op, "empty action found")
+					return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 				default:
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
@@ -203,7 +203,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	if rawOutputFields, ok := raw["output_fields"]; ok {
 		interfaceOutputFields, ok := rawOutputFields.([]interface{})
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
 		}
 		// We do the make here because we detect later if the field was set but
 		// no values given
@@ -213,7 +213,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				field, ok := v.(string)
 				switch {
 				case !ok:
-					return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
+					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
 					g.OutputFields[field] = true
 				}
@@ -232,11 +232,11 @@ func (g *Grant) unmarshalText(grantString string) error {
 		// Ensure we don't accept "foo=bar=baz", "=foo", or "foo="
 		switch {
 		case len(kv) != 2:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, wrong number of equal signs", segment))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, wrong number of equal signs", segment))
 		case len(kv[0]) == 0:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing key", segment))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing key", segment))
 		case len(kv[1]) == 0:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
 		}
 
 		switch kv[0] {
@@ -247,7 +247,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 			typeString := strings.ToLower(kv[1])
 			g.typ = resource.Map[typeString]
 			if g.typ == resource.Unknown {
-				return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typeString))
+				return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typeString))
 			}
 
 		case "actions":
@@ -256,7 +256,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 				g.actionsBeingParsed = make([]string, 0, len(actions))
 				for _, action := range actions {
 					if action == "" {
-						return errors.New(errors.InvalidParameter, op, "empty action found")
+						return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 					}
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
 				}
@@ -280,10 +280,10 @@ func (g *Grant) unmarshalText(grantString string) error {
 func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	const op = "perms.Parse"
 	if len(grantString) == 0 {
-		return Grant{}, errors.New(errors.InvalidParameter, op, "missing grant string")
+		return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing grant string")
 	}
 	if scopeId == "" {
-		return Grant{}, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	grant := Grant{
@@ -297,18 +297,18 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
 		grant.scope.Type = scope.Project
 	default:
-		return Grant{}, errors.New(errors.InvalidParameter, op, "invalid scope type")
+		return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "invalid scope type")
 	}
 
 	switch {
 	case grantString[0] == '{':
 		if err := grant.unmarshalJSON([]byte(grantString)); err != nil {
-			return Grant{}, errors.Wrap(err, op, errors.WithMsg("unable to parse JSON grant string"))
+			return Grant{}, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse JSON grant string"))
 		}
 
 	default:
 		if err := grant.unmarshalText(grantString); err != nil {
-			return Grant{}, errors.Wrap(err, op, errors.WithMsg("unable to parse grant string"))
+			return Grant{}, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse grant string"))
 		}
 	}
 
@@ -329,16 +329,16 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				grant.id = opts.withAccountId
 			}
 		default:
-			return Grant{}, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown template %q in grant %q value", grant.id, "id"))
+			return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown template %q in grant %q value", grant.id, "id"))
 		}
 	}
 
 	if err := grant.validateType(); err != nil {
-		return Grant{}, errors.Wrap(err, op)
+		return Grant{}, errors.WrapDeprecated(err, op)
 	}
 
 	if err := grant.parseAndValidateActions(); err != nil {
-		return Grant{}, errors.Wrap(err, op)
+		return Grant{}, errors.WrapDeprecated(err, op)
 	}
 
 	if !opts.withSkipFinalValidation {
@@ -349,7 +349,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		if grant.id != "" && grant.typ == resource.Unknown {
 			if grant.actions[action.Create] ||
 				grant.actions[action.List] {
-				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains create or list action in a format that does not allow these")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains create or list action in a format that does not allow these")
 			}
 		}
 		// If no ID is given...
@@ -359,11 +359,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 			case resource.Unknown:
 				// Error -- no ID or type isn't valid (although we should never
 				// get to this point because original parsing should error)
-				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains no id or type")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no id or type")
 			case resource.All:
 				// "type=*;actions=..." is not supported -- we reqiure you to
 				// explicitly set a pin or set the ID to *
-				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains wildcard type with no id value")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains wildcard type with no id value")
 			default:
 				// Here we have type=something,actions=<something else>. This
 				// means we're operating on collections. Note that wildcard
@@ -373,24 +373,24 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				case 0:
 					// A total lack of actions is already caught elsewhere but
 					// this is here for completeness
-					return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains no actions")
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions")
 				case 1:
 					if !grant.actions[action.Create] &&
 						!grant.actions[action.List] {
-						return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 					}
 				case 2:
 					if !grant.actions[action.Create] || !grant.actions[action.List] {
-						return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 					}
 				default:
-					return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 				}
 			}
 		}
 		// Set but empty output fields...
 		if grant.OutputFields != nil && len(grant.OutputFields) == 0 {
-			return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string has output_fields set but empty")
+			return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string has output_fields set but empty")
 		}
 		// This might be zero if output fields is populated
 		if len(grant.actions) > 0 {
@@ -413,7 +413,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				}
 			}
 			if !allowed {
-				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
 			}
 		}
 	}
@@ -440,7 +440,7 @@ func (g Grant) validateType() error {
 		resource.Session:
 		return nil
 	}
-	return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", g.typ))
+	return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", g.typ))
 }
 
 func (g *Grant) parseAndValidateActions() error {
@@ -452,25 +452,25 @@ func (g *Grant) parseAndValidateActions() error {
 		if len(g.OutputFields) > 0 {
 			return nil
 		}
-		return errors.New(errors.InvalidParameter, op, "missing actions")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing actions")
 	}
 
 	for _, a := range g.actionsBeingParsed {
 		if a == "" {
-			return errors.New(errors.InvalidParameter, op, "empty action found")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 		}
 		if g.actions == nil {
 			g.actions = make(map[action.Type]bool, len(g.actionsBeingParsed))
 		}
 		if am := action.Map[a]; am == action.Unknown {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown action %q", a))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown action %q", a))
 		} else {
 			g.actions[am] = true
 		}
 	}
 
 	if len(g.actions) > 1 && g.actions[action.All] {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%q cannot be specified with other actions", action.All.String()))
+		return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%q cannot be specified with other actions", action.All.String()))
 	}
 
 	g.actionsBeingParsed = nil

@@ -18,10 +18,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -86,7 +85,7 @@ type Command struct {
 	Func string
 
 	sessionAuthz     *targets.SessionAuthorization
-	sessionAuthzData *targetspb.SessionAuthorizationData
+	sessionAuthzData *targets.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once

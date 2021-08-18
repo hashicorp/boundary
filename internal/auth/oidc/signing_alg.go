@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -55,7 +56,7 @@ type SigningAlg struct {
 
 // NewSigningAlg creates a new in memory signing alg assigned to an OIDC
 // AuthMethod. It supports no options.
-func NewSigningAlg(authMethodId string, alg Alg) (*SigningAlg, error) {
+func NewSigningAlg(ctx context.Context, authMethodId string, alg Alg) (*SigningAlg, error) {
 	const op = "oidc.NewSigningAlg"
 	s := &SigningAlg{
 		SigningAlg: &store.SigningAlg{
@@ -63,7 +64,7 @@ func NewSigningAlg(authMethodId string, alg Alg) (*SigningAlg, error) {
 			Alg:          string(alg),
 		},
 	}
-	if err := s.validate(op); err != nil {
+	if err := s.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped
 	}
 	return s, nil
@@ -76,12 +77,12 @@ func SupportedAlgorithm(a Alg) bool {
 }
 
 // validate the SigningAlg.  On success, it will return nil.
-func (s *SigningAlg) validate(caller errors.Op) error {
+func (s *SigningAlg) validate(ctx context.Context, caller errors.Op) error {
 	if s.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if _, ok := supportedAlgorithms[Alg(s.Alg)]; !ok {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
+		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
 	}
 	return nil
 }

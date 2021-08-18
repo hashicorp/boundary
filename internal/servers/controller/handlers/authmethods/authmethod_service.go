@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	requestauth "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -27,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -49,7 +50,7 @@ const (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = make(map[auth.Subtype]action.ActionSet)
+	IdActions = make(map[subtypes.Subtype]action.ActionSet)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
@@ -72,33 +73,28 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
-
-	oidcLogger hclog.Logger
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing kms")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 	if pwRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing password repository")
 	}
 	if oidcRepoFn == nil {
 		return Service{}, fmt.Errorf("nil oidc repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
 	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
-	opts := handlers.GetOpts(opt...)
-	if opts.WithLogger != nil {
-		s.oidcLogger = opts.WithLogger.Named("oidc")
-	}
+
 	return s, nil
 }
 
@@ -151,7 +147,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	for _, am := range ul {
 		res.Id = am.GetPublicId()
 		res.ScopeId = am.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], auth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -166,7 +162,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+			collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -203,7 +199,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -215,7 +211,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +230,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
 	const op = "authmethods.(Service).CreateAuthMethod"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
@@ -248,7 +244,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -260,7 +256,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +275,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
 	const op = "authmethods.(Service).UpdateAuthMethod"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Update)
@@ -298,7 +294,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -310,7 +306,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -352,7 +348,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -364,7 +360,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -403,11 +399,11 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	}
 
 	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		if err := validateAuthenticatePasswordRequest(req); err != nil {
 			return nil, err
 		}
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		if err := validateAuthenticateOidcRequest(req); err != nil {
 			return nil, err
 		}
@@ -419,13 +415,13 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	}
 
 	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		return s.authenticatePassword(ctx, req, &authResults)
 
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		return s.authenticateOidc(ctx, req, &authResults)
 	}
-	return nil, errors.New(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
+	return nil, errors.New(ctx, errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
 
 // Deprecated: use Authenticate
@@ -446,7 +442,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
 	return &pbs.AuthenticateLoginResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
@@ -454,14 +450,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 	var lookupErr error
 	var am auth.AuthMethod
 	switch auth.SubtypeFromId(id) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, err
 		}
 		am, lookupErr = repo.LookupAuthMethod(ctx, id)
 
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, err
@@ -485,22 +481,22 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 	return am, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth.VerifyResults) ([]auth.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults requestauth.VerifyResults) ([]auth.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
 	reqCtx, ok := requests.RequestContextFromCtx(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	var outUl []auth.AuthMethod
 
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth.AnonymousUserId))
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == requestauth.AnonymousUserId))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for _, item := range ol {
 		outUl = append(outUl, item)
@@ -508,11 +504,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	pl, err := repo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for _, item := range pl {
 		outUl = append(outUl, item)
@@ -524,19 +520,19 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	const op = "authmethods.(Service).createInRepo"
 	var out auth.AuthMethod
 	switch auth.SubtypeFromType(item.GetType()) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -553,20 +549,20 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	var dryRun bool
 
 	switch auth.SubtypeFromId(req.GetId()) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, false, errors.Wrap(err, op)
+			return nil, false, errors.Wrap(ctx, err, op)
 		}
 		if pam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
 		am = pam
 
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		oam, dr, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
-			return nil, false, errors.Wrap(err, op)
+			return nil, false, errors.Wrap(ctx, err, op)
 		}
 		if oam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
@@ -583,17 +579,17 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	var rows int
 	var dErr error
 	switch auth.SubtypeFromId(id) {
-	case auth.PasswordSubtype:
+	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
-			return false, errors.Wrap(err, op)
+			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, scopeId, id)
 
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
-			return false, errors.Wrap(err, op)
+			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
 	}
@@ -602,7 +598,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(dErr) {
 			return false, nil
 		}
-		return false, errors.Wrap(dErr, op, errors.WithMsg("unable to delete auth method"))
+		return false, errors.Wrap(ctx, dErr, op, errors.WithMsg("unable to delete auth method"))
 	}
 
 	return rows > 0, nil
@@ -612,7 +608,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 	const op = "authmethod_service.(Service).changeStateInRepo"
 
 	switch auth.SubtypeFromId(req.GetId()) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, err
@@ -620,7 +616,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 
 		attrs := &pbs.OidcChangeStateAttributes{}
 		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse attributes"))
 		}
 
 		var opts []oidc.Option
@@ -637,7 +633,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		case publicState:
 			am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
 		default:
-			err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
+			err = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
 		}
 		if err != nil {
 			return nil, err
@@ -646,15 +642,15 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		return am, nil
 	}
 
-	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
+	return nil, errors.New(ctx, errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) requestauth.VerifyResults {
 	const op = "authmethods.(Service).authResult"
-	res := auth.VerifyResults{}
+	res := requestauth.VerifyResults{}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.AuthMethod), auth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithType(resource.AuthMethod), requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
@@ -675,7 +671,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	default:
 		var authMeth auth.AuthMethod
 		switch auth.SubtypeFromId(id) {
-		case auth.PasswordSubtype:
+		case password.Subtype:
 			repo, err := s.pwRepoFn()
 			if err != nil {
 				res.Error = err
@@ -691,7 +687,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				return res
 			}
 			authMeth = am
-		case auth.OidcSubtype:
+		case oidc.Subtype:
 			repo, err := s.oidcRepoFn()
 			if err != nil {
 				res.Error = err
@@ -708,14 +704,14 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			authMeth = am
 		default:
-			res.Error = errors.New(errors.InvalidPublicId, op, "unrecognized auth method type")
+			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized auth method type")
 			return res
 		}
 		parentId = authMeth.GetScopeId()
-		opts = append(opts, auth.WithId(id))
+		opts = append(opts, requestauth.WithId(id))
 	}
-	opts = append(opts, auth.WithScopeId(parentId))
-	return auth.Verify(ctx, opts...)
+	opts = append(opts, requestauth.WithScopeId(parentId))
+	return requestauth.Verify(ctx, opts...)
 }
 
 func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
@@ -762,7 +758,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 	switch i := in.(type) {
 	case *password.AuthMethod:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = auth.PasswordSubtype.String()
+			out.Type = password.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -777,7 +773,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		out.Attributes = st
 	case *oidc.AuthMethod:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = auth.OidcSubtype.String()
+			out.Type = oidc.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -841,15 +837,15 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	const op = "authmethod.validateGetRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
 	const op = "authmethod.validateCreateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -861,12 +857,12 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			badFields[isPrimaryField] = "This field is read only."
 		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
-		case auth.PasswordSubtype:
+		case password.Subtype:
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-		case auth.OidcSubtype:
+		case oidc.Subtype:
 			attrs := &pb.OidcAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
@@ -915,7 +911,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 				if len(attrs.GetIdpCaCerts()) > 0 {
-					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
+					if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
 						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
@@ -928,7 +924,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 				if len(attrs.GetAccountClaimMaps()) > 0 {
-					acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+					acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
 					if err != nil {
 						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 					}
@@ -942,16 +938,16 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				}
 			}
 		default:
-			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
+			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", password.Subtype.String())
 		}
 		return badFields
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest) error {
 	const op = "authmethod.validateUpdateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -959,16 +955,16 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			badFields[isPrimaryField] = "This field is read only."
 		}
 		switch auth.SubtypeFromId(req.GetId()) {
-		case auth.PasswordSubtype:
-			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
+		case password.Subtype:
+			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != password.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-		case auth.OidcSubtype:
-			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.OidcSubtype {
+		case oidc.Subtype:
+			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != oidc.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.OidcAuthMethodAttributes{}
@@ -1036,7 +1032,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				}
 			}
 			if len(attrs.GetIdpCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
+				if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
 					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
@@ -1049,7 +1045,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				}
 			}
 			if len(attrs.GetAccountClaimMaps()) > 0 {
-				acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+				acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
 				if err != nil {
 					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 				} else {
@@ -1060,7 +1056,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 						}
 						foundTo[m.To] = true
 
-						to, err := oidc.ConvertToAccountToClaim(m.To)
+						to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
 						if err != nil {
 							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
 							break
@@ -1082,7 +1078,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	const op = "authmethod.validateDeleteRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
@@ -1090,7 +1086,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	const op = "authmethod.validateListRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
@@ -1109,10 +1105,10 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	const op = "authmethod.validateChangeStateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	if st := auth.SubtypeFromId(req.GetId()); st != auth.OidcSubtype {
-		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", auth.OidcSubtype.String())
+	if st := auth.SubtypeFromId(req.GetId()); st != oidc.Subtype {
+		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", oidc.Subtype.String())
 	}
 	badFields := make(map[string]string)
 	if req.GetVersion() == 0 {
@@ -1137,7 +1133,7 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	const op = "authmethod.validateAuthenticateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 
 	badFields := make(map[string]string)
@@ -1147,7 +1143,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	} else {
 		st := auth.SubtypeFromId(req.GetAuthMethodId())
 		switch st {
-		case auth.PasswordSubtype, auth.OidcSubtype:
+		case password.Subtype, oidc.Subtype:
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type."
 		}
@@ -1164,7 +1160,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	const op = "authmethod.validateAuthenticateLoginRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
@@ -1199,16 +1195,16 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 		return nil, err
 	}
 	if tok == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token.")
 	}
 	if tok.Token == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token.")
 	}
 	if tok.GetPublicId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token public ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token public ID.")
 	}
 	if tok.GetScopeId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token, scope ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token, scope ID.")
 	}
 	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetScopeId(), tok.GetPublicId(), tok.GetToken())
 	if err != nil {
@@ -1234,28 +1230,28 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 	return prot, nil
 }
 
-func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
+func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *requestauth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod.convertToAuthenticateResponse"
 	if req == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing request.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing request.")
 	}
 	if authResults == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results.")
 	}
 	if authResults.Scope == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results scope.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope.")
 	}
 	if authResults.Scope.Id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results scope ID.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope ID.")
 	}
 	if tok == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth token.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth token.")
 	}
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
 	retAttrs, err := handlers.ProtoToStruct(tok)
 	if err != nil {
 		return nil, err

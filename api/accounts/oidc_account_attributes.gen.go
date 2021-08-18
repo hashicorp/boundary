@@ -2,8 +2,10 @@
 package accounts
 
 type OidcAccountAttributes struct {
-	Issuer   string `json:"issuer,omitempty"`
-	Subject  string `json:"subject,omitempty"`
-	FullName string `json:"full_name,omitempty"`
-	Email    string `json:"email,omitempty"`
+	Issuer         string                 `json:"issuer,omitempty"`
+	Subject        string                 `json:"subject,omitempty"`
+	FullName       string                 `json:"full_name,omitempty"`
+	Email          string                 `json:"email,omitempty"`
+	TokenClaims    map[string]interface{} `json:"token_claims,omitempty"`
+	UserinfoClaims map[string]interface{} `json:"userinfo_claims,omitempty"`
 }

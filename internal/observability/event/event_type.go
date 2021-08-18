@@ -15,8 +15,8 @@ const (
 	SystemType      Type = "system"      // SysType represents system events
 )
 
-func (et Type) validate() error {
-	const op = "event.(Type).validate"
+func (et Type) Validate() error {
+	const op = "event.(Type).Validate"
 	switch et {
 	case EveryType, ObservationType, AuditType, ErrorType, SystemType:
 		return nil

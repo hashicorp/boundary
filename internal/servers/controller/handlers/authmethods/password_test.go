@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -18,6 +17,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -32,6 +32,7 @@ import (
 )
 
 func TestUpdate_Password(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -40,7 +41,7 @@ func TestUpdate_Password(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
@@ -447,6 +448,7 @@ func TestUpdate_Password(t *testing.T) {
 }
 
 func TestAuthenticate_Password(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -457,7 +459,7 @@ func TestAuthenticate_Password(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
@@ -616,6 +618,7 @@ func TestAuthenticate_Password(t *testing.T) {
 }
 
 func TestAuthenticateLogin_Password(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -626,7 +629,7 @@ func TestAuthenticateLogin_Password(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
@@ -784,6 +787,7 @@ func TestAuthenticateLogin_Password(t *testing.T) {
 }
 
 func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -795,7 +799,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)

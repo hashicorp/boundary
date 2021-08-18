@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/go-hclog"
 	ua "go.uber.org/atomic"
 )
 
@@ -24,7 +24,6 @@ type runningJob struct {
 type Scheduler struct {
 	serverId  string
 	jobRepoFn jobRepoFactory
-	logger    hclog.Logger
 
 	registeredJobs *sync.Map
 	runningJobs    *sync.Map
@@ -42,27 +41,21 @@ type Scheduler struct {
 //
 // • jobRepoFn must be provided and is a function that returns the job repository
 //
-// • logger must be provided and is used to log errors that occur during scheduling and running of jobs
-//
 // WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
+func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 	if jobRepoFn == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing job repo function")
-	}
-	if logger == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
 	}
 
 	opts := getOpts(opt...)
 	return &Scheduler{
 		serverId:           serverId,
 		jobRepoFn:          jobRepoFn,
-		logger:             logger,
 		registeredJobs:     new(sync.Map),
 		runningJobs:        new(sync.Map),
 		runJobsLimit:       opts.withRunJobsLimit,
@@ -80,7 +73,7 @@ func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...
 func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
 	if err := validateJob(j); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	if _, ok := s.registeredJobs.Load(j.Name()); ok {
@@ -90,13 +83,13 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	opts := getOpts(opt...)
 	_, err = repo.CreateJob(ctx, j.Name(), j.Description(), job.WithNextRunIn(opts.withNextRunIn))
 	if err != nil && !errors.IsUniqueError(err) {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	s.registeredJobs.Store(j.Name(), j)
 
@@ -112,16 +105,16 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) error {
 	const op = "scheduler.(Scheduler).UpdateJobNextRunInAtLeast"
 	if name == "" {
-		return errors.New(errors.InvalidParameter, op, "missing name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	_, err = repo.UpdateJobNextRunInAtLeast(ctx, name, nextRunInAtLeast)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -131,79 +124,92 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 // new jobs once the ctx past in is canceled.
 // The scheduler cannot be started again once the ctx is canceled, a new scheduler will
 // need to be instantiated in order to begin scheduling again.
-func (s *Scheduler) Start(ctx context.Context) error {
+func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	const op = "scheduler.(Scheduler).Start"
 	if !s.started.CAS(s.started.Load(), true) {
-		s.logger.Debug("scheduler already started, skipping")
+		event.WriteSysEvent(ctx, op, "scheduler already started, skipping")
 		return nil
+	}
+	if ctx == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing context")
+	}
+	if wg == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing wait group")
 	}
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Interrupt all runs previously allocated to this server
 	_, err = repo.InterruptRuns(ctx, 0, job.WithServerId(s.serverId))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
-	go s.start(ctx)
-	go s.monitorJobs(ctx)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		s.start(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		s.monitorJobs(ctx)
+	}()
 
 	return nil
 }
 
 func (s *Scheduler) start(ctx context.Context) {
-	s.logger.Debug("starting scheduling loop", "server id", s.serverId)
+	const op = "scheduler.(Scheduler).start"
 	timer := time.NewTimer(s.runJobsInterval)
+	var wg sync.WaitGroup
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug("scheduling loop shutting down", "server id", s.serverId)
+			event.WriteSysEvent(ctx, op, "scheduling loop received shutdown, waiting for jobs to finish", "server id", s.serverId)
+			wg.Wait()
+			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
-			s.logger.Debug("waking up to run jobs", "server id", s.serverId)
-
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				s.logger.Error("error creating job repo", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
 				break
 			}
 
 			runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
 			if err != nil {
-				s.logger.Error("error getting jobs to run from repo", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
 				break
 			}
 
 			for _, r := range runs {
-				err := s.runJob(ctx, r)
+				err := s.runJob(ctx, &wg, r)
 				if err != nil {
-					s.logger.Error("error starting job", "error", err)
-					if _, inner := repo.FailRun(ctx, r.PrivateId); inner != nil {
-						s.logger.Error("error updating failed job run", "error", inner)
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
+					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
+						event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
 					}
 				}
 			}
 		}
 
-		s.logger.Debug("scheduling loop going back to sleep", "server id", s.serverId)
 		timer.Reset(s.runJobsInterval)
 	}
 }
 
-func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
+func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) error {
+	const op = "scheduler.(Scheduler).runJob"
 	regJob, ok := s.registeredJobs.Load(r.JobName)
 	if !ok {
 		return fmt.Errorf("job %q not registered on scheduler", r.JobName)
 	}
-	s.logger.Debug("starting job run", "run id", r.PrivateId, "job name", r.JobName)
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
@@ -219,25 +225,31 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	var jobContext context.Context
 	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
+	wg.Add(1)
 	go func() {
 		defer rj.cancelCtx()
+		defer wg.Done()
 		runErr := j.Run(jobContext)
+
+		// Get final status report to update run progress with
+		status := j.Status()
 		var updateErr error
-		switch runErr {
-		case nil:
-			s.logger.Debug("job run complete", "run id", r.PrivateId, "name", j.Name())
+		switch {
+		case ctx.Err() != nil:
+			// Base context is no longer valid, skip repo updates as they will fail and exit
+		case runErr == nil:
 			nextRun, inner := j.NextRunIn()
 			if inner != nil {
-				s.logger.Error("error getting next run time", "name", j.Name(), "error", inner)
+				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}
-			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun)
+			_, updateErr = repo.CompleteRun(ctx, r.PrivateId, nextRun, status.Completed, status.Total)
 		default:
-			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name(), "error", runErr)
-			_, updateErr = repo.FailRun(jobContext, r.PrivateId)
+			event.WriteError(ctx, op, runErr, event.WithInfoMsg("job run failed", "run id", r.PrivateId, "name", j.Name()))
+			_, updateErr = repo.FailRun(ctx, r.PrivateId, status.Completed, status.Total)
 		}
 
 		if updateErr != nil {
-			s.logger.Error("error updating job run", "name", j.Name(), "error", updateErr)
+			event.WriteError(ctx, op, updateErr, event.WithInfoMsg("error updating job run", "name", j.Name()))
 		}
 		s.runningJobs.Delete(j.Name())
 	}()
@@ -246,12 +258,12 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 }
 
 func (s *Scheduler) monitorJobs(ctx context.Context) {
-	s.logger.Debug("starting job monitor loop")
+	const op = "scheduler.(Scheduler).monitorJobs"
 	timer := time.NewTimer(0)
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug("job monitor loop shutting down")
+			event.WriteSysEvent(ctx, op, "job monitor loop shutting down")
 			return
 
 		case <-timer.C:
@@ -259,7 +271,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 			s.runningJobs.Range(func(_, v interface{}) bool {
 				err := s.updateRunningJobProgress(ctx, v.(*runningJob))
 				if err != nil {
-					s.logger.Error("error updating job progress", "error", err)
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error updating job progress"))
 				}
 				return true
 			})
@@ -267,13 +279,13 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 			// Check for defunct runs to interrupt
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				s.logger.Error("error creating job repo", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
 				break
 			}
 
 			_, err = repo.InterruptRuns(ctx, s.interruptThreshold)
 			if err != nil {
-				s.logger.Error("error interrupting job runs", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error interrupting job runs"))
 			}
 		}
 		timer.Reset(s.monitorInterval)

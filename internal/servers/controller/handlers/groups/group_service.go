@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -13,13 +12,14 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -65,7 +65,7 @@ type Service struct {
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "groups.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -164,7 +164,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -202,7 +202,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -240,7 +240,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -294,7 +294,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -332,7 +332,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -370,7 +370,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -394,14 +394,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Group, []*iam
 	const op = "groups.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	g, m, err := repo.LookupGroup(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if g == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("group %q not found", id))
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("group %q not found", id))
 	}
 	return g, m, err
 }
@@ -421,11 +421,11 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, err := repo.CreateGroup(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create group but no error returned from repository.")
@@ -454,11 +454,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, g, version, dbMask)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, handlers.NotFoundErrorf("Group %q doesn't exist or incorrect version provided.", id)
@@ -477,7 +477,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete group"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete group"))
 	}
 	return rows > 0, nil
 }
@@ -486,11 +486,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Gr
 	const op = "groups.(Service).listFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	gl, err := repo.ListGroups(ctx, scopeIds)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return gl, nil
 }
@@ -499,7 +499,7 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	const op = "groups.(Service).addMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	_, err = repo.AddGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -508,7 +508,7 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after adding memebers"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up group after adding memebers"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after adding member to it.")
@@ -520,7 +520,7 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	const op = "groups.(Service).setMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	_, _, err = repo.SetGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -529,7 +529,7 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after setting members"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up group after setting members"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after setting members for it.")
@@ -541,7 +541,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	const op = "groups.(Service).removeMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	_, err = repo.DeleteGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -550,7 +550,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after removing members"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up group after removing members"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after removing members from it.")

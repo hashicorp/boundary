@@ -30,7 +30,7 @@ func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 
 	opts := getOpts(opt...)

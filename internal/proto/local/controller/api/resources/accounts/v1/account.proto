@@ -74,4 +74,10 @@ message OidcAccountAttributes {
 
 	// Output only. email is a string that maps to the OIDC email claim.
 	string email = 110;
+
+	// Output only. token_claims are the marshaled claims from the token.
+	google.protobuf.Struct token_claims = 120;
+
+	// Output only. userinfo_claims are the marshaled claims from userinfo.
+	google.protobuf.Struct userinfo_claims = 130;
 }

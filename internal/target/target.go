@@ -98,5 +98,5 @@ func (t *targetView) targetSubtype() (Target, error) {
 		tcpTarget.WorkerFilter = t.WorkerFilter
 		return &tcpTarget, nil
 	}
-	return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
+	return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
 }

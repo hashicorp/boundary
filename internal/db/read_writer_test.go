@@ -16,8 +16,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1066,6 +1066,7 @@ func TestDb_Exec(t *testing.T) {
 
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	db, _ := TestSetup(t, "postgres")
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -1075,7 +1076,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1091,7 +1092,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1107,7 +1108,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1123,7 +1124,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1163,7 +1164,7 @@ func TestDb_DoTx(t *testing.T) {
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
 			attempts += 1
-			return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+			return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 		})
 		require.Error(err)
 		assert.Equal(3, got.Retries)

@@ -37,8 +37,9 @@ func WithLimit(limit int) Option {
 	}
 }
 
-// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
-// testing lower-level SQL triggers and constraints
+// WithLiveness indicates how far back we want to search for server entries.
+// Use 0 for the default liveness (15 seconds). A liveness value of -1 removes
+// the liveliness condition.
 func WithLiveness(liveness time.Duration) Option {
 	return func(o *options) {
 		o.withLiveness = liveness

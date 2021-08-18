@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -102,7 +102,7 @@ type Service struct {
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "scopes.(Service).NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -213,7 +213,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -263,7 +263,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -308,7 +308,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -397,7 +397,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	}
 	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create scope"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create scope"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create scope but no error returned from repository.")
@@ -457,7 +457,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	}
 	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update project"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update project"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist or incorrect version provided.", scopeId)
@@ -473,7 +473,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	}
 	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete scope"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete scope"))
 	}
 	return rows > 0, nil
 }
@@ -578,7 +578,7 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
-	if outputFields.Has(globals.PrimaryAuthMethodId) && in.GetPrimaryAuthMethodId() != "" {
+	if outputFields.Has(globals.PrimaryAuthMethodIdField) && in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
 	}
 

@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	ua "go.uber.org/atomic"
 )
@@ -27,49 +27,49 @@ const (
 	renewalWindow    = 10 * time.Minute
 )
 
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms) error {
 	const op = "vault.RegisterJobs"
-	tokenRenewal, err := newTokenRenewalJob(r, w, kms, logger)
+	tokenRenewal, err := newTokenRenewalJob(r, w, kms)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRenewal); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("token renewal job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("token renewal job"))
 	}
-	tokenRevoke, err := newTokenRevocationJob(r, w, kms, logger)
+	tokenRevoke, err := newTokenRevocationJob(r, w, kms)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRevoke); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("token revocation job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("token revocation job"))
 	}
-	credRenewal, err := newCredentialRenewalJob(r, w, kms, logger)
+	credRenewal, err := newCredentialRenewalJob(r, w, kms)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRenewal); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("credential renewal job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential renewal job"))
 	}
-	credRevoke, err := newCredentialRevocationJob(r, w, kms, logger)
+	credRevoke, err := newCredentialRevocationJob(r, w, kms)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("credential revocation job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential revocation job"))
 	}
-	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms, logger)
+	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credStoreCleanup); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("credential store cleanup job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential store cleanup job"))
 	}
 	credCleanup, err := newCredentialCleanupJob(w)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credCleanup); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("credential cleanup job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("credential cleanup job"))
 	}
 	return nil
 }
@@ -81,7 +81,6 @@ type TokenRenewalJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -92,17 +91,15 @@ type TokenRenewalJob struct {
 // newTokenRenewalJob creates a new in-memory TokenRenewalJob.
 //
 // WithLimit is the only supported option.
-func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
+func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRenewalJob, error) {
 	const op = "vault.newTokenRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -114,7 +111,6 @@ func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Log
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -134,13 +130,13 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var ps []*privateStore
@@ -149,7 +145,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	// set to renew in sequence.
 	err := r.reader.SearchWhere(ctx, &ps, `token_renewal_time < wt_add_seconds_to_now(?)`, []interface{}{renewalWindow.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -158,10 +154,10 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	for _, s := range ps {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.renewToken(ctx, s); err != nil {
-			r.logger.Error("error renewing token", "credential store id", s.StoreId, "token status", s.TokenStatus, "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing token", "credential store id", s.StoreId, "token status", s.TokenStatus))
 		}
 		r.numProcessed++
 	}
@@ -173,10 +169,10 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 	const op = "vault.(TokenRenewalJob).renewToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = s.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	token := s.token()
@@ -187,7 +183,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 
 	vc, err := s.client()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
@@ -199,40 +195,40 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		query, values := token.updateStatusQuery(ExpiredToken)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if numRows != 1 {
-			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
+			return errors.New(ctx, errors.Unknown, op, "token expired but failed to update repo")
 		}
 		if s.TokenStatus == string(CurrentToken) {
-			r.logger.Info("Vault credential store current token has expired", "credential store id", s.StoreId)
+			event.WriteSysEvent(ctx, op, "Vault credential store current token has expired", "credential store id", s.StoreId)
 		}
 
 		// Set credentials associated with this token to expired as Vault will already cascade delete them
 		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{ExpiredCredential, token.TokenHmac})
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 		}
 
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
 
 	tokenExpires, err := renewedToken.TokenTTL()
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault token expiration"))
 	}
 
 	token.expiration = tokenExpires
 	query, values := token.updateExpirationQuery()
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "token renewed but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "token renewed but failed to update repo")
 	}
 
 	return nil
@@ -243,7 +239,7 @@ func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
 	const op = "vault.(TokenRenewalJob).NextRunIn"
 	next, err := nextRenewal(r)
 	if err != nil {
-		return defaultNextRunIn, errors.Wrap(err, op)
+		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
 
 	return next, nil
@@ -261,12 +257,12 @@ func nextRenewal(j scheduler.Job) (time.Duration, error) {
 		query = credentialRenewalNextRunInQuery
 		r = job.reader
 	default:
-		return 0, errors.New(errors.Unknown, op, "unknown job")
+		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
 	}
 
 	rows, err := r.Query(context.Background(), query, nil)
 	if err != nil {
-		return 0, errors.Wrap(err, op)
+		return 0, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 
@@ -277,7 +273,7 @@ func nextRenewal(j scheduler.Job) (time.Duration, error) {
 		var n NextRenewal
 		err = r.ScanRows(rows, &n)
 		if err != nil {
-			return 0, errors.Wrap(err, op)
+			return 0, errors.WrapDeprecated(err, op)
 		}
 		if n.RenewalIn < 0 {
 			// If we are past the next renewal time, return 0 to schedule immediately
@@ -307,7 +303,6 @@ type TokenRevocationJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -318,17 +313,15 @@ type TokenRevocationJob struct {
 // newTokenRevocationJob creates a new in-memory TokenRevocationJob.
 //
 // WithLimit is the only supported option.
-func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRevocationJob, error) {
+func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRevocationJob, error) {
 	const op = "vault.newTokenRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -340,7 +333,6 @@ func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -360,13 +352,13 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Fetch all tokens in the revoke state as well as all tokens in the maintaining state
@@ -384,7 +376,7 @@ or
 	var ps []*privateStore
 	err := r.reader.SearchWhere(ctx, &ps, where, nil, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for s report
@@ -392,10 +384,10 @@ or
 	for _, s := range ps {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.revokeToken(ctx, s); err != nil {
-			r.logger.Error("error revoking token", "credential store id", s.StoreId, "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error revoking token", "credential store id", s.StoreId))
 		}
 		r.numProcessed++
 	}
@@ -407,10 +399,10 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 	const op = "vault.(TokenRevocationJob).revokeToken"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = s.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	token := s.token()
@@ -421,7 +413,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 
 	vc, err := s.client()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
@@ -432,22 +424,22 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		err = nil
 	}
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to revoke vault token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke vault token"))
 	}
 
 	query, values := token.updateStatusQuery(RevokedToken)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "token revoked but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "token revoked but failed to update repo")
 	}
 
 	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
 	_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{RevokedCredential, token.TokenHmac})
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 	}
 
 	return nil
@@ -475,7 +467,6 @@ type CredentialRenewalJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -486,17 +477,15 @@ type CredentialRenewalJob struct {
 // newCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRenewalJob, error) {
+func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRenewalJob, error) {
 	const op = "vault.newCredentialRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -508,7 +497,6 @@ func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclo
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -528,13 +516,13 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var creds []*privateCredential
@@ -543,7 +531,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	// multiple credentials set to renew in sequence.
 	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?) and status = ?`, []interface{}{renewalWindow.Seconds(), ActiveCredential}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -551,11 +539,11 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	for _, c := range creds {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		if err := r.renewCred(ctx, c); err != nil {
-			r.logger.Error("error renewing credential", "credential id", c.PublicId, "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing credential", "credential id", c.PublicId))
 		}
 
 		r.numProcessed++
@@ -568,15 +556,15 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	const op = "vault.(CredentialRenewalJob).renewCred"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = c.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	vc, err := c.client()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	cred := c.toCredential()
 
@@ -590,25 +578,25 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		query, values := cred.updateStatusQuery(ExpiredCredential)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if numRows != 1 {
-			return errors.New(errors.Unknown, op, "credential expired but failed to update repo")
+			return errors.New(ctx, errors.Unknown, op, "credential expired but failed to update repo")
 		}
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to renew credential"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew credential"))
 	}
 
 	cred.expiration = time.Duration(renewedCred.LeaseDuration) * time.Second
 	query, values := cred.updateExpirationQuery()
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "credential renewed but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "credential renewed but failed to update repo")
 	}
 
 	return nil
@@ -619,7 +607,7 @@ func (r *CredentialRenewalJob) NextRunIn() (time.Duration, error) {
 	const op = "vault.(CredentialRenewalJob).NextRunIn"
 	next, err := nextRenewal(r)
 	if err != nil {
-		return defaultNextRunIn, errors.Wrap(err, op)
+		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
 
 	return next, nil
@@ -643,7 +631,6 @@ type CredentialRevocationJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 	limit  int
 
 	running      ua.Bool
@@ -654,17 +641,15 @@ type CredentialRevocationJob struct {
 // newCredentialRevocationJob creates a new in-memory CredentialRevocationJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRevocationJob, error) {
+func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRevocationJob, error) {
 	const op = "vault.newCredentialRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -676,7 +661,6 @@ func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger h
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -696,19 +680,19 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	var creds []*privateCredential
 	err := r.reader.SearchWhere(ctx, &creds, "status = ?", []interface{}{RevokeCredential}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numTokens for status report
@@ -716,10 +700,10 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	for _, c := range creds {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if err := r.revokeCred(ctx, c); err != nil {
-			r.logger.Error("error revoking credential", "credential id", c.PublicId, "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error revoking credential", "credential id", c.PublicId))
 		}
 		r.numProcessed++
 	}
@@ -731,15 +715,15 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 	const op = "vault.(CredentialRenewalJob).revokeCred"
 	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err = c.decrypt(ctx, databaseWrapper); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	vc, err := c.client()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	cred := c.toCredential()
@@ -751,16 +735,16 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		err = nil
 	}
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to revoke credential"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke credential"))
 	}
 
 	query, values := cred.updateStatusQuery(RevokedCredential)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "credential revoked but failed to update repo")
+		return errors.New(ctx, errors.Unknown, op, "credential revoked but failed to update repo")
 	}
 
 	return nil
@@ -789,7 +773,6 @@ type CredentialStoreCleanupJob struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	logger hclog.Logger
 
 	limit        int
 	running      ua.Bool
@@ -800,17 +783,15 @@ type CredentialStoreCleanupJob struct {
 // newCredentialStoreCleanupJob creates a new in-memory CredentialStoreCleanupJob.
 //
 // No options are supported.
-func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialStoreCleanupJob, error) {
+func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialStoreCleanupJob, error) {
 	const op = "vault.newCredentialStoreCleanupJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
-	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -822,7 +803,6 @@ func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger
 		reader: r,
 		writer: w,
 		kms:    kms,
-		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
 }
@@ -841,13 +821,13 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// TODO (lcr 06/2021): Oplog does not currently support bulk
@@ -856,7 +836,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	var stores []*CredentialStore
 	err := r.reader.SearchWhere(ctx, &stores, credStoreCleanupWhereClause, []interface{}{RevokeToken}, db.WithLimit(r.limit))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numStores for status report
@@ -864,19 +844,19 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	for _, store := range stores {
 		// Verify context is not done before renewing next token
 		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
 		if err != nil {
-			r.logger.Error("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId))
 			r.numProcessed++
 			continue
 		}
 
 		_, err = r.writer.Delete(ctx, store, db.WithOplog(oplogWrapper, store.oplog(oplog.OpType_OP_TYPE_DELETE)))
 		if err != nil {
-			r.logger.Error("error deleting credential store", "error", err, "credential store id", store.PublicId)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error deleting credential store", "credential store id", store.PublicId))
 		}
 
 		r.numProcessed++
@@ -917,7 +897,7 @@ type CredentialCleanupJob struct {
 func newCredentialCleanupJob(w db.Writer) (*CredentialCleanupJob, error) {
 	const op = "vault.newCredentialCleanupJob"
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	}
 
 	return &CredentialCleanupJob{
@@ -941,18 +921,18 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
 	numRows, err := r.writer.Exec(ctx, credCleanupQuery, nil)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	r.numCreds = numRows
 

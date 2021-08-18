@@ -4,12 +4,131 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.5.1 (2021/08/16)
+
+### New and Improved
+
+* Data Warehouse: Add OIDC auth method and accounts to the database warehouse.
+  Four new columns have been added to the `wh_user_dimension` table:
+  `auth_method_external_id`, `auth_account_external_id`,
+  `auth_account_full_name`, and `auth_account_email`.
+  ([PR](https://github.com/hashicorp/boundary/pull/1455))
+
+### Bug Fixes
+
+* events: Fix panic when using the `hclog-text` event's format.
+  ([PR](https://github.com/hashicorp/boundary/pull/1456))
+* oidc managed groups: Allow colons in selector paths
+  ([PR](https://github.com/hashicorp/boundary/pull/1453))
+
+## 0.5.0 (2021/08/02)
+
+### Deprecations/Changes
+
+* With respect to Target resources, two naming changes are taking place. Note
+  that these are not affecting the resources themselves, only the fields on
+  Target resources that map them to targets:
+* * _Credential Libraries_: In Target definitions, the field referring to
+    attached credential libraries is being renamed to the more abstract
+    _credential sources_. In the future Boundary will gain the ability to
+    internally store static credentials that are not generated or fetched
+    dynamically, and the _sources_ terminology better reflects that the IDs
+    provided are a source of credentials, whether via dynamic generation or via
+    the credentials themselves. This will allow a paradigm similar to
+    `principals` with roles, where the principal IDs can be a users, groups, and
+    managed groups, rather than having them split out, and should result in an
+    easier user experience once those features roll out compared to having
+    separate flags and fields. In this 0.5 release the Boundary CLI has gained
+    parallel `application-credential-source` flags to the existing
+    `application-credential-library` flags, as well as `boundary targets
+    add/remove/set-credential-sources` commands that parallel `boundary targets
+    add/remove/set-credential-libraries` commands. This parallelism extends to
+    the API actions and the grants system. In 0.6, the _library_ versions of
+    these commands, flags, and actions will be removed.
+* * _Host Sets_: Similarly, in Target definitions, the field referring to
+    attached host sets is being renamed to the more abstract _host sources_. In
+    the future Boundary will allow attaching some host types directly, and
+    possibly other mechanisms for gathering hosts for targets, so the _sources_
+    terminology better reflects that the IDs provided are a source of hosts,
+    whether via sets or via the hosts themselves. Like with credential sources,
+    in this 0.5 release the Boundary CLI and API have gained parallel API
+    actions and fields, and the _set_ versions of these will be removed in 0.6.
+
+### New and Improved
+
+* OIDC Accounts: When performing a `read` on an `oidc` type account, the
+  original token and userinfo claims are provided in the output. This can make
+  it significantly easier to write filters to create [managed
+  groups](https://www.boundaryproject.io/docs/concepts/filtering/oidc-managed-groups).
+  ([PR](https://github.com/hashicorp/boundary/pull/1419))
+* Controllers will now mark connections as closed in the database if the worker
+  has not reported its status; this can be seen as the controller counterpart to
+  the worker-side session cleanup functionality released in 0.4.0. As with the
+  worker, the timeout for this behavior is 15s.
+* Workers will shut down connections gracefully upon shutdown of the worker,
+  both closing the connection and sending a request to mark the connection as
+  closed in the database.
+* Pressing CTRL-C (or sending a SIGINT) when Boundary is already shutting
+  down due to a CTRL-C or interrupt will now cause Boundary to immediately shut
+  down non-gracefully. This may leave various parts of the Boundary deployment
+  (namely sessions or connections) in an inconsistent state.
+
+* Events: Boundary has moved from writing hclog entries to emitting events.
+  There are four types of Boundary events: `error`, `system`, `observation` and
+  `audit`. All events are emitted as
+  [cloudevents](https://github.com/cloudevents/spec/blob/v1.0.1/spec.md) and we
+  support both a `cloudevents-json` format and custom Boundary
+  `cloudevents-text` format.   
+  
+  **Notes**: 
+  * There are still a few lingering hclog bits within Boundary. If you wish to
+    only output json from Boundary logging/events then you should specify both
+    `"-log-format json"` and `"-event-format cloudevents-json"` when starting
+    Boundary. 
+  * Filtering events: hclog log levels have been replaced by optional sets
+    of allow and deny event
+    [filters](https://www.boundaryproject.io/docs/concepts/filtering) which are
+    specified via configuration, or in the case of "boundary dev" there are new
+    new cmd flags. 
+  * Observation events are MVP and contain a minimal set of observations about a
+    request. Observations are aggregated for each request, so only one
+    observation event will be emitted per request. We anticipate that a rich set
+    of aggregate data about each request will be developed over time.   
+  * Audit events are a WIP and will only be emitted if they are both enabled
+    and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true.  We
+    anticipate many changes for audit events before they are generally available
+    including what data is included and different options for
+    redacting/encrypting that data.   
+
+
+  PRs: 
+    [hclog json,text formats](https://github.com/hashicorp/boundary/pull/1440),
+    [log adapters](https://github.com/hashicorp/boundary/pull/1434),
+    [unneeded log deps](https://github.com/hashicorp/boundary/pull/1433),
+    [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
+    [convert from hclog to events](https://github.com/hashicorp/boundary/pull/1409),
+    [event filtering](https://github.com/hashicorp/boundary/pull/1404),
+    [cloudevents node](https://github.com/hashicorp/boundary/pull/1390),
+    [system events](https://github.com/hashicorp/boundary/pull/1360),
+    [convert errors to events](https://github.com/hashicorp/boundary/pull/1358),
+    [integrate events into servers](https://github.com/hashicorp/boundary/pull/1355),
+    [event pkg name](https://github.com/hashicorp/boundary/pull/1284),
+    [events using ctx](https://github.com/hashicorp/boundary/pull/1277),
+    [add eventer](https://github.com/hashicorp/boundary/pull/1276),
+    [and base event types](https://github.com/hashicorp/boundary/pull/1275)
 ### Bug Fixes
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as
   well as the error message)
   ([issue](https://github.com/hashicorp/boundary/issues/1305),
   [PR](https://github.com/hashicorp/boundary/pull/1384))
+* server: Fix panic on worker startup failure when the server was not also
+  configured as a controller
+  ([PR](https://github.com/hashicorp/boundary/pull/1432))
+
+### New and Improved
+
+* docker: Add support for muti-arch docker images (amd64/arm64) via Docker buildx
 
 ## 0.4.0 (2021/06/29)
 
@@ -39,8 +158,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   username/password and `boundary connect postgres` is the helper being used,
   the command will automatically pass the credentials to the `psql` process.
 * The worker will now close any existing proxy connections it is handling when
-  it cannot make a status request to the worker. The timeout for this behavior
-  is currently 15 seconds.
+  it cannot make a status request to the controller. The timeout for this
+  behavior is currently 15 seconds.
 
 NOTE: When using credential brokering, remember that if the user can connect
 directly to the end resource, they can use the brokered username and password

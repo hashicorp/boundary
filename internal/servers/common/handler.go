@@ -6,17 +6,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
+// GeneratedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
 // the id.
-func generatedTraceId(ctx context.Context) string {
+func GeneratedTraceId(ctx context.Context) string {
 	t, err := base62.Random(20)
 	if err != nil {
 		return ""
@@ -43,13 +42,13 @@ func (w *writerWrapper) StatusCode() int {
 // an http.ResponseWriter that satisfies those optional interfaces.
 //
 // See: https://medium.com/@cep21/interface-wrapping-method-erasure-c523b3549912
-func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.ResponseWriter, error) {
+func WrapWithOptionals(ctx context.Context, with *writerWrapper, wrap http.ResponseWriter) (http.ResponseWriter, error) {
 	const op = "common.WrapWithOptionals"
 	if with == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing writer wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing writer wrapper")
 	}
 	if wrap == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing response writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing response writer")
 	}
 	flusher, _ := wrap.(http.Flusher)
 	pusher, _ := wrap.(http.Pusher)
@@ -103,27 +102,31 @@ func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.Resp
 // WrapWithEventsHandler will wrap the provided http.Handler with a
 // handler that adds an Eventer to the request context and starts/flushes gated
 // events of type: observation and audit
-func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger, kms *kms.Kms) (http.Handler, error) {
+func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
 	if h == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing handler")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing handler")
 	}
 	if e == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
-	}
-	if logger == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing eventer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		publicId, _, _ := auth.GetTokenFromRequest(logger, kms, r)
+		publicId, _, _ := auth.GetTokenFromRequest(ctx, kms, r)
 
 		var err error
+		id, err := event.NewId(event.IdPrefix)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI()))
+			return
+		}
 		info := &event.RequestInfo{
-			Id:       generatedTraceId(ctx),
+			EventId:  id,
+			Id:       GeneratedTraceId(ctx),
 			PublicId: publicId,
 			Method:   r.Method,
 			Path:     r.URL.RequestURI(),
@@ -131,13 +134,13 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 		ctx, err = event.NewRequestInfoContext(ctx, info)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Trace("unable to create context with request info", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 		ctx, err = event.NewEventerContext(ctx, e)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Trace("unable to create context with eventer", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			event.WriteError(r.Context(), op, err, event.WithInfoMsg("unable to create context with eventer", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
 
@@ -150,22 +153,23 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 			start := time.Now()
 			if err := startGatedEvents(ctx, method, url, start); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to start gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to start gated events"))
 				return
 			}
 
-			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
+			wrapper, err := WrapWithOptionals(ctx, &writerWrapper{w, http.StatusOK}, w)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to wrap handler with optional interfaces", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to wrap handler with optional interfaces"))
 				return
 			}
 			h.ServeHTTP(wrapper, r)
 
 			i, _ := wrapper.(interface{ StatusCode() int })
 			if err := flushGatedEvents(ctx, method, url, i.StatusCode(), start); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				logger.Trace("unable to flush gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				// Intentionally not writing the header/response here, since the
+				// header and response have already been written.
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to flush gated events"))
 				return
 			}
 		}
@@ -180,16 +184,14 @@ func startGatedEvents(ctx context.Context, method, url string, startTime time.Ti
 	if startTime.IsZero() {
 		startTime = time.Now()
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithHeader(map[string]interface{}{
-		"start": startTime,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithHeader("start", startTime))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write observation event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write observation event"))
 	}
 
 	err = event.WriteAudit(ctx, "handler")
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write audit event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write audit event"))
 	}
 	return nil
 }
@@ -204,17 +206,19 @@ func flushGatedEvents(ctx context.Context, method, url string, statusCode int, s
 	if !startTime.IsZero() {
 		latency = float64(stopTime.Sub(startTime)) / float64(time.Millisecond)
 	}
-	err := event.WriteObservation(ctx, "handler", event.WithFlush(), event.WithHeader(map[string]interface{}{
-		"stop":       stopTime,
-		"latency-ms": latency,
-		"status":     statusCode,
-	}))
+	err := event.WriteObservation(ctx, "handler", event.WithFlush(),
+		event.WithHeader(
+			"stop", stopTime,
+			"latency-ms", latency,
+			"status", statusCode,
+		),
+	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush observation event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush observation event"))
 	}
 	err = event.WriteAudit(ctx, "handler", event.WithFlush())
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush audit event"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush audit event"))
 	}
 	return nil
 }

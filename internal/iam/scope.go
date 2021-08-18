@@ -46,7 +46,7 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org.PublicId = orgPublicId
 	p, err := newScope(&org, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return p, nil
 }
@@ -59,7 +59,7 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	const op = "iam.newScope"
 	if parent == nil || parent.PublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "child scope is missing its parent")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "child scope is missing its parent")
 	}
 	var typ scope.Type
 	switch {
@@ -69,7 +69,7 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 		typ = scope.Project
 	}
 	if typ == scope.Unknown {
-		return nil, errors.New(errors.InvalidParameter, op, "unknown scope type")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown scope type")
 	}
 
 	opts := getOpts(opt...)
@@ -106,40 +106,40 @@ func (s *Scope) Clone() interface{} {
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(Scope).VetForWrite"
 	if s.Type == scope.Unknown.String() {
-		return errors.New(errors.InvalidParameter, op, "unknown scope type")
+		return errors.New(ctx, errors.InvalidParameter, op, "unknown scope type")
 	}
 	if s.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.UpdateOp {
 		dbOptions := db.GetOpts(opt...)
 		for _, path := range dbOptions.WithFieldMaskPaths {
 			switch path {
 			case "ParentId":
-				return errors.New(errors.InvalidParameter, op, "you cannot change a scope's parent")
+				return errors.New(ctx, errors.InvalidParameter, op, "you cannot change a scope's parent")
 			case "Type":
-				return errors.New(errors.InvalidParameter, op, "you cannot change a scope's type")
+				return errors.New(ctx, errors.InvalidParameter, op, "you cannot change a scope's type")
 			}
 		}
 	}
 	if opType == db.CreateOp {
 		switch {
 		case s.Type == scope.Global.String():
-			return errors.New(errors.InvalidParameter, op, "you cannot create a global scope")
+			return errors.New(ctx, errors.InvalidParameter, op, "you cannot create a global scope")
 		case s.ParentId == "":
-			return errors.New(errors.InvalidParameter, op, "scope must have a parent")
+			return errors.New(ctx, errors.InvalidParameter, op, "scope must have a parent")
 		case s.Type == scope.Org.String():
 			if s.ParentId != "global" {
-				return errors.New(errors.InvalidParameter, op, `org's parent must be "global"`)
+				return errors.New(ctx, errors.InvalidParameter, op, `org's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
 			parentScope := AllocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to verify project's org scope"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to verify project's org scope"))
 			}
 			if parentScope.Type != scope.Org.String() {
-				return errors.New(errors.InvalidParameter, op, "project parent scope is not an org")
+				return errors.New(ctx, errors.InvalidParameter, op, "project parent scope is not an org")
 			}
 		}
 	}
@@ -160,14 +160,14 @@ func (*Scope) Actions() map[string]action.Type {
 func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	const op = "iam.(Scope).GetScope"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if s.PublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if s.Type == "" && s.ParentId == "" {
 		if err := r.LookupByPublicId(ctx, s); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 	// HANDLE_GLOBAL
@@ -185,11 +185,11 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
 			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup parent public id from public id"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent public id from public id"))
 			}
 		default:
 			if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup parent from public id"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent from public id"))
 			}
 		}
 		return &p, nil

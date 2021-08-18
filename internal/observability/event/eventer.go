@@ -1,13 +1,24 @@
 package event
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/url"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/gated"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
+	"github.com/hashicorp/eventlogger/sinks/writer"
+
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -77,13 +88,16 @@ var (
 // process should only have one Eventer.  In practice this means the process
 // Server (Controller or Worker) and the SysEventer both need a pointer to a
 // single Eventer.
-func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, opt ...Option) error {
+func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
 		return fmt.Errorf("%s: missing hclog: %w", op, ErrInvalidParameter)
 	}
 	if serializationLock == nil {
 		return fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
+	}
+	if serverName == "" {
+		return fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
 
 	// the order of operations is important here.  we want to determine if
@@ -99,7 +113,7 @@ func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, opt ...Opti
 
 	case opts.withEventerConfig != nil:
 		var err error
-		if e, err = NewEventer(log, serializationLock, *opts.withEventerConfig); err != nil {
+		if e, err = NewEventer(log, serializationLock, serverName, *opts.withEventerConfig); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -123,13 +137,16 @@ func SysEventer() *Eventer {
 
 // NewEventer creates a new Eventer using the config.  Supports options:
 // WithNow, WithSerializationLock, WithBroker
-func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig, opt ...Option) (*Eventer, error) {
+func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
 		return nil, fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
 	}
 	if serializationLock == nil {
 		return nil, fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
+	}
+	if serverName == "" {
+		return nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
 
 	// if there are no sinks in config, then we'll default to just one stderr
@@ -163,18 +180,6 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		e.broker.StopTimeAt(opts.withNow)
 	}
 
-	// Create JSONFormatter node
-	id, err := newId("json")
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	jsonfmtId := eventlogger.NodeID(id)
-	fmtNode := &eventlogger.JSONFormatter{}
-	err = e.broker.RegisterNode(jsonfmtId, fmtNode)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to register json node: %w", op, err)
-	}
-
 	// serializedStderr will be shared among all StderrSinks so their output is not
 	// interwoven
 	serializedStderr := serializedWriter{
@@ -187,36 +192,49 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	allSinkFilenames := map[string]bool{}
 
 	for _, s := range c.Sinks {
+		fmtId, fmtNode, err := newFmtFilterNode(serverName, s)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		err = e.broker.RegisterNode(eventlogger.NodeID(fmtId), fmtNode)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to register fmt/filter node: %w", op, err)
+		}
+
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
-		switch s.SinkType {
+		switch s.Type {
 		case StderrSink:
-			sinkNode = &eventlogger.WriterSink{
+			sinkNode = &writer.Sink{
 				Format: string(s.Format),
 				Writer: &serializedStderr,
 			}
-			id, err = newId("stderr")
+			id, err := NewId("stderr")
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
+			sinkId = eventlogger.NodeID(id)
+		case FileSink:
+			fsc := s.FileConfig
+			if _, found := allSinkFilenames[fsc.Path+fsc.FileName]; found {
+				return nil, fmt.Errorf("%s: duplicate file sink: %s %s: %w", op, fsc.Path, fsc.FileName, ErrInvalidParameter)
+			}
+			allSinkFilenames[fsc.Path+fsc.FileName] = true
+			sinkNode = &eventlogger.FileSink{
+				Format:      string(s.Format),
+				Path:        fsc.Path,
+				FileName:    fsc.FileName,
+				MaxBytes:    fsc.RotateBytes,
+				MaxDuration: fsc.RotateDuration,
+				MaxFiles:    fsc.RotateMaxFiles,
+			}
+			id, err := NewId(fmt.Sprintf("file_%s_%s_", fsc.Path, fsc.FileName))
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
 		default:
-			if _, found := allSinkFilenames[s.Path+s.FileName]; found {
-				return nil, fmt.Errorf("%s: duplicate file sink: %s %s", op, s.Path, s.FileName)
-			}
-			sinkNode = &eventlogger.FileSink{
-				Format:      string(s.Format),
-				Path:        s.Path,
-				FileName:    s.FileName,
-				MaxBytes:    s.RotateBytes,
-				MaxDuration: s.RotateDuration,
-				MaxFiles:    s.RotateMaxFiles,
-			}
-			id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", op, err)
-			}
-			sinkId = eventlogger.NodeID(id)
+			return nil, fmt.Errorf("%s: unknown sink type %s", op, s.Type)
 		}
 		err = e.broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
@@ -243,7 +261,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToAudit {
 			auditPipelines = append(auditPipelines, pipeline{
 				eventType:  AuditType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -251,7 +269,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToObservation {
 			observationPipelines = append(observationPipelines, pipeline{
 				eventType:  ObservationType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -259,7 +277,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToErr {
 			errPipelines = append(errPipelines, pipeline{
 				eventType:  ErrorType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -267,7 +285,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToSys {
 			sysPipelines = append(sysPipelines, pipeline{
 				eventType: SystemType,
-				fmtId:     jsonfmtId,
+				fmtId:     fmtId,
 				sinkId:    sinkId,
 			})
 		}
@@ -282,10 +300,13 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		return nil, fmt.Errorf("%s: system events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 
+	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
-		gatedFilterNode := eventlogger.GatedFilter{}
+		gatedFilterNode := gated.Filter{
+			Broker: e.broker,
+		}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
-		gateId, err := newId("gated-audit")
+		gateId, err := NewId("gated-audit")
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -294,7 +315,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
-		pipeId, err := newId(auditPipeline)
+		pipeId, err := NewId(auditPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -306,12 +327,16 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register audit pipeline: %w", op, err)
 		}
+		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
 
+	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
-		gatedFilterNode := eventlogger.GatedFilter{}
+		gatedFilterNode := gated.Filter{
+			Broker: e.broker,
+		}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
-		gateId, err := newId("gated-observation")
+		gateId, err := NewId("gated-observation")
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -320,7 +345,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
-		pipeId, err := newId(observationPipeline)
+		pipeId, err := NewId(observationPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -332,10 +357,11 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register observation pipeline: %w", op, err)
 		}
+		observationNodeIds = append(observationNodeIds, p.sinkId)
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
-		pipeId, err := newId(errPipeline)
+		pipeId, err := NewId(errPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -351,7 +377,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	}
 	sysNodeIds := make([]eventlogger.NodeID, 0, len(sysPipelines))
 	for _, p := range sysPipelines {
-		pipeId, err := newId(sysPipeline)
+		pipeId, err := NewId(sysPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -366,10 +392,21 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		sysNodeIds = append(sysNodeIds, p.sinkId)
 	}
 
-	// always enforce delivery of errors
+	err := e.broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for observation events: %w", op, err)
+	}
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for audit events: %w", op, err)
+	}
 	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to set success threshold for error events: %w", op, err)
+	}
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(SystemType), len(sysNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for sysevents: %w", op, err)
 	}
 
 	e.auditPipelines = append(e.auditPipelines, auditPipelines...)
@@ -377,6 +414,54 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	e.observationPipelines = append(e.observationPipelines, observationPipelines...)
 
 	return e, nil
+}
+
+func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, eventlogger.Node, error) {
+	const op = "newFmtFilterNode"
+	if serverName == "" {
+		return "", nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
+	}
+	var fmtId eventlogger.NodeID
+	var fmtNode eventlogger.Node
+	switch c.Format {
+	case TextHclogSinkFormat, JSONHclogSinkFormat:
+		id, err := NewId(string(c.Format))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+		}
+		fmtId = eventlogger.NodeID(id)
+
+		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+	default:
+		id, err := NewId("cloudevents")
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+		}
+		fmtId = eventlogger.NodeID(id)
+		var sourceUrl *url.URL
+		switch {
+		case c.EventSourceUrl != "":
+			sourceUrl, err = url.Parse(c.EventSourceUrl)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+			}
+		default:
+			s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
+			sourceUrl, err = url.Parse(s)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+			}
+		}
+		fmtNode, err = newCloudEventsFormatterFilter(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+	return fmtId, fmtNode, nil
 }
 
 func DefaultEventerConfig() *EventerConfig {
@@ -393,7 +478,7 @@ func DefaultSink() SinkConfig {
 		Name:       "default",
 		EventTypes: []Type{EveryType},
 		Format:     JSONSinkFormat,
-		SinkType:   StderrSink,
+		Type:       StderrSink,
 	}
 }
 
@@ -414,7 +499,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 		if event.Detail != nil {
 			event.Detail[OpField] = string(event.Op)
 		}
-		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an observation event", "error:", err.Error())
@@ -493,4 +578,130 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// StandardLogger will create *log.Logger that will emit events through this
+// Logger.  This allows packages that require the stdlib log to emit events
+// instead.
+func (e *Eventer) StandardLogger(ctx context.Context, loggerName string, typ Type) (*log.Logger, error) {
+	const op = "event.(Eventer).StandardLogger"
+	if e == nil {
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
+	if typ == "" {
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
+	}
+	w, err := e.StandardWriter(ctx, typ)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return log.New(w, loggerName, 0), nil
+}
+
+// StandardWriter will create an io.Writer that will emit events through this
+// io.Writer.
+func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, error) {
+	const op = "event.(Eventer).StandardErrorWriter"
+	if e == nil {
+		return nil, fmt.Errorf("%s: nil eventer: %w", op, ErrInvalidParameter)
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
+	if typ == "" {
+		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
+	}
+	if err := typ.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	newEventer := *e
+	ctx, err := NewEventerContext(ctx, e)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &logAdapter{
+		ctxWithEventer: ctx,
+		e:              &newEventer,
+		emitEventType:  typ,
+	}, nil
+}
+
+type logAdapter struct {
+	ctxWithEventer context.Context
+	e              *Eventer
+	emitEventType  Type
+}
+
+// Write satisfies the io.Writer interface and will take the data, infer the
+// type of event and then emit an event.
+func (s *logAdapter) Write(data []byte) (int, error) {
+	const op = "event.(stdlogAdapter).Write"
+	if s == nil {
+		return 0, fmt.Errorf("%s: nil log adapter: %w", op, ErrInvalidParameter)
+	}
+	var caller Op
+	pc, _, _, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+
+	str := string(bytes.TrimRight(data, " \t\n"))
+	switch s.emitEventType {
+	case ErrorType, SystemType:
+		if err := s.send(s.emitEventType, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	default:
+		t, str := s.pickType(str)
+		if err := s.send(t, caller, str); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return len(data), nil
+}
+
+func (s *logAdapter) send(typ Type, caller Op, str string) error {
+	const op = "events.(stdlogAdapter).send"
+	if typ == "" {
+		return fmt.Errorf("%s: type is missing: %w", op, ErrInvalidParameter)
+	}
+	if caller == "" {
+		return fmt.Errorf("%s: missing caller: %w", op, ErrInvalidParameter)
+	}
+	switch typ {
+	case ErrorType:
+		WriteError(s.ctxWithEventer, caller, errors.New(str))
+		return nil
+	case SystemType:
+		WriteSysEvent(s.ctxWithEventer, caller, str)
+		return nil
+	default:
+		return fmt.Errorf("%s: unsupported event type %s: %w", op, typ, ErrInvalidParameter)
+	}
+}
+
+func (s *logAdapter) pickType(str string) (Type, string) {
+	switch {
+	case strings.HasPrefix(str, "[DEBUG]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[TRACE]"):
+		return SystemType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[INFO]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[WARN]"):
+		return SystemType, strings.TrimSpace(str[6:])
+	case strings.HasPrefix(str, "[ERROR]"):
+		return ErrorType, strings.TrimSpace(str[7:])
+	case strings.HasPrefix(str, "[ERR]"):
+		return ErrorType, strings.TrimSpace(str[5:])
+	default:
+		return SystemType, str
+	}
 }

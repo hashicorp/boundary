@@ -34,7 +34,7 @@ func Test_TestCredentials(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())

@@ -48,7 +48,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			authMethod: func() *AuthMethod {
 				am := AllocAuthMethod()
 				var err error
-				am.PublicId, err = newAuthMethodId()
+				am.PublicId, err = newAuthMethodId(ctx)
 				require.NoError(t, err)
 				return &am
 			}(),
@@ -57,7 +57,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			require.NoError(err)
 			deletedRows, err := repo.DeleteAuthMethod(ctx, tt.authMethod.PublicId)
 			if tt.wantErrMatch != nil {

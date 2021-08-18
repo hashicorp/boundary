@@ -896,6 +896,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "set-host-sets",
 			}, nil
 		},
+		"targets add-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-host-sources",
+			}, nil
+		},
+		"targets remove-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-host-sources",
+			}, nil
+		},
+		"targets set-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-host-sources",
+			}, nil
+		},
 		"targets add-credential-libraries": func() (cli.Command, error) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
@@ -912,6 +930,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-credential-libraries",
+			}, nil
+		},
+		"targets add-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-credential-sources",
+			}, nil
+		},
+		"targets remove-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-credential-sources",
+			}, nil
+		},
+		"targets set-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-credential-sources",
 			}, nil
 		},
 

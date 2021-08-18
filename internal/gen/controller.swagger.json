@@ -2553,7 +2553,7 @@
     },
     "/v1/targets/{id}:add-credential-libraries": {
       "post": {
-        "summary": "Adds existing Credential Libraries to a Target.",
+        "summary": "Deprecated: use AddTargetCredentialSources instead.",
         "operationId": "TargetService_AddTargetCredentialLibraries",
         "responses": {
           "200": {
@@ -2576,6 +2576,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.AddTargetCredentialLibrariesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:add-credential-sources": {
+      "post": {
+        "summary": "Adds existing Credential Sources to a Target.",
+        "operationId": "TargetService_AddTargetCredentialSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetCredentialSourcesRequest"
             }
           }
         ],
@@ -2609,6 +2642,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:add-host-sources": {
+      "post": {
+        "summary": "Adds existing Host Sources to a Target.",
+        "operationId": "TargetService_AddTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSourcesRequest"
             }
           }
         ],
@@ -2653,7 +2719,7 @@
     },
     "/v1/targets/{id}:remove-credential-libraries": {
       "post": {
-        "summary": "Removes Credential Libraries from the Target.",
+        "summary": "Deprecated: use RemoveTargetCredentialSources instead.",
         "operationId": "TargetService_RemoveTargetCredentialLibraries",
         "responses": {
           "200": {
@@ -2676,6 +2742,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.RemoveTargetCredentialLibrariesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:remove-credential-sources": {
+      "post": {
+        "summary": "Removes Credential Sources from the Target.",
+        "operationId": "TargetService_RemoveTargetCredentialSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetCredentialSourcesRequest"
             }
           }
         ],
@@ -2717,9 +2816,42 @@
         ]
       }
     },
+    "/v1/targets/{id}:remove-host-sources": {
+      "post": {
+        "summary": "Removes Host Sources from the Target.",
+        "operationId": "TargetService_RemoveTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSourcesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:set-credential-libraries": {
       "post": {
-        "summary": "Sets the Credential Libraries on the Target.",
+        "summary": "Deprecated: use SetTargetCredentialSources instead.",
         "operationId": "TargetService_SetTargetCredentialLibraries",
         "responses": {
           "200": {
@@ -2742,6 +2874,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.SetTargetCredentialLibrariesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-credential-sources": {
+      "post": {
+        "summary": "Sets the Credential Sources on the Target.",
+        "operationId": "TargetService_SetTargetCredentialSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetCredentialSourcesRequest"
             }
           }
         ],
@@ -2775,6 +2940,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-host-sources": {
+      "post": {
+        "summary": "Sources the Host Sources on the Target.",
+        "operationId": "TargetService_SetTargetHostSources",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSourcesRequest"
             }
           }
         ],
@@ -4177,6 +4375,35 @@
         }
       }
     },
+    "controller.api.resources.targets.v1.CredentialSource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Credential. May be empty if the credential is dynamically generated from a library."
+        },
+        "name": {
+          "type": "string",
+          "description": "Output only. The name of the Credential source.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Output only. The description of the Credential source.",
+          "readOnly": true
+        },
+        "credential_store_id": {
+          "type": "string",
+          "description": "Output only. The Credential Store to which this Credential source belongs.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "Output only. The type of the credential source (e.g. \"vault\"; not the type of the credential itself).",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.targets.v1.HostSet": {
       "type": "object",
       "properties": {
@@ -4188,6 +4415,21 @@
         "host_catalog_id": {
           "type": "string",
           "description": "Output only. The Host Catalog to which this Host Set belongs.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.targets.v1.HostSource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Host Set.",
+          "readOnly": true
+        },
+        "host_catalog_id": {
+          "type": "string",
+          "description": "Output only. The Host Catalog to which this Host Source belongs.",
           "readOnly": true
         }
       }
@@ -4260,9 +4502,14 @@
     "controller.api.resources.targets.v1.SessionCredential": {
       "type": "object",
       "properties": {
+        "credential_source": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource",
+          "description": "Output only. The credential source information.",
+          "readOnly": true
+        },
         "credential_library": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary",
-          "description": "Output only. The library which generated this credential.",
+          "description": "Output only. The library which generated this credential. Deprecated: use credential_source instead.",
           "readOnly": true
         },
         "secret": {
@@ -4271,7 +4518,7 @@
           "readOnly": true
         }
       },
-      "description": "A credential for a session."
+      "description": "Credential information for a session."
     },
     "controller.api.resources.targets.v1.SessionSecret": {
       "type": "object",
@@ -4350,6 +4597,21 @@
           "description": "Output only. The Host Sets associated with this Target.",
           "readOnly": true
         },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IDs of the Host Sources associated with this Target."
+        },
+        "host_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.HostSource"
+          },
+          "description": "Output only. The Host Sources associated with this Target.",
+          "readOnly": true
+        },
         "session_max_seconds": {
           "type": "integer",
           "format": "int64",
@@ -4369,14 +4631,29 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the application credential library ids associated with this Target."
+          "description": "The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead."
         },
         "application_credential_libraries": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary"
           },
-          "description": "Output only. The application credential libraries associated with this Target.",
+          "description": "Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.",
+          "readOnly": true
+        },
+        "application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IDs of the application credential source ids associated with this Target."
+        },
+        "application_credential_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
+          },
+          "description": "Output only. The application credential sources associated with this Target.",
           "readOnly": true
         },
         "attributes": {
@@ -4634,6 +4911,33 @@
         }
       }
     },
+    "controller.api.services.v1.AddTargetCredentialSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetCredentialSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.AddTargetHostSetsRequest": {
       "type": "object",
       "properties": {
@@ -4654,6 +4958,33 @@
       }
     },
     "controller.api.services.v1.AddTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {
@@ -5465,6 +5796,33 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveTargetCredentialSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetCredentialSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveTargetHostSetsRequest": {
       "type": "object",
       "properties": {
@@ -5485,6 +5843,33 @@
       }
     },
     "controller.api.services.v1.RemoveTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {
@@ -5680,6 +6065,34 @@
         }
       }
     },
+    "controller.api.services.v1.SetTargetCredentialSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Sets the values for application_credential_source_ids.  If any\ncredential_source_id field that is not set in the request will result in\nthose fields being cleared."
+    },
+    "controller.api.services.v1.SetTargetCredentialSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.SetTargetHostSetsRequest": {
       "type": "object",
       "properties": {
@@ -5700,6 +6113,33 @@
       }
     },
     "controller.api.services.v1.SetTargetHostSetsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSourcesRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {

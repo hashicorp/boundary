@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
@@ -29,7 +31,7 @@ type AudClaim struct {
 //
 // For more info on oidc aud claims, see the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
-func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
+func NewAudClaim(ctx context.Context, authMethodId string, audClaim string) (*AudClaim, error) {
 	const op = "oidc.NewAudClaim"
 
 	c := &AudClaim{
@@ -38,19 +40,19 @@ func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
 			Aud:          audClaim,
 		},
 	}
-	if err := c.validate(op); err != nil {
+	if err := c.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped
 	}
 	return c, nil
 }
 
 // validate the AudClaim.  On success, it will return nil.
-func (a *AudClaim) validate(caller errors.Op) error {
+func (a *AudClaim) validate(ctx context.Context, caller errors.Op) error {
 	if a.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if a.Aud == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing aud claim")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing aud claim")
 	}
 	return nil
 }

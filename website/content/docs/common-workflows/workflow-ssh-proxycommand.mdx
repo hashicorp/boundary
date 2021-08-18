@@ -7,7 +7,7 @@ description: How to manage SSH proxy configuration with Boundary
 # SSH ProxyCommand Workflow
 
 The most common pattern for using Boundary to SSH is with the built-in `boundary connect ssh` command. However,
-there are more idomatic approaches that can be employed to make Boundary transparent to users, and at the same
+there are more idiomatic approaches that can be employed to make Boundary transparent to users, and at the same
 time simplify common developer and operator workflows. Using `ProxyCommand` to execute a proxy when invoking the
 SSH client is a common practice. In this workflow, we'll cover configuring your SSH client to execute the
 `boundary` command, enabling a simplified SSH workflow that leverages Boundary's authenticated proxy for accessing
@@ -24,7 +24,7 @@ Host ttcp_*
 
 The `ProxyCommand` tells the SSH client to invoke `boundary connect`. We are passing the `-exec nc` flag to
 `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port`
-varibles as arguments to `nc`. This allows us to proxy our SSH connection through a local netcat tunnel that's
+variables as arguments to `nc`. This allows us to proxy our SSH connection through a local netcat tunnel that's
 managed as a Boundary session.
 
 When you run `ssh ttcp_1234567890` (example target ID), SSH will invoke `boundary connect`, and will tunnel the traffic through

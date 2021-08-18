@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
@@ -154,10 +153,9 @@ func TestNewTokenRenewalJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r      db.Reader
-		w      db.Writer
-		kms    *kms.Kms
-		logger hclog.Logger
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -190,32 +188,20 @@ func TestNewTokenRenewalJob(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "nil logger",
+			name: "valid-no-options",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-		},
-		{
-			name: "valid-no-options",
-			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			options:   []Option{WithLimit(100)},
 			wantLimit: 100,
@@ -226,7 +212,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -238,7 +224,6 @@ func TestNewTokenRenewalJob(t *testing.T) {
 			assert.Equal(tt.args.r, got.reader)
 			assert.Equal(tt.args.w, got.writer)
 			assert.Equal(tt.args.kms, got.kms)
-			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
 		})
 	}
@@ -313,7 +298,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newTokenRenewalJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -349,7 +334,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
-	r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -455,7 +440,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -568,7 +553,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+			r, err := newTokenRenewalJob(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -612,10 +597,9 @@ func TestNewTokenRevocationJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r      db.Reader
-		w      db.Writer
-		kms    *kms.Kms
-		logger hclog.Logger
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -648,32 +632,20 @@ func TestNewTokenRevocationJob(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "nil logger",
+			name: "valid-no-options",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-		},
-		{
-			name: "valid-no-options",
-			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			options:   []Option{WithLimit(100)},
 			wantLimit: 100,
@@ -684,7 +656,7 @@ func TestNewTokenRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newTokenRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newTokenRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -696,7 +668,6 @@ func TestNewTokenRevocationJob(t *testing.T) {
 			assert.Equal(tt.args.r, got.reader)
 			assert.Equal(tt.args.w, got.writer)
 			assert.Equal(tt.args.kms, got.kms)
-			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
 		})
 	}
@@ -773,7 +744,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := newTokenRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newTokenRevocationJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -808,7 +779,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
-	r, err := newTokenRevocationJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -844,7 +815,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -927,10 +898,9 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r      db.Reader
-		w      db.Writer
-		kms    *kms.Kms
-		logger hclog.Logger
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -963,32 +933,20 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "nil logger",
+			name: "valid-no-options",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-		},
-		{
-			name: "valid-no-options",
-			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			options:   []Option{WithLimit(100)},
 			wantLimit: 100,
@@ -999,7 +957,7 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1011,7 +969,6 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 			assert.Equal(tt.args.r, got.reader)
 			assert.Equal(tt.args.w, got.writer)
 			assert.Equal(tt.args.kms, got.kms)
-			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
 		})
 	}
@@ -1051,7 +1008,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1112,7 +1069,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, credsToken, status, 5*time.Minute)
 			}
 
-			r, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -1160,7 +1117,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1174,7 +1131,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	csToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &csToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = credRenewal.Run(context.Background())
@@ -1266,7 +1223,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1280,7 +1237,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	repoToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	_, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, time.Minute)
@@ -1339,7 +1296,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1439,7 +1396,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -1468,10 +1425,9 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r      db.Reader
-		w      db.Writer
-		kms    *kms.Kms
-		logger hclog.Logger
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -1504,32 +1460,20 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "nil logger",
+			name: "valid-no-options",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-		},
-		{
-			name: "valid-no-options",
-			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			options:   []Option{WithLimit(100)},
 			wantLimit: 100,
@@ -1540,7 +1484,7 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newCredentialRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1552,7 +1496,6 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 			assert.Equal(tt.args.r, got.reader)
 			assert.Equal(tt.args.w, got.writer)
 			assert.Equal(tt.args.kms, got.kms)
-			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
 		})
 	}
@@ -1592,7 +1535,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1655,7 +1598,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, repoToken, status, 5*time.Minute)
 			}
 
-			r, err := newCredentialRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newCredentialRevocationJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -1703,7 +1646,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1717,7 +1660,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	repoToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	r, err := newCredentialRevocationJob(rw, rw, kmsCache, hclog.L())
+	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = r.Run(context.Background())
@@ -1793,7 +1736,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1807,7 +1750,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	repoToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	r, err := newCredentialRevocationJob(rw, rw, kmsCache, hclog.L())
+	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, 5*time.Hour)
@@ -1872,10 +1815,9 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r      db.Reader
-		w      db.Writer
-		kms    *kms.Kms
-		logger hclog.Logger
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -1908,32 +1850,20 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "nil logger",
+			name: "valid-no-options",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-		},
-		{
-			name: "valid-no-options",
-			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:      rw,
-				w:      rw,
-				kms:    kmsCache,
-				logger: hclog.L(),
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			options:   []Option{WithLimit(100)},
 			wantLimit: 100,
@@ -1944,7 +1874,7 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialStoreCleanupJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newCredentialStoreCleanupJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1956,7 +1886,6 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 			assert.Equal(tt.args.r, got.reader)
 			assert.Equal(tt.args.w, got.writer)
 			assert.Equal(tt.args.kms, got.kms)
-			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
 		})
 	}
@@ -2000,7 +1929,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	// create second token on cs2
 	secondToken := testVaultToken(t, conn, wrapper, v, cs2, MaintainingToken, time.Hour)
 
-	r, err := newCredentialStoreCleanupJob(rw, rw, kmsCache, hclog.L())
+	r, err := newCredentialStoreCleanupJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -2185,7 +2114,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess1 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),

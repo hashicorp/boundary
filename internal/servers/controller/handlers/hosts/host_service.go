@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -16,10 +15,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -64,7 +65,7 @@ var _ pbs.HostServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -143,7 +144,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -181,7 +182,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -222,7 +223,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -291,16 +292,16 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for creation"))
 	}
 
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to create host"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to create host"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")
@@ -326,7 +327,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for update"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -339,7 +340,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist or incorrect version provided.", id)
@@ -355,7 +356,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteHost(ctx, scopeId, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
@@ -427,7 +428,7 @@ func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, o
 		out.HostCatalogId = in.GetCatalogId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = host.StaticSubtype.String()
+		out.Type = static.Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -476,7 +477,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := host.SubtypeFromId(req.GetId())
-		if ct == host.UnknownSubtype {
+		if ct == subtypes.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
@@ -490,8 +491,8 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
 			}
 			attrs := &pb.StaticHostAttributes{}
@@ -521,8 +522,8 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
 
 				attrs := &pb.StaticHostAttributes{}

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
@@ -18,10 +17,10 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -35,7 +34,6 @@ func TestGetSelf(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	logger := hclog.New(nil)
 	kms := kms.TestKms(t, conn, wrap)
 
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -97,7 +95,7 @@ func TestGetSelf(t *testing.T) {
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
 			got, err := a.GetAuthToken(ctx, &pbs.GetAuthTokenRequest{Id: tc.readId})
 			if tc.err != nil {
@@ -193,7 +191,6 @@ func TestList_Self(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	logger := hclog.New(nil)
 	kms := kms.TestKms(t, conn, wrap)
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -247,7 +244,7 @@ func TestList_Self(t *testing.T) {
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			got, err := a.ListAuthTokens(ctx, &pbs.ListAuthTokensRequest{ScopeId: o.GetPublicId()})
 			require.NoError(err)
 			require.Len(got.Items, 1)
@@ -418,7 +415,6 @@ func TestDeleteSelf(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	logger := hclog.New(nil)
 	kms := kms.TestKms(t, conn, wrap)
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -494,7 +490,7 @@ func TestDeleteSelf(t *testing.T) {
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			got, err := a.DeleteAuthToken(ctx, &pbs.DeleteAuthTokenRequest{Id: tc.deleteId})
 			if tc.err != nil {
 				require.EqualError(err, tc.err.Error())

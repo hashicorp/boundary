@@ -65,8 +65,10 @@ const completeRunQuery = `
 	update
 	  job_run
 	set
-	  status = 'completed',
-	  end_time = current_timestamp
+	  completed_count = ?,
+	  total_count     = ?,
+	  status          = 'completed',
+	  end_time        = current_timestamp
 	where
 	  private_id = ?
 	  and status = 'running'
@@ -77,8 +79,10 @@ const failRunQuery = `
 	update
 	  job_run
 	set
-	  status = 'failed',
-	  end_time = current_timestamp
+	  completed_count = ?,
+	  total_count     = ?,
+	  status          = 'failed',
+	  end_time        = current_timestamp
 	where
 	  private_id = ?
 	  and status = 'running'

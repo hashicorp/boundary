@@ -10,7 +10,15 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
-message HostSet{
+message HostSource {
+	// Output only. The ID of the Host Set.
+	string id = 10;
+
+	// Output only. The Host Catalog to which this Host Source belongs.
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
+}
+
+message HostSet {
 	// Output only. The ID of the Host Set.
 	string id = 10;
 
@@ -18,7 +26,24 @@ message HostSet{
 	string host_catalog_id = 20 [json_name="host_catalog_id"];
 }
 
-message CredentialLibrary{
+message CredentialSource {
+	// The ID of the Credential. May be empty if the credential is dynamically generated from a library.
+	string id = 10;
+
+	// Output only. The name of the Credential source.
+	string name = 20;
+
+	// Output only. The description of the Credential source.
+	string description = 30;
+
+	// Output only. The Credential Store to which this Credential source belongs.
+	string credential_store_id = 40 [json_name="credential_store_id"];
+
+	// Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
+	string type = 60;
+}
+
+message CredentialLibrary {
 	// The ID of the Credential Library.
 	string id = 10;
 
@@ -45,10 +70,13 @@ message SessionSecret {
 	google.protobuf.Struct decoded = 20;
 }
 
-// A credential for a session.
+// Credential information for a session.
 message SessionCredential {
-	// Output only. The library which generated this credential.
-	CredentialLibrary credential_library = 10;
+	// Output only. The credential source information.
+	CredentialSource credential_source = 1;
+
+	// Output only. The library which generated this credential. Deprecated: use credential_source instead.
+	CredentialLibrary credential_library = 10 [deprecated = true];
 
 	// Output only. The secret of this credential base64 encoded.
 	SessionSecret secret = 20;
@@ -90,6 +118,12 @@ message Target {
 	// Output only. The Host Sets associated with this Target.
 	repeated HostSet host_sets = 110 [json_name="host_sets"];
 
+	// The IDs of the Host Sources associated with this Target.
+	repeated string host_source_ids = 420 [json_name="host_source_ids"];
+
+	// Output only. The Host Sources associated with this Target.
+	repeated HostSource host_sources = 430 [json_name="host_sources"];
+
 	// Maximum total lifetime of a created Session, in seconds.
 	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_max_seconds" that: "SessionMaxSeconds"}];
 
@@ -99,17 +133,15 @@ message Target {
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
 
-	// The IDs of the application credential library ids associated with this Target.
-	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids"];
+	// The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
+	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids", deprecated = true];
+	// Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
+	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries", deprecated = true];
 
-	// TODO: Uncomment when we suport more purposes beyond application
-//	// The IDs of the egress credential libraries associated with this Target.
-//	repeated string egress_credential_library_ids = 160 [json_name="egress_credential_library_ids"];
-//	// The IDs of the ingress credential libraries associated with this Target.
-//	repeated string ingress_credential_library_ids = 170 [json_name="ingress_credential_library_ids"];
-
-	// Output only. The application credential libraries associated with this Target.
-	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries"];
+	// The IDs of the application credential source ids associated with this Target.
+	repeated string application_credential_source_ids = 400 [json_name="application_credential_source_ids"];
+	// Output only. The application credential sources associated with this Target.
+	repeated CredentialSource application_credential_sources = 410 [json_name="application_credential_sources"];
 
 	// TODO: Uncomment when we suport more purposes beyond application
 //	// Output only. The egress credential libraries associated with this Target.

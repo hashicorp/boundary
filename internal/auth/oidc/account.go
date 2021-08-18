@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -40,7 +41,7 @@ type Account struct {
 // value being unique
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
-func NewAccount(authMethodId string, subject string, opt ...Option) (*Account, error) {
+func NewAccount(ctx context.Context, authMethodId string, subject string, opt ...Option) (*Account, error) {
 	const op = "oidc.NewAccount"
 	opts := getOpts(opt...)
 	a := &Account{
@@ -56,7 +57,7 @@ func NewAccount(authMethodId string, subject string, opt ...Option) (*Account, e
 	if opts.withIssuer != nil {
 		a.Issuer = opts.withIssuer.String()
 	}
-	if err := a.validate(op); err != nil {
+	if err := a.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
 
@@ -64,21 +65,21 @@ func NewAccount(authMethodId string, subject string, opt ...Option) (*Account, e
 }
 
 // validate the Account.  On success, it will return nil.
-func (a *Account) validate(caller errors.Op) error {
+func (a *Account) validate(ctx context.Context, caller errors.Op) error {
 	if a.AuthMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing auth method id")
 	}
 	if a.Subject == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing subject")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing subject")
 	}
 	if _, err := url.Parse(a.Issuer); a.Issuer != "" && err != nil {
-		return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
+		return errors.New(ctx, errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 	}
 	if a.Email != "" && len(a.Email) > 320 {
-		return errors.New(errors.InvalidParameter, caller, "email address is too long")
+		return errors.New(ctx, errors.InvalidParameter, caller, "email address is too long")
 	}
 	if a.FullName != "" && len(a.FullName) > 512 {
-		return errors.New(errors.InvalidParameter, caller, "full name is too long")
+		return errors.New(ctx, errors.InvalidParameter, caller, "full name is too long")
 	}
 	return nil
 }

@@ -6,12 +6,15 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-hclog"
 )
 
 type key int
+
+const cancelledSendTimeout = 3 * time.Second
 
 const (
 	eventerKey key = iota
@@ -52,6 +55,9 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 	if info.Id == "" {
 		return nil, fmt.Errorf("%s: missing request info id: %w", op, ErrInvalidParameter)
 	}
+	if info.EventId == "" {
+		return nil, fmt.Errorf("%s: missing request info event id: %w", op, ErrInvalidParameter)
+	}
 	return context.WithValue(ctx, requestInfoKey, info), nil
 }
 
@@ -73,11 +79,6 @@ func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 // WithHeader, WithDetails, WithId, WithFlush and WithRequestInfo. All other
 // options are ignored.
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
-	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
-	// generally available.
-	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
-		return nil
-	}
 	const op = "event.WriteObservation"
 	if ctx == nil {
 		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
@@ -106,7 +107,11 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if err := eventer.writeObservation(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeObservation(sendCtx, e); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -116,14 +121,9 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
 // found an hclog.Logger will be created and used.
 //
-// The options WithId and WithRequestInfo are supported and all other options
-// are ignored.
+// The options WithInfoMsg, WithInfo, WithId and WithRequestInfo are supported
+// and all other options are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
-	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
-	// generally available.
-	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
-		return
-	}
 	const op = "event.WriteError"
 	// EventerFromContext will handle a nil ctx appropriately. If e or caller is
 	// missing, newError(...) will handle them appropriately.
@@ -151,7 +151,11 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %v", op, e))
 		return
 	}
-	if err := eventer.writeError(ctx, ev); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeError(sendCtx, ev); err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write error: %v", op, e))
 		return
@@ -196,7 +200,11 @@ func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if err := eventer.writeAudit(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeAudit(sendCtx, e); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -211,9 +219,9 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 		reqInfo, ok := RequestInfoFromContext(ctx)
 		if !ok {
 			// there's no RequestInfo, so there's no id associated with the
-			// observation and we'll generate one and flush the observation
+			// event and we'll generate one and flush the event
 			// since there will never be another with the same id
-			id, err := newId(string(ObservationType))
+			id, err := NewId(IdPrefix)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -224,15 +232,12 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			return retOpts, nil
 		}
 		retOpts = append(retOpts, WithRequestInfo(reqInfo))
-		if reqInfo.Id != "" {
-			retOpts = append(retOpts, WithId(reqInfo.Id))
-		}
-		switch reqInfo.Id {
+		switch reqInfo.EventId {
 		case "":
-			// there's no RequestInfo.Id associated with the observation, so we'll
-			// generate one and flush the observation since there will never be
-			// another with the same id
-			id, err := newId(string(ObservationType))
+			// there's no RequestInfo.EventId associated with the observation,
+			// so we'll generate one and flush the observation since there will
+			// never be another with the same id
+			id, err := NewId("e")
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -242,7 +247,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			}
 			return retOpts, nil
 		default:
-			retOpts = append(retOpts, WithId(reqInfo.Id))
+			retOpts = append(retOpts, WithId(reqInfo.EventId))
 		}
 	}
 	return retOpts, nil
@@ -250,13 +255,22 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 
 // WriteSysEvent will write a sysevent using the eventer from
 // event.SysEventer() if no eventer can be found an hclog.Logger will be created
-// and used. This function should never be used when sending events while
+// and used. The args are and optional set of key/value pairs about the event.
+//
+// This function should never be used when sending events while
 // handling API requests.
-func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) {
-	const op = "event.WriteError"
-	if data == nil {
+func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface{}) {
+	const op = "event.WriteSysEvent"
+
+	info := ConvertArgs(args...)
+	if msg == "" && info == nil {
 		return
 	}
+	if info == nil {
+		info = make(map[string]interface{}, 1)
+	}
+	info[msgField] = msg
+
 	if caller == "" {
 		pc, _, _, ok := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
@@ -267,28 +281,86 @@ func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) 
 		}
 	}
 
-	eventer := SysEventer()
-	if eventer == nil {
-		logger := hclog.New(nil)
-		logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, data))
-		return
+	eventer, ok := EventerFromContext(ctx)
+	if !ok {
+		eventer = SysEventer()
+		if eventer == nil {
+			logger := hclog.New(nil)
+			logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
+			return
+		}
 	}
 
-	id, err := newId(string(SystemType))
+	id, err := NewId(string(SystemType))
 	if err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
-		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, data))
+		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, info))
 	}
 
 	e := &sysEvent{
 		Id:      Id(id),
 		Version: sysVersion,
 		Op:      caller,
-		Data:    data,
+		Data:    info,
 	}
-	if err := eventer.writeSysEvent(ctx, e); err != nil {
+	sendCtx, sendCancel := newSendCtx(ctx)
+	if sendCancel != nil {
+		defer sendCancel()
+	}
+	if err := eventer.writeSysEvent(sendCtx, e); err != nil {
 		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write sysevent: (%s) %+v", op, caller, e))
 		return
 	}
+}
+
+func newSendCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	var sendCtx context.Context
+	var sendCancel context.CancelFunc
+	switch {
+	case ctx == nil:
+		return context.Background(), nil
+	case ctx.Err() == context.Canceled:
+		sendCtx, sendCancel = context.WithTimeout(context.Background(), cancelledSendTimeout)
+		info, ok := RequestInfoFromContext(ctx)
+		if ok {
+			reqCtx, err := NewRequestInfoContext(sendCtx, info)
+			if err == nil {
+				sendCtx = reqCtx
+			}
+		}
+	default:
+		sendCtx = ctx
+	}
+	return sendCtx, sendCancel
+}
+
+// MissingKey defines a key to be used as the "missing key" when ConvertArgs has
+// an odd number of args (it's missing a key in its key/value pairs)
+const MissingKey = "EXTRA_VALUE_AT_END"
+
+// ConvertArgs will convert the key/value pair args to a map.  If the args
+// provided are an odd number (they're missing a key in their key/value pairs)
+// then MissingKey is used to the missing key.
+func ConvertArgs(args ...interface{}) map[string]interface{} {
+	if len(args) == 0 {
+		return nil
+	}
+	if len(args)%2 != 0 {
+		extra := args[len(args)-1]
+		args = append(args[:len(args)-1], MissingKey, extra)
+	}
+
+	m := map[string]interface{}{}
+	for i := 0; i < len(args); i = i + 2 {
+		var key string
+		switch st := args[i].(type) {
+		case string:
+			key = st
+		default:
+			key = fmt.Sprintf("%v", st)
+		}
+		m[key] = args[i+1]
+	}
+	return m
 }

@@ -6,7 +6,7 @@ begin;
                     length(trim(value)) > 10 or value = 'pi_system'
             );
     comment on domain wt_plugin_id is
-        '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+        '"pi_system", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
     create table plugin (
         public_id wt_plugin_id primary key

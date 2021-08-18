@@ -34,7 +34,7 @@ var (
 func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	const op = "iam.NewRole"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	r := &Role{
@@ -66,10 +66,10 @@ func (r *Role) Clone() interface{} {
 func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(Role).VetForWrite"
 	if role.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

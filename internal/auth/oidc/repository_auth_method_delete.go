@@ -16,11 +16,11 @@ import (
 func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAuthMethod"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	am, err := r.LookupAuthMethod(ctx, publicId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	if am == nil {
 		// already deleted and this is not an error.
@@ -29,7 +29,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
 	var rowsDeleted int
@@ -44,13 +44,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 				return err
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 auth method would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 auth method would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to delete %s", publicId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to delete %s", publicId)))
 	}
 	return rowsDeleted, nil
 }

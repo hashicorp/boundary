@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/db_test"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )

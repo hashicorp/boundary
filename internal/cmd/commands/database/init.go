@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -185,7 +185,18 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-init"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-init"
+	}
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -239,8 +250,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	migrationUrl, err := configutil.ParsePath(migrationUrlToParse)
-	if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+	migrationUrl, err := parseutil.ParsePath(migrationUrlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return base.CommandUserError
 	}
@@ -260,8 +271,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(`"url" not specified in "database" config block`)
 		return base.CommandUserError
 	}
-	c.srv.DatabaseUrl, err = configutil.ParsePath(urlToParse)
-	if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+	c.srv.DatabaseUrl, err = parseutil.ParsePath(urlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 		return base.CommandUserError
 	}
@@ -489,7 +500,7 @@ func (c *InitCommand) verifyOplogIsEmpty() error {
 	var empty bool
 	r.Scan(&empty)
 	if !empty {
-		return errors.New(errors.MigrationIntegrity, op, "oplog_entry is not empty")
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
 	return nil
 }

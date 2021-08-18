@@ -20,10 +20,10 @@ import (
 func (r *Repository) CreateJob(ctx context.Context, name, description string, opt ...Option) (*Job, error) {
 	const op = "job.(Repository).CreateJob"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 	if description == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing description")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing description")
 	}
 
 	opts := getOpts(opt...)
@@ -38,24 +38,24 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				int(opts.withNextRunIn.Round(time.Second).Seconds()),
 			})
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been created")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been created", errors.WithoutEvent())
 				}
 				rowCnt++
 				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"), errors.WithoutEvent())
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.NotSpecificIntegrity, op, "failed to create new job")
+				return errors.New(ctx, errors.NotSpecificIntegrity, op, "failed to create new job", errors.WithoutEvent())
 			}
 
 			return nil
@@ -63,9 +63,9 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)), errors.WithoutEvent())
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return j, nil
 }
@@ -78,7 +78,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).UpdateJobNextRunInAtLeast"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -86,7 +86,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 		func(r db.Reader, w db.Writer) error {
 			rows, err := w.Query(ctx, setNextScheduledRunIfSoonerQuery, []interface{}{int(nextRunInAtLeast.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(
+				return errors.Wrap(ctx, err, op, errors.WithMsg(
 					fmt.Sprintf("failed to set next scheduled run time for job %v", name)))
 			}
 			defer rows.Close()
@@ -94,24 +94,24 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows"))
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
+				return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return j, nil
 }
@@ -123,7 +123,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).LookupJob"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -131,7 +131,7 @@ func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %v", name)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %v", name)))
 	}
 	return j, nil
 }
@@ -156,7 +156,7 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 	var jobs []*Job
 	err := r.reader.SearchWhere(ctx, &jobs, strings.Join(where, " and "), args, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return jobs, nil
 }
@@ -168,7 +168,7 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteJob"
 	if name == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing name")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -178,16 +178,16 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 		func(_ db.Reader, w db.Writer) (err error) {
 			rowsDeleted, err = w.Delete(ctx, j, db.WithWhere("name = ?", []interface{}{name}))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %v", name)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %v", name)))
 	}
 
 	return rowsDeleted, nil

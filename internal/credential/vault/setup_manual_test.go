@@ -97,7 +97,7 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 	defer w1.Shutdown()
 	addr := c1.ApiAddrs()[0]
 	t.Logf("Boundary ready\n"+
-		"boundary authenticate password -addr %q -auth-method-id ampw_1234567890 -login-name admin -password passpass\n"+
+		"boundary authenticate password -addr %q -auth-method-id ampw_1234567890 -login-name admin -password password\n"+
 		"boundary connect -addr %q -target-id ttcp_1234567890 -format json\n", addr, addr)
 	time.Sleep(time.Hour)
 }

@@ -33,7 +33,7 @@ type GormTicketer struct {
 func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
 	const op = "oplog.NewGormTicketer"
 	if tx == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil tx")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
 	}
 	opts := GetOpts(opt...)
 	enableAggregateNames := opts[optionWithAggregateNames].(bool)
@@ -45,7 +45,7 @@ func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
 func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, error) {
 	const op = "oplog.(GormTicketer).GetTicket"
 	if aggregateName == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing ticket name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket name")
 	}
 	name := DefaultAggregateName
 	if ticketer.withAggregateNames {
@@ -54,9 +54,9 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 	ticket := store.Ticket{}
 	if err := ticketer.tx.First(&ticket, store.Ticket{Name: name}).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			return nil, errors.New(errors.TicketNotFound, op, "ticket not found")
+			return nil, errors.NewDeprecated(errors.TicketNotFound, op, "ticket not found")
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg("error retrieving ticket from storage"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error retrieving ticket from storage"))
 	}
 	return &ticket, nil
 }
@@ -65,14 +65,14 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
 	const op = "oplog.(GormTicketer).Redeem"
 	if t == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticket")
 	}
 	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
-		return errors.Wrap(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
+		return errors.WrapDeprecated(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
 	}
 	if tx.RowsAffected != 1 {
-		return errors.New(errors.TicketAlreadyRedeemed, op, "ticket already redeemed")
+		return errors.NewDeprecated(errors.TicketAlreadyRedeemed, op, "ticket already redeemed")
 	}
 	return nil
 }

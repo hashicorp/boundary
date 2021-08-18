@@ -14,10 +14,12 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	requestauth "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -33,8 +35,8 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[auth.Subtype]action.ActionSet{
-		auth.OidcSubtype: {
+	IdActions = map[subtypes.Subtype]action.ActionSet{
+		oidc.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -68,7 +70,7 @@ type Service struct {
 func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	const op = "managed_groups.NewService"
 	if oidcRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing oidc repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
 	}
 	return Service{oidcRepoFn: oidcRepo}, nil
 }
@@ -105,7 +107,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 	}
 	for _, mg := range ul {
 		res.Id = mg.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[auth.SubtypeFromId(mg.GetPublicId())], auth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[auth.SubtypeFromId(mg.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -153,7 +155,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -195,7 +197,7 @@ func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedG
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -234,7 +236,7 @@ func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedG
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -274,7 +276,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 	var out auth.ManagedGroup
 	var memberIds []string
 	switch auth.SubtypeFromId(id) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -306,7 +308,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (*oidc.ManagedGroup, error) {
 	const op = "managed_groups.(Service).createOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var opts []oidc.Option
 	if item.GetName() != nil {
@@ -320,7 +322,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
-	mg, err := oidc.NewManagedGroup(am.GetPublicId(), attrs.GetFilter(), opts...)
+	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -331,7 +333,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 
 	out, err := repo.CreateManagedGroup(ctx, am.GetScopeId(), mg)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create managed group"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create managed group"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
@@ -342,14 +344,14 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (auth.ManagedGroup, error) {
 	const op = "managed_groups.(Service).createInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.ManagedGroup
 	switch auth.SubtypeFromId(am.GetPublicId()) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
@@ -362,7 +364,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.ManagedGroup) (*oidc.ManagedGroup, error) {
 	const op = "managed_groups.(Service).updateOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil managed group.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil managed group.")
 	}
 	mg := oidc.AllocManagedGroup()
 	mg.PublicId = id
@@ -390,11 +392,11 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateManagedGroup(ctx, scopeId, mg, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update managed group"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update managed group"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Managed Group %q doesn't exist or incorrect version provided.", id)
@@ -406,10 +408,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	const op = "managed_groups.(Service).updateInRepo"
 	var out auth.ManagedGroup
 	switch auth.SubtypeFromId(req.GetId()) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		mg, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if mg == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update managed group but no error returned from repository.")
@@ -424,7 +426,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	var rows int
 	var err error
 	switch auth.SubtypeFromId(id) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		repo, iErr := s.oidcRepoFn()
 		if iErr != nil {
 			return false, iErr
@@ -435,7 +437,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op)
+		return false, errors.Wrap(ctx, err, op)
 	}
 	return rows > 0, nil
 }
@@ -445,14 +447,14 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 
 	var outUl []auth.ManagedGroup
 	switch auth.SubtypeFromId(authMethodId) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		oidcl, err := oidcRepo.ListManagedGroups(ctx, authMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		for _, a := range oidcl {
 			outUl = append(outUl, a)
@@ -461,8 +463,9 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	return outUl, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
-	res := auth.VerifyResults{}
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, requestauth.VerifyResults) {
+	const op = "managed_groups.(Service)."
+	res := requestauth.VerifyResults{}
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		res.Error = err
@@ -470,13 +473,13 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var parentId string
-	opts := []auth.Option{auth.WithType(resource.ManagedGroup), auth.WithAction(a)}
+	opts := []requestauth.Option{requestauth.WithType(resource.ManagedGroup), requestauth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
 	default:
 		switch auth.SubtypeFromId(id) {
-		case auth.OidcSubtype:
+		case oidc.Subtype:
 			acct, err := oidcRepo.LookupManagedGroup(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -487,13 +490,16 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = acct.GetAuthMethodId()
+		default:
+			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized managed group subtype")
+			return nil, res
 		}
-		opts = append(opts, auth.WithId(id))
+		opts = append(opts, requestauth.WithId(id))
 	}
 
 	var authMeth auth.AuthMethod
 	switch auth.SubtypeFromId(parentId) {
-	case auth.OidcSubtype:
+	case oidc.Subtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -504,9 +510,13 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		authMeth = am
+		opts = append(opts, requestauth.WithScopeId(am.GetScopeId()))
+	default:
+		res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized auth method subtype")
+		return nil, res
 	}
-	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
-	return authMeth, auth.Verify(ctx, opts...)
+	opts = append(opts, requestauth.WithPin(parentId))
+	return authMeth, requestauth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) (*pb.ManagedGroup, error) {
@@ -550,7 +560,7 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 	switch i := in.(type) {
 	case *oidc.ManagedGroup:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = auth.OidcSubtype.String()
+			out.Type = oidc.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -575,7 +585,7 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	const op = "managed_groups.validateGetRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
@@ -583,7 +593,7 @@ func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 	const op = "managed_groups.validateCreateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -591,8 +601,8 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 			badFields[globals.AuthMethodIdField] = "This field is required."
 		}
 		switch auth.SubtypeFromId(req.GetItem().GetAuthMethodId()) {
-		case auth.OidcSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
+		case oidc.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := &pb.OidcManagedGroupAttributes{}
@@ -616,13 +626,13 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 	const op = "managed_groups.validateUpdateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
-		case auth.OidcSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
+		case oidc.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.OidcManagedGroupAttributes{}
@@ -638,6 +648,8 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 					}
 				}
 			}
+		default:
+			badFields[globals.IdField] = "Unrecognized resource type."
 		}
 		return badFields
 	}, intglobals.OidcManagedGroupPrefix)
@@ -646,7 +658,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 	const op = "managed_groups.validateDeleteRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
@@ -654,7 +666,7 @@ func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 	const op = "managed_groups.validateListRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {

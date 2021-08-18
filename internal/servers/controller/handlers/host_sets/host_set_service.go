@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -14,11 +13,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -66,7 +66,7 @@ var _ pbs.HostSetServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	const op = "host_sets.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -145,7 +145,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -183,7 +183,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -224,7 +224,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -278,7 +278,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -315,7 +315,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	}
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -353,7 +353,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -399,7 +399,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -407,7 +407,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateSet(ctx, scopeId, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create host set"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
@@ -426,7 +426,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for update"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -439,7 +439,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update host set"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", id)
@@ -455,7 +455,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows, err := repo.DeleteSet(ctx, scopeId, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
@@ -480,11 +480,11 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	}
 	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to add hosts to host set"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to add hosts to host set"))
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after adding hosts"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up host set after adding hosts"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after adding hosts to it.")
@@ -496,16 +496,16 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	const op = "host_sets.(Service).setInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to set hosts in host set"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to set hosts in host set"))
 	}
 
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after setting hosts"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up host set after setting hosts"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after setting hosts for it.")
@@ -517,15 +517,15 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	const op = "host_sets.(Service).removeInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to remove hosts from host set"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to remove hosts from host set"))
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up host set"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after removing hosts from it.")
@@ -588,7 +588,7 @@ func toProto(ctx context.Context, in *static.HostSet, hosts []*static.Host, opt 
 		out.HostCatalogId = in.GetCatalogId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = host.StaticSubtype.String()
+		out.Type = static.Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -637,8 +637,8 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
 			}
 		}
@@ -650,8 +650,8 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
 			}
 		}

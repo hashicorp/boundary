@@ -556,8 +556,16 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto: &targets.HostSource{},
+		outFile: "targets/host_source.gen.go",
+	},
+	{
 		inProto: &targets.CredentialLibrary{},
 		outFile: "targets/credential_library.gen.go",
+	},
+	{
+		inProto: &targets.CredentialSource{},
+		outFile: "targets/credential_source.gen.go",
 	},
 	{
 		inProto: &targets.SessionSecret{},
@@ -605,7 +613,12 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "hostSetIds",
 			},
+			"HostSources": {
+				SliceType: "[]string",
+				VarName:   "hostSourceIds",
+			},
 			"CredentialLibraries": {},
+			"CredentialSources":   {},
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -629,6 +642,11 @@ var inputStructs = []*structInfo{
 			{
 				Name:      "ApplicationCredentialLibraryIds",
 				ProtoName: "application_credential_library_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "ApplicationCredentialSourceIds",
+				ProtoName: "application_credential_source_ids",
 				FieldType: "[]string",
 			},
 		},

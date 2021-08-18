@@ -43,7 +43,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	amActivePub.IsPrimaryAuthMethod = true
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), org, amActivePub.PublicId)
 
-	amId, err := newAuthMethodId()
+	amId, err := newAuthMethodId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name          string
@@ -91,7 +91,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAuthMethod(ctx, tt.in, tt.opt...)
@@ -162,7 +162,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			scopeIds, want, wantPrimaryAuthMethodId := tt.setupFn()
 
@@ -344,7 +344,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := NewRepository(rw, rw, kmsCache)
+			r, err := NewRepository(ctx, rw, rw, kmsCache)
 			require.NoError(err)
 
 			authMethodId, scopeIds, want := tt.setupFn()

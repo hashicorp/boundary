@@ -1658,7 +1658,7 @@ func testSessionCredentialParams(t *testing.T, conn *gorm.DB, wrapper wrapping.W
 	tcpTarget, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
 	require.NoError(err)
 	require.NotNil(tcpTarget)
-	_, _, _, err = targetRepo.AddTargetCredentialLibraries(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
 	require.NoError(err)
 	creds := []*DynamicCredential{
 		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),

@@ -9,15 +9,14 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -151,7 +150,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			Version:           h.GetVersion(),
-			Type:              host.StaticSubtype.String(),
+			Type:              static.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 	}

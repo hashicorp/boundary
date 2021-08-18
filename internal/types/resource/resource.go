@@ -1,5 +1,7 @@
 package resource
 
+import "encoding/json"
+
 // Type defines the types of resources in the system
 type Type uint
 
@@ -24,6 +26,10 @@ const (
 	CredentialStore
 	CredentialLibrary
 )
+
+func (r Type) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.String())
+}
 
 func (r Type) String() string {
 	return [...]string{

@@ -48,13 +48,13 @@ type Credential struct {
 func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
 	const op = "vault.newCredential"
 	if libraryId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no library id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no library id")
 	}
 	if sessionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no session id")
 	}
 	if len(tokenHmac) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no tokenHmac")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no tokenHmac")
 	}
 
 	status := string(ActiveCredential)

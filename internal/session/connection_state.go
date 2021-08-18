@@ -87,7 +87,7 @@ func NewConnectionState(connectionId string, state ConnectionStatus, _ ...Option
 		Status:       state,
 	}
 	if err := s.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -133,10 +133,10 @@ func (s *ConnectionState) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the state
 // before it's written.
-func (s *ConnectionState) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (s *ConnectionState) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(ConnectionState).VetForWrite"
 	if err := s.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -160,19 +160,19 @@ func (s *ConnectionState) SetTableName(n string) {
 func (s *ConnectionState) validate() error {
 	const op = "session.(ConnectionState).validate"
 	if s.Status == "" {
-		return errors.New(errors.InvalidParameter, op, "missing status")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
 	}
 	if s.ConnectionId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing connection id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing connection id")
 	}
 	if s.StartTime != nil {
-		return errors.New(errors.InvalidParameter, op, "start time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "previous end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

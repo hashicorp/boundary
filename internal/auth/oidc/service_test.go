@@ -180,7 +180,7 @@ func Test_requestWrappingWrapper(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)

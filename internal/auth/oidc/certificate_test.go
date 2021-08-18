@@ -15,6 +15,7 @@ import (
 
 func TestCertificate_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -50,7 +51,7 @@ func TestCertificate_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Certificate {
-				want, err := NewCertificate(testAuthMethod.PublicId, pem)
+				want, err := NewCertificate(ctx, testAuthMethod.PublicId, pem)
 				require.NoError(t, err)
 				return want
 			}(),
@@ -63,7 +64,7 @@ func TestCertificate_Create(t *testing.T) {
 			},
 			create: true,
 			want: func() *Certificate {
-				want, err := NewCertificate(testAuthMethod.PublicId, pem)
+				want, err := NewCertificate(ctx, testAuthMethod.PublicId, pem)
 				require.NoError(t, err)
 				return want
 			}(),
@@ -92,7 +93,7 @@ func TestCertificate_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCertificate(tt.args.authMethodId, tt.args.certificate)
+			got, err := NewCertificate(ctx, tt.args.authMethodId, tt.args.certificate)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -120,6 +121,7 @@ func TestCertificate_Create(t *testing.T) {
 
 func TestCertificate_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -140,7 +142,7 @@ func TestCertificate_Delete(t *testing.T) {
 	_, pem4 := testGenerateCA(t, "localhost")
 
 	testResource := func(authMethodId string, cert string) *Certificate {
-		c, err := NewCertificate(authMethodId, cert)
+		c, err := NewCertificate(ctx, authMethodId, cert)
 		require.NoError(t, err)
 		return c
 	}
@@ -203,6 +205,7 @@ func TestCertificate_Delete(t *testing.T) {
 
 func TestCertificate_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -216,7 +219,7 @@ func TestCertificate_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewCertificate(m.PublicId, pem)
+		orig, err := NewCertificate(ctx, m.PublicId, pem)
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.Certificate, orig.Certificate))
@@ -228,9 +231,9 @@ func TestCertificate_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewCertificate(m.PublicId, pem)
+		orig, err := NewCertificate(ctx, m.PublicId, pem)
 		require.NoError(err)
-		orig2, err := NewCertificate(m.PublicId, pem2)
+		orig2, err := NewCertificate(ctx, m.PublicId, pem2)
 		require.NoError(err)
 
 		cp := orig.Clone()

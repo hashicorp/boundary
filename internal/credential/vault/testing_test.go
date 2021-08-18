@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/sdk/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

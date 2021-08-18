@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
@@ -15,13 +14,14 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -67,7 +67,7 @@ type Service struct {
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "users.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -166,7 +166,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -204,7 +204,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -241,7 +241,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -295,7 +295,7 @@ func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -333,7 +333,7 @@ func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -371,7 +371,7 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -428,7 +428,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	}
 	out, err := repo.CreateUser(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create user"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create user"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
@@ -461,7 +461,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	}
 	out, accts, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update user"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update user"))
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
@@ -480,7 +480,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
@@ -509,7 +509,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after adding accounts"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up user after adding accounts"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
@@ -529,7 +529,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after setting accounts"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up user after setting accounts"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
@@ -549,7 +549,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after removing accounts"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up user after removing accounts"))
 	}
 	if out == nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")

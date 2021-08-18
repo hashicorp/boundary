@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -51,10 +51,10 @@ type Service struct {
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing auth token repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -173,7 +173,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.New(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -229,14 +229,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*authtoken.AuthTok
 	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	at, err := repo.LookupAuthToken(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if at == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
 	return at, nil
 }
@@ -245,14 +245,14 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.Wrap(ctx, err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }

@@ -1,33 +1,35 @@
 package event
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var errTestWriteFailed = errors.New("bad write")
 
 type testBadWriter struct{}
 
 func (b *testBadWriter) Write(p []byte) (int, error) {
 	const op = "event.(testBadWriter).Write"
-	return 0, errors.New(errors.Internal, op, "write failed")
+	return 0, fmt.Errorf("%s: write failed: %w", op, errTestWriteFailed)
 }
 
 func TestSerializedWriter_Write(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		s               *serializedWriter
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-serializedWriter",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing serialized writer",
 		},
 		{
@@ -35,7 +37,7 @@ func TestSerializedWriter_Write(t *testing.T) {
 			s: &serializedWriter{
 				l: new(sync.Mutex),
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing writer",
 		},
 		{
@@ -43,7 +45,7 @@ func TestSerializedWriter_Write(t *testing.T) {
 			s: &serializedWriter{
 				w: os.Stderr,
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing lock",
 		},
 		{
@@ -52,7 +54,7 @@ func TestSerializedWriter_Write(t *testing.T) {
 				w: &testBadWriter{},
 				l: new(sync.Mutex),
 			},
-			wantErrMatch:    errors.T(errors.Internal),
+			wantErrIs:       errTestWriteFailed,
 			wantErrContains: "write failed",
 		},
 	}
@@ -61,10 +63,10 @@ func TestSerializedWriter_Write(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			n, err := tt.s.Write([]byte("fido"))
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Empty(n)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", tt.wantErrMatch.Code, err)
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -74,5 +76,4 @@ func TestSerializedWriter_Write(t *testing.T) {
 			assert.NotEmpty(n)
 		})
 	}
-
 }

@@ -49,14 +49,14 @@ func TestAuthMethod(
 	clientSecret ClientSecret,
 	opt ...Option) *AuthMethod {
 	t.Helper()
+	ctx := context.TODO()
 	opts := getOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	ctx := context.Background()
 
-	authMethod, err := NewAuthMethod(scopeId, clientId, clientSecret, opt...)
+	authMethod, err := NewAuthMethod(ctx, scopeId, clientId, clientSecret, opt...)
 	require.NoError(err)
-	id, err := newAuthMethodId()
+	id, err := newAuthMethodId(ctx)
 	require.NoError(err)
 	authMethod.PublicId = id
 	err = authMethod.encrypt(ctx, databaseWrapper)
@@ -67,7 +67,7 @@ func TestAuthMethod(
 	if len(opts.withAudClaims) > 0 {
 		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
-			aud, err := NewAudClaim(authMethod.PublicId, a)
+			aud, err := NewAudClaim(ctx, authMethod.PublicId, a)
 			require.NoError(err)
 			newAudClaims = append(newAudClaims, aud)
 		}
@@ -78,9 +78,9 @@ func TestAuthMethod(
 	if len(opts.withCertificates) > 0 {
 		newCerts := make([]interface{}, 0, len(opts.withCertificates))
 		for _, c := range opts.withCertificates {
-			pem, err := EncodeCertificates(c)
+			pem, err := EncodeCertificates(ctx, c)
 			require.NoError(err)
-			cert, err := NewCertificate(authMethod.PublicId, pem[0])
+			cert, err := NewCertificate(ctx, authMethod.PublicId, pem[0])
 			require.NoError(err)
 			newCerts = append(newCerts, cert)
 		}
@@ -91,7 +91,7 @@ func TestAuthMethod(
 	if len(opts.withSigningAlgs) > 0 {
 		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
 		for _, a := range opts.withSigningAlgs {
-			alg, err := NewSigningAlg(authMethod.PublicId, a)
+			alg, err := NewSigningAlg(ctx, authMethod.PublicId, a)
 			require.NoError(err)
 			newAlgs = append(newAlgs, alg)
 		}
@@ -102,7 +102,7 @@ func TestAuthMethod(
 	if len(opts.withClaimsScopes) > 0 {
 		newClaimsScopes := make([]interface{}, 0, len(opts.withClaimsScopes))
 		for _, cs := range opts.withClaimsScopes {
-			s, err := NewClaimsScope(authMethod.PublicId, cs)
+			s, err := NewClaimsScope(ctx, authMethod.PublicId, cs)
 			require.NoError(err)
 			newClaimsScopes = append(newClaimsScopes, s)
 		}
@@ -113,7 +113,7 @@ func TestAuthMethod(
 	if len(opts.withAccountClaimMap) > 0 {
 		newAccountClaimMaps := make([]interface{}, 0, len(opts.withAccountClaimMap))
 		for k, v := range opts.withAccountClaimMap {
-			acm, err := NewAccountClaimMap(authMethod.PublicId, k, v)
+			acm, err := NewAccountClaimMap(ctx, authMethod.PublicId, k, v)
 			require.NoError(err)
 			newAccountClaimMaps = append(newAccountClaimMaps, acm)
 		}
@@ -167,10 +167,10 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, op
 	u, err := url.Parse(am.GetIssuer())
 	require.NoError(err)
 	opt = append(opt, WithIssuer(u))
-	a, err := NewAccount(am.PublicId, subject, opt...)
+	a, err := NewAccount(ctx, am.PublicId, subject, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId(am.GetPublicId(), am.Issuer, subject)
+	id, err := newAccountId(ctx, am.GetPublicId(), am.Issuer, subject)
 	require.NoError(err)
 	a.PublicId = id
 
@@ -185,10 +185,10 @@ func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	mg, err := NewManagedGroup(am.PublicId, filter, opt...)
+	mg, err := NewManagedGroup(ctx, am.PublicId, filter, opt...)
 	require.NoError(err)
 
-	id, err := newManagedGroupId()
+	id, err := newManagedGroupId(ctx)
 	require.NoError(err)
 	mg.PublicId = id
 
@@ -203,7 +203,7 @@ func TestManagedGroupMember(t *testing.T, conn *gorm.DB, managedGroupId, memberI
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	mg, err := NewManagedGroupMemberAccount(managedGroupId, memberId, opt...)
+	mg, err := NewManagedGroupMemberAccount(ctx, managedGroupId, memberId, opt...)
 	require.NoError(err)
 
 	require.NoError(rw.Create(ctx, mg))

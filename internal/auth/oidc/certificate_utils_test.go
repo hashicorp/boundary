@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto/x509"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func TestEncodeCertificates(t *testing.T) {
+	ctx := context.TODO()
 	tests := []struct {
 		name      string
 		setup     func() ([]*x509.Certificate, []string)
@@ -53,7 +55,7 @@ func TestEncodeCertificates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			certs, pems := tt.setup()
-			got, err := EncodeCertificates(certs...)
+			got, err := EncodeCertificates(ctx, certs...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -66,6 +68,7 @@ func TestEncodeCertificates(t *testing.T) {
 }
 
 func TestParseCertificates(t *testing.T) {
+	ctx := context.TODO()
 	tests := []struct {
 		name      string
 		setup     func() ([]*x509.Certificate, []string)
@@ -109,7 +112,7 @@ func TestParseCertificates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			certs, pems := tt.setup()
-			got, err := ParseCertificates(pems...)
+			got, err := ParseCertificates(ctx, pems...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))

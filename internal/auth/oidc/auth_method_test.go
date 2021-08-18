@@ -20,6 +20,7 @@ import (
 
 func TestAuthMethod_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -243,7 +244,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAuthMethod(tt.args.scopeId, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
+			got, err := NewAuthMethod(ctx, tt.args.scopeId, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -258,7 +259,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.create {
 				ctx := context.Background()
-				id, err := newAuthMethodId()
+				id, err := newAuthMethodId(ctx)
 				require.NoError(err)
 				got.PublicId = id
 				err = got.encrypt(ctx, databaseWrapper)
@@ -284,21 +285,21 @@ func TestAuthMethod_Create(t *testing.T) {
 
 func TestAuthMethod_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	rw := db.New(conn)
-	ctx := context.Background()
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
 	testResource := func(issuer string, clientId, clientSecret string) *AuthMethod {
-		got, err := NewAuthMethod(org.PublicId, clientId, ClientSecret(clientSecret),
+		got, err := NewAuthMethod(ctx, org.PublicId, clientId, ClientSecret(clientSecret),
 			WithIssuer(TestConvertToUrls(t, issuer)[0]), WithApiUrl(TestConvertToUrls(t, "http://api.com")[0]))
 		require.NoError(t, err)
-		id, err := newAuthMethodId()
+		id, err := newAuthMethodId(ctx)
 		require.NoError(t, err)
 		got.PublicId = id
 		err = got.encrypt(ctx, databaseWrapper)
@@ -542,12 +543,13 @@ func Test_encrypt_decrypt_hmac(t *testing.T) {
 }
 
 func Test_convertValueObjects(t *testing.T) {
+	ctx := context.TODO()
 	testPublicId := "test-id"
 
 	testAlgs := []string{string(RS256), string(RS384)}
 	var testSigningAlgs []interface{}
 	for _, a := range []Alg{RS256, RS384} {
-		obj, err := NewSigningAlg(testPublicId, Alg(a))
+		obj, err := NewSigningAlg(ctx, testPublicId, Alg(a))
 		require.NoError(t, err)
 		testSigningAlgs = append(testSigningAlgs, obj)
 	}
@@ -555,33 +557,33 @@ func Test_convertValueObjects(t *testing.T) {
 	testAuds := []string{"alice", "eve"}
 	var testAudiences []interface{}
 	for _, a := range testAuds {
-		obj, err := NewAudClaim(testPublicId, a)
+		obj, err := NewAudClaim(ctx, testPublicId, a)
 		require.NoError(t, err)
 		testAudiences = append(testAudiences, obj)
 	}
 
 	_, pem := testGenerateCA(t, "localhost")
 	testCerts := []string{pem}
-	c, err := NewCertificate(testPublicId, pem)
+	c, err := NewCertificate(ctx, testPublicId, pem)
 	require.NoError(t, err)
 	testCertificates := []interface{}{c}
 
 	testScopes := []string{"profile", "email"}
 	testClaimsScopes := make([]interface{}, 0, len(testScopes))
 	for _, s := range testScopes {
-		obj, err := NewClaimsScope(testPublicId, s)
+		obj, err := NewClaimsScope(ctx, testPublicId, s)
 		require.NoError(t, err)
 		testClaimsScopes = append(testClaimsScopes, obj)
 	}
 
 	testClaimMaps := []string{"oid=sub", "display_name=name"}
 	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
-	acms, err := ParseAccountClaimMaps(testClaimMaps...)
+	acms, err := ParseAccountClaimMaps(ctx, testClaimMaps...)
 	require.NoError(t, err)
 	for _, m := range acms {
-		toClaim, err := ConvertToAccountToClaim(m.To)
+		toClaim, err := ConvertToAccountToClaim(ctx, m.To)
 		require.NoError(t, err)
-		obj, err := NewAccountClaimMap(testPublicId, m.From, toClaim)
+		obj, err := NewAccountClaimMap(ctx, testPublicId, m.From, toClaim)
 		require.NoError(t, err)
 		testAccountClaimMaps = append(testAccountClaimMaps, obj)
 	}
@@ -634,7 +636,7 @@ func Test_convertValueObjects(t *testing.T) {
 				},
 			}
 
-			convertedAlgs, err := am.convertSigningAlgs()
+			convertedAlgs, err := am.convertSigningAlgs(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
@@ -642,7 +644,7 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Equal(tt.wantValues.Algs, convertedAlgs)
 			}
 
-			convertedAuds, err := am.convertAudClaims()
+			convertedAuds, err := am.convertAudClaims(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
@@ -650,7 +652,7 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Equal(tt.wantValues.Auds, convertedAuds)
 			}
 
-			convertedCerts, err := am.convertCertificates()
+			convertedCerts, err := am.convertCertificates(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
@@ -658,7 +660,7 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Equal(tt.wantValues.Certs, convertedCerts)
 			}
 
-			convertedScopes, err := am.convertClaimsScopes()
+			convertedScopes, err := am.convertClaimsScopes(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
@@ -666,7 +668,7 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Equal(tt.wantValues.ClaimsScopes, convertedScopes)
 			}
 
-			convertedMaps, err := am.convertAccountClaimMaps()
+			convertedMaps, err := am.convertAccountClaimMaps(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
@@ -688,7 +690,7 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Equal(want, got)
 			}
 
-			values, err := am.convertValueObjects()
+			values, err := am.convertValueObjects(ctx)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)

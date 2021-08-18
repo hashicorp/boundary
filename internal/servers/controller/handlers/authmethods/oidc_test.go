@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -26,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -69,6 +69,7 @@ type setup struct {
 
 func getSetup(t *testing.T) setup {
 	t.Helper()
+	ctx := context.TODO()
 	require := require.New(t)
 	var ret setup
 	var err error
@@ -84,7 +85,7 @@ func getSetup(t *testing.T) setup {
 		return ret.iamRepo, nil
 	}
 	ret.oidcRepoFn = func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ret.rw, ret.rw, ret.kmsCache)
+		return oidc.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
 	ret.pwRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(ret.rw, ret.rw, ret.kmsCache)
@@ -102,7 +103,7 @@ func getSetup(t *testing.T) setup {
 
 	ret.testProvider = capoidc.StartTestProvider(t)
 	_, _, ret.testProviderAlg, _ = ret.testProvider.SigningKeys()
-	ret.testProviderCaCert, err = oidc.ParseCertificates(ret.testProvider.CACert())
+	ret.testProviderCaCert, err = oidc.ParseCertificates(ctx, ret.testProvider.CACert())
 	require.NoError(err)
 
 	ret.testController = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -132,6 +133,7 @@ func getSetup(t *testing.T) setup {
 }
 
 func TestList_FilterNonPublic(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -140,7 +142,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -201,7 +203,6 @@ func TestList_FilterNonPublic(t *testing.T) {
 			reqCtx: func() context.Context {
 				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
 				return auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
-					nil,
 					iamRepoFn,
 					atRepoFn,
 					serversRepoFn,
@@ -234,6 +235,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 }
 
 func TestUpdate_OIDC(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -242,7 +244,7 @@ func TestUpdate_OIDC(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
@@ -305,7 +307,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
-			Type:        auth.OidcSubtype.String(),
+			Type:        oidc.Subtype.String(),
 			Attributes: &structpb.Struct{
 				Fields: defaultAttributeFields(),
 			},
@@ -345,7 +347,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -353,7 +355,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -372,7 +374,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -380,7 +382,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -412,7 +414,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -484,7 +486,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
-					Type: auth.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -513,7 +515,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId:     o.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -537,7 +539,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId: o.GetPublicId(),
 					Name:    &wrapperspb.StringValue{Value: "default"},
-					Type:    auth.OidcSubtype.String(),
+					Type:    oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -563,7 +565,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -589,7 +591,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -661,7 +663,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"type"},
 				},
 				Item: &pb.AuthMethod{
-					Type: auth.OidcSubtype.String(),
+					Type: oidc.Subtype.String(),
 				},
 			},
 			res: nil,
@@ -716,7 +718,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -749,7 +751,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -782,7 +784,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -830,7 +832,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -867,7 +869,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -906,7 +908,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -945,7 +947,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -1037,7 +1039,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
@@ -1120,6 +1122,7 @@ func TestUpdate_OIDC(t *testing.T) {
 }
 
 func TestUpdate_OIDCDryRun(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1128,7 +1131,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -1146,7 +1149,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
 
-	tpCert, err := oidc.ParseCertificates(tp.CACert())
+	tpCert, err := oidc.ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1172,7 +1175,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		CreatedTime:                 am.GetCreateTime().GetTimestamp(),
 		UpdatedTime:                 am.GetUpdateTime().GetTimestamp(),
 		Version:                     am.GetVersion(),
-		Type:                        auth.OidcSubtype.String(),
+		Type:                        oidc.Subtype.String(),
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -1294,6 +1297,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 }
 
 func TestChangeState_OIDC(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1302,7 +1306,7 @@ func TestChangeState_OIDC(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -1323,7 +1327,7 @@ func TestChangeState_OIDC(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := oidc.ParseCertificates(tp.CACert())
+	tpCert, err := oidc.ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 
 	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "client id", "secret",
@@ -1353,7 +1357,7 @@ func TestChangeState_OIDC(t *testing.T) {
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
-		Type:        auth.OidcSubtype.String(),
+		Type:        oidc.Subtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
 			"client_id":          structpb.NewStringValue(tpClientId),

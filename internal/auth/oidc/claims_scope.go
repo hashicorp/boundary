@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
@@ -22,7 +24,7 @@ type ClaimsScope struct {
 	tableName string
 }
 
-func NewClaimsScope(authMethodId, claimsScope string) (*ClaimsScope, error) {
+func NewClaimsScope(ctx context.Context, authMethodId, claimsScope string) (*ClaimsScope, error) {
 	const op = "oidc.NewClaimsScope"
 	cs := &ClaimsScope{
 		ClaimsScope: &store.ClaimsScope{
@@ -30,22 +32,22 @@ func NewClaimsScope(authMethodId, claimsScope string) (*ClaimsScope, error) {
 			Scope:        claimsScope,
 		},
 	}
-	if err := cs.validate(op); err != nil {
+	if err := cs.validate(ctx, op); err != nil {
 		return nil, err
 	}
 	return cs, nil
 }
 
 // validate the ClaimsScope.  On success, it will return nil.
-func (cs *ClaimsScope) validate(caller errors.Op) error {
+func (cs *ClaimsScope) validate(ctx context.Context, caller errors.Op) error {
 	if cs.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if cs.Scope == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing claims scope")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing claims scope")
 	}
 	if cs.Scope == DefaultClaimsScope {
-		return errors.New(errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
+		return errors.New(ctx, errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
 	}
 	return nil
 }

@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -53,10 +53,10 @@ type Service struct {
 func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "sessions.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -96,7 +96,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.New(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -233,7 +233,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.New(errors.Internal, op, "no request context found")
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -306,7 +306,7 @@ func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update session"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update session"))
 	}
 	return out, nil
 }

@@ -47,6 +47,27 @@ type SessionAuthorizationData struct {
 	WorkerInfo      []*WorkerInfo
 }
 
+func (x *SessionAuthorizationData) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *SessionAuthorizationData) GetConnectionLimit() int32 {
+	if x != nil {
+		return x.ConnectionLimit
+	}
+	return 0
+}
+
+func (x *SessionAuthorizationData) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
 type AuthorizationToken string
 
 func (t AuthorizationToken) Connect(ctx context.Context, transport *http.Transport) (*websocket.Conn, error) {

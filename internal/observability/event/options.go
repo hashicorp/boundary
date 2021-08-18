@@ -1,8 +1,11 @@
 package event
 
 import (
+	"net/url"
 	"time"
 )
+
+const msgField = "msg"
 
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
@@ -24,6 +27,7 @@ type options struct {
 	withDetails       map[string]interface{}
 	withHeader        map[string]interface{}
 	withFlush         bool
+	withInfo          map[string]interface{}
 	withRequestInfo   *RequestInfo
 	withNow           time.Time
 	withRequest       *Request
@@ -31,11 +35,15 @@ type options struct {
 	withAuth          *Auth
 	withEventer       *Eventer
 	withEventerConfig *EventerConfig
+	withAllow         []string
+	withDeny          []string
+	withSchema        *url.URL
 
-	withBroker          broker // test only option
-	withAuditSink       bool   // test only option
-	withObservationSink bool   // test only option
-	withSysSink         bool   // test only option
+	withBroker          broker     // test only option
+	withAuditSink       bool       // test only option
+	withObservationSink bool       // test only option
+	withSysSink         bool       // test only option
+	withSinkFormat      SinkFormat // test only option
 }
 
 func getDefaultOptions() options {
@@ -49,17 +57,19 @@ func WithId(id string) Option {
 	}
 }
 
-// WithDetails allows an optional map as details
-func WithDetails(d map[string]interface{}) Option {
+// WithDetails allows an optional set of key/value pairs about an observation
+// event at the detail level and observation events may have multiple "details"
+func WithDetails(args ...interface{}) Option {
 	return func(o *options) {
-		o.withDetails = d
+		o.withDetails = ConvertArgs(args...)
 	}
 }
 
-// WithHeader allows an optional map as a header
-func WithHeader(d map[string]interface{}) Option {
+// WithHeader allows an optional set of key/value pairs about an event at the
+// header level and observation events will only have one "header"
+func WithHeader(args ...interface{}) Option {
 	return func(o *options) {
-		o.withHeader = d
+		o.withHeader = ConvertArgs(args...)
 	}
 }
 
@@ -67,6 +77,35 @@ func WithHeader(d map[string]interface{}) Option {
 func WithFlush() Option {
 	return func(o *options) {
 		o.withFlush = true
+	}
+}
+
+// WithInfo allows an optional info key/value pairs about an error event.  If
+// used in conjunction with the WithInfoMsg(...) option, and WithInfoMsg(...) is
+// specified after WithInfo(...), then WithInfoMsg(...) will overwrite any
+// values from WithInfo(...).  It's recommend that these two options not be used
+// together.
+func WithInfo(args ...interface{}) Option {
+	return func(o *options) {
+		o.withInfo = ConvertArgs(args...)
+	}
+}
+
+// WithInfoMsg allows an optional msg and optional info key/value pairs about an
+// error event. If used in conjunction with the WithInfo(...) option, and
+// WithInfo(...) is specified after WithInfoMsg(...), then WithInfo(...) will
+// overwrite any values from WithInfo(...).  It's recommend that these two
+// options not be used together.
+func WithInfoMsg(msg string, args ...interface{}) Option {
+	return func(o *options) {
+		o.withInfo = ConvertArgs(args...)
+		if o.withInfo == nil {
+			o.withInfo = map[string]interface{}{
+				msgField: msg,
+			}
+			return
+		}
+		o.withInfo[msgField] = msg
 	}
 }
 
@@ -116,5 +155,26 @@ func WithEventer(e *Eventer) Option {
 func WithEventerConfig(c *EventerConfig) Option {
 	return func(o *options) {
 		o.withEventerConfig = c
+	}
+}
+
+// WithSchema is an optional schema for the cloudevents
+func WithSchema(url *url.URL) Option {
+	return func(o *options) {
+		o.withSchema = url
+	}
+}
+
+// WithAllow is an optional set of allow filters
+func WithAllow(f ...string) Option {
+	return func(o *options) {
+		o.withAllow = f
+	}
+}
+
+// WithDeny is an optional set of deny filters
+func WithDeny(f ...string) Option {
+	return func(o *options) {
+		o.withDeny = f
 	}
 }

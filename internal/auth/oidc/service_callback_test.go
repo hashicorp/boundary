@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -41,7 +41,7 @@ func Test_Callback(t *testing.T) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
-		return NewRepository(rw, rw, kmsCache)
+		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kmsCache)
@@ -65,7 +65,7 @@ func Test_Callback(t *testing.T) {
 	// test provider for the tests (see the oidc package docs for more info)
 	// it will provide discovery, JWKs, a token endpoint, etc for these tests.
 	tp := oidc.StartTestProvider(t)
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	_, _, tpAlg, _ := tp.SigningKeys()
 
@@ -513,7 +513,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 			return iam.NewRepository(rw, rw, kmsCache)
 		}
 		repoFn := func() (*Repository, error) {
-			return NewRepository(rw, rw, kmsCache)
+			return NewRepository(ctx, rw, rw, kmsCache)
 		}
 		atRepoFn := func() (*authtoken.Repository, error) {
 			return authtoken.NewRepository(rw, rw, kmsCache)
@@ -531,7 +531,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 
 		// the testing OIDC provider (it's a functional fake, see the package docs)
 		tp := oidc.StartTestProvider(t)
-		tpCert, err := ParseCertificates(tp.CACert())
+		tpCert, err := ParseCertificates(ctx, tp.CACert())
 		require.NoError(err)
 		_, _, tpAlg, _ := tp.SigningKeys()
 
@@ -617,7 +617,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
-		return NewRepository(rw, rw, kmsCache)
+		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kmsCache)
@@ -639,7 +639,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	// test provider for the tests (see the oidc package docs for more info)
 	// it will provide discovery, JWKs, a token endpoint, etc for these tests.
 	tp := oidc.StartTestProvider(t)
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	_, _, tpAlg, _ := tp.SigningKeys()
 
@@ -679,10 +679,11 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	tp.SetExpectedSubject(sub)
 	tp.SetCustomAudience("foo", "alice-rp")
 	info := map[string]interface{}{
-		"roles": []string{"user", "operator"},
-		"sub":   "alice@example.com",
-		"email": "alice-alias@example.com",
-		"name":  "alice doe joe foe",
+		"roles":  []string{"user", "operator"},
+		"sub":    "alice@example.com",
+		"email":  "alice-alias@example.com",
+		"name":   "alice doe joe foe",
+		"co:lon": "colon",
 	}
 	tp.SetUserInfoReply(info)
 
@@ -730,6 +731,14 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			filters: []string{
 				`"/token/nonce" == "not-nonce"`,
 				`"/userinfo/email" == "alice-alias@example.com"`,
+			},
+			matchingMgs: mgs[1:2],
+		},
+		{
+			name: "colon test",
+			filters: []string{
+				TestFakeManagedGroupFilter,
+				`"/userinfo/co:lon" == "colon"`,
 			},
 			matchingMgs: mgs[1:2],
 		},

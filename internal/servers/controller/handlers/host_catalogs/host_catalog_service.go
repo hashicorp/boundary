@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -72,10 +72,10 @@ var _ pbs.HostCatalogServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "host_catalogs.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{staticRepoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -178,7 +178,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -223,7 +223,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -271,7 +271,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -352,15 +352,15 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for creation"))
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create host catalog"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host catalog"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
@@ -380,7 +380,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for update"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -389,11 +389,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host catalog"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host catalog"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
@@ -405,11 +405,11 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.Wrap(ctx, err, op)
 	}
 	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
@@ -473,7 +473,7 @@ func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = host.StaticSubtype.String()
+		out.Type = static.Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -520,9 +520,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
-		case host.StaticSubtype:
+		case static.Subtype:
 		default:
-			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", host.StaticSubtype.String())
+			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", static.Subtype.String())
 		}
 		return badFields
 	})
@@ -532,8 +532,8 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != host.StaticSubtype {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
 		}

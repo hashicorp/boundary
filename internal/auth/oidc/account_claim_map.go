@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -21,7 +22,7 @@ const (
 	ToNameClaim  AccountToClaim = "name"
 )
 
-func ConvertToAccountToClaim(s string) (AccountToClaim, error) {
+func ConvertToAccountToClaim(ctx context.Context, s string) (AccountToClaim, error) {
 	const op = "oidc.(AccountToClaim).convertToAccountToClaim"
 	switch s {
 	case string(ToSubClaim):
@@ -31,7 +32,7 @@ func ConvertToAccountToClaim(s string) (AccountToClaim, error) {
 	case string(ToNameClaim):
 		return ToNameClaim, nil
 	default:
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid ToAccountClaim value", s))
+		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid ToAccountClaim value", s))
 	}
 }
 
@@ -42,7 +43,7 @@ type AccountClaimMap struct {
 	tableName string
 }
 
-func NewAccountClaimMap(authMethodId, fromClaim string, toClaim AccountToClaim) (*AccountClaimMap, error) {
+func NewAccountClaimMap(ctx context.Context, authMethodId, fromClaim string, toClaim AccountToClaim) (*AccountClaimMap, error) {
 	const op = "oidc.NewAccountClaimMap"
 	cs := &AccountClaimMap{
 		AccountClaimMap: &store.AccountClaimMap{
@@ -51,22 +52,22 @@ func NewAccountClaimMap(authMethodId, fromClaim string, toClaim AccountToClaim) 
 			ToClaim:      string(toClaim),
 		},
 	}
-	if err := cs.validate(op); err != nil {
+	if err := cs.validate(ctx, op); err != nil {
 		return nil, err
 	}
 	return cs, nil
 }
 
 // validate the AccountClaimMap.  On success, it will return nil.
-func (cs *AccountClaimMap) validate(caller errors.Op) error {
+func (cs *AccountClaimMap) validate(ctx context.Context, caller errors.Op) error {
 	if cs.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if cs.FromClaim == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing from claim")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing from claim")
 	}
-	if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
-		return errors.Wrap(err, caller)
+	if _, err := ConvertToAccountToClaim(ctx, cs.ToClaim); err != nil {
+		return errors.Wrap(ctx, err, caller)
 	}
 	return nil
 }

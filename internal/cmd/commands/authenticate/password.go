@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/vault/sdk/helper/password"
+	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"

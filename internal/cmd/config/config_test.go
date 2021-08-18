@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestDevController(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:               "tcp",
 					Purpose:            []string{"api"},
@@ -63,12 +63,6 @@ func TestDevController(t *testing.T) {
 						"key_id":    "global_recovery",
 					},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Controller: &Controller{
@@ -158,17 +152,11 @@ func TestDevWorker(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:    "tcp",
 					Purpose: []string{"proxy"},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Worker: &Worker{
@@ -341,9 +329,9 @@ func TestController_EventingConfig(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		config            string
+		config            []string
 		wantEventerConfig *event.EventerConfig
-		wantErrMatch      *errors.Template
+		wantErr           string
 	}{
 		{
 			name:              "default",
@@ -351,11 +339,11 @@ func TestController_EventingConfig(t *testing.T) {
 		},
 		{
 			name: "audit-enabled",
-			config: `
+			config: []string{`
 			events {
 				audit_enabled = true
 			}
-			`,
+			`},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        true,
 				ObservationsEnabled: false,
@@ -366,11 +354,11 @@ func TestController_EventingConfig(t *testing.T) {
 		},
 		{
 			name: "observations-enabled",
-			config: `
+			config: []string{`
 			events {
 				observations_enabled = true
 			}
-			`,
+			`},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
@@ -380,28 +368,126 @@ func TestController_EventingConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "sinks-configured",
-			config: `
-			events {
+			name: "no-sink-type-determined",
+			config: []string{
+				`events {
 				audit_enabled = false
 				observations_enabled = true
-				sinks = [
-					{
-						name = "configured-sink"
+				sink {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+				}
+			}`,
+			},
+			wantErr: `error parsing "events": sink type could not be determined`,
+		},
+		{
+			name: "sinks-configured",
+			config: []string{
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink {
+					type = "file"
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					file {
 						file_name = "file-name"
-						event_types = [ "audit", "observation" ] 
+						rotate_duration = "2m"
 					}
-				]
-			}
-			`,
+				}
+				sink {
+					type = "stderr"
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+				}
+			}`,
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink "file" {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					file {
+						file_name = "file-name"
+						rotate_duration = "2m"
+					}
+				}
+				sink "stderr" {
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+				}
+			}`,
+				`events {
+				audit_enabled = false
+				observations_enabled = true
+				sink {
+					format = "cloudevents-json"
+					name = "configured-sink"
+					event_types = [ "audit", "observation" ]
+					file {
+						file_name = "file-name"
+						rotate_duration = "2m"
+					}
+				}
+				sink {
+					format = "hclog-text"
+					name = "stderr-sink"
+					event_types = [ "error" ]
+					stderr = {}
+				}
+			}`,
+				`{
+					"events": {
+						"audit_enabled": false,
+						"observations_enabled": true,
+						"sink": [
+							{
+								"type": "file",
+								"format": "cloudevents-json",
+								"name": "configured-sink",
+								"event_types": ["audit", "observation"],
+								"file": {
+									"file_name": "file-name",
+									"rotate_duration": "2m"
+								}
+							},
+							{
+								"format": "hclog-text",
+								"name": "stderr-sink",
+								"event_types": ["error"],
+								"stderr": {}
+							}
+						]
+					}
+				}`,
+			},
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
 				Sinks: []event.SinkConfig{
 					{
+						Type:       "file",
 						Name:       "configured-sink",
-						FileName:   "file-name",
+						Format:     "cloudevents-json",
 						EventTypes: []event.Type{"audit", "observation"},
+						FileConfig: &event.FileSinkTypeConfig{
+							FileName:          "file-name",
+							RotateDurationHCL: "2m",
+							RotateDuration:    2 * time.Minute,
+						},
+					},
+					{
+						Type:         "stderr",
+						Name:         "stderr-sink",
+						Format:       "hclog-text",
+						EventTypes:   []event.Type{"error"},
+						StderrConfig: &event.StderrSinkTypeConfig{},
 					},
 				},
 			},
@@ -410,17 +496,18 @@ func TestController_EventingConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			c, err := Parse(tt.config)
-			if tt.wantErrMatch != nil {
+			for i, conf := range tt.config {
+				c, err := Parse(conf)
+				if tt.wantErr != "" {
+					require.Error(err)
+					assert.Empty(c)
+					assert.Equal(tt.wantErr, err.Error(), "config %d want %q and got %q", i, tt.wantErr, err.Error())
+					return
+				}
 				require.NoError(err)
-				assert.Empty(c)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch.Code, err.Error())
-				return
+				assert.NotEmpty(c)
+				assert.Equal(tt.wantEventerConfig, c.Eventing)
 			}
-			require.NoError(err)
-			assert.NotEmpty(c)
-			assert.Equal(tt.wantEventerConfig, c.Eventing)
 		})
-
 	}
 }

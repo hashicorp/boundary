@@ -21,37 +21,37 @@ import (
 func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]*ManagedGroupMemberAccount, int, error) {
 	const op = "oidc.(Repository).SetManagedGroupMemberships"
 	if am == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.AuthMethod == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing auth method store")
 	}
 	if am.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	if am.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing auth method scope id")
 	}
 	if acct == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing account")
 	}
 	if acct.Account == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account store")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing account store")
 	}
 	if acct.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newMgPublicIds := make(map[string]bool, len(mgs))
 	mgsToUpdate := make([]*ManagedGroup, 0, len(mgs))
 	for _, mg := range mgs {
 		if mg.Version == 0 {
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
 		}
 		if newMgPublicIds[mg.PublicId] {
 			// We've already seen this -- could be a duplicate in the incoming
@@ -80,7 +80,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			// we need to write oplog entries for deletes and adds.
 			mgTicket, err := w.GetTicket(ticketMg)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket for oidc managed groups"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for oidc managed groups"))
 			}
 
 			msgs := make([]*oplog.Message, 0, len(mgs)+5)
@@ -100,17 +100,17 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				prevVersion := mgToUpdate.Version - 1
 				rowsUpdated, err := w.Update(ctx, mgToUpdate, []string{"Version"}, nil, db.NewOplogMsg(&mgOplogMsg), db.WithVersion(&prevVersion))
 				if err != nil {
-					return errors.Wrap(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
 				}
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
 			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
 			}
 
 			// Figure out which ones to delete and which ones we already have
@@ -136,7 +136,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			// also none to delete, we return at this point. Nothing will have
 			// changed and nothing will be changed either.
 			if len(mgs) == 0 && len(toDelete) == 0 {
-				return errors.New(errors.GracefullyAborted, op, "nothing to do")
+				return errors.New(ctx, errors.GracefullyAborted, op, "nothing to do")
 			}
 
 			// Start with deletion
@@ -145,10 +145,10 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				deleteOplogMsgs := make([]*oplog.Message, 0, len(toDelete))
 				rowsDeleted, err := w.DeleteItems(ctx, toDelete, db.NewOplogMsgs(&deleteOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete managed group member accounts"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete managed group member accounts"))
 				}
 				if rowsDeleted != len(toDelete) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group member accounts deleted %d did not match request for %d", rowsDeleted, len(toDelete)))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("managed group member accounts deleted %d did not match request for %d", rowsDeleted, len(toDelete)))
 				}
 				totalRowsAffected += rowsDeleted
 				msgs = append(msgs, deleteOplogMsgs...)
@@ -166,7 +166,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 					toAdd = append(toAdd, newMg)
 				}
 				if err := w.CreateItems(ctx, toAdd, db.NewOplogMsgs(&addOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add managed group member accounts"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add managed group member accounts"))
 				}
 				totalRowsAffected += len(toAdd)
 				msgs = append(msgs, addOplogMsgs...)
@@ -174,18 +174,18 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 
 			if len(msgs) > 0 {
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, mgTicket, metadata, msgs); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 
 			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
 			}
 			return nil
 		})
 	if err != nil && !errors.Match(errors.T(errors.GracefullyAborted), err) {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return currentMemberships, totalRowsAffected, nil
 }
@@ -195,7 +195,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, withAcctId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
 	const op = "oidc.(Repository).ListManagedGroupMembershipsByMember"
 	if withAcctId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -210,7 +210,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 	var mgs []*ManagedGroupMemberAccount
 	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return mgs, nil
 }
@@ -220,7 +220,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, withGroupId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
 	const op = "oidc.(Repository).ListManagedGroupMembershipsByGroup"
 	if withGroupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing managed group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing managed group id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -235,7 +235,7 @@ func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, wit
 	var mgs []*ManagedGroupMemberAccount
 	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []interface{}{withGroupId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return mgs, nil
 }

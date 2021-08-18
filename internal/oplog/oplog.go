@@ -62,7 +62,7 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 		entry.Metadata = storeMD
 	}
 	if err := entry.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &entry, nil
 }
@@ -70,19 +70,19 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 func (e *Entry) validate() error {
 	const op = "oplog.(Entry).validate"
 	if e.Cipherer == nil {
-		return errors.New(errors.InvalidParameter, op, "nil cipherer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil cipherer")
 	}
 	if e.Ticketer == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticketer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticketer")
 	}
 	if e.Entry == nil {
-		return errors.New(errors.InvalidParameter, op, "nil entry")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil entry")
 	}
 	if e.Entry.Version == "" {
-		return errors.New(errors.InvalidParameter, op, "missing entry version")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry version")
 	}
 	if e.Entry.AggregateName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing entry aggregate name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry aggregate name")
 	}
 	return nil
 }
@@ -91,10 +91,10 @@ func (e *Entry) validate() error {
 func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 	const op = "oplog.(Entry).UnmarshalData"
 	if types == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil type catalog")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil type catalog")
 	}
 	if len(e.Data) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing data")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing data")
 	}
 	msgs := []Message{}
 	queue := Queue{
@@ -107,11 +107,11 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error removing item from queue"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error removing item from queue"))
 		}
 		name, err := types.GetTypeName(m)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths, SetToNullPaths: nullPaths})
 	}
@@ -123,38 +123,38 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
-		return errors.New(errors.InvalidParameter, op, "nil writer")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if err := e.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticket")
 	}
 	if ticket.Version == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing ticket version")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
 	queue := Queue{}
 	for _, m := range msgs {
 		if m == nil {
-			return errors.New(errors.InvalidParameter, op, "nil message")
+			return errors.New(ctx, errors.InvalidParameter, op, "nil message")
 		}
 		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("error adding message to queue"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error adding message to queue"))
 		}
 	}
 	e.Data = append(e.Data, queue.Bytes()...)
 
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("error writing data to storage"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
 	if err := e.Ticketer.Redeem(ticket); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -164,24 +164,24 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
 	const op = "oplog.(Entry).Write"
 	if err := e.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticket")
 	}
 	if ticket.Version == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing ticket version")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("error writing data to storage"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
 	if err := e.Ticketer.Redeem(ticket); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -191,7 +191,7 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).EncryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -201,23 +201,23 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).DecryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
 
 // Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
 // calling Replay, otherwise you'll get "a table doesn't exist" error.
-func (e *Entry) Replay(_ context.Context, tx Writer, types *TypeCatalog, tableSuffix string) error {
+func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, tableSuffix string) error {
 	const op = "oplog.(Entry).Replay"
 	msgs, err := e.UnmarshalData(types)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	for _, m := range msgs {
 		em, ok := m.Message.(ReplayableMessage)
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m.Message))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m.Message))
 		}
 		origTableName := em.TableName()
 		defer em.SetTableName(origTableName)
@@ -236,7 +236,7 @@ func (e *Entry) Replay(_ context.Context, tx Writer, types *TypeCatalog, tableSu
 		replayTable := origTableName + tableSuffix
 		if !tx.hasTable(replayTable) {
 			if err := tx.createTableLike(origTableName, replayTable); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 
@@ -244,18 +244,18 @@ func (e *Entry) Replay(_ context.Context, tx Writer, types *TypeCatalog, tableSu
 		switch m.OpType {
 		case OpType_OP_TYPE_CREATE:
 			if err := tx.Create(m.Message); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_UPDATE:
 			if err := tx.Update(m.Message, m.FieldMaskPaths, m.SetToNullPaths); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_DELETE:
 			if err := tx.Delete(m.Message); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		default:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid operation %T", m.OpType))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid operation %T", m.OpType))
 		}
 	}
 	return nil

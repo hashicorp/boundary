@@ -9,12 +9,12 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	authmethodsservice "github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -88,7 +88,6 @@ func TestFetchActionSetForId(t *testing.T) {
 			req := require.New(t)
 			ctx := auth.NewVerifierContext(
 				context.Background(),
-				tc.Logger(),
 				iamRepoFn,
 				authTokenRepoFn,
 				serversRepoFn,

@@ -1,12 +1,14 @@
 package servers_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -179,4 +181,81 @@ func TestTagUpdatingListing(t *testing.T) {
 		Value:    "value22",
 	}
 	require.Equal(exp, tags)
+}
+
+func TestListServersWithLiveness(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	ctx := context.Background()
+
+	newServer := func(privateId string) *servers.Server {
+		result := &servers.Server{
+			PrivateId: privateId,
+			Type:      "worker",
+			Address:   "127.0.0.1",
+		}
+		_, rowsUpdated, err := serversRepo.UpsertServer(ctx, result)
+		require.NoError(err)
+		require.Equal(1, rowsUpdated)
+
+		return result
+	}
+
+	server1 := newServer("test1")
+	server2 := newServer("test2")
+	server3 := newServer("test3")
+
+	// Sleep the default liveness time (15sec currently) +1s
+	time.Sleep(time.Second * 16)
+
+	// Push an upsert to the first worker so that its status has been
+	// updated.
+	_, rowsUpdated, err := serversRepo.UpsertServer(ctx, server1)
+	require.NoError(err)
+	require.Equal(1, rowsUpdated)
+
+	requireIds := func(expected []string, actual []*servers.Server) {
+		require.Len(expected, len(actual))
+		want := make(map[string]struct{})
+		for _, v := range expected {
+			want[v] = struct{}{}
+		}
+
+		got := make(map[string]struct{})
+		for _, v := range actual {
+			got[v.PrivateId] = struct{}{}
+		}
+
+		require.Equal(want, got)
+	}
+
+	// Default liveness, should only list 1
+	result, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+	require.NoError(err)
+	require.Len(result, 1)
+	requireIds([]string{server1.PrivateId}, result)
+
+	// Upsert second server.
+	_, rowsUpdated, err = serversRepo.UpsertServer(ctx, server2)
+	require.NoError(err)
+	require.Equal(1, rowsUpdated)
+
+	// Static liveness. Should get two, so long as this did not take
+	// more than 5s to execute.
+	result, err = serversRepo.ListServers(ctx, servers.ServerTypeWorker, servers.WithLiveness(time.Second*5))
+	require.NoError(err)
+	require.Len(result, 2)
+	requireIds([]string{server1.PrivateId, server2.PrivateId}, result)
+
+	// Liveness disabled, should get all three servers.
+	result, err = serversRepo.ListServers(ctx, servers.ServerTypeWorker, servers.WithLiveness(-1))
+	require.NoError(err)
+	require.Len(result, 3)
+	requireIds([]string{server1.PrivateId, server2.PrivateId, server3.PrivateId}, result)
 }

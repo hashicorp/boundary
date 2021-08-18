@@ -188,7 +188,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, firstJob.PluginId)
 
 	// End first job with time between last and middle
-	_, err = repo.CompleteRun(context.Background(), run.PrivateId, -6*time.Hour)
+	_, err = repo.CompleteRun(context.Background(), run.PrivateId, -6*time.Hour, 0, 0)
 	require.NoError(err)
 
 	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
@@ -445,10 +445,14 @@ func TestRepository_CompleteRun(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "description", wrapper)
 
+	type args struct {
+		completed, total int
+	}
 	tests := []struct {
 		name        string
 		orig        *Run
 		nextRunIn   time.Duration
+		args        args
 		wantErr     bool
 		wantErrCode errors.Code
 		wantErrMsg  string
@@ -513,6 +517,18 @@ func TestRepository_CompleteRun(t *testing.T) {
 			},
 			nextRunIn: time.Hour,
 		},
+		{
+			name: "valid-with-progress",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobName:     job.Name,
+					JobPluginId: job.PluginId,
+					ServerId:    server.PrivateId,
+					Status:      Running.string(),
+				},
+			},
+			args: args{completed: 10, total: 20},
+		},
 	}
 
 	for _, tt := range tests {
@@ -531,7 +547,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.CompleteRun(context.Background(), privateId, tt.nextRunIn)
+			got, err := repo.CompleteRun(context.Background(), privateId, tt.nextRunIn, tt.args.completed, tt.args.total)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -549,6 +565,8 @@ func TestRepository_CompleteRun(t *testing.T) {
 			require.NotNil(got)
 			assert.NotEmpty(got.EndTime)
 			assert.Equal(Completed.string(), got.Status)
+			assert.Equal(tt.args.completed, int(got.CompletedCount))
+			assert.Equal(tt.args.total, int(got.TotalCount))
 
 			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobName)
 			assert.NoError(err)
@@ -573,7 +591,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CompleteRun(context.Background(), "fake-run-id", time.Hour)
+		got, err := repo.CompleteRun(context.Background(), "fake-run-id", time.Hour, 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -592,9 +610,13 @@ func TestRepository_FailRun(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "description", wrapper)
 
+	type args struct {
+		completed, total int
+	}
 	tests := []struct {
 		name        string
 		orig        *Run
+		args        args
 		wantErr     bool
 		wantErrCode errors.Code
 		wantErrMsg  string
@@ -658,6 +680,18 @@ func TestRepository_FailRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-progress",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobName:     job.Name,
+					JobPluginId: job.PluginId,
+					ServerId:    server.PrivateId,
+					Status:      Running.string(),
+				},
+			},
+			args: args{completed: 10, total: 20},
+		},
 	}
 
 	for _, tt := range tests {
@@ -676,7 +710,7 @@ func TestRepository_FailRun(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.FailRun(context.Background(), privateId)
+			got, err := repo.FailRun(context.Background(), privateId, tt.args.completed, tt.args.total)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -694,6 +728,8 @@ func TestRepository_FailRun(t *testing.T) {
 			require.NotNil(got)
 			assert.NotEmpty(got.EndTime)
 			assert.Equal(Failed.string(), got.Status)
+			assert.Equal(tt.args.completed, int(got.CompletedCount))
+			assert.Equal(tt.args.total, int(got.TotalCount))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
@@ -707,7 +743,7 @@ func TestRepository_FailRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.FailRun(context.Background(), "fake-run-id")
+		got, err := repo.FailRun(context.Background(), "fake-run-id", 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)

@@ -113,6 +113,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: JobAlreadyRunning,
 		},
 		{
+			name: "SubtypeAlreadyRegistered",
+			c:    SubtypeAlreadyRegistered,
+			want: SubtypeAlreadyRegistered,
+		},
+		{
 			name: "InvalidDynamicCredential",
 			c:    InvalidDynamicCredential,
 			want: InvalidDynamicCredential,

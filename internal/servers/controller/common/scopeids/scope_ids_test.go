@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
@@ -225,7 +225,6 @@ func TestListingScopeIds(t *testing.T) {
 			o, p := iam.TestScopes(t, iamRepo)
 			at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 			ctx := auth.NewVerifierContext(context.Background(),
-				nil,
 				iamRepoFn,
 				authTokenRepoFn,
 				serversRepoFn,

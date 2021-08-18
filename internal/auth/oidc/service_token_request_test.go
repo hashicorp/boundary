@@ -163,7 +163,7 @@ func Test_TokenRequest(t *testing.T) {
 			name: "atRepoFn-error",
 			kms:  kmsCache,
 			atRepoFn: func() (*authtoken.Repository, error) {
-				return nil, errors.New(errors.Unknown, "test op", "atRepoFn-error")
+				return nil, errors.New(ctx, errors.Unknown, "test op", "atRepoFn-error", errors.WithoutEvent())
 			},
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {

@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
+	requestauth "github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -54,6 +55,7 @@ var (
 )
 
 func TestNewService(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -62,7 +64,7 @@ func TestNewService(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	cases := []struct {
@@ -113,7 +115,7 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -134,7 +136,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:       pwA.GetUpdateTime().GetTimestamp(),
 		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:           1,
-		Type:              "password",
+		Type:              password.Subtype.String(),
 		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(pwA.GetLoginName())}},
 		AuthorizedActions: pwAuthorizedActions,
 	}
@@ -159,7 +161,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:  oidcA.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:      1,
-		Type:         auth.OidcSubtype.String(),
+		Type:         oidc.Subtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":  structpb.NewStringValue(oidcAm.GetIssuer()),
 			"subject": structpb.NewStringValue("test-subject"),
@@ -219,7 +221,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			if auth.SubtypeFromId(tc.req.Id) == auth.OidcSubtype {
+			if auth.SubtypeFromId(tc.req.Id) == oidc.Subtype {
 				// Set up managed groups before getting. First get the current
 				// managed group to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
@@ -230,7 +232,7 @@ func TestGet(t *testing.T) {
 				require.NoError(err)
 			}
 
-			got, gErr := s.GetAccount(auth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
+			got, gErr := s.GetAccount(requestauth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -243,6 +245,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestListPassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -251,7 +254,7 @@ func TestListPassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -348,7 +351,7 @@ func TestListPassword(t *testing.T) {
 			require.NoError(err, "Couldn't create new user service.")
 
 			// Test non-anon first
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -362,7 +365,7 @@ func TestListPassword(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -385,7 +388,7 @@ func TestListOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -412,7 +415,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         auth.OidcSubtype.String(),
+			Type:         oidc.Subtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"issuer":  structpb.NewStringValue(amSomeAccounts.GetIssuer()),
 				"subject": structpb.NewStringValue(subId),
@@ -432,7 +435,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         auth.OidcSubtype.String(),
+			Type:         oidc.Subtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"issuer":  structpb.NewStringValue(amOtherAccounts.GetIssuer()),
 				"subject": structpb.NewStringValue(subId),
@@ -497,7 +500,7 @@ func TestListOidc(t *testing.T) {
 			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -515,7 +518,7 @@ func TestListOidc(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -538,7 +541,7 @@ func TestDelete(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -613,7 +616,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -624,6 +627,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -633,7 +637,7 @@ func TestDelete_twice(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -648,14 +652,15 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr := s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
+	_, gErr = s.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 }
 
 func TestCreatePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -664,7 +669,7 @@ func TestCreatePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -830,7 +835,7 @@ func TestCreatePassword(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -866,7 +871,7 @@ func TestCreateOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -906,7 +911,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr("valid-account"),
 				},
 			},
@@ -918,7 +923,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr("valid-account")
 						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
@@ -942,7 +947,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr("no type defined")
 						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
@@ -958,7 +963,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr("overwritten-issuer")
 						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
@@ -973,7 +978,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr("overwritten-issuer")
 						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
@@ -988,7 +993,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         auth.PasswordSubtype.String(),
+					Type:         password.Subtype.String(),
 					Attributes:   createAttr("cant-specify-mismatching-type"),
 				},
 			},
@@ -1001,7 +1006,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Id:           oidc.AccountPrefix + "_notallowed",
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr("cant-specify-id"),
 				},
 			},
@@ -1014,7 +1019,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr("cant-specify-created-time"),
 				},
 			},
@@ -1027,7 +1032,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr("cant-specify-update-time"),
 				},
 			},
@@ -1039,7 +1044,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 				},
 			},
 			res: nil,
@@ -1049,7 +1054,7 @@ func TestCreateOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1070,6 +1075,7 @@ func TestCreateOidc(t *testing.T) {
 }
 
 func TestUpdatePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1078,7 +1084,7 @@ func TestUpdatePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -1099,7 +1105,7 @@ func TestUpdatePassword(t *testing.T) {
 
 	freshAccount := func(t *testing.T) (*pb.Account, func()) {
 		t.Helper()
-		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+		acc, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			&pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
@@ -1113,7 +1119,7 @@ func TestUpdatePassword(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -1417,7 +1423,7 @@ func TestUpdatePassword(t *testing.T) {
 				tc.res.Item.CreatedTime = acc.GetCreatedTime()
 			}
 
-			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1459,7 +1465,7 @@ func TestUpdateOidc(t *testing.T) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -1494,7 +1500,7 @@ func TestUpdateOidc(t *testing.T) {
 		acc := oidc.TestAccount(t, conn, am, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAccountRequest{Id: acc.GetPublicId()})
 			require.NoError(t, err)
 		}
@@ -1517,7 +1523,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1525,7 +1531,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1541,7 +1547,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1549,7 +1555,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1619,7 +1625,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1643,7 +1649,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1667,7 +1673,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1800,7 +1806,7 @@ func TestUpdateOidc(t *testing.T) {
 				tc.res.Item.CreatedTime = acc.GetCreateTime().GetTimestamp()
 			}
 
-			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1833,6 +1839,7 @@ func TestUpdateOidc(t *testing.T) {
 }
 
 func TestSetPassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1841,7 +1848,7 @@ func TestSetPassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -1861,7 +1868,7 @@ func TestSetPassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -1901,7 +1908,7 @@ func TestSetPassword(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			acct := createAccount(t, tt.oldPw)
 
-			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       acct.GetId(),
 				Version:  acct.GetVersion(),
 				Password: tt.newPw,
@@ -1959,7 +1966,7 @@ func TestSetPassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       tt.accountId,
 				Version:  tt.version,
 				Password: tt.password,
@@ -1971,6 +1978,7 @@ func TestSetPassword(t *testing.T) {
 }
 
 func TestChangePassword(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -1979,7 +1987,7 @@ func TestChangePassword(t *testing.T) {
 		return password.NewRepository(rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -1999,7 +2007,7 @@ func TestChangePassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -2016,7 +2024,7 @@ func TestChangePassword(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "originalpassword",
@@ -2035,7 +2043,7 @@ func TestChangePassword(t *testing.T) {
 		assert := assert.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "thewrongpassword",
@@ -2132,7 +2140,7 @@ func TestChangePassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
+			changeResp, err := tested.ChangePassword(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 				Id:              tt.accountId,
 				Version:         tt.version,
 				CurrentPassword: tt.oldPW,

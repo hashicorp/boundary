@@ -1,30 +1,29 @@
 package auth
 
 import (
-	"strings"
-
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
-type Subtype int
+var registry = subtypes.NewRegistry()
 
-const (
-	UnknownSubtype Subtype = iota
-	PasswordSubtype
-	OidcSubtype
-)
+// SubtypeFromType returns the Subtype from the provided string or if
+// no Subtype was registered with that string Unknown is returned.
+func SubtypeFromType(t string) subtypes.Subtype {
+	return registry.SubtypeFromType(t)
+}
 
-func (t Subtype) String() string {
-	switch t {
-	case PasswordSubtype:
-		return "password"
-	case OidcSubtype:
-		return "oidc"
-	}
-	return "unknown"
+// SubtypeFromId returns the Subtype from the provided id if the id's prefix
+// was registered with a Subtype. Otherwise Unknown is returned.
+func SubtypeFromId(id string) subtypes.Subtype {
+	return registry.SubtypeFromId(id)
+}
+
+// Register registers all the prefixes for a provided Subtype. Register returns
+// an error if the subtype has already been registered or if any of the
+// prefixes are associated with another subtype.
+func Register(subtype subtypes.Subtype, prefixes ...string) error {
+	return registry.Register(subtype, prefixes...)
 }
 
 // AuthMethod contains the common methods across all the different types of auth methods.
@@ -39,11 +38,6 @@ type AuthMethod interface {
 	GetIsPrimaryAuthMethod() bool
 }
 
-var (
-	_ AuthMethod = (*oidc.AuthMethod)(nil)
-	_ AuthMethod = (*password.AuthMethod)(nil)
-)
-
 type Account interface {
 	GetPublicId() string
 	GetCreateTime() *timestamp.Timestamp
@@ -54,11 +48,6 @@ type Account interface {
 	GetVersion() uint32
 }
 
-var (
-	_ Account = (*oidc.Account)(nil)
-	_ Account = (*password.Account)(nil)
-)
-
 type ManagedGroup interface {
 	GetPublicId() string
 	GetCreateTime() *timestamp.Timestamp
@@ -67,35 +56,4 @@ type ManagedGroup interface {
 	GetDescription() string
 	GetAuthMethodId() string
 	GetVersion() uint32
-}
-
-var _ ManagedGroup = (*oidc.ManagedGroup)(nil)
-
-// SubtypeFromType converts a string to a Subtype.
-// returns UnknownSubtype if no Subtype with that name is found.
-func SubtypeFromType(t string) Subtype {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), PasswordSubtype.String()):
-		return PasswordSubtype
-	case strings.EqualFold(strings.TrimSpace(t), OidcSubtype.String()):
-		return OidcSubtype
-	}
-	return UnknownSubtype
-}
-
-// SubtypeFromId takes any public id in the auth subsystem and uses the prefix to determine
-// what subtype the id is for.
-// Returns UnknownSubtype if no Subtype with this id's prefix is found.
-func SubtypeFromId(id string) Subtype {
-	switch {
-	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), intglobals.OldPasswordAccountPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), intglobals.NewPasswordAccountPrefix):
-		return PasswordSubtype
-	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), intglobals.OidcManagedGroupPrefix):
-		return OidcSubtype
-	}
-	return UnknownSubtype
 }

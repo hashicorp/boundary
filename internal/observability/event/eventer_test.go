@@ -2,12 +2,18 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,48 +27,84 @@ func Test_InitSysEventer(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	testEventer, err := NewEventer(testLogger, testLock, testConfig.EventerConfig)
+	testEventer, err := NewEventer(testLogger, testLock, "Test_InitSysEventer", testConfig.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		log       hclog.Logger
-		lock      *sync.Mutex
-		opt       []Option
-		want      *Eventer
-		wantErrIs error
+		name       string
+		log        hclog.Logger
+		lock       *sync.Mutex
+		serverName string
+		opt        []Option
+		want       *Eventer
+		wantErrIs  error
 	}{
 		{
-			name:      "missing-both-eventer-and-config",
-			wantErrIs: ErrInvalidParameter,
+			name:       "missing-both-eventer-and-config",
+			serverName: "missing-both-eventer-and-config",
+			wantErrIs:  ErrInvalidParameter,
 		},
 		{
-			name:      "missing-hclog",
+			name:       "missing-hclog",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			lock:       testLock,
+			serverName: "missing-hclog",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "missing-lock",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:        testLogger,
+			serverName: "missing-lock",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:      "missing-serverName",
 			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:       testLogger,
 			lock:      testLock,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:      "missing-lock",
-			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
-			log:       testLogger,
-			wantErrIs: ErrInvalidParameter,
+			name:       "missing-eventer-and-config",
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
 		},
 		{
-			name: "success-with-config",
-			opt:  []Option{WithEventerConfig(&testConfig.EventerConfig)},
-			log:  testLogger,
-			lock: testLock,
+			name:       "both-eventer-and-config",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig), WithEventer(testEventer)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "bad-config",
+			opt:        []Option{WithEventerConfig(&EventerConfig{Sinks: []SinkConfig{{Format: "bad-format"}}})},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "success-with-config",
+			opt:        []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testConfig.EventerConfig,
 			},
 		},
 		{
-			name: "success-with-default-config",
-			opt:  []Option{WithEventerConfig(&EventerConfig{})},
-			log:  testLogger,
-			lock: testLock,
+			name:       "success-with-default-config",
+			opt:        []Option{WithEventerConfig(&EventerConfig{})},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-default-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
@@ -71,18 +113,19 @@ func Test_InitSysEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StderrSink,
+							Type:       StderrSink,
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "success-with-eventer",
-			opt:  []Option{WithEventer(testEventer)},
-			log:  testLogger,
-			lock: testLock,
-			want: testEventer,
+			name:       "success-with-eventer",
+			opt:        []Option{WithEventer(testEventer)},
+			log:        testLogger,
+			lock:       testLock,
+			serverName: "success-with-eventer",
+			want:       testEventer,
 		},
 	}
 	for _, tt := range tests {
@@ -90,7 +133,7 @@ func Test_InitSysEventer(t *testing.T) {
 			defer TestResetSystEventer(t)
 
 			assert, require := assert.New(t), require.New(t)
-			err := InitSysEventer(tt.log, tt.lock, tt.opt...)
+			err := InitSysEventer(tt.log, tt.lock, tt.serverName, tt.opt...)
 			got := SysEventer()
 			if tt.wantErrIs != nil {
 				require.Nil(got)
@@ -118,7 +161,7 @@ func TestEventer_writeObservation(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeObservation", testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testHeader := map[string]interface{}{"name": "header"}
@@ -176,7 +219,7 @@ func TestEventer_writeObservation(t *testing.T) {
 			Name:  "test",
 		})
 		// with no defined config, it will default to a stderr sink
-		e, err := NewEventer(testLogger, testLock, c)
+		e, err := NewEventer(testLogger, testLock, "e2e-test", c)
 		require.NoError(err)
 
 		m := map[string]interface{}{
@@ -199,7 +242,7 @@ func TestEventer_writeAudit(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
-	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeAudit", testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testAudit, err := newAudit(
@@ -259,7 +302,7 @@ func TestEventer_writeError(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
-	eventer, er := NewEventer(testLogger, testLock, testSetup.EventerConfig)
+	eventer, er := NewEventer(testLogger, testLock, "TestEventer_writeError", testSetup.EventerConfig)
 	require.NoError(t, er)
 
 	testError, er := newError("TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
@@ -311,6 +354,8 @@ func Test_NewEventer(t *testing.T) {
 
 	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t), testWithSysSink(t))
 
+	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", testWithSinkFormat(t, TextHclogSinkFormat))
+
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
@@ -323,6 +368,7 @@ func Test_NewEventer(t *testing.T) {
 		opts           []Option
 		logger         hclog.Logger
 		lock           *sync.Mutex
+		serverName     string
 		want           *Eventer
 		wantRegistered []string
 		wantPipelines  []string
@@ -330,22 +376,55 @@ func Test_NewEventer(t *testing.T) {
 		wantErrIs      error
 	}{
 		{
-			name:      "missing-logger",
+			name:       "missing-logger",
+			config:     testSetup.EventerConfig,
+			lock:       testLock,
+			serverName: "missing-logger",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:       "missing-lock",
+			config:     testSetup.EventerConfig,
+			logger:     testLogger,
+			serverName: "missing-lock",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
+			name:      "missing-server-name",
 			config:    testSetup.EventerConfig,
+			logger:    testLogger,
 			lock:      testLock,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:      "missing-lock",
-			config:    testSetup.EventerConfig,
-			logger:    testLogger,
-			wantErrIs: ErrInvalidParameter,
+			name: "dup-sink-filename",
+			config: func() EventerConfig {
+				dupFileConfig := TestEventerConfig(t, "dup-sink-filename")
+				dupFileConfig.EventerConfig.Sinks = append(dupFileConfig.EventerConfig.Sinks,
+					SinkConfig{
+						Name:       "err-file-sink",
+						Type:       FileSink,
+						EventTypes: []Type{ErrorType},
+						Format:     JSONSinkFormat,
+						FileConfig: &FileSinkTypeConfig{
+							Path:     "./",
+							FileName: dupFileConfig.ErrorEvents.Name(),
+						},
+					},
+				)
+				return dupFileConfig.EventerConfig
+			}(),
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "dup-sink-filename",
+			wantErrIs:  ErrInvalidParameter,
 		},
 		{
-			name:   "success-with-default-config",
-			config: EventerConfig{},
-			logger: testLogger,
-			lock:   testLock,
+			name:       "success-with-default-config",
+			config:     EventerConfig{},
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "success-with-default-config",
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
@@ -354,13 +433,13 @@ func Test_NewEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StderrSink,
+							Type:       StderrSink,
 						},
 					},
 				},
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // fmt for everything
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
@@ -372,26 +451,32 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 1,
+				"error":       1,
+				"system":      1,
+				"observation": 1,
+				"audit":       1,
 			},
 		},
 		{
-			name:   "testSetup",
-			config: testSetup.EventerConfig,
-			logger: testLogger,
-			lock:   testLock,
+			name:       "testSetup",
+			config:     testSetup.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testSetup.EventerConfig,
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // stderr
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
 			},
 			wantPipelines: []string{
@@ -406,31 +491,40 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 3,
+				"error":       3,
+				"system":      2,
+				"observation": 2,
+				"audit":       2,
 			},
 		},
 		{
-			name:   "testSetup-with-all-opts",
-			config: testSetupWithOpts.EventerConfig,
-			logger: testLogger,
-			lock:   testLock,
+			name:       "testSetup-with-all-opts",
+			config:     testSetupWithOpts.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup-with-all-opts",
 			want: &Eventer{
 				logger: testLogger,
 				conf:   testSetupWithOpts.EventerConfig,
 			},
 			wantRegistered: []string{
-				"json",              // fmt for everything
+				"cloudevents",       // stderr
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
+				"cloudevents",       // observation-file-sink
 				"gated-observation", // observation-file-sink
 				"tmp-observation",   // observations-file-sink
+				"cloudevents",       // audit-file-sink
 				"gated-audit",       // audit-file-sink
 				"tmp-audit",         // audit-file-sink
+				"cloudevents",       // sys-file-sink
 				"tmp-sysevents",     // sys-file-sink
 			},
 			wantPipelines: []string{
@@ -448,7 +542,50 @@ func Test_NewEventer(t *testing.T) {
 				"system",      // sys-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error": 3,
+				"error":       3,
+				"system":      3,
+				"observation": 3,
+				"audit":       3,
+			},
+		},
+		{
+			name:       "testSetup-with-hclog",
+			config:     testHclogSetup.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup",
+			want: &Eventer{
+				logger: testLogger,
+				conf:   testHclogSetup.EventerConfig,
+			},
+			wantRegistered: []string{
+				"hclog-text",        // stderr
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
+				"hclog-text",        // every-type-file-sync
+				"tmp-all-events",    // every-type-file-sync
+				"gated-observation", // every-type-file-sync
+				"gated-audit",       // every-type-file-sync
+				"hclog-text",        // error-file-sink
+				"tmp-errors",        // error-file-sink
+			},
+			wantPipelines: []string{
+				"audit",       // every-type-file-sync
+				"audit",       // stderr
+				"observation", // every-type-file-sync
+				"observation", // stderr
+				"error",       // every-type-file-sync
+				"error",       // stderr
+				"error",       // error-file-sink
+				"system",      // stderr
+				"system",      // stderr
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"error":       3,
+				"system":      2,
+				"observation": 2,
+				"audit":       2,
 			},
 		},
 	}
@@ -457,7 +594,7 @@ func Test_NewEventer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
-			got, err := NewEventer(tt.logger, tt.lock, tt.config, TestWithBroker(t, testBroker))
+			got, err := NewEventer(tt.logger, tt.lock, tt.serverName, tt.config, TestWithBroker(t, testBroker))
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)
@@ -548,7 +685,7 @@ func TestEventer_Reopen(t *testing.T) {
 			Name:  "test",
 		})
 
-		e, err := NewEventer(testLogger, testLock, EventerConfig{})
+		e, err := NewEventer(testLogger, testLock, "TestEventer_Reopen", EventerConfig{})
 		require.NoError(err)
 
 		e.broker = nil
@@ -570,7 +707,7 @@ func TestEventer_FlushNodes(t *testing.T) {
 			Name:  "test",
 		})
 
-		e, err := NewEventer(testLogger, testLock, EventerConfig{})
+		e, err := NewEventer(testLogger, testLock, "TestEventer_FlushNodes", EventerConfig{})
 		require.NoError(err)
 
 		node := &testFlushNode{}
@@ -594,4 +731,348 @@ func (t *testFlushNode) FlushAll(_ context.Context) error {
 		return fmt.Errorf("%s: test error: flush-all", ErrInvalidParameter)
 	}
 	return nil
+}
+
+func Test_StandardLogger(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	testCtx := context.Background()
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	tests := []struct {
+		name            string
+		eventer         *Eventer
+		ctx             context.Context
+		eventType       Type
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+		wantLogger      *log.Logger
+	}{
+		{
+			name:            "missing-eventer",
+			ctx:             testCtx,
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "nil eventer",
+		},
+		{
+			name:            "missing-ctx",
+			eventer:         SysEventer(),
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing type",
+		},
+		{
+			name:            "invalid-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			eventType:       "invalid",
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "'invalid' is not a valid event type",
+		},
+		{
+			name:      "okay",
+			ctx:       testCtx,
+			eventer:   SysEventer(),
+			eventType: ErrorType,
+			wantLogger: func() *log.Logger {
+				w, err := SysEventer().StandardWriter(testCtx, ErrorType)
+				require.NoError(t, err)
+				return log.New(w, "okay", 0)
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			e := SysEventer()
+			require.NotNil(e)
+			l, err := tt.eventer.StandardLogger(tt.ctx, tt.name, tt.eventType)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(l)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(l)
+			assert.Equal(tt.wantLogger, l)
+		})
+	}
+}
+
+func Test_StandardWriter(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	testCtx, err := NewEventerContext(context.Background(), SysEventer())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		eventer         *Eventer
+		ctx             context.Context
+		eventType       Type
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+		wantWriter      io.Writer
+	}{
+		{
+			name:            "missing-eventer",
+			ctx:             testCtx,
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "nil eventer",
+		},
+		{
+			name:            "missing-ctx",
+			eventer:         SysEventer(),
+			eventType:       ErrorType,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing type",
+		},
+		{
+			name:            "invalid-type",
+			ctx:             testCtx,
+			eventer:         SysEventer(),
+			eventType:       "invalid",
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "'invalid' is not a valid event type",
+		},
+		{
+			name:      "okay",
+			ctx:       context.Background(),
+			eventer:   SysEventer(),
+			eventType: ErrorType,
+			wantWriter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  ErrorType,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			e := SysEventer()
+			require.NotNil(e)
+			l, err := tt.eventer.StandardWriter(tt.ctx, tt.eventType)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(l)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(l)
+			assert.Equal(tt.wantWriter, l)
+		})
+	}
+}
+
+func Test_logAdapter_Write(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	c := TestEventerConfig(t, "Test_StandardLogger")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
+
+	testCtx, err := NewEventerContext(context.Background(), SysEventer())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		adapter         *logAdapter
+		data            []byte
+		wantErr         bool
+		wantIsError     error
+		wantErrContains string
+		wantErrorEvent  string
+		wantSystemEvent string
+	}{
+		{
+			name:            "nil-adapter",
+			data:            []byte("nil-adapter"),
+			wantErr:         true,
+			wantIsError:     ErrInvalidParameter,
+			wantErrContains: "nil log adapter",
+		},
+		{
+			name: "emit-sys-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  SystemType,
+			},
+			data:            []byte("emit-sys-event"),
+			wantSystemEvent: "emit-sys-event",
+		},
+		{
+			name: "pick-type-DEBUG",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[DEBUG] pick-type-DEBUG"),
+			wantSystemEvent: "pick-type-DEBUG",
+		},
+		{
+			name: "pick-type-TRACE",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[TRACE] pick-type-TRACE"),
+			wantSystemEvent: "pick-type-TRACE",
+		},
+		{
+			name: "pick-type-INFO",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[INFO] pick-type-INFO"),
+			wantSystemEvent: "pick-type-INFO",
+		},
+		{
+			name: "pick-type-WARN",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:            []byte("[WARN] pick-type-WARN"),
+			wantSystemEvent: "pick-type-WARN",
+		},
+		{
+			name: "emit-error-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  ErrorType,
+			},
+			data:           []byte("emit-error-event"),
+			wantErrorEvent: "emit-error-event",
+		},
+		{
+			name: "pick-type-ERR",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:           []byte("[ERR] pick-type-ERR"),
+			wantErrorEvent: "pick-type-ERR",
+		},
+		{
+			name: "pick-type-ERROR",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+			},
+			data:           []byte("[ERROR] pick-type-ERROR"),
+			wantErrorEvent: "pick-type-ERROR",
+		},
+		{
+			name: "emit-every-type-event",
+			adapter: &logAdapter{
+				ctxWithEventer: testCtx,
+				e:              SysEventer(),
+				emitEventType:  EveryType,
+			},
+			data:            []byte("emit-every-type-event"),
+			wantSystemEvent: "emit-every-type-event",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			i, err := tt.adapter.Write(tt.data)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Zero(i)
+				if tt.wantIsError != nil {
+					assert.ErrorIs(err, tt.wantIsError)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(len(tt.data), i)
+
+			sinkFileName := c.AllEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotEvent := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotEvent)
+			require.NoErrorf(err, "json: %s", string(b))
+
+			if tt.wantErrorEvent != "" {
+				gotData := gotEvent.Data.(map[string]interface{})
+				t.Log(tt.name, gotData)
+				assert.Equal(tt.wantErrorEvent, gotData["error"])
+			}
+			if tt.wantSystemEvent != "" {
+				gotData := gotEvent.Data.(map[string]interface{})["data"].(map[string]interface{})
+				t.Log(tt.name, gotData)
+				assert.Equal(tt.wantSystemEvent, gotData["msg"])
+			}
+		})
+	}
 }

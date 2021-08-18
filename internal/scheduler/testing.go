@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
@@ -47,7 +46,7 @@ func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ..
 		return job.NewRepository(rw, rw, kmsCache)
 	}
 
-	s, err := New(controller.PrivateId, jobRepoFn, hclog.L(), opt...)
+	s, err := New(controller.PrivateId, jobRepoFn, opt...)
 	require.NoError(t, err)
 
 	return s

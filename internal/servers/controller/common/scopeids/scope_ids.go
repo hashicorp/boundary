@@ -3,11 +3,11 @@ package scopeids
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -45,13 +45,13 @@ func GetListingScopeIds(
 	// Validation
 	switch {
 	case typ == resource.Unknown:
-		return nil, nil, errors.New(errors.InvalidParameter, op, "unknown resource")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unknown resource")
 	case repoFn == nil:
-		return nil, nil, errors.New(errors.InvalidParameter, op, "nil iam repo")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil iam repo")
 	case rootScopeId == "":
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing root scope id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing root scope id")
 	case authResults.Scope == nil:
-		return nil, nil, errors.New(errors.InvalidParameter, op, "nil scope in auth results")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil scope in auth results")
 	}
 
 	// Base case: if not recursive, return the scope we were given and the
@@ -103,7 +103,7 @@ func GetListingScopeIds(
 			}
 		case 1:
 			if aSet[0] != action.List {
-				return nil, nil, errors.New(errors.Internal, op, "unexpected action in set")
+				return nil, nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}
 			if scopeInfoMap[scpId] == nil {
 				scopeInfo := &scopes.ScopeInfo{
@@ -119,7 +119,7 @@ func GetListingScopeIds(
 				globalHasList = true
 			}
 		default:
-			return nil, nil, errors.New(errors.Internal, op, "unexpected number of actions back in set")
+			return nil, nil, errors.New(ctx, errors.Internal, op, "unexpected number of actions back in set")
 		}
 	}
 

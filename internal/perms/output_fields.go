@@ -75,6 +75,7 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 			globals.DescriptionField:                 true,
 			globals.TypeField:                        true,
 			globals.IsPrimaryField:                   true,
+			globals.PrimaryAuthMethodIdField:         true,
 			globals.AuthorizedActionsField:           true,
 			globals.AuthorizedCollectionActionsField: true,
 		}

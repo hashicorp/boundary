@@ -27,12 +27,12 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
-	tpCert, err := ParseCertificates(tp.CACert())
+	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(tpCert))
 
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	tests := []struct {

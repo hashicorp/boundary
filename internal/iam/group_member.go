@@ -73,10 +73,10 @@ var (
 func NewGroupMemberUser(groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
 	const op = "iam.NewGroupMemberUser"
 	if groupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if userId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
@@ -104,10 +104,10 @@ func (m *GroupMemberUser) Clone() interface{} {
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GroupMemberUser).VetForWrite"
 	if m.GroupId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing group id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	if m.MemberId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing member id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing member id")
 	}
 	return nil
 }

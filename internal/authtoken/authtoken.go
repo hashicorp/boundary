@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,7 +74,7 @@ func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	at.KeyId = cipher.KeyID()
 	return nil
@@ -85,7 +85,7 @@ func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func NewAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -113,7 +113,7 @@ func newAuthToken(opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Io))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
 	}
 	opts := getOpts(opt...)
 
@@ -139,22 +139,22 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to get wrapper"))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
 	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -46,7 +46,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "missing oidc attributes",
 			item: &pb.ManagedGroup{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
@@ -55,7 +55,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "bad oidc attributes",
 			item: &pb.ManagedGroup{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"filter": structpb.NewStringValue("foobar"),
@@ -66,7 +66,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "no oidc errors",
 			item: &pb.ManagedGroup{
-				Type:         auth.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"filter": structpb.NewStringValue(`"/foo/bar" == "zipzap"`),
@@ -101,7 +101,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateManagedGroupRequest{
 				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
-					Type: auth.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),

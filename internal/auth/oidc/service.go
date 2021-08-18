@@ -59,46 +59,46 @@ type validator interface {
 func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMethod, m proto.Message) (encodedEncryptedState string, e error) {
 	const op = "oidc.encryptMessage"
 	if wrapper == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
 	}
 	if wrapper.KeyID() == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing wrapper key id")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing wrapper key id")
 	}
 	if am == nil || am.AuthMethod == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.ScopeId == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing auth method scope id")
 	}
 	if am.PublicId == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method public id")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing auth method public id")
 	}
 	if m == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing message to encrypt")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing message to encrypt")
 	}
 	switch v := m.(type) {
 	case *request.State, *request.Token:
 	default:
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported message type %v for encryption", v))
+		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported message type %v for encryption", v))
 	}
 
 	v, ok := m.(validator)
 	if ok {
 		if err := v.Validate(); err != nil {
-			return "", errors.Wrap(err, op)
+			return "", errors.Wrap(ctx, err, op)
 		}
 	}
 	marshaled, err := proto.Marshal(m)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
 	}
 	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
 	if err != nil {
-		return "", errors.New(errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
+		return "", errors.New(ctx, errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
 	}
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal blob"), errors.WithCode(errors.Encode))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal blob"), errors.WithCode(errors.Encode))
 	}
 	wrapped := &request.Wrapper{
 		AuthMethodId: am.PublicId,
@@ -106,12 +106,12 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 		WrapperKeyId: wrapper.KeyID(),
 		Ct:           marshaledBlob,
 	}
-	if err := wrapped.Validate(); err != nil {
-		return "", errors.Wrap(err, op)
+	if err := wrapped.Validate(ctx); err != nil {
+		return "", errors.Wrap(ctx, err, op)
 	}
 	marshaledEncryptedSt, err := proto.Marshal(wrapped)
 	if err != nil {
-		return "", errors.New(errors.Unknown, op, "unable to marshal encrypted message", errors.WithWrap(err))
+		return "", errors.New(ctx, errors.Unknown, op, "unable to marshal encrypted message", errors.WithWrap(err))
 	}
 
 	return base58.FastBase58Encoding(marshaledEncryptedSt), nil
@@ -122,19 +122,19 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrappedRequest *request.Wrapper) (messageBytes []byte, e error) {
 	const op = "oidc.decryptMessage"
 	if wrappedRequest == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapped request")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapped request")
 	}
 	if wrappingWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapping wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapping wrapper")
 	}
 	var blobInfo wrapping.EncryptedBlobInfo
 	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
-		return nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
 	}
 
 	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
 	if err != nil {
-		return nil, errors.New(errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
 	return decryptedMsg, nil
 }
@@ -144,11 +144,11 @@ func UnwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrap
 	const op = ""
 	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
 	if err != nil {
-		return nil, errors.New(errors.Unknown, op, "unable to decode message", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.Unknown, op, "unable to decode message", errors.WithWrap(err))
 	}
 	var wrapper request.Wrapper
 	if err := proto.Unmarshal(decoded, &wrapper); err != nil {
-		return nil, errors.New(errors.Unknown, op, "unable to marshal encoded/encrypted message", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.Unknown, op, "unable to marshal encoded/encrypted message", errors.WithWrap(err))
 	}
 	return &wrapper, nil
 }
@@ -166,19 +166,19 @@ func UnwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrap
 func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
 	const op = "oidc.(Repository).oidcWrapper"
 	if k == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := getOpts(opt...)
 	// get a specific oidcWrapper using the WithKeyId(...) option
 	oidcWrapper, err := k.GetWrapper(ctx, scopeId, kms.KeyPurposeOidc, kms.WithKeyId(opts.withKeyId))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oidc wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oidc wrapper"))
 	}
 
 	// What derived key are we looking for?
@@ -191,20 +191,20 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
 	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	privKey, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return nil, errors.New(errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
+		return nil, errors.New(ctx, errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
 	}
 	wrapper := aead.NewWrapper(nil)
 	if _, err := wrapper.SetConfig(map[string]string{
 		"key_id": keyId,
 	}); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
 	}
 	if err := wrapper.SetAESGCMKeyBytes(privKey); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
 	}
 	// store the derived key in our cache
 	k.GetDerivedPurposeCache().Store(keyId, wrapper)

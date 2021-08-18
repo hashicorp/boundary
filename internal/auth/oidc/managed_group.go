@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -20,7 +22,7 @@ type ManagedGroup struct {
 
 // NewManagedGroup creates a new in memory ManagedGroup assigned to OIDC
 // AuthMethod. Supported options are withName and withDescription.
-func NewManagedGroup(authMethodId string, filter string, opt ...Option) (*ManagedGroup, error) {
+func NewManagedGroup(ctx context.Context, authMethodId string, filter string, opt ...Option) (*ManagedGroup, error) {
 	const op = "oidc.NewManagedGroup"
 	opts := getOpts(opt...)
 	mg := &ManagedGroup{
@@ -31,7 +33,7 @@ func NewManagedGroup(authMethodId string, filter string, opt ...Option) (*Manage
 			Filter:       filter,
 		},
 	}
-	if err := mg.validate(op); err != nil {
+	if err := mg.validate(ctx, op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
 
@@ -39,15 +41,15 @@ func NewManagedGroup(authMethodId string, filter string, opt ...Option) (*Manage
 }
 
 // validate the Managed Group.  On success, it will return nil.
-func (mg *ManagedGroup) validate(caller errors.Op) error {
+func (mg *ManagedGroup) validate(ctx context.Context, caller errors.Op) error {
 	if mg.AuthMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing auth method id")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing auth method id")
 	}
 	if mg.Filter == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing filter")
+		return errors.New(ctx, errors.InvalidParameter, caller, "missing filter")
 	}
 	if _, err := bexpr.CreateEvaluator(mg.Filter); err != nil {
-		return errors.New(errors.InvalidParameter, caller, "error evaluating filter expression", errors.WithWrap(err))
+		return errors.New(ctx, errors.InvalidParameter, caller, "error evaluating filter expression", errors.WithWrap(err))
 	}
 
 	return nil

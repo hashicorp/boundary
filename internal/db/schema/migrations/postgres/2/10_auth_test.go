@@ -24,11 +24,11 @@ func Test_AuthMethodSubtypes(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	iamRepo := iam.TestRepo(t, conn, rootWrapper)
 	org, _ := iam.TestScopes(t, iamRepo)
-	oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
+	oidcRepo, err := oidc.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
 	// test oidc subtype insert
-	oidcAm, err := oidc.NewAuthMethod(org.PublicId, "alice-rp", "fido", oidc.WithName("alice"))
+	oidcAm, err := oidc.NewAuthMethod(ctx, org.PublicId, "alice-rp", "fido", oidc.WithName("alice"))
 	require.NoError(err)
 	oidcAm, err = oidcRepo.CreateAuthMethod(ctx, oidcAm)
 	require.NoError(err)

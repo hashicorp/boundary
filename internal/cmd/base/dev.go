@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -14,12 +15,14 @@ import (
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
 )
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
+	const op = "base.(Server).CreateDevDatabase"
 	var container, url, dialect string
 	var err error
 	var c func() error
@@ -29,7 +32,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
 	case "":
-		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
+		event.WriteError(ctx, op, err, event.WithInfoMsg("unsupported dialect", "wanted", "postgres", "got", opts.withDialect))
 	default:
 		dialect = opts.withDialect
 	}
@@ -43,7 +46,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 			if !opts.withSkipDatabaseDestruction {
 				if c != nil {
 					if err := c(); err != nil {
-						b.Logger.Error("error cleaning up docker container", "error", err)
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error cleaning up docker container"))
 					}
 				}
 			}
@@ -260,10 +263,6 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 
 	// Create the subject information and testing provider
 	{
-		logger, err := capoidc.NewTestingLogger(b.Logger.Named("dev-oidc"))
-		if err != nil {
-			return fmt.Errorf("unable to create logger: %w", err)
-		}
 
 		subInfo := map[string]*capoidc.TestSubject{
 			b.DevLoginName: {
@@ -287,7 +286,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		clientSecret := string(b.DevOidcSetup.clientSecret)
 
 		b.DevOidcSetup.testProvider = capoidc.StartTestProvider(
-			logger,
+			&oidcLogger{},
 			capoidc.WithNoTLS(),
 			capoidc.WithTestHost(b.DevOidcSetup.hostAddr),
 			capoidc.WithTestPort(b.DevOidcSetup.oidcPort),
@@ -330,7 +329,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -346,12 +345,13 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	}
 
 	// Create the auth method
-	oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
+	oidcRepo, err := oidc.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating oidc repo: %w", err)
 	}
 
 	authMethod, err := oidc.NewAuthMethod(
+		ctx,
 		scope.Global.String(),
 		b.DevOidcSetup.clientId,
 		b.DevOidcSetup.clientSecret,
@@ -393,6 +393,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	{
 		createAndLinkAccount := func(loginName, userId, accountId, typ string) error {
 			acct, err := oidc.NewAccount(
+				ctx,
 				b.DevOidcSetup.authMethod.GetPublicId(),
 				loginName,
 				oidc.WithDescription(fmt.Sprintf("Initial %s OIDC account", typ)),
@@ -438,4 +439,36 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 	}
 
 	return nil, nil
+}
+
+// oidcLogger satisfies the interface requirements for the oidc.TestProvider logger.
+type oidcLogger struct {
+	Ctx context.Context // nil ctx is allowed/okay
+}
+
+// Errorf will use the sys eventer to emit an error event
+func (l *oidcLogger) Errorf(format string, args ...interface{}) {
+	event.WriteError(l.Ctx, l.caller(), fmt.Errorf(format, args...))
+}
+
+// Infof will use the sys eventer to emit an system event
+func (l *oidcLogger) Infof(format string, args ...interface{}) {
+	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf(format, args...))
+}
+
+// FailNow will panic (as required by the interface it's implementing)
+func (_ *oidcLogger) FailNow() {
+	panic("sys eventer failed, see logs for output (if any)")
+}
+
+func (_ *oidcLogger) caller() event.Op {
+	var caller event.Op
+	pc, _, _, ok := runtime.Caller(2)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		caller = event.Op(details.Name())
+	} else {
+		caller = "unknown operation"
+	}
+	return caller
 }

@@ -44,17 +44,17 @@ type ACLResults struct {
 // capabilities.  Resources must have a ScopeId.
 type Resource struct {
 	// ScopeId is the scope that contains the Resource.
-	ScopeId string
+	ScopeId string `json:"scope_id,omitempty"`
 
 	// Id is the public id of the resource.
-	Id string
+	Id string `json:"id,omitempty"`
 
 	// Type of resource.
-	Type resource.Type
+	Type resource.Type `json:"type,omitempty"`
 
 	// Pin if defined would constrain the resource within the collection of the
 	// pin id.
-	Pin string
+	Pin string `json:"pin,omitempty"`
 }
 
 // NewACL creates an ACL from the grants provided.

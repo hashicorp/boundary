@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
@@ -44,12 +45,13 @@ var oidcAuthorizedActions = []string{
 }
 
 func TestNewService(t *testing.T) {
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	cases := []struct {
@@ -85,7 +87,7 @@ func TestGet(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -186,7 +188,7 @@ func TestListOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -213,7 +215,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         auth.OidcSubtype.String(),
+			Type:         oidc.Subtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
 			}},
@@ -232,7 +234,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         auth.OidcSubtype.String(),
+			Type:         oidc.Subtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
 			}},
@@ -334,7 +336,7 @@ func TestDelete(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -398,6 +400,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -405,7 +408,7 @@ func TestDelete_twice(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -443,7 +446,7 @@ func TestCreateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -483,7 +486,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr(),
 				},
 			},
@@ -495,7 +498,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr()
 						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
@@ -519,7 +522,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr()
 						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
@@ -534,7 +537,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateManagedGroupRequest{
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
-					Type:         auth.PasswordSubtype.String(),
+					Type:         password.Subtype.String(),
 					Attributes:   createAttr(),
 				},
 			},
@@ -547,7 +550,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					Id:           intglobals.OidcManagedGroupPrefix + "_notallowed",
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr(),
 				},
 			},
@@ -560,7 +563,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr(),
 				},
 			},
@@ -573,7 +576,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes:   createAttr(),
 				},
 			},
@@ -586,7 +589,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         auth.OidcSubtype.String(),
+					Type:         oidc.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr()
 						a.Fields["filter"] = structpb.NewStringValue("foobar")
@@ -628,7 +631,7 @@ func TestUpdateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kmsCache)
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
@@ -691,7 +694,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -699,7 +702,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -715,7 +718,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        auth.OidcSubtype.String(),
+					Type:        oidc.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -723,7 +726,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -793,7 +796,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -817,7 +820,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -841,7 +844,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -943,7 +946,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              auth.OidcSubtype.String(),
+					Type:              oidc.Subtype.String(),
 					Attributes:        modifiedAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,

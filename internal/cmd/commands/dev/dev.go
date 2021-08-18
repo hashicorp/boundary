@@ -1,11 +1,15 @@
 package dev
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -14,13 +18,14 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -66,6 +71,12 @@ type Command struct {
 	flagDatabaseUrl                  string
 	flagContainerImage               string
 	flagDisableDatabaseDestruction   bool
+	flagEventFormat                  string
+	flagAudit                        string
+	flagObservations                 string
+	flagSysEvents                    string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
 }
 
 func (c *Command) Synopsis() string {
@@ -262,6 +273,40 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagContainerImage,
 		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
 	})
+	f.StringVar(&base.StringVar{
+		Name:       "event-format",
+		Target:     &c.flagEventFormat,
+		Completion: complete.PredictSet("cloudevents-json", "cloudevents-text", "hclog-text", "hclog-json"),
+		Usage:      `Event format. Supported values are "cloudevents-json" and "cloudevents-text".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "observation-events",
+		Target:     &c.flagObservations,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit observation events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "audit-events",
+		Target:     &c.flagAudit,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit audit events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "system-events",
+		Target:     &c.flagSysEvents,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit system events. Supported values are "true" and "false".`,
+	})
+	f.StringSliceVar(&base.StringSliceVar{
+		Name:   "event-allow-filter",
+		Target: &c.flagEveryEventAllowFilters,
+		Usage:  `The optional every event allow filter. May be specified multiple times.`,
+	})
+	f.StringSliceVar(&base.StringSliceVar{
+		Name:   "event-deny-filter",
+		Target: &c.flagEveryEventDenyFilters,
+		Usage:  `The optional every event deny filter. May be specified multiple times.`,
+	})
 
 	return set
 }
@@ -275,6 +320,8 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	const op = "dev.(Command).Run"
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -420,17 +467,39 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-dev"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-dev"
+	}
+	eventFlags, err := base.NewEventFlags(event.TextSinkFormat, base.ComposedOfEventArgs{
+		Format:       c.flagEventFormat,
+		Audit:        c.flagAudit,
+		Observations: c.flagObservations,
+		SysEvents:    c.flagSysEvents,
+		Allow:        c.flagEveryEventAllowFilters,
+		Deny:         c.flagEveryEventDenyFilters,
+	})
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
+	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
 
-	base.StartMemProfiler(c.Logger)
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
+	base.StartMemProfiler(ctx)
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
@@ -490,8 +559,8 @@ func (c *Command) Run(args []string) int {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
 	default:
-		c.DatabaseUrl, err = configutil.ParsePath(c.flagDatabaseUrl)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
@@ -511,7 +580,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(conf)
+		c.controller, err = controller.New(ctx, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError
@@ -561,7 +630,23 @@ func (c *Command) Run(args []string) int {
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary dev environment shutdown triggered")
+			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+
+			// Add a force-shutdown goroutine to consume another interrupt
+			abortForceShutdownCh := make(chan struct{})
+			defer close(abortForceShutdownCh)
+			go func() {
+				shutdownCh := make(chan os.Signal, 4)
+				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+				select {
+				case <-shutdownCh:
+					c.UI.Error("Second interrupt received, forcing shutdown")
+					os.Exit(base.CommandUserError)
+
+				case <-abortForceShutdownCh:
+					// No-op, we just use this to shut down the goroutine
+				}
+			}()
 
 			if !c.flagControllerOnly {
 				if err := c.worker.Shutdown(false); err != nil {
@@ -578,7 +663,7 @@ func (c *Command) Run(args []string) int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 

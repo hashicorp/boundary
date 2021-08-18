@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
 func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) {
@@ -23,7 +23,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -80,7 +80,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -278,7 +278,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -358,7 +358,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -468,7 +468,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms repository: %w", err)
 	}
-	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(b.Logger.Named("kms")))
+	kmsCache, err := kms.NewKms(kmsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -507,7 +507,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithName("Generated target"),
 		target.WithDescription("Provides an initial target in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
-		target.WithHostSets([]string{b.DevHostSetId}),
+		target.WithHostSources([]string{b.DevHostSetId}),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),

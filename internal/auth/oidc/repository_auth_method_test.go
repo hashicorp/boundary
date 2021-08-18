@@ -25,7 +25,7 @@ func Test_upsertAccount(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	rw := db.New(conn)
 
-	r, err := NewRepository(rw, rw, kmsCache)
+	r, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
@@ -61,9 +61,11 @@ func Test_upsertAccount(t *testing.T) {
 			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-defaults"},
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
-				AuthMethodId: amActivePriv.PublicId,
-				Issuer:       "https://alice-active-priv.com",
-				Subject:      "success-defaults",
+				AuthMethodId:   amActivePriv.PublicId,
+				Issuer:         "https://alice-active-priv.com",
+				Subject:        "success-defaults",
+				TokenClaims:    `{"iss":"https://alice-active-priv.com","sub":"success-defaults"}`,
+				UserinfoClaims: "{}",
 			}},
 		},
 		{
@@ -72,11 +74,13 @@ func Test_upsertAccount(t *testing.T) {
 			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-atTk-full-name-and-email"},
 			atClaims: map[string]interface{}{"name": "alice eve-smith", "email": "alice@alice.com"},
 			wantAcct: &Account{Account: &store.Account{
-				AuthMethodId: amActivePriv.PublicId,
-				Issuer:       "https://alice-active-priv.com",
-				Subject:      "success-atTk-full-name-and-email",
-				Email:        "alice@alice.com",
-				FullName:     "alice eve-smith",
+				AuthMethodId:   amActivePriv.PublicId,
+				Issuer:         "https://alice-active-priv.com",
+				Subject:        "success-atTk-full-name-and-email",
+				Email:          "alice@alice.com",
+				FullName:       "alice eve-smith",
+				TokenClaims:    `{"iss":"https://alice-active-priv.com","sub":"success-atTk-full-name-and-email"}`,
+				UserinfoClaims: `{"email":"alice@alice.com","name":"alice eve-smith"}`,
 			}},
 		},
 		{
@@ -85,11 +89,13 @@ func Test_upsertAccount(t *testing.T) {
 			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-idTk-full-name-and-email", "name": "alice eve-smith", "email": "alice@alice.com"},
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
-				AuthMethodId: amActivePriv.PublicId,
-				Issuer:       "https://alice-active-priv.com",
-				Subject:      "success-idTk-full-name-and-email",
-				Email:        "alice@alice.com",
-				FullName:     "alice eve-smith",
+				AuthMethodId:   amActivePriv.PublicId,
+				Issuer:         "https://alice-active-priv.com",
+				Subject:        "success-idTk-full-name-and-email",
+				Email:          "alice@alice.com",
+				FullName:       "alice eve-smith",
+				TokenClaims:    `{"email":"alice@alice.com","iss":"https://alice-active-priv.com","name":"alice eve-smith","sub":"success-idTk-full-name-and-email"}`,
+				UserinfoClaims: `{}`,
 			}},
 		},
 		{
@@ -98,9 +104,11 @@ func Test_upsertAccount(t *testing.T) {
 			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-defaults", "oid": "success-map"},
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
-				AuthMethodId: amWithMapping.PublicId,
-				Issuer:       "https://alice-active-priv.com",
-				Subject:      "success-map",
+				AuthMethodId:   amWithMapping.PublicId,
+				Issuer:         "https://alice-active-priv.com",
+				Subject:        "success-map",
+				TokenClaims:    `{"iss":"https://alice-active-priv.com","oid":"success-map","sub":"success-defaults"}`,
+				UserinfoClaims: `{}`,
 			}},
 		},
 		{

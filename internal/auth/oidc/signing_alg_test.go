@@ -15,6 +15,7 @@ import (
 
 func TestSigningAlg_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -102,7 +103,7 @@ func TestSigningAlg_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewSigningAlg(tt.args.authMethodId, tt.args.alg)
+			got, err := NewSigningAlg(ctx, tt.args.authMethodId, tt.args.alg)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -130,6 +131,7 @@ func TestSigningAlg_Create(t *testing.T) {
 
 func TestSigningAlg_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -153,7 +155,7 @@ func TestSigningAlg_Delete(t *testing.T) {
 			WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, signingAlg Alg) *SigningAlg {
-		c, err := NewSigningAlg(authMethodId, signingAlg)
+		c, err := NewSigningAlg(ctx, authMethodId, signingAlg)
 		require.NoError(t, err)
 		return c
 	}
@@ -216,6 +218,7 @@ func TestSigningAlg_Delete(t *testing.T) {
 
 func TestSigningAlg_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -227,7 +230,7 @@ func TestSigningAlg_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewSigningAlg(m.PublicId, RS256)
+		orig, err := NewSigningAlg(ctx, m.PublicId, RS256)
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.SigningAlg, orig.SigningAlg))
@@ -239,9 +242,9 @@ func TestSigningAlg_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewSigningAlg(m.PublicId, ES256)
+		orig, err := NewSigningAlg(ctx, m.PublicId, ES256)
 		require.NoError(err)
-		orig2, err := NewSigningAlg(m.PublicId, ES384)
+		orig2, err := NewSigningAlg(ctx, m.PublicId, ES384)
 		require.NoError(err)
 
 		cp := orig.Clone()

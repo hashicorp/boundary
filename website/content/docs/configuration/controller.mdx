@@ -15,7 +15,7 @@ controller {
   description = "An example controller"
   database {
     url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>"
-    max_open_connections = 2
+    max_open_connections = 5
   }
 }
 ```
@@ -30,20 +30,18 @@ controller {
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
 
   - `url` - Configures the URL for connecting to Postgres. If your Postgres server has TLS disabled,
-    Boundary will not be able to connect by default. To run Boundary without a TLS connection 
-    to Postgres (not recommended for production usage), add the `sslmode=disable` parameter to 
+    Boundary will not be able to connect by default. To run Boundary without a TLS connection
+    to Postgres (not recommended for production usage), add the `sslmode=disable` parameter to
     your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
   - `max_open_connections` - Can be used to control the maximum number of
-    connections that can be opened by the controller. The minimum number of
-    connections required is 2. Every controller requires 1 non-pooled
-    shared lock connection (which is held for the lifetime of the controller) and
-    a minimum of 1 pooled connection which is used for all other database
-    requests. Setting this value to 0 will allow the controller to open as many
+    connections that can be opened by the controller.
+    The minimum number of connections required is 5.
+    Setting this value to 0 will allow the controller to open as many
     connections as needed.
 
-  Either can refer to a file on disk (file://) from which a URL will be read; an env
+  Either URL can refer to a file on disk (file://) from which a URL will be read; an env
   var (env://) from which the URL will be read; or a direct database URL (postgres://).
 
 - `public_cluster_addr` - Specifies the public host or IP address (and
@@ -158,8 +156,6 @@ listener "tcp" {
   address = "10.0.0.1"
   # The purpose of this listener
   purpose = "cluster"
-
-  tls_disable = false
 }
 
 # Root KMS configuration block: this is the root key for Boundary

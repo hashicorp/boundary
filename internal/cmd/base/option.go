@@ -127,7 +127,8 @@ func WithEventerConfig(config *event.EventerConfig) Option {
 	}
 }
 
-// WithEventer allows an optional event configuration flags
+// WithEventer allows an optional event configuration flags which override
+// whatever is in the EventerConfig
 func WithEventFlags(flags *EventFlags) Option {
 	return func(o *Options) {
 		o.withEventFlags = flags

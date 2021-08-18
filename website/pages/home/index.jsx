@@ -19,7 +19,7 @@ export default function HomePage() {
             external: true,
           },
           {
-            title: 'Download macOS Client',
+            title: 'Boundary Desktop',
             url: '/downloads#desktop',
             linkType: 'inbound',
             theme: { variant: 'tertiary' },

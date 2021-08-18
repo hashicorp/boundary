@@ -15,6 +15,7 @@ import (
 
 func TestAudClaim_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -93,7 +94,7 @@ func TestAudClaim_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAudClaim(tt.args.authMethodId, tt.args.aud)
+			got, err := NewAudClaim(ctx, tt.args.authMethodId, tt.args.aud)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -121,6 +122,7 @@ func TestAudClaim_Create(t *testing.T) {
 
 func TestAudClaim_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -135,7 +137,7 @@ func TestAudClaim_Delete(t *testing.T) {
 			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, AudClaim string) *AudClaim {
-		c, err := NewAudClaim(authMethodId, AudClaim)
+		c, err := NewAudClaim(ctx, authMethodId, AudClaim)
 		require.NoError(t, err)
 		return c
 	}
@@ -198,6 +200,7 @@ func TestAudClaim_Delete(t *testing.T) {
 
 func TestAudClaim_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -209,7 +212,7 @@ func TestAudClaim_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAudClaim(m.PublicId, "eve.com")
+		orig, err := NewAudClaim(ctx, m.PublicId, "eve.com")
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.AudClaim, orig.AudClaim))
@@ -221,9 +224,9 @@ func TestAudClaim_Clone(t *testing.T) {
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
 			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
-		orig, err := NewAudClaim(m.PublicId, "eve.com")
+		orig, err := NewAudClaim(ctx, m.PublicId, "eve.com")
 		require.NoError(err)
-		orig2, err := NewAudClaim(m.PublicId, "alice.com")
+		orig2, err := NewAudClaim(ctx, m.PublicId, "alice.com")
 		require.NoError(err)
 
 		cp := orig.Clone()

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -22,7 +22,7 @@ func NewPublicId(prefix string, opt ...Option) (string, error) {
 func newId(prefix string, opt ...Option) (string, error) {
 	const op = "db.newId"
 	if prefix == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing prefix")
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, "missing prefix")
 	}
 	var publicId string
 	var err error
@@ -35,7 +35,7 @@ func newId(prefix string, opt ...Option) (string, error) {
 		publicId, err = base62.Random(10)
 	}
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to generate id"), errors.WithCode(errors.Io))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to generate id"), errors.WithCode(errors.Io))
 	}
 	return fmt.Sprintf("%s_%s", prefix, publicId), nil
 }

@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -119,6 +121,23 @@ type Controller struct {
 	// denoted by time.Duration
 	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// controller will wait before marking connections from a disconnected worker
+	// as invalid.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
+}
+
+func (c *Controller) InitNameIfEmpty() (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("controller config is empty")
+	}
+	if err := initNameIfEmpty(&c.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating controller name: %w", err)
+	}
+	return c.Name, nil
 }
 
 type Worker struct {
@@ -132,6 +151,33 @@ type Worker struct {
 	// key=value syntax. This is trued up in the Parse function below.
 	TagsRaw interface{}         `hcl:"tags"`
 	Tags    map[string][]string `hcl:"-"`
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// worker will wait before disconnecting connections if it cannot make a
+	// status report to a controller.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
+}
+
+func (w *Worker) InitNameIfEmpty() (string, error) {
+	if w == nil {
+		return "", fmt.Errorf("worker config is empty")
+	}
+	if err := initNameIfEmpty(&w.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating worker name: %w", err)
+	}
+	return w.Name, nil
+}
+
+func initNameIfEmpty(name *string) error {
+	if *name == "" {
+		var err error
+		if *name, err = base62.Random(10); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type Database struct {
@@ -232,7 +278,6 @@ func Parse(d string) (*Config, error) {
 		return nil, err
 	}
 
-	// Nothing to do here right now
 	result := New()
 	if err := hcl.DecodeObject(result, obj); err != nil {
 		return nil, err
@@ -240,8 +285,8 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
-		result.Controller.Name, err = configutil.ParsePath(result.Controller.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Controller.Name, err = parseutil.ParsePath(result.Controller.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing controller name: %w", err)
 		}
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
@@ -269,8 +314,8 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
-		result.Worker.Name, err = configutil.ParsePath(result.Worker.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
 		}
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
@@ -363,15 +408,91 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
-	if result.Eventing == nil {
+	list, ok := obj.Node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+	}
+
+	eventList := list.Filter("events")
+	switch len(eventList.Items) {
+	case 0:
 		result.Eventing = event.DefaultEventerConfig()
-	} else {
-		if result.Eventing.Sinks == nil {
-			result.Eventing.Sinks = []event.SinkConfig{event.DefaultSink()}
+	case 1:
+		if result.Eventing, err = parseEventing(eventList.Items[0]); err != nil {
+			return nil, fmt.Errorf(`error parsing "events": %w`, err)
 		}
+	default:
+		return nil, fmt.Errorf(`too many "events" nodes (max 1, got %d)`, len(eventList.Items))
 	}
 
 	return result, nil
+}
+
+func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
+	// Decode the outside struct
+	var result event.EventerConfig
+	if err := hcl.DecodeObject(&result, eventObj.Val); err != nil {
+		return nil, fmt.Errorf(`error decoding "events" node: %w`, err)
+	}
+	// Now, find the sinks
+	eventObjType, ok := eventObj.Val.(*ast.ObjectType)
+	if !ok {
+		return nil, fmt.Errorf(`error interpreting "events" node as an object type`)
+	}
+	list := eventObjType.List
+	sinkList := list.Filter("sink")
+	// Go through each sink and decode
+	for i, item := range sinkList.Items {
+		var s event.SinkConfig
+		if err := hcl.DecodeObject(&s, item.Val); err != nil {
+			return nil, fmt.Errorf("error decoding eventer sink entry %d", i)
+		}
+
+		// Fix up type and validate
+		switch {
+		case s.Type != "":
+		case len(item.Keys) == 1:
+			s.Type = event.SinkType(item.Keys[0].Token.Value().(string))
+		default:
+			switch {
+			case s.StderrConfig != nil:
+				// If we haven't found the type any other way, they _must_
+				// specify this block even though there are no config parameters
+				s.Type = event.StderrSink
+			case s.FileConfig != nil:
+				s.Type = event.FileSink
+			default:
+				return nil, fmt.Errorf("sink type could not be determined")
+			}
+		}
+		s.Type = event.SinkType(strings.ToLower(string(s.Type)))
+
+		if s.Type == event.StderrSink && s.StderrConfig == nil {
+			// StderrConfig is optional as it has no values, but ensure it's
+			// always populated if it's the type
+			s.StderrConfig = new(event.StderrSinkTypeConfig)
+		}
+
+		// parse the duration string specified in a file config into a time.Duration
+		if s.FileConfig != nil && s.FileConfig.RotateDurationHCL != "" {
+			var err error
+			s.FileConfig.RotateDuration, err = parseutil.ParseDurationSecond(s.FileConfig.RotateDurationHCL)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse rotation duration %s", s.FileConfig.RotateDurationHCL)
+			}
+		}
+
+		if err := s.Validate(); err != nil {
+			return nil, err
+		}
+
+		// Append to result
+		result.Sinks = append(result.Sinks, s)
+	}
+	if len(result.Sinks) == 0 {
+		result.Sinks = []event.SinkConfig{event.DefaultSink()}
+	}
+	return &result, nil
 }
 
 // Sanitized returns a copy of the config with all values that are considered

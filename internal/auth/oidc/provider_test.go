@@ -21,13 +21,13 @@ func Test_ProviderCaching(t *testing.T) {
 
 	_, _, signingAlg, _ := tp.SigningKeys()
 	allowedRedirect := "https://alice.com/callback"
-	authMethodId, err := newAuthMethodId()
+	authMethodId, err := newAuthMethodId(ctx)
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
 	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect), tp) // provider needs the complete callback URL
 
-	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
+	testAm, err := NewAuthMethod(ctx, "fake-org", id, ClientSecret(secret),
 		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
 	require.NoError(t, err)
 
@@ -90,12 +90,12 @@ func Test_convertToProvider(t *testing.T) {
 	_, _, signingAlg, _ := tp.SigningKeys()
 	allowedRedirect := "https://alice.com/callback"
 
-	authMethodId, err := newAuthMethodId()
+	authMethodId, err := newAuthMethodId(ctx)
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
 	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect), tp) // provider callback needs the complete URL
-	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
+	testAm, err := NewAuthMethod(ctx, "fake-org", id, ClientSecret(secret),
 		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
 	require.NoError(t, err)
 

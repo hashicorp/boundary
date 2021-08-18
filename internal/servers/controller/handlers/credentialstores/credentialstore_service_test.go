@@ -10,8 +10,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -22,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +63,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       s.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       s.GetUpdateTime().GetTimestamp(),
 			Version:           s.GetVersion(),
-			Type:              credential.VaultSubtype.String(),
+			Type:              vault.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
@@ -186,7 +185,7 @@ func TestCreate(t *testing.T) {
 			name: "missing ca certificate",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -205,7 +204,7 @@ func TestCreate(t *testing.T) {
 			name: "Bad token",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -225,7 +224,7 @@ func TestCreate(t *testing.T) {
 			name: "Define only client cert",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:           wrapperspb.String(v.Addr),
@@ -244,7 +243,7 @@ func TestCreate(t *testing.T) {
 			name: "Define only client cert key",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -263,7 +262,7 @@ func TestCreate(t *testing.T) {
 			name: "Define key in both client cert payload and key field",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -284,7 +283,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
 				Id:      vault.CredentialStorePrefix + "_notallowed",
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -302,7 +301,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
-				Type:        credential.VaultSubtype.String(),
+				Type:        vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -320,7 +319,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        credential.VaultSubtype.String(),
+				Type:        vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -338,7 +337,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        credential.VaultSubtype.String(),
+				Type:        vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -371,7 +370,7 @@ func TestCreate(t *testing.T) {
 			name: "Must specify vault VaultAddress",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Token: wrapperspb.String(newToken()),
@@ -387,7 +386,7 @@ func TestCreate(t *testing.T) {
 			name: "Must specify vault token",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -403,7 +402,7 @@ func TestCreate(t *testing.T) {
 			name: "Attributes must be valid for vault type",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -421,7 +420,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialStore with client cert and key in same field",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credential.VaultSubtype.String(),
+				Type:    vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:           wrapperspb.String(v.Addr),
@@ -440,7 +439,7 @@ func TestCreate(t *testing.T) {
 					ScopeId: prj.GetPublicId(),
 					Scope:   &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version: 1,
-					Type:    credential.VaultSubtype.String(),
+					Type:    vault.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
@@ -462,7 +461,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:     prj.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
-				Type:        credential.VaultSubtype.String(),
+				Type:        vault.Subtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -484,7 +483,7 @@ func TestCreate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:     1,
-					Type:        credential.VaultSubtype.String(),
+					Type:        vault.Subtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
@@ -584,7 +583,7 @@ func TestGet(t *testing.T) {
 					Id:                store.GetPublicId(),
 					ScopeId:           store.GetScopeId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.VaultSubtype.String(),
+					Type:              vault.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       store.CreateTime.GetTimestamp(),
 					UpdatedTime:       store.UpdateTime.GetTimestamp(),
