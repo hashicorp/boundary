@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +66,7 @@ func Test_testWrapper(t *testing.T) {
 	require.NotNil(t, w)
 	typ, err := w.Type(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, "aead", typ)
+	assert.Equal(t, wrapping.WrapperTypeAead, typ)
 }
 
 func Test_testInitStore(t *testing.T) {
