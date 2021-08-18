@@ -67,19 +67,13 @@ begin;
 │                                                    
 │                                                    
 │            ┌────────────────────────┐                    
-│            │event_allow_filter      │                    
+│            │event_filter            │                    
 │           ╱├────────────────────────┤                    
 ├──────────○─│ public_id              │                    
-│           ╲│ config_id              │                    
-│            │ filter                 │                    
-│            └────────────────────────┘                    
-│            ┌────────────────────────┐                    
-│            │event_deny_filter       │                    
-│           ╱├────────────────────────┤                    
-└──────────○─│ public_id              │                    
-            ╲│ config_id              │                    
-             │ filter                 │                    
-             └────────────────────────┘                                                                                 
+│           ╲│ sink_id                │                    
+│            │ filter_type            |
+|            | filter                 │                    
+│            └────────────────────────┘                                                                                                   
 */
 
 create table event_type_enm (
@@ -129,6 +123,26 @@ before
 update on event_format_type_enm
   for each row execute procedure immutable_columns('name');
 
+create table event_filter_type_enm (
+    name text primary key
+        constraint only_predefined_filter_types_allowed
+            check (
+                name in (
+                    'allow',
+                    'deny'
+                )
+            )
+);
+
+comment on table event_filter_type_enm is
+'event_filter_type_enm is an enumeration table for the valid filter types';
+
+create trigger
+  immutable_columns
+before
+update on event_filter_type_enm
+  for each row execute procedure immutable_columns('name');
+
 create table event_config (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -151,7 +165,7 @@ comment on table event_config is
 'event_config is a table where each row defines the event configuration for '
 'a scope.  Currently, the only supported scope is global';
 
-create trigger 
+create trigger
   immutable_columns
 before
 update on event_config
@@ -236,11 +250,7 @@ $$ language plpgsql;
 
 create table event_file_sink(
     public_id wt_public_id primary key,
-    config_id wt_public_id not null
-        constraint event_config_fkey
-            references event_config(public_id)
-            on delete cascade
-            on update cascade,
+    config_id wt_public_id not null,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm(name)
@@ -310,11 +320,7 @@ after delete on event_file_sink
 
 create table event_stderr_sink(
     public_id wt_public_id primary key,
-    config_id wt_public_id not null
-        constraint event_config_fkey
-            references event_config(public_id)
-            on delete cascade
-            on update cascade,
+    config_id wt_public_id not null,
     event_type text not null
         constraint event_type_enm_fkey
             references event_type_enm(name)
@@ -355,48 +361,35 @@ create trigger
 after delete on event_stderr_sink
     for each row execute procedure delete_event_sink_subtype();
 
-create table event_allow_filter(
+create table event_filter(
     public_id wt_public_id primary key,
-    config_id wt_public_id not null
-        constraint event_config_fkey
-            references event_config(public_id)
+    sink_id wt_public_id not null
+        constraint event_sink_fkey
+            references event_sink(public_id)
             on delete cascade
             on update cascade,
-    filter wt_bexprfilter
+    filter_type text not null
+        constraint event_filter_type_enm_fkey
+            references event_filter_type_enm(name)
+            on delete restrict
+            on update cascade,
+    filter wt_bexprfilter,
+    constraint sink_id_filter_uq
+        unique(sink_id, filter)
 );
 
 create trigger
   immutable_columns
 before
-update on event_allow_filter
+update on event_filter
   for each row execute procedure immutable_columns(
       'public_id',
-      'config_id'
+      'config_id',
+      'filter_type'
 );
 
-comment on table event_allow_filter is
-'event_allow_filter is a table where each entry represents a configured allow_filter';
-
-create table event_deny_filter(
-    public_id wt_public_id primary key,
-    config_id wt_public_id not null
-        constraint event_config_fkey
-            references event_config(public_id)
-            on delete cascade
-            on update cascade,
-    filter wt_bexprfilter
-);
-
-create trigger
-  immutable_columns
-before
-update on event_deny_filter
-  for each row execute procedure immutable_columns(
-      'public_id',
-      'config_id'
-);
-
-comment on table event_deny_filter is
-'event_allow_filter is a table where each entry represents a configured deny_filter';
+comment on table event_filter is
+'event_filter is a table where each entry represents a configured filter that '
+'can be either allow or deny';
 
 commit;
