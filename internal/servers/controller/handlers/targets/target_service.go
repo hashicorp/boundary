@@ -1017,9 +1017,9 @@ HostSourceIterationLoop:
 	for _, l := range libs {
 		reqs = append(reqs, credential.Request{
 			SourceId: l.Id(),
-			Purpose:  credential.Purpose(l.CredentialPurpose()),
+			Purpose:  l.CredentialPurpose(),
 		})
-		dynCreds = append(dynCreds, session.NewDynamicCredential(l.Id(), credential.Purpose(l.CredentialPurpose())))
+		dynCreds = append(dynCreds, session.NewDynamicCredential(l.Id(), l.CredentialPurpose()))
 	}
 
 	expTime := timestamppb.Now()

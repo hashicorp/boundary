@@ -11,6 +11,8 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
+	proxyHandlers "github.com/hashicorp/boundary/internal/servers/worker/proxy"
+	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
@@ -20,7 +22,7 @@ type HandlerProperties struct {
 	ListenerConfig *listenerutil.ListenerConfig
 }
 
-// Handler returns an http.Handler for the API. This can be used on
+// Handler returns a http.Handler for the API. This can be used on
 // its own to mount the Worker API within another web server.
 func (w *Worker) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
@@ -35,7 +37,7 @@ func (w *Worker) handler(props HandlerProperties) http.Handler {
 
 func (w *Worker) handleProxy() http.HandlerFunc {
 	const op = "worker.(Worker).handleProxy"
-	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+	return func(wr http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.TLS == nil {
 			event.WriteError(ctx, op, errors.New("no request TLS information found"))
@@ -67,14 +69,14 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		si := siRaw.(*sessionInfo)
+		si := siRaw.(*session.Info)
 		si.RLock()
-		expiration := si.lookupSessionResponse.GetExpiration()
-		tofuToken := si.lookupSessionResponse.GetTofuToken()
-		version := si.lookupSessionResponse.GetVersion()
-		endpoint := si.lookupSessionResponse.GetEndpoint()
-		// userId := si.lookupSessionResponse.GetAuthorization()
-		sessStatus := si.status
+		expiration := si.LookupSessionResponse.GetExpiration()
+		tofuToken := si.LookupSessionResponse.GetTofuToken()
+		version := si.LookupSessionResponse.GetVersion()
+		endpoint := si.LookupSessionResponse.GetEndpoint()
+		// userId := si.LookupSessionResponse.GetAuthorization()
+		sessStatus := si.Status
 		si.RUnlock()
 
 		opts := &websocket.AcceptOptions{
@@ -89,73 +91,106 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
-		connCtx, connCancel := context.WithDeadline(r.Context(), expiration.AsTime())
+		connCtx, connCancel := context.WithDeadline(ctx, expiration.AsTime())
 		defer connCancel()
+
+		sessClient, err := w.ControllerSessionConn()
+		if err != nil {
+			event.WriteError(ctx, op, err)
+			if err = conn.Close(websocket.StatusInternalError, "unable to get controller session client"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+		workerId := w.conf.RawConfig.Worker.Name
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error reading handshake from client"))
-			conn.Close(websocket.StatusPolicyViolation, "invalid handshake received")
+			if err = conn.Close(websocket.StatusPolicyViolation, "invalid handshake received"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 		if len(handshake.GetTofuToken()) < 20 {
 			event.WriteError(ctx, op, errors.New("invalid tofu token"))
-			conn.Close(websocket.StatusUnsupportedData, "invalid tofu token")
+			if err = conn.Close(websocket.StatusUnsupportedData, "invalid tofu token"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
 		if tofuToken != "" {
 			if tofuToken != handshake.GetTofuToken() {
 				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
-				conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed")
+				if err = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
 		} else {
 			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("no tofu token but not in correct session state"))
-				conn.Close(websocket.StatusInternalError, "refusing to activate session")
+				if err = conn.Close(websocket.StatusInternalError, "refusing to activate session"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				sessStatus, err = w.activateSession(r.Context(), sessionId, handshake.GetTofuToken(), version)
+				sessStatus, err = session.Activate(ctx, sessClient, workerId, sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
-					conn.Close(websocket.StatusInternalError, "unable to activate session")
+					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+					}
 					return
 				}
 			}
 		}
 
 		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
-			_, err := w.cancelSession(r.Context(), sessionId)
+			_, err := session.Cancel(ctx, sessClient, sessionId)
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
-				conn.Close(websocket.StatusInternalError, "unable to cancel session")
+				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
 				return
 			}
-			conn.Close(websocket.StatusNormalClosure, "session canceled")
+			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
-		var ci *connInfo
+		// Verify the subprotocol has a supported proxy before calling AuthorizeConnection
+		handleProxyFn, err := proxyHandlers.GetHandler(conn.Subprotocol())
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol %s", conn.Subprotocol()))
+			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+
+		var ci *session.ConnInfo
 		var connsLeft int32
-		ci, connsLeft, err = w.authorizeConnection(r.Context(), sessionId)
+		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
-			conn.Close(websocket.StatusInternalError, "unable to authorize connection")
+			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
-
-		defer func() {
-			w.closeConnections(r.Context(), map[string]string{ci.id: si.id})
-		}()
+		defer session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id})
 
 		si.Lock()
-		ci.connCtx = connCtx
-		ci.connCancel = connCancel
-		si.connInfoMap[ci.id] = ci
-		si.status = sessStatus
-		connectionLimit := si.lookupSessionResponse.GetConnectionLimit()
+		ci.ConnCtx = connCtx
+		ci.ConnCancel = connCancel
+		si.ConnInfoMap[ci.Id] = ci
+		si.Status = sessStatus
+		connectionLimit := si.LookupSessionResponse.GetConnectionLimit()
 		si.Unlock()
 
 		handshakeResult := &proxy.HandshakeResult{
@@ -165,114 +200,37 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error sending handshake result to client"))
-			conn.Close(websocket.StatusProtocolError, "unable to send handshake result")
+			if err = conn.Close(websocket.StatusProtocolError, "unable to send handshake result"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
 
-		switch conn.Subprotocol() {
-		case globals.TcpProxyV1:
-			w.handleTcpProxyV1(connCtx, clientAddr, conn, si, ci.id, endpoint)
-		default:
-			conn.Close(websocket.StatusProtocolError, "unsupported-protocol")
+		conf := proxyHandlers.Config{
+			ClientAddress:  clientAddr,
+			ClientConn:     conn,
+			RemoteEndpoint: endpoint,
+			SessionClient:  sessClient,
+			SessionInfo:    si,
+			ConnectionId:   ci.Id,
+		}
+
+		if err := conf.Validate(); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error validating proxy config"))
+			if err = conn.Close(websocket.StatusInternalError, "unable to validate proxy parameters"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
 			return
 		}
-	})
+
+		handleProxyFn(connCtx, conf)
+	}
 }
 
-func (w *Worker) wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
+func (w *Worker) wrapGenericHandler(h http.Handler, _ HandlerProperties) http.Handler {
 	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
 		// Set the Cache-Control header for all responses returned
 		wr.Header().Set("Cache-Control", "no-store")
 		h.ServeHTTP(wr, r)
 	})
 }
-
-/*
-func WrapForwardedForHandler(h http.Handler, authorizedAddrs []*sockaddr.SockAddrMarshaler, rejectNotPresent, rejectNonAuthz bool, hopSkips int) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		headers, headersOK := r.Header[textproto.CanonicalMIMEHeaderKey("X-Forwarded-For")]
-		if !headersOK || len(headers) == 0 {
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("missing x-forwarded-for header and configured to reject when not present"))
-			return
-		}
-
-		host, port, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			// If not rejecting treat it like we just don't have a valid
-			// header because we can't do a comparison against an address we
-			// can't understand
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client hostport: {{err}}", err))
-			return
-		}
-
-		addr, err := sockaddr.NewIPAddr(host)
-		if err != nil {
-			// We treat this the same as the case above
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client address: {{err}}", err))
-			return
-		}
-
-		var found bool
-		for _, authz := range authorizedAddrs {
-			if authz.Contains(addr) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			// If we didn't find it and aren't configured to reject, simply
-			// don't trust it
-			if !rejectNonAuthz {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
-			return
-		}
-
-		// At this point we have at least one value and it's authorized
-
-		// Split comma separated ones, which are common. This brings it in line
-		// to the multiple-header case.
-		var acc []string
-		for _, header := range headers {
-			vals := strings.Split(header, ",")
-			for _, v := range vals {
-				acc = append(acc, strings.TrimSpace(v))
-			}
-		}
-
-		indexToUse := len(acc) - 1 - hopSkips
-		if indexToUse < 0 {
-			// This is likely an error in either configuration or other
-			// infrastructure. We could either deny the request, or we
-			// could simply not trust the value. Denying the request is
-			// "safer" since if this logic is configured at all there may
-			// be an assumption it can always be trusted. Given that we can
-			// deny accepting the request at all if it's not from an
-			// authorized address, if we're at this point the address is
-			// authorized (or we've turned off explicit rejection) and we
-			// should assume that what comes in should be properly
-			// formatted.
-			respondError(w, http.StatusBadRequest, fmt.Errorf("malformed x-forwarded-for configuration or request, hops to skip (%d) would skip before earliest chain link (chain length %d)", hopSkips, len(headers)))
-			return
-		}
-
-		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
-		h.ServeHTTP(w, r)
-		return
-	})
-}
-*/
