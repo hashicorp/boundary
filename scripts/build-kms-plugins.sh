@@ -50,8 +50,7 @@ mkdir -p "${ASSETS_DIR}/"
 
 # Build!
 # If GOX_PARALLEL_BUILDS is set, it will be used to add a "-parallel=${GOX_PARALLEL_BUILDS}" gox parameter
-for CURR_PLUGIN in "$(ls $PLUGINS_DIR)"
-  do
+for CURR_PLUGIN in "$(ls $PLUGINS_DIR)"; do
     cd "${PLUGINS_DIR}/${CURR_PLUGIN}"
     echo "==> Building ${CURR_PLUGIN} KMS plugin..."
     gox \
@@ -60,4 +59,12 @@ for CURR_PLUGIN in "$(ls $PLUGINS_DIR)"
         -output "${ASSETS_DIR}/{{.OS}}_{{.Arch}}/gkw-${CURR_PLUGIN}" \
         ${GOX_PARALLEL_BUILDS+-parallel="${GOX_PARALLEL_BUILDS}"} \
         -tags="${BUILD_TAGS}"
+done
+
+for CURR_ARCH in "$(ls $ASSETS_DIR)"; do
+    cd "${ASSETS_DIR}/${CURR_ARCH}"
+    echo "==> Compressing ${CURR_ARCH} KMS plugins..."
+    for CURR_PLUGIN in $(ls); do
+        gzip -9 $CURR_PLUGIN
+    done
 done
