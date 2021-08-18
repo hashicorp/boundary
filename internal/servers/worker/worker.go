@@ -246,19 +246,9 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		return nil, fmt.Errorf("could not find session ID in SNI")
 	}
 
-	rawConn := w.controllerSessionConn.Load()
-	if rawConn == nil {
-		event.WriteSysEvent(ctx, op, "could not get a controller client", "session_id", sessionId)
-		return nil, errors.New("could not get a controller client")
-	}
-	conn, ok := rawConn.(pbs.SessionServiceClient)
-	if !ok {
-		event.WriteSysEvent(ctx, op, "could not cast controller client to the real thing", "session_id", sessionId)
-		return nil, errors.New("could not cast atomic controller client to the real thing")
-	}
-	if conn == nil {
-		event.WriteSysEvent(ctx, op, "controller client is nil", "session_id", sessionId)
-		return nil, errors.New("controller client is nil")
+	conn, err := w.ControllerSessionConn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
 	}
 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
