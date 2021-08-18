@@ -4,6 +4,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.5.1 (2021/08/16)
+
+### New and Improved
+
+* Data Warehouse: Add OIDC auth method and accounts to the database warehouse.
+  Four new columns have been added to the `wh_user_dimension` table:
+  `auth_method_external_id`, `auth_account_external_id`,
+  `auth_account_full_name`, and `auth_account_email`.
+  ([PR](https://github.com/hashicorp/boundary/pull/1455))
+
 ### Bug Fixes
 
 * events: Fix panic when using the `hclog-text` event's format.
