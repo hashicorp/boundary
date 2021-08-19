@@ -6480,7 +6480,9 @@ create table event_stderr_sink(
       foreign key(config_id, public_id)
       references event_sink(config_id, public_id)
       on delete cascade
-      on update cascade
+      on update cascade,
+    constraint config_id_event_type_format_type_uq
+        unique(config_id, event_type, format_type)
 );
 
 comment on table event_stderr_sink is
@@ -6529,7 +6531,7 @@ before
 update on event_filter
   for each row execute procedure immutable_columns(
       'public_id',
-      'config_id',
+      'sink_id',
       'filter_type'
 );
 
