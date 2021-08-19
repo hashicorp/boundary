@@ -1,10 +1,39 @@
 begin;
 
   alter table wh_user_dimension
-    add column auth_method_external_id  wh_dim_text,
-    add column auth_account_external_id wh_dim_text,
-    add column auth_account_full_name   wh_dim_text,
-    add column auth_account_email       wh_dim_text
+    add column auth_method_external_id  text,
+    add column auth_account_external_id text,
+    add column auth_account_full_name   text,
+    add column auth_account_email       text
+  ;
+
+  update wh_user_dimension
+  set auth_method_type =
+        case when auth_method_id like 'ampw_%' then 'password auth method'
+             when auth_method_id like 'amoidc_%' then 'oidc auth method'
+             else 'Unknown' end,
+      auth_account_type =
+        case when auth_account_id like 'acctpw_%' then 'password auth account'
+             when auth_account_id like 'acctoidc_%' then 'oidc auth account'
+             else 'Unknown' end,
+      auth_method_external_id =
+        case when auth_method_id like 'ampw_%' then 'Not Applicable'
+             else 'Unknown' end,
+      auth_account_external_id =
+        case when auth_method_id like 'ampw_%' then 'Not Applicable'
+             else 'Unknown' end,
+      auth_account_full_name =
+        case when auth_method_id like 'ampw_%' then 'Not Applicable'
+             else 'Unknown' end,
+      auth_account_email =
+        case when auth_method_id like 'ampw_%' then 'Not Applicable'
+             else 'Unknown' end;
+
+  alter table wh_user_dimension
+    alter column auth_method_external_id  type wh_dim_text,
+    alter column auth_account_external_id type wh_dim_text,
+    alter column auth_account_full_name   type wh_dim_text,
+    alter column auth_account_email       type wh_dim_text
   ;
 
   drop view whx_user_dimension_source;
