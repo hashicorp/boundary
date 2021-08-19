@@ -392,7 +392,7 @@ before
 update on event_filter
   for each row execute procedure immutable_columns(
       'public_id',
-      'config_id',
+      'sink_id',
       'filter_type'
 );
 
