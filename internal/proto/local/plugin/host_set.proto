@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package plugin.sdk.proto;
+
+option go_package = "github.com/hashicorp/boundary/internal/plugin/sdk/proto;proto";
+
+import "google/protobuf/struct.proto";
+
+// HostSet represents a host catalog as passed in to a plugin call. 
+message HostSet {
+	// The ID of the host set.
+	string id = 10;
+
+	// The host catalog of which this host set is a part.
+	string host_catalog_id = 20;
+
+	// Attributes specific to the host set.
+	google.protobuf.Struct attributes = 30;
+}

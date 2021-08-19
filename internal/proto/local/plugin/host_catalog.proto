@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package plugin.sdk.proto;
+
+option go_package = "github.com/hashicorp/boundary/internal/plugin/sdk/proto;proto";
+
+import "google/protobuf/struct.proto";
+
+// HostCatalog represents a host catalog as passed in to a plugin call. 
+message HostCatalog {
+	// The ID of the host catalog.
+	string id = 10;
+
+	// Attributes specific to the host catalog.
+	google.protobuf.Struct attributes = 20;
+	
+  // A set of secrets specific to the host catalog.
+	google.protobuf.Struct secrets = 30;
+}
+
+// HostCatalogPersisted represents state persisted between host
+// catalog calls. This data is encrypted at-rest by Boundary, but is
+// supplied to various plugin calls unencrypted.
+message HostCatalogPersisted {
+  // The persisted data.
+	google.protobuf.Struct data = 100;
+}

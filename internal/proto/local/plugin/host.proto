@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package plugin.sdk.proto;
+
+option go_package = "github.com/hashicorp/boundary/internal/plugin/sdk/proto;proto";
+
+import "google/protobuf/struct.proto";
+
+// Host contains all fields related to a host returned from a plugin.
+message Host {
+  // The primary address for the host result.
+  string address = 10;
+
+	// Name of the host.
+	string name = 20;
+
+	// The host catalog of which this host is a part.
+	string host_catalog_id = 30;
+
+	// The list of host sets containing this host.
+	repeated string host_set_ids = 40;
+
+  // The attributes that are applicable to the specific host. This
+  // may or may not be opaque and can be used for further
+  // post-processing by Boundary.
+	google.protobuf.Struct attributes = 50;
+}
