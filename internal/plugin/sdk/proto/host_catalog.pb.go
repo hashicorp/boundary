@@ -89,8 +89,11 @@ func (x *HostCatalog) GetSecrets() *structpb.Struct {
 }
 
 // HostCatalogPersisted represents state persisted between host
-// catalog calls. This data is encrypted at-rest by Boundary, but is
-// supplied to various plugin calls unencrypted.
+// catalog calls. Its primary purpose is to store authentication data
+// required by the plugin to make calls to its respective cloud API.
+//
+// The data stored in this message is encrypted at-rest by Boundary
+// and never returned to the end user.
 type HostCatalogPersisted struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
