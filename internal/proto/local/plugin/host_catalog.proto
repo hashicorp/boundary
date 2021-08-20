@@ -19,7 +19,7 @@ message HostCatalog {
 }
 
 // HostCatalogPersisted represents state persisted between host
-// catalog calls. Its primary purpose is to store authentication data
+// catalog calls. Its intended purpose is to store authentication data
 // required by the plugin to make calls to its respective cloud API.
 //
 // The data stored in this message is encrypted at-rest by Boundary
