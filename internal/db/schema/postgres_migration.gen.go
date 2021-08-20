@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 14001,
+		binarySchemaVersion: 15003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6333,6 +6333,321 @@ alter table wh_user_dimension
 
   end;
   $$ language plpgsql;
+`),
+			15001: []byte(`
+/*
+     ┌──────────────────┐
+     │   host_plugin    │
+     ├──────────────────┤         ┌───────────────────┐
+     │public_id (pk)    │         │host_plugin_version│
+     │name              │         ├───────────────────┤
+     │id_prefix         │         │public_id (pk)     │
+     │scope_id          │┼┼─────┼┼│plugin_id (fk)     │
+     │description       │         │version            │
+     │version           │         └───────────────────┘
+     │                  │
+     └──────────────────┘
+               ┼
+               ┼
+               │
+               ○
+              ╱│╲
+  ┌─────────────────────────┐
+  │   plugin_host_catalog   │
+  ├─────────────────────────┤
+  │public_id (pk)           │
+  │plugin_id (fk)           │
+  │...                      │
+  └─────────────────────────┘
+
+*/
+
+  create table host_plugin (
+    public_id wt_plugin_id
+      primary key,
+    scope_id wt_scope_id -- this should always be global for now
+      not null
+      references iam_scope (public_id)
+      on delete cascade
+      on update cascade,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    name text
+      not null
+      constraint name_must_be_not_empty
+        check(length(trim(name)) > 0)
+      unique,
+    id_prefix text
+      not null
+      constraint id_prefix_must_be_not_empty
+        check(length(trim(id_prefix)) > 0)
+      unique
+  );
+
+  create trigger update_version_column after update on host_plugin
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on host_plugin
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on host_plugin
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on host_plugin
+    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time', 'name', 'id_prefix');
+
+  create table host_plugin_version (
+    public_id wt_public_id primary key,
+    plugin_id wt_public_id not null
+      references host_plugin (public_id)
+      on delete cascade
+      on update cascade,
+    version text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(plugin_id, public_id),
+    unique(plugin_id, version)
+  );
+
+  create trigger update_version_column after update on host_plugin_version
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on host_plugin_version
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on host_plugin_version
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on host_plugin_version
+    for each row execute procedure immutable_columns('public_id', 'plugin_id','create_time', 'version');
+
+  insert into oplog_ticket (name, version)
+  values
+    ('host_plugin', 1),
+    ('host_plugin_version', 1);
+`),
+			15002: []byte(`
+-- We are adding the name to the base host catalog type. This allows the db
+  -- to ensure that catalog names are unique in a scope across all subtypes.
+  alter table host_catalog
+    add column name wt_name;
+
+  alter table host_catalog
+    add constraint host_catalog_scope_id_name_uq
+      unique (scope_id, name);
+
+  -- Now that we've added the name column to the base type, we copy
+  -- the name from the static host catalog table into the base table.
+  update host_catalog
+  set name = st.name
+  from
+    static_host_catalog st
+  where
+    host_catalog.public_id = st.public_id and
+    st.name is not null;
+
+  -- Replace the insert_host_catalog_subtype function defined in 0/20_host.up.sql
+  -- to include the name.
+  -- insert_host_catalog_subtype() is a before insert trigger
+  -- function for subtypes of host_catalog
+  create or replace function
+    insert_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_catalog
+    (public_id, scope_id, name)
+    values
+      (new.public_id, new.scope_id, new.name);
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function insert_host_catalog_subtype() is
+    'insert_host_catalog_subtype() inserts sub type name into the base type host catalog table';
+
+  -- Now that we are tracking the name, which is mutable, we need to also
+  -- update the base table when the subtype tables are updated.
+  -- update_host_catalog_subtype() is intended to be used as a before update
+  -- trigger for all host catalog sub types.  The purpose is to ensure that the
+  -- base table for host catalog to contain the updated names for each host catalog
+  -- in order to enforce uniqueness across all host catalogs, regardless of subtype,
+  -- in a given scope.
+  create or replace function
+    update_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    update host_catalog set name = new.name where public_id = new.public_id and new.name != name;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function update_host_catalog_subtype() is
+    'update_host_catalog_subtype() will update base host catalog type name column with new values from sub type';
+
+
+  create trigger update_host_catalog_subtype before update on static_host_catalog
+    for each row execute procedure update_host_catalog_subtype();
+`),
+			15003: []byte(`
+/*
+                             ┌──────────────────┐
+                             │   host_plugin    │
+                             ├──────────────────┤
+                             │public_id (pk)    │
+                             │...               │
+                             └──────────────────┘
+                                       ┼
+                                       ┼
+                                       ○
+                                      ╱│╲
+                            ┌─────────────────────┐
+                            │ plugin_host_catalog │
+                            ├─────────────────────┤      ┌───────────────────────────┐
+    ┌────────────────┐      │public_id (pk)       │      │plugin_host_catalog_secrets│
+    │host_catalog    │      │plugin_id (fk)       │      ├───────────────────────────┤
+    ├────────────────┤      │scope_id (fk)        │      │host_catalog_id (pk, fk)   │
+    │public_id       │┼┼──○┼│name                 │┼┼──○┼│secret                     │
+    │scope_id        │      │description          │      │key_id (fk)                │
+    └────────────────┘      │attributes           │      └───────────────────────────┘
+             ┼              └─────────────────────┘
+             ┼                         ┼
+             │                         ┼
+             │                         ○
+             ○                        ╱│╲
+            ╱│╲             ┌────────────────────┐
+    ┌────────────────┐      │  plugin_host_set   │
+    │    host_set    │      ├────────────────────┤
+    ├────────────────┤      │public_id (pk)      │
+    │public_id       │      │host_catalog_id (fk)│
+    │host_catalog_id │┼┼──○┼│name                │
+    └────────────────┘      │description         │
+                            │attributes          │
+                            └────────────────────┘
+
+*/
+
+  create table plugin_host_catalog (
+    public_id wt_public_id
+      primary key,
+    scope_id wt_scope_id
+      not null
+      references iam_scope (public_id)
+      on delete cascade
+      on update cascade,
+    plugin_id wt_scope_id
+      not null
+      references host_plugin (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    attributes bytea,
+    foreign key (scope_id, public_id)
+      references host_catalog (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(scope_id, name)
+  );
+
+  create trigger update_version_column after update on plugin_host_catalog
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on plugin_host_catalog
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on plugin_host_catalog
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on plugin_host_catalog
+    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
+
+  create trigger insert_host_catalog_subtype before insert on plugin_host_catalog
+    for each row execute procedure insert_host_catalog_subtype();
+
+  create trigger update_host_catalog_subtype before update on plugin_host_catalog
+    for each row execute procedure update_host_catalog_subtype();
+
+  create trigger delete_host_catalog_subtype after delete on plugin_host_catalog
+    for each row execute procedure delete_host_catalog_subtype();
+
+  create table plugin_host_catalog_secret (
+    catalog_id wt_public_id primary key
+      references plugin_host_catalog (public_id)
+        on delete cascade
+        on update cascade,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    secret bytea not null  -- encrypted value
+      constraint secret_must_not_be_empty
+        check(length(secret) > 0),
+    key_id wt_private_id not null
+      constraint kms_database_key_version_fkey
+        references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade
+  );
+
+  create trigger update_time_column before update on plugin_host_catalog_secret
+      for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on plugin_host_catalog_secret
+      for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on plugin_host_catalog_secret
+      for each row execute procedure immutable_columns('catalog_id', 'create_time');
+
+  create table plugin_host_set (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      references plugin_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    attributes bytea,
+    unique(catalog_id, name),
+    foreign key (catalog_id, public_id)
+      references host_set (catalog_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(catalog_id, public_id)
+  );
+
+  create trigger update_version_column after update on plugin_host_set
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on plugin_host_set
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on plugin_host_set
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on plugin_host_set
+    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_set_subtype before insert on plugin_host_set
+    for each row execute procedure insert_host_set_subtype();
+
+  create trigger delete_host_set_subtype after delete on plugin_host_set
+    for each row execute procedure delete_host_set_subtype();
+
+  insert into oplog_ticket (name, version)
+  values
+    ('plugin_host_catalog', 1),
+    ('plugin_host_catalog_secret', 1),
+    ('plugin_host_set', 1);
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

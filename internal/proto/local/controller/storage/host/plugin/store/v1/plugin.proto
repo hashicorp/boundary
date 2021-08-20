@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the host package.
+package controller.storage.host.plugin.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/host/plugin/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+
+message Plugin {
+  // public_is is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is required. It must be globally unique across all host plugins.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+
+  // The scope_id of the owning scope and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 60;
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 70;
+
+  // id_prefix is required. It must be globally unique across all host plugins.
+  // @inject_tag: `gorm:"default:null"`
+  string id_prefix = 80;
+}
+
+message Version {
+  // public_is is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // The plugin_id of the owning host plugin and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string plugin_id = 40;
+
+  // The version of the installed plugin and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string version = 50;
+}
