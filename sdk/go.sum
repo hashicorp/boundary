@@ -220,8 +220,8 @@ github.com/hashicorp/go-retryablehttp v0.6.6/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER
 github.com/hashicorp/go-rootcerts v1.0.1/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR319Vf4pU3K5EGc8=
 github.com/hashicorp/go-rootcerts v1.0.2/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR319Vf4pU3K5EGc8=
 github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820142710-392d362687f4 h1:kMoT8ptMnSeoZn9a5yXOC8b2Oj4spjvaZ8vtK8IyoX0=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820142710-392d362687f4/go.mod h1:jPJNRD5IhyUuUmhX4jZ12ydgqBsCRGNIDbfVo8qknJA=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e h1:DZj9ffdK4RkR6u9TIxKirpgOX9sNinYaYw320ee6rd0=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e/go.mod h1:jPJNRD5IhyUuUmhX4jZ12ydgqBsCRGNIDbfVo8qknJA=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1 h1:HlTofNQN49DTzPCMVDppp+AVxMNVWaHUElpUYC0TRRE=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1/go.mod h1:irE9ILwhE8VooWdhHhBy0qXzOMRlHKoWoMlr31mAFCE=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1 h1:78ki3QBevHwYrVxnyVeaEz+7WtifHhauYF23es/0KlI=
