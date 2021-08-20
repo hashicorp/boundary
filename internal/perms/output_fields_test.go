@@ -193,12 +193,21 @@ func Test_ACLOutputFields(t *testing.T) {
 			authorized: true,
 		},
 		{
-			name:     "unauthorized",
+			name:     "unauthorized id only",
 			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
 			grants: []string{
 				"id=bar;output_fields=name",
 			},
 			action: action.Delete,
+			fields: []string{"name"},
+		},
+		{
+			name:     "unauthorized type only",
+			resource: Resource{ScopeId: "o_myorg", Type: resource.Role},
+			grants: []string{
+				"type=role;output_fields=name",
+			},
+			action: action.List,
 			fields: []string{"name"},
 		},
 	}

@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* grants: Fix grant format `type=<type>;output_fields=<fields>` with no action
+  specified. In some code paths this format would trigger an error when
+  validating even though it is correctly handled within the ACL code.
+  ([PR](https://github.com/hashicorp/boundary/pull/1474))
+
 ## 0.5.1 (2021/08/16)
 
 ### New and Improved
