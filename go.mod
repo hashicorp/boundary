@@ -19,7 +19,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.16-0.20210811162320-6409d36fca32
-	github.com/hashicorp/boundary/sdk v0.0.7-0.20210820145716-f7ba8e14a52b
+	github.com/hashicorp/boundary/sdk v0.0.7-0.20210820155430-0aea1a2669e3
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -28,12 +28,12 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820135956-a636a4d9cd5a
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820140919-c878735c9139
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820142710-392d362687f4
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1
