@@ -9,7 +9,7 @@ import "google/protobuf/struct.proto";
 // HostSet represents a host catalog as passed in to a plugin call. 
 message HostSet {
 	// Required. The ID of the host set.
-	string id = 10;
+	string external_id = 10;
 
 	// Attributes specific to the host set.
 	google.protobuf.Struct attributes = 100;

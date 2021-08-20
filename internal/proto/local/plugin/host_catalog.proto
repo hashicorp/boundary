@@ -9,7 +9,7 @@ import "google/protobuf/struct.proto";
 // HostCatalog represents a host catalog as passed in to a plugin call. 
 message HostCatalog {
 	// The ID of the host catalog.
-	string id = 10;
+	string external_id = 10;
 
 	// Attributes specific to the host catalog.
 	google.protobuf.Struct attributes = 20;

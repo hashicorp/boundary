@@ -9,7 +9,7 @@ import "google/protobuf/struct.proto";
 // Host contains all fields related to a host returned from a plugin.
 message Host {
 	// Required. A stable identifier for this host.
-	string id = 10;
+	string external_id = 10;
 
 	// Required. The primary address for the host result.
 	string address = 20;
