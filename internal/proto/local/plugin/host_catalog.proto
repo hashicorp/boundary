@@ -24,6 +24,9 @@ message HostCatalog {
 //
 // The data stored in this message is encrypted at-rest by Boundary
 // and never returned to the end user.
+//
+// TODO: Add a size limit to this data before we export the plugin
+// SDK.
 message HostCatalogPersisted {
 	// The persisted data.
 	google.protobuf.Struct data = 100;
