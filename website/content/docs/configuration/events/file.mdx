@@ -11,7 +11,7 @@ The file sink configures Boundary to send events to a file.
 
 ```hcl
 sink = {
-    name = "obs-sink"
+    name "file" "obs-sink"
     description = "Observations sent to a file"
     event_types = ["observation"]
     format = "cloudevents-json"
