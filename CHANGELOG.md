@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* controller: Fix issue with recursive listing across services when using the
+  unauthenticated user (`u_anon`) with no token and the list was started in a
+  scope where the user does not have permission
+  ([PR](https://github.com/hashicorp/boundary/pull/1478))
+
 ## 0.5.1 (2021/08/16)
 
 ### New and Improved
