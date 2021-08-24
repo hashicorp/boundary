@@ -20,8 +20,8 @@ type RequestInfo struct {
 
 // UserInfo defines the fields captured about a user for a Boundary request.
 type UserInfo struct {
-	UserId        string `json:"id,omitempty"`
-	AuthAccountId string `json:"auth_account_id,omitempty"`
+	UserId        string `json:"id,omitempty" class:"public"`
+	AuthAccountId string `json:"auth_account_id,omitempty" class:"public"`
 }
 
 type GrantsInfo struct {
@@ -29,17 +29,16 @@ type GrantsInfo struct {
 }
 
 type GrantsPair struct {
-	Grant   string `json:"grant,omitempty"`
-	ScopeId string `json:"scope_id,omitempty"`
+	Grant   string `json:"grant,omitempty" class:"public"`
+	ScopeId string `json:"scope_id,omitempty" class:"public"`
 }
 
 type Auth struct {
-	// AccessorId is a std audit field == auth_token public_id
-	AccessorId string      `json:"accessor_id"`
-	UserInfo   *UserInfo   `json:"user_info,omitempty"` // boundary field
-	GrantsInfo *GrantsInfo `json:"grants_info,omitempty"`
-	UserEmail  string      `json:"email,omitempty"`
-	UserName   string      `json:"name,omitempty"`
+	AuthTokenId string      `json:"auth_token_id" class:"public"`
+	UserInfo    *UserInfo   `json:"user_info,omitempty"` // boundary field
+	GrantsInfo  *GrantsInfo `json:"grants_info,omitempty"`
+	UserEmail   string      `json:"email,omitempty" class:"sensitive"`
+	UserName    string      `json:"name,omitempty" class:"sensitive"`
 }
 
 type Request struct {
