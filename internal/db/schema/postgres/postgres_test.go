@@ -136,7 +136,7 @@ func TestCurrentState_NoVersionTable(t *testing.T) {
 			}
 		}()
 		// Drop the version table so calls to CurrentState don't rely on that
-		d.drop(ctx)
+		require.NoError(t, d.drop(ctx))
 
 		v, alreadyRan, dirt, err := d.CurrentState(ctx)
 		assert.NoError(t, err)
@@ -166,7 +166,7 @@ func TestCurrentState_ToManyTables(t *testing.T) {
 		}()
 
 		// Create the most recent table
-		d.EnsureVersionTable(ctx)
+		require.NoError(t, d.EnsureVersionTable(ctx))
 
 		// Create the legacy version of the table.
 		oldTableCreate := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
@@ -360,6 +360,12 @@ func TestPostgres_Lock(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		err = ps.Unlock(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// make sure we call call Unlock in an idempotent manner.
 		err = ps.Unlock(ctx)
 		if err != nil {
 			t.Fatal(err)

@@ -40,9 +40,6 @@ the first place.
 * github.com/favadi/protoc-go-inject-tag
     * Jim
     * Todd
-* github.com/go-bindata/go-bindata/v3
-    * Jeff
-    * Jim
 * github.com/golang-migrate/migrate/v4
     * Jim
     * Mike

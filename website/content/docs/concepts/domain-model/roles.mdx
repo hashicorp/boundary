@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Domain Model - Roles
-sidebar_title: Roles
 description: |-
   The anatomy of a Boundary role
 ---
@@ -11,7 +10,7 @@ description: |-
 A role is a resource
 that contains a collection of [permissions][]
 which are granted to any principal assigned to the role.
-[Users][] and [groups][] are principals
+[Users][], [groups][], and [managed groups][] are principals
 which allows either to be assigned to a role.
 A role can be defined within any [scope][].
 A role can be assigned to principals from any scope.
@@ -28,11 +27,14 @@ A role has the following configurable attributes:
 ## Referenced By
 
 - [Group][]
+- [Managed Group][]
 - [Project][]
 - [User][]
 
 [group]: /docs/concepts/domain-model/groups
 [groups]: /docs/concepts/domain-model/groups
+[managed group]: /docs/concepts/domain-model/managed-groups
+[managed groups]: /docs/concepts/domain-model/managed-groups
 [permissions]: /docs/concepts/security/permissions
 [project]: /docs/concepts/domain-model/scopes#projects
 [scope]: /docs/concepts/domain-model/scopes
@@ -43,4 +45,4 @@ A role has the following configurable attributes:
 
 The following services are relevant to this resource:
 
-* [Role Service](/api-docs/role-service)
+- [Role Service](/api-docs/role-service)

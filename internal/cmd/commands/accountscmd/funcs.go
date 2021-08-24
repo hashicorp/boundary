@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/vault/sdk/helper/password"
+	"github.com/hashicorp/go-secure-stdlib/password"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 func init() {
@@ -37,10 +37,10 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "change-password":
-		return "Change the password on an account resource"
+		return "Change the password on an account"
 
 	case "set-password":
-		return "Directly set the password on an account resource"
+		return "Directly set the password on an account"
 
 	default:
 		return ""
@@ -58,7 +58,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Read a account:",
 			"",
-			`      $ boundary accounts read -id apw_1234567890`,
+			`      $ boundary accounts read -id acctpw_1234567890`,
 			"",
 			"  Please see the accounts subcommand help for detailed usage information.",
 		})
@@ -70,7 +70,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Change the password on a password-type account:",
 			"",
-			`      $ boundary accounts change-password -id apw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
+			`      $ boundary accounts change-password -id acctpw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
 			"",
 			"",
 		})
@@ -82,7 +82,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Set the password on a password-type account:",
 			"",
-			`      $ boundary accounts set-password -id apw_1234567890 -password <empty, to be read by stdin>`,
+			`      $ boundary accounts set-password -id acctpw_1234567890 -password <empty, to be read by stdin>`,
 			"",
 			"",
 		})
@@ -115,7 +115,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.Option) bool {
 	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
 		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)
@@ -193,31 +193,43 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 		"",
 		"Account information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if m.Name != "" {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Description != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if item.Name != "" {
+			output = append(output,
+				fmt.Sprintf("    Name:                %s", item.Name),
+			)
+		}
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -225,16 +237,27 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *accounts.Account) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":             item.Id,
-		"Version":        item.Version,
-		"Type":           item.Type,
-		"Created Time":   item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":   item.UpdatedTime.Local().Format(time.RFC1123),
-		"Auth Method ID": item.AuthMethodId,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*accounts.Account)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.AuthMethodId != "" {
+		nonAttributeMap["Auth Method ID"] = item.AuthMethodId
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}
@@ -248,9 +271,22 @@ func printItemTable(item *accounts.Account) string {
 		"",
 		"Account information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if len(item.ManagedGroupIds) > 0 {
+		ret = append(ret,
+			"",
+			"  Managed Group IDs:",
+			base.WrapSlice(4, item.ManagedGroupIds),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

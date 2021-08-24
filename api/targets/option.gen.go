@@ -35,7 +35,9 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
@@ -82,6 +84,30 @@ func WithFilter(filter string) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = true
+	}
+}
+
+func WithApplicationCredentialLibraryIds(inApplicationCredentialLibraryIds []string) Option {
+	return func(o *options) {
+		o.postMap["application_credential_library_ids"] = inApplicationCredentialLibraryIds
+	}
+}
+
+func DefaultApplicationCredentialLibraryIds() Option {
+	return func(o *options) {
+		o.postMap["application_credential_library_ids"] = nil
+	}
+}
+
+func WithApplicationCredentialSourceIds(inApplicationCredentialSourceIds []string) Option {
+	return func(o *options) {
+		o.postMap["application_credential_source_ids"] = inApplicationCredentialSourceIds
+	}
+}
+
+func DefaultApplicationCredentialSourceIds() Option {
+	return func(o *options) {
+		o.postMap["application_credential_source_ids"] = nil
 	}
 }
 

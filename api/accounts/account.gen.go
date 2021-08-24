@@ -23,6 +23,7 @@ type Account struct {
 	Type              string                 `json:"type,omitempty"`
 	AuthMethodId      string                 `json:"auth_method_id,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	ManagedGroupIds   []string               `json:"managed_group_ids,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
@@ -48,6 +49,11 @@ type (
 
 type AccountDeleteResult struct {
 	response *api.Response
+}
+
+// GetItem will always be nil for AccountDeleteResult
+func (n AccountDeleteResult) GetItem() interface{} {
+	return nil
 }
 
 func (n AccountDeleteResult) GetResponse() *api.Response {
@@ -129,9 +135,9 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*AccountReadResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AccountReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -139,7 +145,7 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("accounts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -170,9 +176,9 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, accountId string, version uint32, opt ...Option) (*AccountUpdateResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*AccountUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -184,7 +190,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, accountId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -202,7 +208,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("accounts/%s", accountId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("accounts/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -233,9 +239,9 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*AccountDeleteResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AccountDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -243,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

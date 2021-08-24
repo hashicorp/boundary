@@ -1,19 +1,18 @@
 ---
 layout: docs
 page_title: Domain Model - Auth Methods
-sidebar_title: Auth Methods
 description: |-
   The anatomy of a Boundary auth method
 ---
 
 # Auth Methods
 
-An auth method is a resource
-that provides a mechanism
-for [users][] to authenticate to Boundary.
-An auth method contains [accounts][]
-which link an individual user to a set of credentials.
-Auth methods can be defined at either a [Global][] or [Organization][] [scope][].
+An auth method is a resource that provides a mechanism for [users][] to
+authenticate to Boundary. An auth method contains [accounts][] which link an
+individual user to a set of credentials and [managed groups][] which groups
+[accounts][] that satisfy criteria and can be used as principals in [roles][].
+Auth methods can be defined at either a [Global][] or [Organization][]
+[scope][].
 
 ## Attributes
 
@@ -36,12 +35,16 @@ The password auth method has the following additional attributes:
 
 - [Account][]
 - [Global][]
+- [Managed Group][]
 - [Organization][]
 
 [account]: /docs/concepts/domain-model/accounts
 [accounts]: /docs/concepts/domain-model/accounts
 [global]: /docs/concepts/domain-model/scopes#global
+[managed group]: /docs/concepts/domain-model/managed-groups
+[managed groups]: /docs/concepts/domain-model/managed-groups
 [organization]: /docs/concepts/domain-model/scopes#organizations
+[roles]: /docs/concepts/domain-model/roles
 [scope]: /docs/concepts/domain-model/scopes
 [users]: /docs/concepts/domain-model/users
 
@@ -49,5 +52,5 @@ The password auth method has the following additional attributes:
 
 The following services are relevant to this resource:
 
-* [Auth Method Service](/api-docs/auth-method-service)
-* [Auth Token Service](/api-docs/auth-token-service)
+- [Auth Method Service](/api-docs/auth-method-service)
+- [Auth Token Service](/api-docs/auth-token-service)

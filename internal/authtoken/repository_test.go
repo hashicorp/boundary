@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -187,20 +188,21 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
-	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
-
-	iamRepo, err := iam.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
-	require.NoError(t, err)
+	aAcct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
+	iam.TestSetPrimaryAuthMethod(t, repo, org1, am.PublicId)
+	u1 := iam.TestUser(t, repo, org1.PublicId, iam.WithAccountIds(aAcct.PublicId))
 
 	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, repo, org2.GetPublicId())
+
+	testId, err := NewAuthTokenId()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name       string
 		iamUser    *iam.User
 		authAcctId string
+		opt        []Option
 		want       *AuthToken
 		wantErr    bool
 	}{
@@ -211,6 +213,19 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
 					AuthAccountId: aAcct.GetPublicId(),
+				},
+			},
+		},
+		{
+			name:       "WithPublicId-WithStatus",
+			iamUser:    u1,
+			authAcctId: aAcct.GetPublicId(),
+			opt:        []Option{WithPublicId(testId), WithStatus(PendingStatus)},
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
+					AuthAccountId: aAcct.GetPublicId(),
+					PublicId:      testId,
+					Status:        string(PendingStatus),
 				},
 			},
 		},
@@ -250,7 +265,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId, tt.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -262,6 +277,15 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
+
+			opts := getOpts(tt.opt...)
+			if opts.withPublicId != "" {
+				assert.Equal(opts.withPublicId, got.PublicId)
+			}
+			if opts.withStatus != "" {
+				assert.Equal(string(opts.withStatus), got.Status)
+			}
+
 			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
 			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
@@ -280,7 +304,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at.CtToken = nil
 	at.KeyId = ""
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -370,7 +394,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -550,7 +574,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -684,4 +708,163 @@ func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
 	got, err := repo.ListAuthTokens(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+}
+
+func Test_IssuePendingToken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+
+	tests := []struct {
+		name            string
+		tokenRequestId  string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing token request id",
+		},
+		{
+			name: "not-found",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "pending auth token",
+		},
+		{
+			name: "success",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithStatus(PendingStatus), WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			tk, err := repo.IssueAuthToken(ctx, tt.tokenRequestId)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(tk)
+			accessTime, err := ptypes.Timestamp(tk.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
+		})
+	}
+}
+
+func Test_CloseExpiredPendingTokens(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	createWith := func(cnt int, expIn time.Duration, status Status) {
+		authMethods := password.TestAuthMethods(t, conn, org.PublicId, 1)
+		authMethodId := authMethods[0].PublicId
+
+		accts := password.TestMultipleAccounts(t, conn, authMethodId, cnt)
+		for i := 0; i < cnt; i++ {
+			at := allocAuthToken()
+			id, err := NewAuthTokenId()
+			require.NoError(t, err)
+			at.PublicId = id
+			exp, err := ptypes.TimestampProto(time.Now().Add(expIn).Truncate(time.Second))
+			require.NoError(t, err)
+			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
+			at.Status = string(status)
+			at.AuthAccountId = accts[i].PublicId
+			at.KeyId = databaseWrapper.KeyID()
+			at.CtToken = []byte(id)
+			err = rw.Create(ctx, at)
+			require.NoError(t, err)
+		}
+	}
+	tests := []struct {
+		name            string
+		setup           func()
+		wantCnt         int
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name: "nada-todo",
+		},
+		{
+			name: "close-2",
+			setup: func() {
+				createWith(2, -10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+				createWith(1, 10*time.Second, PendingStatus)
+			},
+			wantCnt: 2,
+		},
+		{
+			name: "close-zero",
+			setup: func() {
+				createWith(2, 10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+			},
+			wantCnt: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// start with no tokens in the db.
+			_, err := rw.Exec(ctx, "delete from auth_token", nil)
+			require.NoError(err)
+			_, err = rw.Exec(ctx, "delete from auth_account", nil)
+			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
+			tokensClosed, err := repo.CloseExpiredPendingTokens(ctx)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Equal(0, tokensClosed)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %s", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, tokensClosed)
+		})
+	}
 }

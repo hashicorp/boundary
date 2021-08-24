@@ -33,7 +33,9 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
@@ -96,6 +98,30 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithOidcAccountIssuer(inIssuer string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = inIssuer
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountIssuer() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -152,6 +178,30 @@ func DefaultPasswordAccountPassword() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["password"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAccountSubject(inSubject string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject"] = inSubject
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountSubject() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject"] = nil
 		o.postMap["attributes"] = val
 	}
 }

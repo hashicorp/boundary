@@ -3,6 +3,7 @@ package schema
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"strings"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 
 func TestNewManager(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -37,6 +39,7 @@ func TestNewManager(t *testing.T) {
 
 func TestCurrentState(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	t.Cleanup(func() {
 		if err := c(); err != nil {
@@ -78,6 +81,7 @@ func TestCurrentState(t *testing.T) {
 
 func TestRollForward(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -140,6 +144,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 func TestRunMigration_canceledContext(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -193,6 +198,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -216,7 +222,9 @@ func TestManager_ExclusiveLock(t *testing.T) {
 
 func TestManager_SharedLock(t *testing.T) {
 	ctx := context.Background()
-	c, u, _, err := docker.StartDbInDocker("postgres")
+	dialect := "postgres"
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -238,6 +246,94 @@ func TestManager_SharedLock(t *testing.T) {
 
 	assert.Error(t, m1.ExclusiveLock(ctx))
 	assert.Error(t, m2.ExclusiveLock(ctx))
+}
+
+func Test_GetMigrationLog(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	dialect := "postgres"
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := sql.Open("postgres", u)
+	require.NoError(t, err)
+	m, err := NewManager(ctx, "postgres", d)
+	require.NoError(t, err)
+	require.NoError(t, m.RollForward(ctx))
+
+	const insert = `insert into log_migration(entry) values ($1)`
+	createEntries := func(entries ...string) {
+		for _, e := range entries {
+			_, err := d.Exec(insert, e)
+			require.NoError(t, err)
+		}
+	}
+	tests := []struct {
+		name          string
+		d             *sql.DB
+		setup         func()
+		withDeleteLog bool
+		wantEntries   []string
+		wantErrMatch  *errors.Template
+	}{
+		{
+			name:        "simple",
+			d:           d,
+			setup:       func() { createEntries("alice", "eve", "bob") },
+			wantEntries: []string{"alice", "eve", "bob"},
+		},
+		{
+			name:          "with-delete-log",
+			d:             d,
+			setup:         func() { createEntries("alice", "eve", "bob") },
+			withDeleteLog: true,
+			wantEntries:   []string{"alice", "eve", "bob"},
+		},
+		{
+			name:         "missing-sql-DB",
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// start with no log entries
+			_, err := d.ExecContext(ctx, "truncate log_migration")
+			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
+			gotLog, err := GetMigrationLog(ctx, tt.d, WithDeleteLog(tt.withDeleteLog))
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "expected error with code: %s and got err: %q", tt.wantErrMatch.Code, err)
+				return
+			}
+			require.NoError(err)
+			var got []string
+			for _, e := range gotLog {
+				got = append(got, e.Entry)
+			}
+			sort.Strings(got)
+			sort.Strings(tt.wantEntries)
+			assert.Equal(tt.wantEntries, got)
+
+			row := d.QueryRowContext(ctx, "select count(*) from log_migration")
+			require.NoError(row.Err())
+			var cnt int
+			require.NoError(row.Scan(&cnt))
+			if tt.withDeleteLog {
+				assert.Equal(0, cnt)
+			} else {
+				assert.Equal(len(gotLog), cnt)
+			}
+		})
+	}
 }
 
 // Creates a new migrationState only with the versions <= the provided maxVer

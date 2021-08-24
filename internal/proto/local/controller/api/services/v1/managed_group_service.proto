@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resources/managedgroups/v1/managed_group.proto";
+
+service ManagedGroupService {
+
+  // GetManagedGroup returns a stored ManagedGroup if present. The provided request must
+  // include the id for the ManagedGroup be retrieved. If missing, malformed or
+  // referencing a non existing ManagedGroup an error is returned.
+  rpc GetManagedGroup(GetManagedGroupRequest) returns (GetManagedGroupResponse) {
+    option (google.api.http) = {
+        get: "/v1/managed-groups/{id}"
+        response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Gets a single ManagedGroup."
+    };
+  }
+
+  // ListManagedGroups returns a list of stored ManagedGroups which exist inside the
+  // provided Auth Method. The request must include the Auth Method id which
+  // contains the ManagedGroups being listed. If missing or malformed an error
+  // is returned.
+  rpc ListManagedGroups(ListManagedGroupsRequest) returns (ListManagedGroupsResponse) {
+    option (google.api.http) = {
+      get: "/v1/managed-groups"
+     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all ManagedGroups in a specific Auth Method."
+    };
+  }
+
+  // CreateManagedGroup creates and stores a ManagedGroup. The provided request
+  // must include the Auth Method ID in which the ManagedGroup will be created.
+  // If the Auth Method ID is missing, malformed, or references a non existing
+  // resource an error is returned. If a name or login_name is provided that is
+  // in use in another ManagedGroup in the same Auth Method an error is
+  // returned.
+  rpc CreateManagedGroup(CreateManagedGroupRequest) returns (CreateManagedGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/managed-groups"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Creates a single ManagedGroup in the provided Auth Method."
+    };
+  }
+
+  // UpdateManagedGroup updates an existing ManagedGroup. The provided
+  // ManagedGroup must not have any read only fields set. The update mask must
+  // be included in the request and contain at least 1 mutable field. To unset a
+  // field's value, include the field in the update mask and don't set it in the
+  // provided ManagedGroup. An error is returned if the ManagedGroup id is
+  // missing or references a non-existing resource. An error is also returned if
+  // the request attempts to update the name to one that is already in use in
+  // the containing Auth Method.
+  rpc UpdateManagedGroup(UpdateManagedGroupRequest) returns (UpdateManagedGroupResponse) {
+    option (google.api.http) = {
+      patch: "/v1/managed-groups/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Updates a ManagedGroup."
+    };
+  }
+
+  // DeleteManagedGroup removes a ManagedGroup. If the provided ManagedGroup Id
+  // is malformed or not provided an error is returned.
+  rpc DeleteManagedGroup(DeleteManagedGroupRequest) returns (DeleteManagedGroupResponse) {
+    option (google.api.http) = {
+      delete: "/v1/managed-groups/{id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes a ManagedGroup."
+    };
+  }
+}
+
+message GetManagedGroupRequest {
+  string id = 1;
+}
+
+message GetManagedGroupResponse {
+  resources.managedgroups.v1.ManagedGroup item = 1;
+}
+
+message ListManagedGroupsRequest {
+  string auth_method_id = 1 [json_name="auth_method_id"];
+  string filter = 30 [json_name="filter"];
+}
+
+message ListManagedGroupsResponse {
+  repeated resources.managedgroups.v1.ManagedGroup items = 1;
+}
+
+message CreateManagedGroupRequest {
+  resources.managedgroups.v1.ManagedGroup item = 2;
+}
+
+message CreateManagedGroupResponse {
+  string uri = 1;
+  resources.managedgroups.v1.ManagedGroup item = 2;
+}
+
+message UpdateManagedGroupRequest {
+  string id = 1;
+  resources.managedgroups.v1.ManagedGroup item = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+}
+
+message UpdateManagedGroupResponse {
+  resources.managedgroups.v1.ManagedGroup item = 1;
+}
+
+message DeleteManagedGroupRequest {
+  string id = 1;
+}
+
+message DeleteManagedGroupResponse {}

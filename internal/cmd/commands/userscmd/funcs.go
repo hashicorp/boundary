@@ -104,7 +104,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]users.Option) bool {
 	switch c.Func {
 	case "add-accounts", "remove-accounts":
 		if len(c.flagAccounts) == 0 {
@@ -150,39 +150,64 @@ func (c *Command) printListTable(items []*users.User) string {
 		"User information:",
 	}
 
-	for i, u := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", u.Id),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", u.Scope.Id),
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
 			)
 		}
-		if true {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", u.Version),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if u.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", u.Name),
+				fmt.Sprintf("    Name:                %s", item.Name),
 			)
 		}
-		if u.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", u.Description),
+				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
-		if len(u.AuthorizedActions) > 0 {
+		if item.PrimaryAccountId != "" {
+			output = append(output,
+				fmt.Sprintf("    Primary Account ID:  %s", item.PrimaryAccountId),
+			)
+		}
+		if item.LoginName != "" {
+			output = append(output,
+				fmt.Sprintf("    Login Name:          %s", item.LoginName),
+			)
+		}
+		if item.FullName != "" {
+			output = append(output,
+				fmt.Sprintf("    Full Name:           %s", item.FullName),
+			)
+		}
+		if item.Email != "" {
+			output = append(output,
+				fmt.Sprintf("    Email:               %s", item.Email),
+			)
+		}
+
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, u.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -190,26 +215,45 @@ func (c *Command) printListTable(items []*users.User) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *users.User) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*users.User)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
 	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.PrimaryAccountId != "" {
+		nonAttributeMap["Primary Account Id"] = item.PrimaryAccountId
+	}
+	if item.LoginName != "" {
+		nonAttributeMap["Login Name"] = item.LoginName
+	}
+	if item.FullName != "" {
+		nonAttributeMap["Full Name"] = item.FullName
+	}
+	if item.Email != "" {
+		nonAttributeMap["Email"] = item.Email
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
 	var userMaps []map[string]interface{}
-	if len(in.Accounts) > 0 {
-		for _, account := range in.Accounts {
+	if len(item.Accounts) > 0 {
+		for _, account := range item.Accounts {
 			a := map[string]interface{}{
 				"ID":       account.Id,
 				"Scope ID": account.ScopeId,
@@ -225,20 +269,25 @@ func printItemTable(in *users.User) string {
 		"",
 		"User information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
 		ret = append(ret,
 			"",
-			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
 		)
 	}
 
-	if len(in.Accounts) > 0 {
+	if len(item.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, item.AuthorizedActions),
+		)
+	}
+
+	if len(item.Accounts) > 0 {
 		ret = append(ret,
 			"",
 			"  Accounts:",

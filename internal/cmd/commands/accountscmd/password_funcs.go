@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/vault/sdk/helper/password"
+	"github.com/hashicorp/go-secure-stdlib/password"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 func init() {
@@ -49,7 +49,7 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 			"",
 			"  Update a password-type account given its ID. Example:",
 			"",
-			`    $ boundary accounts update password -id apw_1234567890 -name "devops" -description "Password account for DevOps"`,
+			`    $ boundary accounts update password -id acctpw_1234567890 -name "devops" -description "Password account for DevOps"`,
 			"",
 			"",
 		})
@@ -78,7 +78,7 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 	}
 }
 
-func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Option) bool {
+func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, opts *[]accounts.Option) bool {
 	if c.Func == "create" && c.flagLoginName == "" {
 		c.UI.Error("Login Name must be passed in via -login-name")
 		return false

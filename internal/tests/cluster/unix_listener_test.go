@@ -47,8 +47,9 @@ func TestUnixListener(t *testing.T) {
 	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config: conf,
-		Logger: logger.Named("c1"),
+		Config:                        conf,
+		Logger:                        logger.Named("c1"),
+		DisableOidcAuthMethodCreation: true,
 	})
 	defer c1.Shutdown()
 

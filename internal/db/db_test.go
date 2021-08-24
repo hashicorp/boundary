@@ -2,6 +2,9 @@ package db
 
 import (
 	"testing"
+
+	"github.com/lib/pq"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOpen(t *testing.T) {
@@ -57,4 +60,10 @@ func TestOpen(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPostgresInfinity(t *testing.T) {
+	assert.Panics(t, func() {
+		pq.EnableInfinityTs(NegativeInfinityTS, PositiveInfinityTS)
+	})
 }

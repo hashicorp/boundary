@@ -19,10 +19,10 @@ message Account {
 	resources.scopes.v1.ScopeInfo scope = 20;
 
 	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "Name"}];
 
 	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "Description"}];
 
 	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];
@@ -43,14 +43,41 @@ message Account {
 	// The attributes that are applicable for the specific Account type.
 	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
 
+	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
+	repeated string managed_group_ids = 110 [json_name="managed_group_ids"];
+
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }
 
+// Attributes associated only with Accounts with type "password".
 message PasswordAccountAttributes {
 	// The login name of this Account. This is unique per Auth Method.
 	string login_name = 10 [json_name="login_name", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "LoginName"}];
 
 	// The password for this Account.
 	google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true];
+}
+
+// Attributes associated only with Accounts with type "oidc".
+message OidcAccountAttributes {
+	// issuer is a case sensitive URL that maps to the OIDC iss claim.
+	// This value is immutable after creation time.
+	string issuer = 80 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true];
+
+	// subject is a case sensitive string that maps to the OIDC sub claim.
+	// This value is immutable after creation time.
+	string subject = 90 [json_name="subject", (custom_options.v1.generate_sdk_option) = true];
+
+	// Output only. full_name is a string that maps to the OIDC name claim.
+	string full_name = 100 [json_name="full_name"];
+
+	// Output only. email is a string that maps to the OIDC email claim.
+	string email = 110;
+
+	// Output only. token_claims are the marshaled claims from the token.
+	google.protobuf.Struct token_claims = 120;
+
+	// Output only. userinfo_claims are the marshaled claims from userinfo.
+	google.protobuf.Struct userinfo_claims = 130;
 }

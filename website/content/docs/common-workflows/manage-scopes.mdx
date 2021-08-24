@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Manage Scopes
-sidebar_title: Manage Scopes
 description: How to manage Boundary scopes
 ---
 
@@ -42,7 +41,6 @@ scope.
 <Tabs>
 <Tab heading="CLI">
 
-
 ```bash
 $ boundary scopes create -scope-id global -name my_org -description 'My first org'
 
@@ -63,7 +61,6 @@ Scope information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to the Boundary landing page.
 1. Choose the **New** button.
 1. Fill org details.
@@ -79,7 +76,6 @@ Scope information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_scope" "org" {
   scope_id                 = "global"
@@ -93,14 +89,12 @@ resource "boundary_scope" "org" {
 </Tab>
 </Tabs>
 
-
 ## Create a Project
 
 Next, we're going to add a project scope to our org.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 $ boundary scopes create -scope-id o_0MkQUfE9jA -name my_project -description 'My first project'
@@ -123,7 +117,6 @@ Scope information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to an org, which leads to an overview of projects within that org.
 1. Choose the **New** button.
 1. Fill project details.
@@ -140,7 +133,6 @@ Scope information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_scope" "project" {
   name             = "my_project"
@@ -155,4 +147,3 @@ resource "boundary_scope" "project" {
 
 </Tab>
 </Tabs>
-

@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Controller - Configuration
-sidebar_title: controller
 description: |-
   The controller stanza configures controller-specifc parameters.
 ---
@@ -16,21 +15,33 @@ controller {
   description = "An example controller"
   database {
     url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>"
+    max_open_connections = 5
   }
 }
 ```
 
-- `name` - Specifies a unique name of this controller within the Boundary controller cluster.
+- `name` - Specifies a unique name of this controller within the Boundary
+  cluster. This value can be a direct name string, can refer to a file on disk
+  (file://) from which an name will be read; or an env var (env://) from which
+  the name will be read.
 
 - `description` - Specifies a friendly description of this controller.
 
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
 
-  - `url` - Configures the URL for connecting to Postgres
+  - `url` - Configures the URL for connecting to Postgres. If your Postgres server has TLS disabled,
+    Boundary will not be able to connect by default. To run Boundary without a TLS connection
+    to Postgres (not recommended for production usage), add the `sslmode=disable` parameter to
+    your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
+  - `max_open_connections` - Can be used to control the maximum number of
+    connections that can be opened by the controller.
+    The minimum number of connections required is 5.
+    Setting this value to 0 will allow the controller to open as many
+    connections as needed.
 
-  Either can refer to a file on disk (file://) from which a URL will be read; an env
+  Either URL can refer to a file on disk (file://) from which a URL will be read; an env
   var (env://) from which the URL will be read; or a direct database URL (postgres://).
 
 - `public_cluster_addr` - Specifies the public host or IP address (and
@@ -120,7 +131,7 @@ controller {
   # supply the url, or "env://" to name an environment variable
   # that contains the URL.
   database {
-	  url = "postgresql://boundary:boundarydemo@${aws_db_instance.boundary.endpoint}/boundary"
+	  url = "postgresql://boundary:boundarydemo@postgres.yourdomain.com:5432/boundary"
   }
 }
 
@@ -136,7 +147,7 @@ listener "tcp" {
   # Uncomment to enable CORS for the Admin UI. Be sure to set the allowed origin(s)
   # to appropriate values.
   #cors_enabled = true
-  #cors_allowed_origins = ["yourcorp.yourdomain.com"]
+  #cors_allowed_origins = ["https://yourcorp.yourdomain.com", "serve://boundary"]
 }
 
 # Data-plane listener configuration block (used for worker coordination)
@@ -145,8 +156,6 @@ listener "tcp" {
   address = "10.0.0.1"
   # The purpose of this listener
   purpose = "cluster"
-
-  tls_disable = false
 }
 
 # Root KMS configuration block: this is the root key for Boundary

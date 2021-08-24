@@ -25,10 +25,6 @@
     margin: 32px 0 16px 0;
   }
 
-  & .landingPlaceholder {
-    color: var(--gray-2);
-  }
-
   & :global(.g-content) {
     padding-left: 0;
     padding-right: 0;

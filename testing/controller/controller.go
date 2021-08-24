@@ -22,7 +22,7 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 		return nil, fmt.Errorf("Cannot provide both WithConfigFile and WithConfigText")
 	}
 	var setDbParams bool
-	if opts.setDefaultAuthMethodId || opts.setDefaultLoginName || opts.setDefaultPassword {
+	if opts.setDefaultPasswordAuthMethodId || opts.setDefaultOidcAuthMethodId || opts.setDefaultLoginName || opts.setDefaultPassword {
 		setDbParams = true
 	}
 	if opts.setDisableAuthMethodCreation {
@@ -39,19 +39,20 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 }
 
 type option struct {
-	tcOptions                     *controller.TestControllerOpts
-	setWithConfigFile             bool
-	setWithConfigText             bool
-	setDisableAuthMethodCreation  bool
-	setDisableDatabaseCreation    bool
-	setDisableDatabaseDestruction bool
-	setDefaultAuthMethodId        bool
-	setDefaultLoginName           bool
-	setDefaultPassword            bool
-	setRootKms                    bool
-	setWorkerAuthKms              bool
-	setRecoveryKms                bool
-	setDatabaseUrl                bool
+	tcOptions                      *controller.TestControllerOpts
+	setWithConfigFile              bool
+	setWithConfigText              bool
+	setDisableAuthMethodCreation   bool
+	setDisableDatabaseCreation     bool
+	setDisableDatabaseDestruction  bool
+	setDefaultPasswordAuthMethodId bool
+	setDefaultOidcAuthMethodId     bool
+	setDefaultLoginName            bool
+	setDefaultPassword             bool
+	setRootKms                     bool
+	setWorkerAuthKms               bool
+	setRecoveryKms                 bool
+	setDatabaseUrl                 bool
 }
 
 type Option func(*option) error
@@ -119,10 +120,18 @@ func DisableDatabaseDestruction() Option {
 	}
 }
 
-func WithDefaultAuthMethodId(id string) Option {
+func WithDefaultPasswordAuthMethodId(id string) Option {
 	return func(c *option) error {
-		c.setDefaultAuthMethodId = true
-		c.tcOptions.DefaultAuthMethodId = id
+		c.setDefaultPasswordAuthMethodId = true
+		c.tcOptions.DefaultPasswordAuthMethodId = id
+		return nil
+	}
+}
+
+func WithDefaultOidcAuthMethodId(id string) Option {
+	return func(c *option) error {
+		c.setDefaultOidcAuthMethodId = true
+		c.tcOptions.DefaultOidcAuthMethodId = id
 		return nil
 	}
 }

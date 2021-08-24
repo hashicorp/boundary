@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestSession_Create(t *testing.T) {
@@ -20,10 +20,8 @@ func TestSession_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(t, err)
-	exp := &timestamp.Timestamp{Timestamp: future}
+	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
+	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
 	type args struct {
 		composedOf ComposedOf
@@ -45,15 +43,16 @@ func TestSession_Create(t *testing.T) {
 				opt:        []Option{WithExpirationTime(exp)},
 			},
 			want: &Session{
-				UserId:          composedOf.UserId,
-				HostId:          composedOf.HostId,
-				TargetId:        composedOf.TargetId,
-				HostSetId:       composedOf.HostSetId,
-				AuthTokenId:     composedOf.AuthTokenId,
-				ScopeId:         composedOf.ScopeId,
-				Endpoint:        "tcp://127.0.0.1:22",
-				ExpirationTime:  composedOf.ExpirationTime,
-				ConnectionLimit: composedOf.ConnectionLimit,
+				UserId:             composedOf.UserId,
+				HostId:             composedOf.HostId,
+				TargetId:           composedOf.TargetId,
+				HostSetId:          composedOf.HostSetId,
+				AuthTokenId:        composedOf.AuthTokenId,
+				ScopeId:            composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     composedOf.ExpirationTime,
+				ConnectionLimit:    composedOf.ConnectionLimit,
+				DynamicCredentials: composedOf.DynamicCredentials,
 			},
 			create: true,
 		},
@@ -132,6 +131,7 @@ func TestSession_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			assert, require := assert.New(t), require.New(t)
 			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
@@ -145,10 +145,10 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
+				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
 				require.NoError(err)
 				got.Certificate = certBytes
-				err = db.New(conn).Create(context.Background(), got)
+				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return

@@ -149,6 +149,170 @@ service TargetService {
     };
   }
 
+  // AddTargetHostSources adds Host Sources to this Target. The provided request
+  // must include the Target ID to which the Host Sources will be added. All
+  // Host Sources added to the provided Target must be a child of a Catalog that
+  // is a child of the same scope as this Target. If the scope or Target IDs are
+  // missing, malformed, or reference non-existing resources, an error is
+  // returned. An error is returned if a Host Source is attempted to be added to a
+  // target that is already present on the Target.
+  rpc AddTargetHostSources(AddTargetHostSourcesRequest) returns (AddTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds existing Host Sources to a Target."
+    };
+  }
+
+  // SetTargetHostSources sets the Target's Host Sources. Any existing Host
+  // Sources on the Target are deleted if they are not included in this request.
+  // The provided request must include the scope, and the Target ID on which the
+  // Host Sources will be set. All Host Sources in the request must be a child
+  // of a Catalog that is in the same scope as the provided Target. If any IDs
+  // are missing, malformed, or references a non-existing resource, an error is
+  // returned.
+  rpc SetTargetHostSources(SetTargetHostSourcesRequest) returns (SetTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sources the Host Sources on the Target."
+    };
+  }
+
+  // RemoveTargetHostSources removes the Host Sources from the specified Target.
+  // The provided request must include the Target ID for the Target from which
+  // the Host Sources will be removed. If the ID is missing, malformed, or
+  // references a non-existing scope or Catalog, an error is returned.  An error
+  // is returned if a Host Source is attempted to be removed from the Target
+  // when the Target does not have the Host Set.
+  rpc RemoveTargetHostSources(RemoveTargetHostSourcesRequest) returns (RemoveTargetHostSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-host-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes Host Sources from the Target."
+    };
+  }
+
+
+  // AddTargetCredentialLibraries adds Credential Libraries to this Target.
+  // The provided request must include the Target ID to which the Credential
+  // Libraries will be added. All Credential Libraries added to the provided
+  // Target must be a child of a Store that is in the same scope as this
+  // Target. If the scope or Target IDs are missing, malformed, or reference
+  // non-existing resources, an error is returned. An error is returned if a
+  // Credential Library is attempted to be added to a target that is already
+  // present on the Target.
+  rpc AddTargetCredentialLibraries(AddTargetCredentialLibrariesRequest) returns (AddTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deprecated: use AddTargetCredentialSources instead."
+    };
+    option deprecated = true;
+  }
+
+  // SetTargetCredentialLibraries sets the Target's Credential Libraries.
+  // Any existing Credential Libraries on the Target are deleted if they are
+  // not included in this request. The provided request must include the scope,
+  // and the Target ID on which the Credential Libraries will be set.  All
+  // Credential Libraries in the request must be a child of a Store that is
+  // in the same scope as the provided Target. If any IDs are missing,
+  // malformed, or references a non-existing resource, an error is returned.
+  rpc SetTargetCredentialLibraries(SetTargetCredentialLibrariesRequest) returns (SetTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deprecated: use SetTargetCredentialSources instead."
+    };
+    option deprecated = true;
+  }
+
+  // RemoveTargetCredentialLibraries removes the Credential Libraries from the
+  // specified Target. The provided request must include the Target ID for the
+  // Target from which the Credential Libraries will be removed. If the ID is
+  // missing, or malformed, an error is returned.  An error is returned if a
+  // Credential Library is attempted to be removed from the Target when the
+  // Target does not have the Credential Library.
+  rpc RemoveTargetCredentialLibraries(RemoveTargetCredentialLibrariesRequest) returns (RemoveTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deprecated: use RemoveTargetCredentialSources instead."
+    };
+    option deprecated = true;
+  }
+
+  // AddTargetCredentialSources adds Credential Sources to this Target.
+  // The provided request must include the Target ID to which the Credential
+  // Sources will be added. All Credential Sources added to the provided
+  // Target must be a child of a Store that is in the same scope as this
+  // Target. If the scope or Target IDs are missing, malformed, or reference
+  // non-existing resources, an error is returned. An error is returned if a
+  // Credential Source is attempted to be added to a target that is already
+  // present on the Target.
+  rpc AddTargetCredentialSources(AddTargetCredentialSourcesRequest) returns (AddTargetCredentialSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-credential-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds existing Credential Sources to a Target."
+    };
+  }
+
+  // SetTargetCredentialSources sets the Target's Credential Sources.
+  // Any existing Credential Sources on the Target are deleted if they are
+  // not included in this request. The provided request must include the scope,
+  // and the Target ID on which the Credential Sources will be set.  All
+  // Credential Sources in the request must be a child of a Store that is
+  // in the same scope as the provided Target. If any IDs are missing,
+  // malformed, or references a non-existing resource, an error is returned.
+  rpc SetTargetCredentialSources(SetTargetCredentialSourcesRequest) returns (SetTargetCredentialSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-credential-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the Credential Sources on the Target."
+    };
+  }
+
+  // RemoveTargetCredentialSources removes the Credential Sources from the
+  // specified Target. The provided request must include the Target ID for the
+  // Target from which the Credential Sources will be removed. If the ID is
+  // missing, or malformed, an error is returned.  An error is returned if a
+  // Credential Source is attempted to be removed from the Target when the
+  // Target does not have the Credential Source.
+  rpc RemoveTargetCredentialSources(RemoveTargetCredentialSourcesRequest) returns (RemoveTargetCredentialSourcesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-credential-sources"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes Credential Sources from the Target."
+    };
+  }
 }
 
 message GetTargetRequest {
@@ -227,6 +391,120 @@ message RemoveTargetHostSetsRequest {
 }
 
 message RemoveTargetHostSetsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message AddTargetHostSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message SetTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message SetTargetHostSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetHostSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+}
+
+message RemoveTargetHostSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+}
+
+message AddTargetCredentialLibrariesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+// Sets the values for application_credential_library_ids.  If any
+// credential_library_id field that is not set in the request will result in
+// those fields being cleared.
+message SetTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+}
+
+message SetTargetCredentialLibrariesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+}
+
+message RemoveTargetCredentialLibrariesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetCredentialSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
+}
+
+message AddTargetCredentialSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+// Sets the values for application_credential_source_ids.  If any
+// credential_source_id field that is not set in the request will result in
+// those fields being cleared.
+message SetTargetCredentialSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
+}
+
+message SetTargetCredentialSourcesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetCredentialSourcesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_id"];
+}
+
+message RemoveTargetCredentialSourcesResponse {
   api.resources.targets.v1.Target item = 1;
 }
 

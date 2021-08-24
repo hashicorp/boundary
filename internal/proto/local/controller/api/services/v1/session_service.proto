@@ -6,7 +6,6 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/field_mask.proto";
 import "controller/api/resources/sessions/v1/session.proto";
 
 service SessionService {

@@ -2,16 +2,15 @@ package sessions_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -19,17 +18,19 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "cancel", "cancel:self"}
 
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -56,7 +57,7 @@ func TestGetSession(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -82,11 +83,11 @@ func TestGetSession(t *testing.T) {
 		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 		CreatedTime:       sess.CreateTime.GetTimestamp(),
 		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		Type:              target.TcpSubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -128,7 +129,7 @@ func TestGetSession(t *testing.T) {
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new session service.")
 
-			got, gErr := s.GetSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.GetSession(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -146,7 +147,6 @@ func TestList_Self(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	logger := hclog.New(nil)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	rw := db.New(conn)
@@ -174,7 +174,7 @@ func TestList_Self(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	// By default a user can read/cancel their own sessions.
 	session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -218,7 +218,7 @@ func TestList_Self(t *testing.T) {
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
 			got, err := s.ListSessions(ctx, &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()})
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())
@@ -258,13 +258,13 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSets([]string{hsOther.GetPublicId()}))
+	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
@@ -294,12 +294,12 @@ func TestList(t *testing.T) {
 			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 			CreatedTime:       sess.CreateTime.GetTimestamp(),
 			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			Type:              target.TcpSubtype.String(),
+			AuthorizedActions: testAuthorizedActions,
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -329,12 +329,12 @@ func TestList(t *testing.T) {
 			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 			CreatedTime:       sess.CreateTime.GetTimestamp(),
 			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithOtherSessions.GetPublicId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: pWithOtherSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oOther.GetPublicId()},
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			Type:              target.TcpSubtype.String(),
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -385,24 +385,44 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
-			require.NoError(t, err, "Couldn't create new session service.")
+			require.NoError(err, "Couldn't create new session service.")
 
-			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			// Test without anon user
+			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
-				require.Error(t, gErr)
-				assert.True(t, errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(t, gErr)
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			if tc.res != nil {
-				require.Equal(t, len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
+				require.Equal(len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
-					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
 				}
 			}
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test with anon user
+			got, gErr = s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Empty(item.Version)
+				require.Empty(item.UserId)
+				require.Empty(item.HostId)
+				require.Empty(item.HostSetId)
+				require.Empty(item.AuthTokenId)
+				require.Empty(item.Endpoint)
+				require.Nil(item.CreatedTime)
+				require.Nil(item.ExpirationTime)
+				require.Nil(item.UpdatedTime)
+				require.Empty(item.Certificate)
+				require.Empty(item.TerminationReason)
+			}
 		})
 	}
 }
@@ -449,7 +469,7 @@ func TestCancel(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -473,11 +493,11 @@ func TestCancel(t *testing.T) {
 		Endpoint:          sess.Endpoint,
 		CreatedTime:       sess.CreateTime.GetTimestamp(),
 		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		Type:              target.TcpSubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	version := wireSess.GetVersion()
@@ -491,6 +511,12 @@ func TestCancel(t *testing.T) {
 	}{
 		{
 			name:    "Cancel a session",
+			scopeId: sess.ScopeId,
+			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
+			res:     &pbs.CancelSessionResponse{Item: wireSess},
+		},
+		{
+			name:    "Already canceled",
 			scopeId: sess.ScopeId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
@@ -523,10 +549,17 @@ func TestCancel(t *testing.T) {
 
 			tc.req.Version = version
 
-			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				// It's hard to mix and match api/error package errors right now
+				// so use old/new behavior depending on the type. If validate
+				// gets updated this can be standardized.
+				if errors.Match(errors.T(errors.InvalidSessionState), gErr) {
+					assert.True(errors.Match(errors.T(tc.err), gErr), "GetSession(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+				} else {
+					assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				}
 			}
 
 			if tc.res == nil {

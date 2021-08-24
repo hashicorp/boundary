@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,9 @@ func Test_PublicIds(t *testing.T) {
 		id, err := newGroupId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, GroupPrefix+"_"))
+	})
+	t.Run("oidc managed group", func(t *testing.T) {
+		assert.True(t, strings.HasPrefix("mgoidc_1234567890", intglobals.OidcManagedGroupPrefix+"_"))
 	})
 	t.Run("scopes", func(t *testing.T) {
 		id, err := newScopeId(scope.Org)

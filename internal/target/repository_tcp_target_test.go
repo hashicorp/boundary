@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -34,16 +35,24 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 		sets = append(sets, s.PublicId)
 	}
 
+	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	credSources := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
+	var clIds []string
+	for _, cl := range credSources {
+		clIds = append(clIds, cl.PublicId)
+	}
+
 	type args struct {
 		target *TcpTarget
 		opt    []Option
 	}
 	tests := []struct {
-		name         string
-		args         args
-		wantHostSets []string
-		wantErr      bool
-		wantIsError  errors.Code
+		name            string
+		args            args
+		wantHostSources []string
+		wantCredLibs    []string
+		wantErr         bool
+		wantIsError     errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -56,10 +65,64 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					require.NoError(t, err)
 					return target
 				}(),
-				opt: []Option{WithHostSets(sets)},
 			},
-			wantErr:      false,
-			wantHostSets: sets,
+			wantErr:         false,
+			wantCredLibs:    []string{},
+			wantHostSources: []string{},
+		},
+		{
+			name: "valid-org-with-host-sets",
+			args: args{
+				target: func() *TcpTarget {
+					target, err := NewTcpTarget(proj.PublicId,
+						WithName("valid-org-with-host-sets"),
+						WithDescription("valid-org"),
+						WithDefaultPort(uint32(22)))
+					require.NoError(t, err)
+					return target
+				}(),
+				opt: []Option{WithHostSources(sets)},
+			},
+			wantErr:         false,
+			wantHostSources: sets,
+			wantCredLibs:    []string{},
+		},
+		{
+			name: "valid-org-with-cred-libs",
+			args: args{
+				target: func() *TcpTarget {
+					target, err := NewTcpTarget(proj.PublicId,
+						WithName("valid-org-with-cred-libs"),
+						WithDescription("valid-org"),
+						WithDefaultPort(uint32(22)))
+					require.NoError(t, err)
+					return target
+				}(),
+				opt: []Option{WithCredentialSources(clIds)},
+			},
+			wantErr:         false,
+			wantCredLibs:    clIds,
+			wantHostSources: []string{},
+		},
+		{
+			name: "valid-org-with-cred-libs-and-host-sets",
+			args: args{
+				target: func() *TcpTarget {
+					target, err := NewTcpTarget(proj.PublicId,
+						WithName("valid-org-with-cred-libs-and-host-sets"),
+						WithDescription("valid-org"),
+						WithDefaultPort(uint32(22)))
+					require.NoError(t, err)
+					return target
+				}(),
+				opt: []Option{
+					WithHostSources(sets),
+					WithCredentialSources(clIds),
+				},
+			},
+			wantErr:         false,
+			wantCredLibs:    clIds,
+			wantHostSources: sets,
 		},
 		{
 			name: "nil-target",
@@ -112,7 +175,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.target, tt.args.opt...)
+			target, hostSources, credSources, err := repo.CreateTcpTarget(context.Background(), tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)
@@ -121,16 +184,23 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(target.GetPublicId())
-			gotIds := make([]string, 0, len(hostSets))
-			for _, s := range hostSets {
-				gotIds = append(gotIds, s.PublicId)
+			hsIds := make([]string, 0, len(hostSources))
+			for _, s := range hostSources {
+				hsIds = append(hsIds, s.Id())
 			}
-			assert.Equal(tt.wantHostSets, gotIds)
+			assert.Equal(tt.wantHostSources, hsIds)
 
-			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			clIds := make([]string, 0, len(credSources))
+			for _, cl := range credSources {
+				clIds = append(clIds, cl.Id())
+			}
+			assert.Equal(tt.wantCredLibs, clIds)
+
+			foundTarget, foundHostSources, foundCredLibs, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
-			assert.Equal(hostSets, foundHostSets)
+			assert.Equal(hostSources, foundHostSources)
+			assert.Equal(credSources, foundCredLibs)
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
@@ -347,8 +417,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantIsError: errors.NotUnique,
 		},
 	}
-	for _, tt := range tests {
+	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cs := css[i]
 			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				_ = TestTcpTarget(t, conn, proj.PublicId, tt.args.name)
@@ -360,7 +432,14 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			for _, hs := range hsets {
 				testHostSetIds = append(testHostSetIds, hs.PublicId)
 			}
-			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSets(testHostSetIds))
+
+			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
+			var testClIds []string
+			for _, cl := range cls {
+				testClIds = append(testClIds, cl.PublicId)
+			}
+
+			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSources(testHostSetIds), WithCredentialSources(testClIds))
 			name := tt.newName
 			if name == "" {
 				name = testId(t)
@@ -376,7 +455,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			updateTarget.Description = tt.args.description
 			updateTarget.DefaultPort = tt.args.port
 
-			targetAfterUpdate, hostSets, updatedRows, err := repo.UpdateTcpTarget(context.Background(), &updateTarget, target.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			targetAfterUpdate, hostSources, credSources, updatedRows, err := repo.UpdateTcpTarget(context.Background(), &updateTarget, target.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
@@ -391,11 +470,17 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(targetAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			afterUpdateIds := make([]string, 0, len(hostSets))
-			for _, hs := range hostSets {
-				afterUpdateIds = append(afterUpdateIds, hs.PublicId)
+			afterUpdateIds := make([]string, 0, len(hostSources))
+			for _, hs := range hostSources {
+				afterUpdateIds = append(afterUpdateIds, hs.Id())
 			}
 			assert.Equal(testHostSetIds, afterUpdateIds)
+
+			afterUpdateIds = make([]string, 0, len(credSources))
+			for _, cl := range credSources {
+				afterUpdateIds = append(afterUpdateIds, cl.Id())
+			}
+			assert.Equal(testClIds, afterUpdateIds)
 
 			switch tt.name {
 			case "valid-no-op":
@@ -403,7 +488,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			default:
 				assert.NotEqual(target.UpdateTime, targetAfterUpdate.(*TcpTarget).UpdateTime)
 			}
-			foundTarget, _, err := repo.LookupTarget(context.Background(), target.PublicId)
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), target.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*TcpTarget)), foundTarget.((*TcpTarget))))
 			dbassert := dbassert.New(t, conn.DB())

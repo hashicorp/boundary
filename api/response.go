@@ -33,6 +33,9 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 	}
 	defer r.resp.Body.Close()
 
+	// Always allocate this buffer. It's okay if the bytes return `nil`.
+	r.Body = new(bytes.Buffer)
+
 	if r.resp.StatusCode == 204 {
 		// Do nothing.
 		return nil, nil

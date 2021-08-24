@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the password package.
+package controller.storage.auth.oidc.request.v1;
+option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/request;request";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+// State represents an oidc request state.  State will be marshaled and then
+// wrapped with an EncryptedState before that's marshaled and encrypted.
+// State used in two legs of the oidc authentication flow.
+
+// First, State is used in constructing the authorization URL, in the first
+// leg of the authen flow. State represents the unique data used to construct
+// an oidc.Request (see: https://github.com/hashicorp/cap/blob/main/oidc/request.go).
+// State needs enough information, that when combined with a Boundary oidc auth method,
+// a proper oidc.Request can be recreated during the second leg of the authen flow.  State
+// also needs the provider.ConfigHash() used to from the first leg, so it can verify
+// the Boundary's oidc auth method configuration hasn't changed since the authen flow
+// began.
+message State {
+  // token_request_id is the id. This id is used by the client to poll for a Boundary
+  // token, once the final leg of the authen flow is compeleted.  The Callback uses this
+  // id to create a "pending" token for that polling process.
+  string token_request_id = 10;
+
+  // create_time of the request that started the authentication flow.
+  timestamp.v1.Timestamp create_time = 20;
+
+  // expiration_time of the authenticaion flow.
+  timestamp.v1.Timestamp expiration_time = 30;
+
+  // final_redirect_url that will be sent back to the client after the callback
+  string final_redirect_url = 40;
+
+  // nonce of the request which is used to verify the ID Token in the third leg
+  // as a way to prevent replay attacks.
+  //
+  // See https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+  // and https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes.
+  string nonce = 50;
+
+  // provider_config_hash can be used to see if the provider's config has changed
+  // since the request started.
+  uint64 provider_config_hash = 60;
+}
+
+// Token is the request token that's returned as part of the auth_token_url from
+// oidc.StartAuth(...)
+message Token {
+  // request_id for the token.
+  string request_id = 10;
+
+  // expiration_time of the authenticaion flow.
+  timestamp.v1.Timestamp expiration_time = 20;
+}
+
+// Wrapper wraps an encrypted cipher text with non-sensitive info
+// which allows Boundary to determine how to decrypt
+// the wrappered cipher text (ct) field.
+message Wrapper {
+  // auth_method_id is the auth method of the oidc request
+  string auth_method_id = 10;
+
+  // scope_id is the auth method's scope
+  string scope_id = 20;
+
+  // wrapper_key_id is the DEK wrapper key id which was used to derive the
+  // cipher's key
+  string wrapper_key_id = 30;
+
+  // ct is the encrypted cipher text
+  bytes ct = 40;
+}

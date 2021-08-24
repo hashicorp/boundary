@@ -25,7 +25,8 @@ type options struct {
 	withScopeName              string
 	withUserId                 string
 	withTargetType             *TargetType
-	withHostSets               []string
+	withHostSources            []string
+	withCredentialSources      []string
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
 	withPublicId               string
@@ -43,7 +44,8 @@ func getDefaultOptions() options {
 		withScopeName:              "",
 		withUserId:                 "",
 		withTargetType:             nil,
-		withHostSets:               nil,
+		withHostSources:            nil,
+		withCredentialSources:      nil,
 		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		withSessionConnectionLimit: 1,
 		withPublicId:               "",
@@ -116,10 +118,17 @@ func WithTargetType(t TargetType) Option {
 	}
 }
 
-// WithHostSets provides an option for providing a list of host set ids
-func WithHostSets(hs []string) Option {
+// WithHostSources provides an option for providing a list of host source ids
+func WithHostSources(hs []string) Option {
 	return func(o *options) {
-		o.withHostSets = hs
+		o.withHostSources = hs
+	}
+}
+
+// WithCredentialSources provides an option for providing a list of credential source ids
+func WithCredentialSources(cl []string) Option {
+	return func(o *options) {
+		o.withCredentialSources = cl
 	}
 }
 

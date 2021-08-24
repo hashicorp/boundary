@@ -79,9 +79,9 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
-// targetSubType converts the target view to the concrete subtype
-func (t *targetView) targetSubType() (Target, error) {
-	const op = "target.targetView.targetSubType"
+// targetSubtype converts the target view to the concrete subtype
+func (t *targetView) targetSubtype() (Target, error) {
+	const op = "target.targetView.targetSubtype"
 	switch t.Type {
 	case TcpTargetType.String():
 		tcpTarget := allocTcpTarget()
@@ -98,5 +98,5 @@ func (t *targetView) targetSubType() (Target, error) {
 		tcpTarget.WorkerFilter = t.WorkerFilter
 		return &tcpTarget, nil
 	}
-	return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
+	return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
 }

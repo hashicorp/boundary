@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/db_test"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
@@ -416,4 +416,209 @@ func testPublicId(t *testing.T) string {
 	publicId, err := base62.Random(20)
 	assert.NoError(t, err)
 	return publicId
+}
+
+func TestBuildUpdatePaths(t *testing.T) {
+	type args struct {
+		fieldValues     map[string]interface{}
+		fieldMask       []string
+		allowZeroFields []string
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantMasks []string
+		wantNulls []string
+	}{
+		{
+			name: "empty-inputs",
+			args: args{
+				fieldValues:     map[string]interface{}{},
+				fieldMask:       []string{},
+				allowZeroFields: []string{},
+			},
+			wantMasks: []string{},
+			wantNulls: []string{},
+		},
+		{
+			name: "no-changes",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask:       []string{},
+				allowZeroFields: []string{},
+			},
+			wantMasks: []string{},
+			wantNulls: []string{},
+		},
+		{
+			name: "empty-field-mask-allow-all-zero-fields",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask: []string{},
+				allowZeroFields: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+			},
+			wantMasks: []string{},
+			wantNulls: []string{},
+		},
+		{
+			name: "zero-fields-are-nulls",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+				allowZeroFields: []string{},
+			},
+			wantMasks: []string{
+				"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+			},
+			wantNulls: []string{
+				"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+			},
+		},
+		{
+			name: "all-zero-fields-allowed-no-nulls",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+				allowZeroFields: []string{
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+			},
+			wantMasks: []string{
+				"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+				"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+			},
+			wantNulls: []string{},
+		},
+		{
+			name: "non-zeros-allowed-as-zero-fields",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+				allowZeroFields: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+				},
+			},
+			wantMasks: []string{
+				"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+			},
+			wantNulls: []string{
+				"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+			},
+		},
+		{
+			name: "only-zero-fields-in-fieldmask",
+			args: args{
+				fieldValues: map[string]interface{}{
+					"Boolean":       true,
+					"Int":           100,
+					"String":        "hello",
+					"Float":         1.1,
+					"Complex":       complex(1.1, 1.1),
+					"ByteSlice":     []byte("byte slice"),
+					"ZeroBoolean":   false,
+					"ZeroInt":       0,
+					"ZeroString":    "",
+					"ZeroFloat":     0.0,
+					"ZeroComplex":   complex(0.0, 0.0),
+					"ZeroByteSlice": nil,
+				},
+				fieldMask: []string{
+					"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+				},
+				allowZeroFields: []string{
+					"Boolean", "Int", "String", "Float", "Complex", "ByteSlice",
+				},
+			},
+			wantMasks: []string{},
+			wantNulls: []string{
+				"ZeroBoolean", "ZeroInt", "ZeroString", "ZeroFloat", "ZeroComplex", "ZeroByteSlice",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			gotMasks, gotNulls := BuildUpdatePaths(tt.args.fieldValues, tt.args.fieldMask, tt.args.allowZeroFields)
+			assert.ElementsMatch(tt.wantMasks, gotMasks, "masks")
+			assert.ElementsMatch(tt.wantNulls, gotNulls, "nulls")
+		})
+	}
 }

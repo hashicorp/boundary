@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 
 	"github.com/iancoleman/strcase"
 )
@@ -99,6 +99,7 @@ var (
 	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
+	valueName       = (&_struct.Value{}).ProtoReflect().Descriptor().FullName()
 )
 
 func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
@@ -113,6 +114,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "int32"
 	case structValueName:
 		return "", "", "map[string]interface{}"
+	case valueName:
+		return "", "", "interface{}"
 	case timestampName:
 		return "", "time", "Time"
 	default:

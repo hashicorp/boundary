@@ -57,10 +57,9 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 	if err != nil {
 		return nil, fmt.Errorf("error decoding ChangePassword response: %w", err)
 	}
-
 	if apiErr != nil {
 		return nil, apiErr
 	}
-
+	target.response = resp
 	return target, nil
 }

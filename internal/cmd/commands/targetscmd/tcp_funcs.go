@@ -59,30 +59,30 @@ func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
 }
 
 func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("TCP Target Options")
+	fs := set.NewFlagSet("TCP Target Options")
 
 	for _, name := range flagsTcpMap[c.Func] {
 		switch name {
 		case "default-port":
-			f.StringVar(&base.StringVar{
+			fs.StringVar(&base.StringVar{
 				Name:   "default-port",
 				Target: &c.flagDefaultPort,
 				Usage:  "The default port to set on the target.",
 			})
 		case "session-max-seconds":
-			f.StringVar(&base.StringVar{
+			fs.StringVar(&base.StringVar{
 				Name:   "session-max-seconds",
 				Target: &c.flagSessionMaxSeconds,
 				Usage:  `The maximum lifetime of the session, including all connections. Can be specified as an integer number of seconds or a duration string.`,
 			})
 		case "session-connection-limit":
-			f.StringVar(&base.StringVar{
+			fs.StringVar(&base.StringVar{
 				Name:   "session-connection-limit",
 				Target: &c.flagSessionConnectionLimit,
 				Usage:  "The maximum number of connections allowed for a session. -1 means unlimited.",
 			})
 		case "worker-filter":
-			f.StringVar(&base.StringVar{
+			fs.StringVar(&base.StringVar{
 				Name:   "worker-filter",
 				Target: &c.flagWorkerFilter,
 				Usage:  "A boolean expression to filter which workers can handle sessions for this target.",
@@ -91,7 +91,7 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) bool {
+func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, _ *base.FlagSets, opts *[]targets.Option) bool {
 	switch c.flagDefaultPort {
 	case "":
 	case "null":

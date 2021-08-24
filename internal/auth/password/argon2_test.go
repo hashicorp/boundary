@@ -161,24 +161,24 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 
 func TestArgon2Configuration_Validate(t *testing.T) {
 	tests := []struct {
-		name string
-		in   *Argon2Configuration
-		wantErr bool
-		wantErrIs errors.Code
+		name       string
+		in         *Argon2Configuration
+		wantErr    bool
+		wantErrIs  errors.Code
 		wantErrMsg string
 	}{
 		{
-			name: "nil-configuration",
-			in:   nil,
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			name:       "nil-configuration",
+			in:         nil,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing config: password violation: error #202",
 		},
 		{
-			name: "nil-embedded-config",
-			in:   &Argon2Configuration{},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			name:       "nil-embedded-config",
+			in:         &Argon2Configuration{},
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing embedded config: password violation: error #202",
 		},
 		{
@@ -208,8 +208,8 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing iterations: password violation: error #202",
 		},
 		{
@@ -223,8 +223,8 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing memory: password violation: error #202",
 		},
 		{
@@ -238,8 +238,8 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing threads: password violation: error #202",
 		},
 		{
@@ -253,8 +253,8 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing salt length: password violation: error #202",
 		},
 		{
@@ -268,8 +268,8 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  0,
 				},
 			},
-			wantErr: true,
-			wantErrIs: errors.PasswordInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
 			wantErrMsg: "password.(Argon2Configuration).validate: missing key length: password violation: error #202",
 		},
 	}
@@ -323,7 +323,7 @@ func TestArgon2Credential_New(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
-	accts := TestAccounts(t, conn, aut.PublicId, 5)
+	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
 
 	type args struct {

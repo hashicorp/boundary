@@ -5,8 +5,15 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+)
+
+const (
+	flagPrimaryAuthMethodIdName     = "primary-auth-method-id"
+	flagSkipAdminRoleCreationName   = "skip-admin-role-creation"
+	flagSkipDefaultRoleCreationName = "skip-default-role-creation"
 )
 
 func init() {
@@ -17,40 +24,51 @@ func init() {
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"skip-admin-role-creation", "skip-default-role-creation"},
+		"create": {flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName},
+		"update": {flagPrimaryAuthMethodIdName},
 	}
 }
 
 type extraCmdVars struct {
 	flagSkipAdminRoleCreation   bool
 	flagSkipDefaultRoleCreation bool
+	flagPrimaryAuthMethodId     string
 }
 
 func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
-		case "skip-admin-role-creation":
+		case flagSkipAdminRoleCreationName:
 			f.BoolVar(&base.BoolVar{
-				Name:   "skip-admin-role-creation",
+				Name:   flagSkipAdminRoleCreationName,
 				Target: &c.flagSkipAdminRoleCreation,
 				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
 			})
-		case "skip-default-role-creation":
+		case flagSkipDefaultRoleCreationName:
 			f.BoolVar(&base.BoolVar{
-				Name:   "skip-default-role-creation",
+				Name:   flagSkipDefaultRoleCreationName,
 				Target: &c.flagSkipDefaultRoleCreation,
 				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
+			})
+		case flagPrimaryAuthMethodIdName:
+			f.StringVar(&base.StringVar{
+				Name:   flagPrimaryAuthMethodIdName,
+				Target: &c.flagPrimaryAuthMethodId,
+				Usage:  "If set, the primary auth method id for the scope.  A primary auth method is allowed to create users on first login and is also used as a source for account full name and email for a scope's users",
 			})
 		}
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]scopes.Option) bool {
 	if c.flagSkipAdminRoleCreation {
 		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
 	}
 	if c.flagSkipDefaultRoleCreation {
 		*opts = append(*opts, scopes.WithSkipDefaultRoleCreation(c.flagSkipDefaultRoleCreation))
+	}
+	if c.flagPrimaryAuthMethodId != "" {
+		*opts = append(*opts, scopes.WithPrimaryAuthMethodId(c.flagPrimaryAuthMethodId))
 	}
 
 	return true
@@ -79,7 +97,7 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 				fmt.Sprintf("    Scope ID:            %s", item.Scope.Id),
 			)
 		}
-		if true {
+		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
 			)
@@ -94,6 +112,11 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.PrimaryAuthMethodId != "" {
+			output = append(output,
+				fmt.Sprintf("    PrimaryAuthMethodId: %s", item.PrimaryAuthMethodId),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -105,19 +128,29 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *scopes.Scope) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*scopes.Scope)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
 	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.PrimaryAuthMethodId != "" {
+		nonAttributeMap["Primary Auth Method ID"] = item.PrimaryAuthMethodId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -126,23 +159,28 @@ func printItemTable(in *scopes.Scope) string {
 		"",
 		"Scope information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope (parent):",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope (parent):",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 			"",
 		)
 	}
 
-	if len(in.AuthorizedCollectionActions) > 0 {
-		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
-		for k := range in.AuthorizedCollectionActions {
+	if len(item.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(item.AuthorizedCollectionActions))
+		for k := range item.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -150,7 +188,7 @@ func printItemTable(in *scopes.Scope) string {
 		for _, key := range keys {
 			ret = append(ret,
 				fmt.Sprintf("    %s:", key),
-				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
+				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
 			)
 		}
 	}

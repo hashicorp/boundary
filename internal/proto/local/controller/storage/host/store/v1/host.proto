@@ -4,9 +4,6 @@ syntax = "proto3";
 package controller.storage.host.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/host/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/options.proto";
-
 message Catalog {
   // public_is is a surrogate key suitable for use in a public API.
   // @inject_tag: `gorm:"primary_key"`

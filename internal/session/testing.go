@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -17,8 +16,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -68,13 +67,15 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 	return s
 }
 
-// TestSession creates a test session composed of c in the repository.
+// TestSession creates a test session composed of c in the repository. Options
+// are passed into New, and withServerId is handled locally.
 func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
+	ctx := context.Background()
+	opts := getOpts(opt...)
 	require := require.New(t)
 	if c.ExpirationTime == nil {
-		future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-		require.NoError(err)
+		future := timestamppb.New(time.Now().Add(time.Hour))
 		c.ExpirationTime = &timestamp.Timestamp{Timestamp: future}
 	}
 	rw := db.New(conn)
@@ -83,17 +84,25 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
+	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
+	s.ServerId = opts.withServerId
 
 	if len(s.TofuToken) != 0 {
-		err = s.encrypt(context.Background(), wrapper)
+		err = s.encrypt(ctx, wrapper)
 	}
 	require.NoError(err)
-	err = rw.Create(context.Background(), s)
+	err = rw.Create(ctx, s, opts.withDbOpts...)
 	require.NoError(err)
-	ss, err := fetchStates(context.Background(), rw, s.PublicId, db.WithOrder("start_time desc"))
+
+	for _, cred := range s.DynamicCredentials {
+		cred.SessionId = s.PublicId
+		err := rw.Create(ctx, cred)
+		require.NoError(err)
+	}
+
+	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
 
@@ -103,12 +112,10 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 // TestDefaultSession creates a test session in the repository using defaults.
 func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
-	require := require.New(t)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(err)
+	future := timestamppb.New(time.Now().Add(time.Hour))
 	exp := &timestamp.Timestamp{Timestamp: future}
-	return TestSession(t, conn, wrapper, composedOf, WithExpirationTime(exp))
+	return TestSession(t, conn, wrapper, composedOf, append(opt, WithExpirationTime(exp))...)
 }
 
 // TestSessionParams returns an initialized ComposedOf which can be used to
@@ -122,9 +129,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-
 	hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
-
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
 
@@ -133,13 +138,12 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	_, _, err = targetRepo.AddTargetHostSets(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+	_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 	require.NoError(err)
 
 	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
-	acct := password.TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
-	user, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
-	require.NoError(err)
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
+	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
 	authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
 	require.NoError(err)
@@ -170,17 +174,24 @@ func TestTofu(t *testing.T) []byte {
 	return []byte(tofu)
 }
 
-func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+// TestWorker inserts a worker into the db to satisfy foreign key constraints.
+// Supports the WithServerId option.
+func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	id, err := uuid.GenerateUUID()
-	require.NoError(t, err)
+	opts := getOpts(opt...)
+	id := opts.withServerId
+	if id == "" {
+		id, err = uuid.GenerateUUID()
+		require.NoError(t, err)
+		id = "test-session-worker-" + id
+	}
 	worker := &servers.Server{
-		PrivateId:   "test-session-worker-" + id,
+		PrivateId:   id,
 		Type:        servers.ServerTypeWorker.String(),
 		Description: "Test Session Worker",
 		Address:     "127.0.0.1",
@@ -194,5 +205,5 @@ func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
 func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(wrapper, userId, jobId, time.Now().Add(5*time.Minute))
+	return newCert(context.Background(), wrapper, userId, jobId, time.Now().Add(5*time.Minute))
 }

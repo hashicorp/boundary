@@ -89,6 +89,9 @@ begin;
     ('connection limit'),
     ('canceled');
 
+-- Note: here, and in the session_connection table, we should add a trigger
+-- ensuring that if server_id goes to null, we mark connections as closed. See
+-- https://hashicorp.atlassian.net/browse/ICU-1495
   create table session (
     public_id wt_public_id primary key,
     -- the user of the session

@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
@@ -25,7 +23,7 @@ type TokenCommand struct {
 }
 
 func (c *TokenCommand) Synopsis() string {
-	return fmt.Sprintf("Get the stored token, or its properties")
+	return "Get the stored token, or its properties"
 }
 
 func (c *TokenCommand) Help() string {
@@ -125,27 +123,29 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 
 	// Read from client first as that will override keyring anyways
 	var authToken *authtokens.AuthToken
-	// Fallback to env/CLI
-	client, err := c.Client()
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
-	if client.Token() != "" {
-		authToken = &authtokens.AuthToken{Token: client.Token()}
-	}
-
-	if authToken == nil {
+	if optCount == 1 {
+		// In this case we need to read the full auth token stored, not just the
+		// actual token value for the client.
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
-
 		authToken = c.ReadTokenFromKeyring(keyringType, tokenName)
+	} else {
+		// Fallback to env/CLI but we can only get just the token value this way, at
+		// least for now
+		client, err := c.Client()
+		if err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		if client.Token() != "" {
+			authToken = &authtokens.AuthToken{Token: client.Token()}
+		}
 	}
 
-	if authToken == nil {
+	if authToken == nil || authToken.Token == "" {
 		c.UI.Error("No token could be discovered")
 		return base.CommandCliError
 	}
@@ -170,9 +170,6 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 		c.UI.Output(authToken.AuthMethodId)
 
 	default:
-		if authToken.Token == "" {
-			return base.CommandUserError
-		}
 		c.UI.Output(authToken.Token)
 	}
 

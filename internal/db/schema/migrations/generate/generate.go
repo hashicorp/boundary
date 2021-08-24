@@ -37,8 +37,11 @@ func generate(dialect string) {
 
 	var largestSchemaVersion int
 	for _, ver := range versions {
-		var verVal int
+		if strings.HasPrefix(ver, ".") {
+			continue
+		}
 
+		var verVal int
 		verVal, err := strconv.Atoi(ver)
 		if err != nil {
 			fmt.Printf("error reading major schema version directory %q.  Must be a number: %v\n", ver, err)

@@ -3,6 +3,8 @@
 Thank you for contributing to Boundary! Here you can find common questions around reporting issues and opening
 pull requests to our project.
 
+When contributing in any way to the Boundary project (new issue, PR, etc), please be aware that our team identifies with many gender pronouns. Please remember to use nonbinary pronouns (they/them) and gender neutral language ("Hello folks") when addressing our team. For more reading on our code of conduct, please see the [HashiCorp community guidelines](https://www.hashicorp.com/community-guidelines). 
+
 ## Issue Reporting
 ### Reporting Security Related Vulnerabilities
 
@@ -86,4 +88,3 @@ run:
 ```
 $ go test -run TestAuthTokenAuthenticator -v ./internal/auth
 ```
-

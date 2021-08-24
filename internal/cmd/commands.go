@@ -8,12 +8,16 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
+	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
+	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -57,6 +61,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"authenticate password": func() (cli.Command, error) {
 			return &authenticate.PasswordCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate oidc": func() (cli.Command, error) {
+			return &authenticate.OidcCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
@@ -108,6 +117,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"accounts create oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"accounts update": func() (cli.Command, error) {
 			return &accountscmd.Command{
 				Command: base.NewCommand(ui),
@@ -116,6 +131,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"accounts update password": func() (cli.Command, error) {
 			return &accountscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"accounts update oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
@@ -156,6 +177,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"auth-methods create oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"auth-methods update": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
@@ -166,6 +193,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}, nil
+		},
+		"auth-methods update oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods change-state oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "change-state",
 			}, nil
 		},
 
@@ -285,6 +324,102 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"database migrate": func() (cli.Command, error) {
 			return &database.MigrateCommand{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"credential-libraries": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"credential-libraries read": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"credential-libraries delete": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"credential-libraries list": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"credential-libraries create": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-libraries create vault": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-libraries update": func() (cli.Command, error) {
+			return &credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-libraries update vault": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
+		"credential-stores": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"credential-stores read": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"credential-stores delete": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"credential-stores list": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"credential-stores create": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-stores create vault": func() (cli.Command, error) {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-stores update": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-stores update vault": func() (cli.Command, error) {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 
@@ -504,6 +639,60 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"logout": func() (cli.Command, error) {
+			return &logout.LogoutCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"managed-groups": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"managed-groups read": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"managed-groups delete": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"managed-groups list": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"managed-groups create": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"managed-groups create oidc": func() (cli.Command, error) {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"managed-groups update": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"managed-groups update oidc": func() (cli.Command, error) {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
 		"roles": func() (cli.Command, error) {
 			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
@@ -705,6 +894,60 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-host-sets",
+			}, nil
+		},
+		"targets add-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-host-sources",
+			}, nil
+		},
+		"targets remove-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-host-sources",
+			}, nil
+		},
+		"targets set-host-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-host-sources",
+			}, nil
+		},
+		"targets add-credential-libraries": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-credential-libraries",
+			}, nil
+		},
+		"targets remove-credential-libraries": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-credential-libraries",
+			}, nil
+		},
+		"targets set-credential-libraries": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-credential-libraries",
+			}, nil
+		},
+		"targets add-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-credential-sources",
+			}, nil
+		},
+		"targets remove-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-credential-sources",
+			}, nil
+		},
+		"targets set-credential-sources": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-credential-sources",
 			}, nil
 		},
 

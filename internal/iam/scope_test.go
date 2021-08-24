@@ -147,7 +147,7 @@ func TestScope_GetScope(t *testing.T) {
 		assert.NotNil(projectOrg)
 		assert.Equal(projectOrg.PublicId, proj.ParentId)
 
-		p := allocScope()
+		p := AllocScope()
 		p.PublicId = proj.PublicId
 		p.Type = scope.Project.String()
 		projectOrg, err = p.GetScope(context.Background(), w)
@@ -213,7 +213,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 	})
 	t.Run("creation disallowed at vet time", func(t *testing.T) {
 		// Not allowed to create
-		s := allocScope()
+		s := AllocScope()
 		s.Type = scope.Global.String()
 		s.PublicId = "global"
 		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
@@ -222,7 +222,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 	})
 	t.Run("check org parent at vet time", func(t *testing.T) {
 		// Org must have global parent
-		s := allocScope()
+		s := AllocScope()
 		s.Type = scope.Org.String()
 		s.PublicId = "o_1234"
 		s.ParentId = "global"
@@ -234,7 +234,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 	})
 	t.Run("not deletable in db", func(t *testing.T) {
 		// Should not be deletable
-		s := allocScope()
+		s := AllocScope()
 		s.PublicId = "global"
 		// Add this to validate that we did in fact delete
 		err := w.LookupById(context.Background(), &s)
@@ -270,7 +270,7 @@ func TestScope_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocScope()
+			def := AllocScope()
 			require.Equal(defaultTableName, def.TableName())
 			s := &Scope{
 				Scope:     &store.Scope{},

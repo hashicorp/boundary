@@ -68,7 +68,7 @@ func extraStaticFlagsFuncImpl(c *StaticCommand, set *base.FlagSets, _ *base.Flag
 	}
 }
 
-func extraStaticFlagsHandlingFuncImpl(c *StaticCommand, opts *[]hosts.Option) bool {
+func extraStaticFlagsHandlingFuncImpl(c *StaticCommand, _ *base.FlagSets, opts *[]hosts.Option) bool {
 	if c.Func == "create" && c.flagAddress == "" {
 		c.UI.Error("Address must be provided via -address")
 		return false

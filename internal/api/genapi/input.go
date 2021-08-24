@@ -7,10 +7,13 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
@@ -18,6 +21,11 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
 )
+
+type sliceSubtypeInfo struct {
+	SliceType string
+	VarName   string
+}
 
 type structureInfo struct {
 	pkg    string
@@ -54,25 +62,29 @@ type structInfo struct {
 	parentTypeName string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
-	// role principals and group members
-	sliceSubTypes map[string]string
+	// role principals and group members. If sliceSubtypeInfo is blank for a
+	// key, the function is created but no required parameter is produced.
+	sliceSubtypes map[string]sliceSubtypeInfo
 
-	// outputOnly indicates that we shouldn't create options for setting members
-	// for this struct
-	outputOnly bool
+	// skipOptions indicates that we shouldn't create options for setting
+	// members for mapping src field struct
+	skipOptions bool
 
 	// versionEnabled indicates that we should build a Version handler in
 	// update. Some structs are embedded in others and shouldn't have version
 	// fields.
 	versionEnabled bool
 
-	// The parameters passed into the path.  These should be non-pluralized resource names.
-	// The templates will convert '-' to '_' and append an _id to them in the SDK param
-	// and append an 's' to it when building the path.
-	// The final value should be the path name of the resource since for single resource
-	// operations all values are used for the function argument.
-	// For collection based operations the last value is ignored for generating function argument.
-	pathArgs []string
+	// This is used for building the api path.
+	pluralResourceName string
+
+	// packageOverride can be used when sourcing a package from a different
+	// place as the target, e.g. for sourcing services structs
+	packageOverride string
+
+	// nameOverride can be used to override the name coming from the proto,
+	// useful to avoid collisions
+	nameOverride string
 
 	// typeOnCreate indicates that create will be creating a concrete
 	// implementation of an abstract type and thus a type field is necessary
@@ -87,6 +99,10 @@ type structInfo struct {
 	// conveyed within the item itself
 	extraOptions []fieldInfo
 
+	// fieldOverrides allows overriding some field behavior without making them
+	// "new" fields like with extraOptions
+	fieldOverrides []fieldInfo
+
 	// createResponseTypes controls for which structs response types are created
 	createResponseTypes bool
 
@@ -97,30 +113,30 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
-		inProto:    &api.Error{},
-		outFile:    "error.gen.go",
-		outputOnly: true,
+		inProto:     &api.Error{},
+		outFile:     "error.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.ErrorDetails{},
-		outFile:    "error_details.gen.go",
-		outputOnly: true,
+		inProto:     &api.ErrorDetails{},
+		outFile:     "error_details.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.WrappedError{},
-		outFile:    "wrapped_error.gen.go",
-		outputOnly: true,
+		inProto:     &api.WrappedError{},
+		outFile:     "wrapped_error.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.FieldError{},
-		outFile:    "field_error.gen.go",
-		outputOnly: true,
+		inProto:     &api.FieldError{},
+		outFile:     "field_error.gen.go",
+		skipOptions: true,
 	},
 	// Scope related resources
 	{
-		inProto:    &scopes.ScopeInfo{},
-		outFile:    "scopes/scope_info.gen.go",
-		outputOnly: true,
+		inProto:     &scopes.ScopeInfo{},
+		outFile:     "scopes/scope_info.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &scopes.Scope{},
@@ -133,7 +149,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"scope"},
+		pluralResourceName: "scopes",
 		extraOptions: []fieldInfo{
 			{
 				Name:      "SkipAdminRoleCreation",
@@ -154,9 +170,9 @@ var inputStructs = []*structInfo{
 	},
 	// User related resources
 	{
-		inProto:    &users.Account{},
-		outFile:    "users/account.gen.go",
-		outputOnly: true,
+		inProto:     &users.Account{},
+		outFile:     "users/account.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &users.User{},
@@ -169,19 +185,22 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
-			"Accounts": "accountIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Accounts": {
+				SliceType: "[]string",
+				VarName:   "accountIds",
+			},
 		},
-		pathArgs:            []string{"user"},
+		pluralResourceName:  "users",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
 	// Group related resources
 	{
-		inProto:    &groups.Member{},
-		outFile:    "groups/member.gen.go",
-		outputOnly: true,
+		inProto:     &groups.Member{},
+		outFile:     "groups/member.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &groups.Group{},
@@ -194,29 +213,32 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
-			"Members": "memberIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Members": {
+				SliceType: "[]string",
+				VarName:   "memberIds",
+			},
 		},
-		pathArgs:            []string{"group"},
+		pluralResourceName:  "groups",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
 	// Role related resources
 	{
-		inProto:    &roles.Grant{},
-		outFile:    "roles/grant.gen.go",
-		outputOnly: true,
+		inProto:     &roles.Grant{},
+		outFile:     "roles/grant.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &roles.Principal{},
-		outFile:    "roles/principal.gen.go",
-		outputOnly: true,
+		inProto:     &roles.Principal{},
+		outFile:     "roles/principal.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &roles.GrantJson{},
-		outFile:    "roles/grant_json.gen.go",
-		outputOnly: true,
+		inProto:     &roles.GrantJson{},
+		outFile:     "roles/grant_json.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &roles.Role{},
@@ -229,11 +251,17 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
-			"Principals": "principalIds",
-			"Grants":     "grantStrings",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Principals": {
+				SliceType: "[]string",
+				VarName:   "principalIds",
+			},
+			"Grants": {
+				SliceType: "[]string",
+				VarName:   "grantStrings",
+			},
 		},
-		pathArgs:            []string{"role"},
+		pluralResourceName:  "roles",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -243,6 +271,16 @@ var inputStructs = []*structInfo{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
 		outFile:     "authmethods/password_auth_method_attributes.gen.go",
 		subtypeName: "PasswordAuthMethod",
+	},
+	{
+		inProto:     &authmethods.OidcAuthMethodAttributes{},
+		outFile:     "authmethods/oidc_auth_method_attributes.gen.go",
+		subtypeName: "OidcAuthMethod",
+	},
+	{
+		inProto:     &authmethods.OidcAuthMethodAuthenticateStartResponse{},
+		outFile:     "authmethods/oidc_auth_method_authenticate_start_response.gen.go",
+		subtypeName: "OidcAuthMethod",
 	},
 	{
 		inProto: &authmethods.AuthMethod{},
@@ -255,7 +293,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"auth-method"},
+		pluralResourceName:  "auth-methods",
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -268,6 +306,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "PasswordAccount",
 	},
 	{
+		inProto:     &accounts.OidcAccountAttributes{},
+		outFile:     "accounts/oidc_account_attributes.gen.go",
+		subtypeName: "OidcAccount",
+	},
+	{
 		inProto: &accounts.Account{},
 		outFile: "accounts/account.gen.go",
 		templates: []*template.Template{
@@ -278,7 +321,35 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"account"},
+		pluralResourceName:  "accounts",
+		parentTypeName:      "auth-method",
+		versionEnabled:      true,
+		createResponseTypes: true,
+	},
+	// Managed Groups
+	{
+		inProto:     &managedgroups.OidcManagedGroupAttributes{},
+		outFile:     "managedgroups/oidc_managed_group_attributes.gen.go",
+		subtypeName: "OidcManagedGroup",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Filter",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &managedgroups.ManagedGroup{},
+		outFile: "managedgroups/managedgroups.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "managed-groups",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -293,9 +364,131 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"auth-token"},
+		pluralResourceName:  "auth-tokens",
 		createResponseTypes: true,
 		recursiveListing:    true,
+	},
+	// Credentials
+	{
+		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName: "VaultCredentialStore",
+	},
+	{
+		inProto: &credentialstores.CredentialStore{},
+		outFile: "credentialstores/credential_store.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
+		recursiveListing:    true,
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Address",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Token",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &credentiallibraries.CredentialLibrary{},
+		outFile: "credentiallibraries/credential_library.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-libraries",
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
+	},
+	// Credentials
+	{
+		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName: "VaultCredentialStore",
+	},
+	{
+		inProto: &credentialstores.CredentialStore{},
+		outFile: "credentialstores/credential_store.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
+		recursiveListing:    true,
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Address",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Token",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &credentiallibraries.CredentialLibrary{},
+		outFile: "credentiallibraries/credential_library.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-libraries",
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Host related resources
 	{
@@ -309,7 +502,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"host-catalog"},
+		pluralResourceName:  "host-catalogs",
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -326,7 +519,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"host"},
+		pluralResourceName:  "hosts",
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -347,10 +540,13 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-set"},
-		parentTypeName: "host-catalog",
-		sliceSubTypes: map[string]string{
-			"Hosts": "hostIds",
+		pluralResourceName: "host-sets",
+		parentTypeName:     "host-catalog",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Hosts": {
+				SliceType: "[]string",
+				VarName:   "hostIds",
+			},
 		},
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -358,6 +554,32 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &targets.HostSet{},
 		outFile: "targets/host_set.gen.go",
+	},
+	{
+		inProto: &targets.HostSource{},
+		outFile: "targets/host_source.gen.go",
+	},
+	{
+		inProto: &targets.CredentialLibrary{},
+		outFile: "targets/credential_library.gen.go",
+	},
+	{
+		inProto: &targets.CredentialSource{},
+		outFile: "targets/credential_source.gen.go",
+	},
+	{
+		inProto: &targets.SessionSecret{},
+		outFile: "targets/session_secret.gen.go",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "Raw",
+				FieldType: "json.RawMessage",
+			},
+		},
+	},
+	{
+		inProto: &targets.SessionCredential{},
+		outFile: "targets/session_credential.gen.go",
 	},
 	{
 		inProto:     &targets.SessionAuthorization{},
@@ -385,9 +607,18 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"target"},
-		sliceSubTypes: map[string]string{
-			"HostSets": "hostSetIds",
+		pluralResourceName: "targets",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"HostSets": {
+				SliceType: "[]string",
+				VarName:   "hostSetIds",
+			},
+			"HostSources": {
+				SliceType: "[]string",
+				VarName:   "hostSourceIds",
+			},
+			"CredentialLibraries": {},
+			"CredentialSources":   {},
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -407,6 +638,16 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
+			},
+			{
+				Name:      "ApplicationCredentialLibraryIds",
+				ProtoName: "application_credential_library_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "ApplicationCredentialSourceIds",
+				ProtoName: "application_credential_source_ids",
+				FieldType: "[]string",
 			},
 		},
 		versionEnabled:      true,
@@ -430,7 +671,7 @@ var inputStructs = []*structInfo{
 			readTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"session"},
+		pluralResourceName:  "sessions",
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,

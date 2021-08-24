@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Worker - Configuration
-sidebar_title: worker
 description: |-
   The worker stanza configures worker-specific parameters.
 ---
@@ -18,8 +17,10 @@ worker {
 }
 ```
 
-- `name` - Specifies a unique name of this worker within the Boundary worker
-  cluster.
+- `name` - Specifies a unique name of this worker within the Boundary
+  cluster. This value can be a direct name string, can refer to a file on disk
+  (file://) from which an name will be read; or an env var (env://) from which
+  the name will be read.
 
 - `description` - Specifies a friendly description of this worker.
 
@@ -83,7 +84,7 @@ worker {
   name = "demo-worker-1"
   description = "A default worker created demonstration"
 
-  # Workers must be able to reach controllers on :9202
+  # Workers must be able to reach controllers on :9201
   controllers = [
     "10.0.0.1",
     "10.0.0.2",

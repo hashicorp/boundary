@@ -22,13 +22,13 @@ func (r *Repository) CreateTokenKey(ctx context.Context, rkvWrapper wrapping.Wra
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			if returnedDk, returnedDv, err = createTokenKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return returnedDk.(*TokenKey), returnedDv.(*TokenKeyVersion), nil
 }
@@ -39,53 +39,53 @@ func (r *Repository) CreateTokenKey(ctx context.Context, rkvWrapper wrapping.Wra
 func createTokenKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*TokenKey, *TokenKeyVersion, error) {
 	const op = "kms.createTokenKeyTx"
 	if rkvWrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	if len(key) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
 	err := r.LookupById(ctx, &rv)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
 	}
 
 	tk := AllocTokenKey()
 	tv := AllocTokenKeyVersion()
 	id, err := newTokenKeyId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	tk.PrivateId = id
 	tk.RootKeyId = rv.RootKeyId
 
 	id, err = newTokenKeyVersionId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	tv.PrivateId = id
 	tv.TokenKeyId = tk.PrivateId
 	tv.RootKeyVersionId = rootKeyVersionId
 	tv.Key = key
 	if err := tv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	// no token entries for keys
 	if err := w.Create(ctx, &tk); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("keys create"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("keys create"))
 	}
 	// no token entries for key versions
 	if err := w.Create(ctx, &tv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions create"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("key versions create"))
 	}
 
 	return &tk, &tv, nil
@@ -96,12 +96,12 @@ func createTokenKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 func (r *Repository) LookupTokenKey(ctx context.Context, privateId string, _ ...Option) (*TokenKey, error) {
 	const op = "kms.(Repository).LookupTokenKey"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocTokenKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return &k, nil
 }
@@ -112,12 +112,12 @@ func (r *Repository) LookupTokenKey(ctx context.Context, privateId string, _ ...
 func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteTokenKey"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocTokenKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -130,16 +130,16 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, _ ...
 			// no token entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -150,7 +150,7 @@ func (r *Repository) ListTokenKeys(ctx context.Context, opt ...Option) ([]Dek, e
 	var keys []*TokenKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	deks := make([]Dek, 0, len(keys))
 	for _, key := range keys {

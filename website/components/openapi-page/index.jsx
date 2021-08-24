@@ -1,8 +1,6 @@
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/router'
 import Link from 'next/link'
 import OperationObject from './partials/operation-object'
-import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 import DocsSidenav from '@hashicorp/react-docs-sidenav'
 import Content from '@hashicorp/react-content'
@@ -13,12 +11,11 @@ import useOnClickOutside from 'lib/hooks/use-on-click-outside'
 function OpenApiPage({
   info,
   operationCategory,
-  sidenavOrder,
+  navData,
   productName,
   productSlug,
-  pathFromRoot,
+  currentPath,
 }) {
-  const router = useRouter()
   const operationsRef = useRef(null)
   const [expandedOperations, setExpandedOperations] = useState([])
   useOnClickOutside(operationsRef, () => setExpandedOperations([]))
@@ -34,18 +31,17 @@ function OpenApiPage({
   return (
     <div className={styles.root} data-theme={productSlug}>
       <HashiHead
-        is={Head}
         title={`${pageTitle} | ${productName} by HashiCorp`}
         description={info.description}
         siteName={`${productName} by HashiCorp`}
       />
       <DocsSidenav
+        product={productSlug}
         Link={Link}
-        currentPage={router.asPath}
-        category={pathFromRoot}
+        currentPath={currentPath}
+        baseRoute={'api-docs'}
         disableFilter={true}
-        order={sidenavOrder}
-        data={[]}
+        navData={navData}
       />
       <Content
         product={productSlug}
@@ -83,7 +79,7 @@ function OpenApiPage({
               <h1 className={`${styles.pageHeading} g-type-display-2`}>
                 {info.title}
               </h1>
-              <p className={`${styles.landingPlaceholder} g-type-body-long`}>
+              <p className={`${styles.landingPlaceholder} g-type-long-body`}>
                 Select a service from the sidebar.
               </p>
             </>

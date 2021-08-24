@@ -98,6 +98,51 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: TooShort,
 		},
 		{
+			name: "AccountAlreadyAssociated",
+			c:    AccountAlreadyAssociated,
+			want: AccountAlreadyAssociated,
+		},
+		{
+			name: "InvalidJobRunState",
+			c:    InvalidJobRunState,
+			want: InvalidJobRunState,
+		},
+		{
+			name: "JobAlreadyRunning",
+			c:    JobAlreadyRunning,
+			want: JobAlreadyRunning,
+		},
+		{
+			name: "SubtypeAlreadyRegistered",
+			c:    SubtypeAlreadyRegistered,
+			want: SubtypeAlreadyRegistered,
+		},
+		{
+			name: "InvalidDynamicCredential",
+			c:    InvalidDynamicCredential,
+			want: InvalidDynamicCredential,
+		},
+		{
+			name: "InternalError",
+			c:    Internal,
+			want: Internal,
+		},
+		{
+			name: "Forbidden",
+			c:    Forbidden,
+			want: Forbidden,
+		},
+		{
+			name: "AuthMethodInactive",
+			c:    AuthMethodInactive,
+			want: AuthMethodInactive,
+		},
+		{
+			name: "AuthAttemptExpired",
+			c:    AuthAttemptExpired,
+			want: AuthAttemptExpired,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
@@ -183,6 +228,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Exception,
 		},
 		{
+			name: "VersionMismatch",
+			c:    VersionMismatch,
+			want: VersionMismatch,
+		},
+		{
 			name: "MultipleRecords",
 			c:    MultipleRecords,
 			want: MultipleRecords,
@@ -206,6 +256,41 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "MigrationLock",
 			c:    MigrationLock,
 			want: MigrationLock,
+		},
+		{
+			name: "Unavailable",
+			c:    Unavailable,
+			want: Unavailable,
+		},
+		{
+			name: "VaultTokenNotOrphan",
+			c:    VaultTokenNotOrphan,
+			want: VaultTokenNotOrphan,
+		},
+		{
+			name: "VaultTokenNotPeriodic",
+			c:    VaultTokenNotPeriodic,
+			want: VaultTokenNotPeriodic,
+		},
+		{
+			name: "VaultTokenNotRenewable",
+			c:    VaultTokenNotRenewable,
+			want: VaultTokenNotRenewable,
+		},
+		{
+			name: "VaultCredentialRequest",
+			c:    VaultCredentialRequest,
+			want: VaultCredentialRequest,
+		},
+		{
+			name: "OidcProviderCallbackError",
+			c:    OidcProviderCallbackError,
+			want: OidcProviderCallbackError,
+		},
+		{
+			name: "GracefullyAborted",
+			c:    GracefullyAborted,
+			want: GracefullyAborted,
 		},
 	}
 	for _, tt := range tests {

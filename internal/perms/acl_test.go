@@ -1,8 +1,11 @@
 package perms
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -16,17 +19,18 @@ func Test_ACLAllowed(t *testing.T) {
 		scope  string
 		grants []string
 	}
-	type actionAllowed struct {
-		action  action.Type
-		allowed bool
+	type actionAuthorized struct {
+		action       action.Type
+		authorized   bool
+		outputFields []string
 	}
 	type input struct {
-		name           string
-		scopeGrants    []scopeGrant
-		resource       Resource
-		actionsAllowed []actionAllowed
-		userId         string
-		accountId      string
+		name              string
+		scopeGrants       []scopeGrant
+		resource          Resource
+		actionsAuthorized []actionAuthorized
+		userId            string
+		accountId         string
 	}
 
 	// A set of common grants to use in the following tests
@@ -45,8 +49,9 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"id=mypin;type=host;actions=*",
+				"id=mypin;type=host;actions=*;output_fields=name,description",
 				"id=*;type=*;actions=authenticate",
+				"id=*;type=*;output_fields=id",
 			},
 		},
 		{
@@ -61,6 +66,7 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"id=*;type=*;actions=create,update",
 				"id=*;type=session;actions=*",
+				"id=*;type=account;actions=update;output_fields=id,version",
 			},
 		},
 	}
@@ -71,7 +77,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:     "no grants",
 			resource: Resource{ScopeId: "foo", Id: "bar", Type: resource.HostCatalog},
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Create},
 				{action: action.Read},
 			},
@@ -80,7 +86,7 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "no overlap",
 			resource:    Resource{ScopeId: "foo", Id: "bar", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Create},
 				{action: action.Read},
 			},
@@ -89,8 +95,8 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "top level create with type only",
 			resource:    Resource{ScopeId: "o_a", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Create, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Create, authorized: true},
 				{action: action.Delete},
 			},
 		},
@@ -98,7 +104,7 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "matching scope and id no matching action",
 			resource:    Resource{ScopeId: "o_a", Id: "a_foo", Type: resource.Role},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
 				{action: action.Delete},
 			},
@@ -107,9 +113,9 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "matching scope and id and matching action",
 			resource:    Resource{ScopeId: "o_a", Id: "a_bar"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read, allowed: true},
-				{action: action.Update, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update, authorized: true},
 				{action: action.Delete},
 			},
 		},
@@ -117,47 +123,47 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "matching scope and type and all action with valid pin",
 			resource:    Resource{ScopeId: "o_b", Pin: "mypin", Type: resource.Host},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read, allowed: true},
-				{action: action.Update, allowed: true},
-				{action: action.Delete, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true, outputFields: []string{"description", "id", "name"}},
+				{action: action.Update, authorized: true, outputFields: []string{"description", "id", "name"}},
+				{action: action.Delete, authorized: true, outputFields: []string{"description", "id", "name"}},
 			},
 		},
 		{
 			name:        "matching scope and type and all action but bad pin",
 			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
 			name:        "matching scope and id and some action",
 			resource:    Resource{ScopeId: "o_b", Id: "myhost", Type: resource.HostSet},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.List, allowed: true},
-				{action: action.Create, allowed: true},
-				{action: action.AddHosts},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List, authorized: true, outputFields: []string{"id"}},
+				{action: action.Create, authorized: true, outputFields: []string{"id"}},
+				{action: action.AddHosts, outputFields: []string{"id"}},
 			},
 		},
 		{
 			name:        "matching scope and id and all action but bad specifier",
 			resource:    Resource{ScopeId: "o_b", Id: "id_g"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
 			name:        "matching scope and not matching type",
 			resource:    Resource{ScopeId: "o_a", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
 				{action: action.Delete},
 			},
@@ -166,9 +172,9 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "matching scope and matching type",
 			resource:    Resource{ScopeId: "o_a", Type: resource.HostSet},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.List, allowed: true},
-				{action: action.Create, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List, authorized: true},
+				{action: action.Create, authorized: true},
 				{action: action.Delete},
 			},
 		},
@@ -176,7 +182,7 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "matching scope, type, action, random id and bad pin",
 			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_bar"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
 				{action: action.Delete},
 				{action: action.Read},
@@ -186,7 +192,7 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "wrong scope and matching type",
 			resource:    Resource{ScopeId: "o_bad", Type: resource.HostSet},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Create},
 				{action: action.Delete},
@@ -196,17 +202,17 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "any id",
 			resource:    Resource{ScopeId: "o_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.List},
-				{action: action.Authenticate, allowed: true},
-				{action: action.Delete},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List, outputFields: []string{"id"}},
+				{action: action.Authenticate, authorized: true, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
 			name:        "bad templated user id",
 			resource:    Resource{ScopeId: "o_c"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Authenticate},
 				{action: action.Delete},
@@ -217,40 +223,61 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "good templated user id",
 			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read, allowed: true},
-				{action: action.Update, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update, authorized: true},
 			},
 			userId: "u_abcd1234",
 		},
 		{
-			name:        "bad templated account id",
+			name:        "bad templated old account id",
 			resource:    Resource{ScopeId: "o_c"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Authenticate},
 				{action: action.Delete},
 			},
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
 		},
 		{
-			name:        "good templated user id",
-			resource:    Resource{ScopeId: "o_c", Id: "apw_1234567890"},
+			name:        "good templated old account id",
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix)},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.ChangePassword, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
 			},
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+		},
+		{
+			name:        "bad templated new account id",
+			resource:    Resource{ScopeId: "o_c"},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List},
+				{action: action.Authenticate},
+				{action: action.Delete},
+			},
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+		},
+		{
+			name:        "good templated new account id",
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix)},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.ChangePassword, authorized: true},
+				{action: action.Update},
+			},
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 		},
 		{
 			name:        "all type",
 			resource:    Resource{ScopeId: "o_d", Type: resource.Account},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Create, allowed: true},
-				{action: action.Update, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Create, authorized: true},
+				{action: action.Update, authorized: true, outputFields: []string{"id", "version"}},
 			},
 			userId: "u_abcd1234",
 		},
@@ -258,34 +285,34 @@ func Test_ACLAllowed(t *testing.T) {
 			name:        "list with top level list",
 			resource:    Resource{ScopeId: "o_a", Type: resource.Target},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.List, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List, authorized: true},
 			},
 		},
 		{
 			name:        "list sessions with wildcard actions",
 			resource:    Resource{ScopeId: "o_d", Type: resource.Session},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.List, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List, authorized: true},
 			},
 		},
 		{
 			name:        "read self with top level read",
 			resource:    Resource{ScopeId: "o_a", Id: "a_bar"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
-				{action: action.Read, allowed: true},
-				{action: action.ReadSelf, allowed: true},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.ReadSelf, authorized: true},
 			},
 		},
 		{
 			name:        "read self only",
 			resource:    Resource{ScopeId: "o_a", Id: "a_baz"},
 			scopeGrants: commonGrants,
-			actionsAllowed: []actionAllowed{
+			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
-				{action: action.ReadSelf, allowed: true},
+				{action: action.ReadSelf, authorized: true},
 			},
 		},
 	}
@@ -301,9 +328,24 @@ func Test_ACLAllowed(t *testing.T) {
 				}
 			}
 			acl := NewACL(grants...)
-			for _, aa := range test.actionsAllowed {
-				assert.True(t, acl.Allowed(test.resource, aa.action).Allowed == aa.allowed, "action: %s, acl allowed: %t, test action allowed: %t", aa.action, acl.Allowed(test.resource, aa.action).Allowed, aa.allowed)
+			for _, aa := range test.actionsAuthorized {
+				result := acl.Allowed(test.resource, aa.action)
+				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
+				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
 		})
 	}
+}
+
+func TestJsonMarshal(t *testing.T) {
+	res := &Resource{
+		ScopeId: "scope",
+		Id:      "id",
+		Type:    resource.Controller,
+		Pin:     "",
+	}
+
+	out, err := json.Marshal(res)
+	require.NoError(t, err)
+	assert.Equal(t, `{"scope_id":"scope","id":"id","type":"controller"}`, string(out))
 }

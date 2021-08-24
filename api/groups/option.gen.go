@@ -35,7 +35,9 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {

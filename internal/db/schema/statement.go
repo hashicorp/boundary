@@ -15,10 +15,10 @@ type statementProvider struct {
 	up       map[int]migrations.UpVersion
 }
 
-func newStatementProvider(dialect string, curVer int) *statementProvider {
+func newStatementProvider(dialect string, curVer int, opt ...Option) *statementProvider {
 	const op = "schema.newStatementProvider"
 	qp := statementProvider{pos: -1}
-	qp.up = getUpMigration(dialect)
+	qp.up = getUpMigration(dialect, opt...)
 	for k := range qp.up {
 		qp.versions = append(qp.versions, k)
 	}

@@ -51,6 +51,11 @@ type HostDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for HostDeleteResult
+func (n HostDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n HostDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
@@ -130,9 +135,9 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostReadResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -140,7 +145,7 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -171,9 +176,9 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt ...Option) (*HostUpdateResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*HostUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -185,7 +190,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -203,7 +208,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", hostId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -234,9 +239,9 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*HostDeleteResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -244,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*Hos
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

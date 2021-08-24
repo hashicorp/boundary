@@ -5,11 +5,7 @@ package controller.api.resources.sessions.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions;sessions";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
-import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/api/resources/targets/v1/target.proto";
-import "controller/custom_options/v1/options.proto";
 
 message WorkerInfo {
   // The address of the worker.

@@ -25,10 +25,10 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, opt ...Option) (*Repository, error) {
 	const op = "kms.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -53,9 +53,13 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrder != "" {
-		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	switch opts.withOrderByVersion {
+	case db.AscendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("version asc"))
+	case db.DescendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("version desc"))
 	}
+
 	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
 }
 
@@ -80,82 +84,82 @@ type Keys map[KeyType]KeyIder
 func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
 	const op = "kms.CreateKeysTx"
 	if dbReader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db reader")
 	}
 	if dbWriter == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db writer")
 	}
 	if rootWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root wrapper")
 	}
 	if randomReader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing random reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing random reader")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	k, err := generateKey(randomReader)
+	k, err := generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for root key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for root key in scope %s", scopeId)))
 	}
 	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, dbWriter, rootWrapper, scopeId, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create root key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create root key in scope %s", scopeId)))
 	}
 
 	rkvWrapper := aead.NewWrapper(nil)
 	if _, err := rkvWrapper.SetConfig(map[string]string{
 		"key_id": rootKeyVersion.GetPrivateId(),
 	}); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
 	}
 	if err := rkvWrapper.SetAESGCMKeyBytes(rootKeyVersion.GetKey()); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 	}
 
-	k, err = generateKey(randomReader)
+	k, err = generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scopeId)))
 	}
 	dbKey, dbKeyVersion, err := createDatabaseKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create database key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create database key in scope %s", scopeId)))
 	}
 
-	k, err = generateKey(randomReader)
+	k, err = generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oplog key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oplog key in scope %s", scopeId)))
 	}
 	oplogKey, oplogKeyVersion, err := createOplogKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create oplog key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create oplog key in scope %s", scopeId)))
 	}
 
-	k, err = generateKey(randomReader)
+	k, err = generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for session key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for session key in scope %s", scopeId)))
 	}
 	sessionKey, sessionKeyVersion, err := createSessionKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create session key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create session key in scope %s", scopeId)))
 	}
 
-	k, err = generateKey(randomReader)
+	k, err = generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for token key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for token key in scope %s", scopeId)))
 	}
 	tokenKey, tokenKeyVersion, err := createTokenKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create token key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create token key in scope %s", scopeId)))
 	}
 
-	k, err = generateKey(randomReader)
+	k, err = generateKey(ctx, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oidc key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oidc key in scope %s", scopeId)))
 	}
 	oidcKey, oidcKeyVersion, err := createOidcKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create oidc key in scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create oidc key in scope %s", scopeId)))
 	}
 
 	keys := Keys{
@@ -175,11 +179,11 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 	return keys, nil
 }
 
-func generateKey(randomReader io.Reader) ([]byte, error) {
+func generateKey(ctx context.Context, randomReader io.Reader) ([]byte, error) {
 	const op = "kms.generateKey"
 	k, err := uuid.GenerateRandomBytesWithReader(32, randomReader)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return k, nil
 }

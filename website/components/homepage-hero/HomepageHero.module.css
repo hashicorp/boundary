@@ -1,7 +1,7 @@
 .homepageHero {
   padding: 128px 0;
   background-repeat: no-repeat;
-  background-color: var(--boundary-l3);
+  background-color: var(--boundary-secondary);
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
@@ -14,11 +14,6 @@
     background: none;
     padding: 0;
 
-    & :global(.g-btn) {
-      border-color: var(--boundary);
-      background-color: var(--boundary);
-    }
-
     & :global(.carousel) {
       display: flex;
       flex-direction: column-reverse;
@@ -26,14 +21,6 @@
       & :global(.controls) {
         padding-top: 0;
         margin-bottom: 32px;
-
-        & :global(.progress-bar) {
-          background-color: var(--gray-6);
-
-          & > span {
-            background: var(--boundary);
-          }
-        }
       }
     }
   }

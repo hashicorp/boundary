@@ -18,6 +18,12 @@ export default function HomePage() {
               'https://learn.hashicorp.com/collections/boundary/getting-started',
             external: true,
           },
+          {
+            title: 'Boundary Desktop',
+            url: '/downloads#desktop',
+            linkType: 'inbound',
+            theme: { variant: 'tertiary' },
+          },
         ]}
         uiVideo={{
           url: 'https://www.datocms-assets.com/2885/1614100050-hero-ui.mp4',
@@ -48,31 +54,31 @@ export default function HomePage() {
             logos: [
               {
                 alt: 'GitHub',
-                url: require('./img/logos/github.svg?url'),
+                url: require('./img/logos/github-gray.svg?url'),
               },
               {
                 alt: 'AWS',
-                url: require('./img/logos/aws.svg?url'),
+                url: require('./img/logos/aws-gray.svg?url'),
               },
               {
                 alt: 'Microsoft Azure',
-                url: require('./img/logos/azure.svg?url'),
+                url: require('./img/logos/azure-color.svg?url'),
               },
               {
                 alt: 'Google Cloud Platform',
-                url: require('./img/logos/gcp.svg?url'),
+                url: require('./img/logos/gcp-color.svg?url'),
               },
               {
                 alt: 'Okta',
-                url: require('./img/logos/okta.svg?url'),
+                url: require('./img/logos/okta-color.svg?url'),
               },
               {
                 alt: 'Ping',
-                url: require('./img/logos/ping.svg?url'),
+                url: require('./img/logos/ping-color.svg?url'),
               },
               {
                 alt: 'More integrations',
-                url: require('./img/logos/more.svg?url'),
+                url: require('./img/logos/more-gray.svg?url'),
               },
             ],
           },
@@ -83,30 +89,30 @@ export default function HomePage() {
             logos: [
               {
                 alt: 'Consul',
-                url: require('./img/logos/consul.svg?url'),
+                url: require('./img/logos/consul-color.svg?url'),
               },
               {
                 alt: 'AWS',
-                url: require('./img/logos/aws.svg?url'),
+                url: require('./img/logos/aws-color.svg?url'),
               },
               {
                 alt: 'Microsoft Azure',
-                url: require('./img/logos/azure.svg?url'),
+                url: require('./img/logos/azure-color.svg?url'),
               },
               {
                 alt: 'Terraform',
-                url: require('./img/logos/terraform.svg?url'),
+                url: require('./img/logos/terraform-color.svg?url'),
               },
               {
                 alt: 'Google Cloud Platform',
-                url: require('./img/logos/gcp.svg?url'),
+                url: require('./img/logos/gcp-color.svg?url'),
               },
               {
                 alt: 'Kubernetes',
-                url: require('./img/logos/kubernetes.svg?url'),
+                url: require('./img/logos/kubernetes-color.svg?url'),
               },
               {
-                url: require('./img/logos/more.svg?url'),
+                url: require('./img/logos/more-gray.svg?url'),
                 alt: 'More integrations',
               },
             ],
@@ -146,7 +152,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: '/docs/common-workflows/manage-users-groups',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
                 },
               },
               {
@@ -158,7 +165,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: '/docs/common-workflows/manage-sessions',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
                 },
               },
             ]}
@@ -186,36 +194,70 @@ export default function HomePage() {
               content:
                 'Enables privileged sessions for users and applications based on user identity and role.',
               icon: require('./img/features/identity-based-access.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
+              },
             },
             {
               title: 'Session management',
               content:
                 'Ensures access control regardless of user or operators’ infrastructure.',
               icon: require('./img/features/session-management.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/manage-sessions?in=boundary/common-workflows',
+              },
             },
             {
               title: 'Platform agnostic',
               content:
                 'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
               icon: require('./img/features/platform-agnosticity.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url: '/docs/getting-started/connect-to-target',
+              },
             },
             {
               title: 'Session visibility',
               content:
                 'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
               icon: require('./img/features/session-visibility.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/manage-sessions?in=boundary/common-workflows',
+              },
             },
             {
               title: 'Infrastructure as code',
               content:
                 'Define policies and manage Boundary with an Infrastructure as Code approach. Terraform provider supports the full breadth of Boundary configurations.',
               icon: require('./img/features/config-as-code.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
+              },
             },
             {
               title: 'Manage dynamic environments',
               content:
                 'Secure access to dynamic systems and applications with automated controls.',
               icon: require('./img/features/managing-dynamic-environments.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url: '/docs/api-clients',
+              },
             },
           ]}
         />

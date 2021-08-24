@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the job package.
+package controller.storage.job.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/scheduler/job/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message Job {
+  // plugin_id is the primary key of the plugin that registered and owns the job
+  // @inject_tag: `gorm:"primary_key"`
+  string plugin_id = 1;
+
+  // The name of the job.
+  // @inject_tag: `gorm:"primary_key"`
+  string name = 2;
+
+  // The human friendly description of the job.
+  // @inject_tag: `gorm:"not_null"`
+  string description = 3;
+
+  // next_scheduled_run is the time that the next run should be created.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp next_scheduled_run = 4;
+}
+
+message JobRun {
+  // private_id is used to access the job run but not intended to be available via the API
+  // @inject_tag: `gorm:"primary_key"`
+  string private_id = 1;
+
+  // The job_plugin_id is the id of the plugin that owns the job.
+  // @inject_tag: `gorm:"not_null"`
+  string job_plugin_id = 2;
+
+  // The job_name is the name of the job and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string job_name = 3;
+
+  // The server_id of the server running the job and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string server_id = 4;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 5;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 6;
+
+  // The end_time is set when the job run completes.
+  // @inject_tag: `gorm:"default:null"`
+  timestamp.v1.Timestamp end_time = 7;
+
+  // completed_count is set during an update to indicate the current progress.
+  // @inject_tag: `gorm:"default:0"`
+  uint32 completed_count = 8;
+
+  // total_count is set during an update to indicate the progress goal.
+  // @inject_tag: `gorm:"default:0"`
+  uint32 total_count = 9;
+
+  // status of the job run (running, completed, failed or interrupted).
+  // @inject_tag: `gorm:"not_null"`
+  string status = 10;
+}

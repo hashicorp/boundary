@@ -77,7 +77,6 @@ func Test_TestRepo(t *testing.T) {
 }
 
 func Test_TestUser(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -93,7 +92,6 @@ func Test_TestUser(t *testing.T) {
 }
 
 func Test_TestRole(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -112,7 +110,6 @@ func Test_TestRole(t *testing.T) {
 }
 
 func Test_TestRoleGrant(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -128,7 +125,6 @@ func Test_TestRoleGrant(t *testing.T) {
 }
 
 func Test_TestUserRole(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -164,7 +160,6 @@ func Test_TestUserRole(t *testing.T) {
 }
 
 func Test_TestGroupRole(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -202,7 +197,6 @@ func Test_TestGroupRole(t *testing.T) {
 }
 
 func Test_TestGroupMember(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

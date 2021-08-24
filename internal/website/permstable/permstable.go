@@ -70,6 +70,7 @@ func main() {
 		host,
 		hostCatalog,
 		hostSet,
+		managedGroup,
 		role,
 		scope,
 		session,
@@ -190,11 +191,11 @@ func (e *Endpoint) Marshal() (ret []string) {
 	for _, v := range sortedKeys(e.Params) {
 		ret = append(ret,
 			fmt.Sprintf(`%s<li>%s</li>`, indent(10), v),
-			fmt.Sprintf(`%s<ul>`, indent(12)),
-			fmt.Sprintf(`%s<li>`, indent(14)),
-			fmt.Sprintf(`%s<code>%s</code>`, indent(16), escape(e.Params[v])),
-			fmt.Sprintf(`%s</li>`, indent(14)),
-			fmt.Sprintf(`%s</ul>`, indent(12)),
+			fmt.Sprintf(`%s<ul>`, indent(10)),
+			fmt.Sprintf(`%s<li>`, indent(12)),
+			fmt.Sprintf(`%s<code>%s</code>`, indent(14), escape(e.Params[v])),
+			fmt.Sprintf(`%s</li>`, indent(12)),
+			fmt.Sprintf(`%s</ul>`, indent(10)),
 		)
 	}
 
@@ -212,15 +213,17 @@ func (e *Endpoint) Marshal() (ret []string) {
 			fmt.Sprintf(`%s</li>`, indent(10)),
 		)
 		ret = append(ret,
-			fmt.Sprintf(`%s<ul>`, indent(12)),
+			fmt.Sprintf(`%s<ul>`, indent(10)),
 		)
 		for _, x := range v.Examples {
 			ret = append(ret,
-				fmt.Sprintf(`%s<li><code>%s</code></li>`, indent(14), escape(x)),
+				fmt.Sprintf(`%s<li>`, indent(12)),
+				fmt.Sprintf(`%s<code>%s</code>`, indent(14), escape(x)),
+				fmt.Sprintf(`%s</li>`, indent(12)),
 			)
 		}
 		ret = append(ret,
-			fmt.Sprintf(`%s</ul>`, indent(12)),
+			fmt.Sprintf(`%s</ul>`, indent(10)),
 		)
 	}
 
@@ -325,7 +328,7 @@ var account = &Resource{
 				rudActions("an account", true),
 				&Action{
 					Name:        "set-password",
-					Description: "Set a password on an account, without requring the current password",
+					Description: "Set a password on an account, without requiring the current password",
 					Examples: []string{
 						"id=<id>;actions=set-password",
 						"id=<pin>;type=<type>;actions=set-password",
@@ -522,7 +525,7 @@ var hostSet = &Resource{
 			Actions: clActions("a host set"),
 		},
 		{
-			Path: "/targets/<id>",
+			Path: "/host-sets/<id>",
 			Params: map[string]string{
 				"ID":   "<id>",
 				"Type": "host-set",
@@ -555,6 +558,29 @@ var hostSet = &Resource{
 					},
 				},
 			),
+		},
+	},
+}
+
+var managedGroup = &Resource{
+	Type:   "Managed Group",
+	Scopes: iamScopes,
+	Endpoints: []*Endpoint{
+		{
+			Path: "/managed-groups",
+			Params: map[string]string{
+				"Type": "managed-group",
+			},
+			Actions: clActions("a managed group"),
+		},
+		{
+			Path: "/managed-groups/<id>",
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": "managed-group",
+				"Pin":  "<auth-method-id>",
+			},
+			Actions: rudActions("a managed group", true),
 		},
 	},
 }

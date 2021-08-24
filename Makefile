@@ -67,7 +67,7 @@ build-ui:
 	./scripts/uiclone.sh && ./scripts/uigen.sh
 
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/assets.go))
+ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
 	@echo "==> No UI assets found, building..."
 	@$(MAKE) build-ui
 else
@@ -132,6 +132,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go		
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/oidc/store/oidc.pb.go
+	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 
 	@rm -R ${TMP_DIR}
 
@@ -151,6 +155,9 @@ website-start:
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
+test-sql:
+	$(MAKE) -C internal/db/sqltest/ test
+
 test: 
 	~/.go/bin/go test ./... -timeout 30m
 
@@ -160,7 +167,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.7
+VERSION?=0.5.1
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -174,6 +181,16 @@ docker-build:
 	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
 	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
 
+# builds multiarch from releases.hashicorp.com official binary
+docker-multiarch-build:
+	docker buildx build \
+	--push \
+	--tag $(IMAGE_TAG) \
+	--tag hashicorp/boundary:latest \
+	--build-arg VERSION=$(VERSION) \
+	--platform linux/amd64,linux/arm64 \
+	--file $(DOCKER_DIR)/Release.dockerfile .
+	
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev

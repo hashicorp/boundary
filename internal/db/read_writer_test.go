@@ -10,19 +10,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestDb_UpdateUnsetField(t *testing.T) {
@@ -50,7 +50,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 
 func TestDb_Update(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
-	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
@@ -623,7 +623,7 @@ func TestDb_Create(t *testing.T) {
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
-		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id
@@ -926,6 +926,16 @@ func TestDb_SearchWhere(t *testing.T) {
 			wantNameOrder: true,
 		},
 		{
+			name:      "no-where",
+			db:        Db{underlying: db},
+			createCnt: 10,
+			args: args{
+				opt: []Option{WithLimit(10)},
+			},
+			wantCnt: 10,
+			wantErr: false,
+		},
+		{
 			name:      "custom-limit",
 			db:        Db{underlying: db},
 			createCnt: 10,
@@ -947,6 +957,27 @@ func TestDb_SearchWhere(t *testing.T) {
 			},
 			wantCnt: 1,
 			wantErr: false,
+		},
+		{
+			name:      "no args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: fmt.Sprintf("public_id = '%v'", knownUser.PublicId),
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 1,
+			wantErr: false,
+		},
+		{
+			name:      "no where, but with args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				arg: []interface{}{knownUser.PublicId},
+				opt: []Option{WithLimit(3)},
+			},
+			wantErr: true,
 		},
 		{
 			name:      "not-found",
@@ -1035,6 +1066,7 @@ func TestDb_Exec(t *testing.T) {
 
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	db, _ := TestSetup(t, "postgres")
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -1044,7 +1076,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1060,7 +1092,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1076,7 +1108,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1092,7 +1124,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1132,7 +1164,7 @@ func TestDb_DoTx(t *testing.T) {
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
 			attempts += 1
-			return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+			return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 		})
 		require.Error(err)
 		assert.Equal(3, got.Retries)

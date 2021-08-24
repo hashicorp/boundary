@@ -13,12 +13,16 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
+	"github.com/pkg/errors"
 )
 
 // This is adapted from the code in the strings package for TrimSpace
 var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
 
 func ScopeInfoForOutput(scp *scopes.ScopeInfo, maxLength int) string {
+	if scp == nil {
+		return "    <not included in response>"
+	}
 	vals := map[string]interface{}{
 		"ID":   scp.Id,
 		"Type": scp.Type,
@@ -123,11 +127,26 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 		if spaces < 0 {
 			spaces = 0
 		}
+		vOut := fmt.Sprintf("%v", v)
+		switch v.(type) {
+		case map[string]interface{}:
+			buf, err := json.MarshalIndent(v, strings.Repeat(" ", prefixSpaces), "  ")
+			if err != nil {
+				vOut = "[Unable to Print]"
+				break
+			}
+			bStrings := strings.Split(string(buf), "\n")
+			if len(bStrings) > 0 {
+				// Indent doesn't apply to the first line 🙄
+				bStrings[0] = fmt.Sprintf("\n%s%s", strings.Repeat(" ", prefixSpaces), bStrings[0])
+			}
+			vOut = strings.Join(bStrings, "\n")
+		}
 		ret = append(ret, fmt.Sprintf("%s%s%s%s",
 			strings.Repeat(" ", prefixSpaces),
 			fmt.Sprintf("%s: ", k),
 			strings.Repeat(" ", spaces),
-			fmt.Sprintf("%v", v),
+			vOut,
 		))
 	}
 
@@ -135,8 +154,10 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 }
 
 // PrintApiError prints the given API error, optionally with context
-// information, to the UI in the appropriate format
-func (c *Command) PrintApiError(in *api.Error, contextStr string) {
+// information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
+// used, all other options are ignored.
+func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
+	opts := getOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
 		output := struct {
@@ -200,8 +221,14 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 						// TODO: Report useful error messages related to "update_mask".
 						continue
 					}
+					var fNameParts []string
+					if opts.withAttributeFieldPrefix != "" && strings.HasPrefix(field.Name, "attributes.") {
+						fNameParts = append(fNameParts, opts.withAttributeFieldPrefix)
+					}
+					fNameParts = append(fNameParts, strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-"))
+					fName := strings.Join(fNameParts, "-")
 					output = append(output,
-						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
+						fmt.Sprintf("    Name:              -%s", fName),
 						fmt.Sprintf("      Error:           %s", field.Description),
 					)
 				}
@@ -229,17 +256,31 @@ func (c *Command) PrintCliError(err error) {
 }
 
 // PrintJsonItem prints the given item to the UI in JSON format
-func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) bool {
+func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
+	resp := result.GetResponse()
+	if resp == nil {
+		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
+		return false
+	}
+	if r := resp.HttpResponse(); r != nil {
+		opt = append(opt, WithStatusCode(r.StatusCode))
+	}
+	return c.PrintJson(resp.Body.Bytes(), opt...)
+}
+
+// PrintJson prints the given raw JSON in our common format
+func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
+	opts := getOpts(opt...)
 	output := struct {
-		StatusCode int         `json:"status_code"`
-		Item       interface{} `json:"item"`
+		StatusCode int             `json:"status_code,omitempty"`
+		Item       json.RawMessage `json:"item,omitempty"`
 	}{
-		StatusCode: result.GetResponse().HttpResponse().StatusCode,
-		Item:       item,
+		StatusCode: opts.withStatusCode,
+		Item:       input,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
-		c.PrintCliError(err)
+		c.PrintCliError(fmt.Errorf("Error formatting as JSON: %w", err))
 		return false
 	}
 	c.UI.Output(string(b))
@@ -247,17 +288,36 @@ func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) bool
 }
 
 // PrintJsonItems prints the given items to the UI in JSON format
-func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface{}) bool {
+func (c *Command) PrintJsonItems(result api.GenericListResult) bool {
+	resp := result.GetResponse()
+	if resp == nil {
+		c.PrintCliError(errors.New("Error formatting as JSON: no response given to items formatter"))
+		return false
+	}
+	// First we need to grab the items out. The reason is that if we simply
+	// embed the raw message as with PrintJsonItem above, it will have {"items":
+	// {"items": []}}. However, we decode into a RawMessage which makes it much
+	// more efficient on both the decoding and encoding side.
+	type inMsg struct {
+		Items json.RawMessage `json:"items"`
+	}
+	var input inMsg
+	if resp.Body.Bytes() != nil {
+		if err := json.Unmarshal(resp.Body.Bytes(), &input); err != nil {
+			c.PrintCliError(fmt.Errorf("Error unmarshaling response body at format time: %w", err))
+			return false
+		}
+	}
 	output := struct {
-		StatusCode int           `json:"status_code"`
-		Items      []interface{} `json:"items"`
+		StatusCode int             `json:"status_code"`
+		Items      json.RawMessage `json:"items"`
 	}{
-		StatusCode: result.GetResponse().HttpResponse().StatusCode,
-		Items:      items,
+		StatusCode: resp.HttpResponse().StatusCode,
+		Items:      input.Items,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
-		c.PrintCliError(err)
+		c.PrintCliError(fmt.Errorf("Error formatting as JSON: %w", err))
 		return false
 	}
 	c.UI.Output(string(b))

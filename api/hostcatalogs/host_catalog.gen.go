@@ -51,6 +51,11 @@ type HostCatalogDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for HostCatalogDeleteResult
+func (n HostCatalogDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n HostCatalogDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
@@ -135,9 +140,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogReadResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostCatalogReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -145,7 +150,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -176,9 +181,9 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalogUpdateResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*HostCatalogUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -190,7 +195,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostCatalogId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -208,7 +213,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -239,9 +244,9 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogDeleteResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostCatalogDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -249,7 +254,7 @@ func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

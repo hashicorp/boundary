@@ -1,24 +1,18 @@
 package authenticate
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/vault/sdk/helper/password"
-	nkeyring "github.com/jefferai/keyring"
+	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
-	zkeyring "github.com/zalando/go-keyring"
 )
 
 var (
@@ -27,9 +21,8 @@ var (
 )
 
 var (
-	envPassword     = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
-	envLoginName    = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
-	envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
+	envPassword  = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
+	envLoginName = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
 )
 
 type PasswordCommand struct {
@@ -91,6 +84,21 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
+type dummyGenericResponse struct {
+	item     interface{}
+	response *api.Response
+}
+
+var _ api.GenericResult = (*dummyGenericResponse)(nil)
+
+func (d *dummyGenericResponse) GetItem() interface{} {
+	return d.item
+}
+
+func (d *dummyGenericResponse) GetResponse() *api.Response {
+	return d.response
+}
+
 func (c *PasswordCommand) Run(args []string) int {
 	f := c.Flags()
 
@@ -125,10 +133,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	// note: Authenticate() calls SetToken() under the hood to set the
-	// auth bearer on the client so we do not need to do anything with the
-	// returned token after this call, so we ignore it
-	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId,
+	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "login",
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
@@ -142,76 +147,5 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	token := result.GetItem().(*authtokens.AuthToken)
-	switch base.Format(c.UI) {
-	case "table":
-		c.UI.Output(base.WrapForHelpText([]string{
-			"",
-			"Authentication information:",
-			fmt.Sprintf("  Account ID:      %s", token.AccountId),
-			fmt.Sprintf("  Auth Method ID:  %s", token.AuthMethodId),
-			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC1123)),
-			fmt.Sprintf("  Token:           %s", token.Token),
-			fmt.Sprintf("  User ID:         %s", token.UserId),
-		}))
-
-	case "json":
-		if ok := c.PrintJsonItem(result, token); !ok {
-			return base.CommandCliError
-		}
-		return base.CommandSuccess
-	}
-
-	var gotErr bool
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error fetching keyring information: %s", err))
-		gotErr = true
-	} else if keyringType != "none" &&
-		tokenName != "none" &&
-		keyringType != "" &&
-		tokenName != "" {
-		marshaled, err := json.Marshal(token)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to keyring: %s", err))
-			gotErr = true
-		} else {
-			switch keyringType {
-			case "wincred", "keychain":
-				if err := zkeyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
-					c.UI.Error(fmt.Sprintf("Error saving auth token to %q keyring: %s", keyringType, err))
-					gotErr = true
-				}
-
-			default:
-				krConfig := nkeyring.Config{
-					LibSecretCollectionName: "login",
-					PassPrefix:              "HashiCorp_Boundary",
-					AllowedBackends:         []nkeyring.BackendType{nkeyring.BackendType(keyringType)},
-				}
-
-				kr, err := nkeyring.Open(krConfig)
-				if err != nil {
-					c.UI.Error(fmt.Sprintf("Error opening %q keyring: %s", keyringType, err))
-					gotErr = true
-					break
-				}
-
-				if err := kr.Set(nkeyring.Item{
-					Key:  tokenName,
-					Data: []byte(base64.RawStdEncoding.EncodeToString(marshaled)),
-				}); err != nil {
-					c.UI.Error(fmt.Sprintf("Error storing token in %q keyring: %s", keyringType, err))
-					gotErr = true
-					break
-				}
-			}
-		}
-	}
-
-	if gotErr {
-		c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.")
-	}
-
-	return base.CommandSuccess
+	return saveAndOrPrintToken(c.Command, result)
 }

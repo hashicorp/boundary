@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Production Installation
-sidebar_title: Production Install
 description: |-
   How to install Boundary in a production environment
 ---
@@ -218,7 +217,7 @@ sudo chown boundary:boundary /etc/${NAME}-${TYPE}.hcl
 sudo chown boundary:boundary /usr/local/bin/boundary
 
 # Make sure to initialize the DB before starting the service. This will result in
-# a database already initizalized warning if another controller or worker has done this
+# a database already initialized warning if another controller or worker has done this
 # already, making it a lazy, best effort initialization
 if [ "${TYPE}" = "controller" ]; then
   sudo /usr/local/bin/boundary database init -config /etc/${NAME}-${TYPE}.hcl || true

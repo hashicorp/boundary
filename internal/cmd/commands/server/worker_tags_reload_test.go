@@ -106,7 +106,12 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 
 	controllerKey, workerAuthKey, recoveryKey := config.DevKeyGeneration()
 
-	cmd := testServerCommand(t, controllerKey)
+	cmd := testServerCommand(t, testServerCommandOpts{
+		CreateDevDatabase: true,
+		ControllerKey:     controllerKey,
+		UseDevAuthMethod:  true,
+		UseDevTarget:      true,
+	})
 	defer func() {
 		if cmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(cmd.DevDatabaseCleanupFunc())

@@ -565,6 +565,7 @@ $$ language plpgsql;
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
+-- REPLACED in 9/04_oidc_managed_group_principal_role
 create view iam_principal_role as
 select 
 	ur.create_time, 
@@ -672,7 +673,7 @@ before
 insert on iam_group_member_user
   for each row execute procedure recovery_user_not_allowed('member_id');
 
--- get_scoped_principal_id is used by the iam_group_member view as a convient
+-- get_scoped_member_id is used by the iam_group_member view as a convient
 -- way to create <scope_id>:<member_id> to reference members from
 -- other scopes than the group's scope. 
 create or replace function get_scoped_member_id(group_scope text, member_scope text, member_id text) returns text 

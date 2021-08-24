@@ -7,18 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -29,7 +27,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func TestGet(t *testing.T) {
 	t.Parallel()
@@ -37,7 +38,12 @@ func TestGet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -51,12 +57,12 @@ func TestGet(t *testing.T) {
 		Id:            h.GetPublicId(),
 		CreatedTime:   h.CreateTime.GetTimestamp(),
 		UpdatedTime:   h.UpdateTime.GetTimestamp(),
-		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:          "static",
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
-		AuthorizedActions: []string{"read", "update", "delete"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -95,7 +101,7 @@ func TestGet(t *testing.T) {
 			s, err := hosts.NewService(repoFn)
 			require.NoError(err, "Couldn't create a new host set service.")
 
-			got, gErr := s.GetHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.GetHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -114,7 +120,12 @@ func TestList(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -128,14 +139,14 @@ func TestList(t *testing.T) {
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
-			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 			CreatedTime:   h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
 			Version:       h.GetVersion(),
-			Type:          host.StaticSubtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			Type:          static.Subtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
-			AuthorizedActions: []string{"read", "update", "delete"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -177,14 +188,25 @@ func TestList(t *testing.T) {
 			s, err := hosts.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			// Test non-anonymous listing
+			got, gErr := s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHosts(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(gErr)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test anonymous listing
+			got, gErr = s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
@@ -195,7 +217,12 @@ func TestDelete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -220,7 +247,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostResponse{},
 		},
 		{
 			name:    "Delete bad id Host",
@@ -242,7 +268,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -259,7 +285,12 @@ func TestDelete_twice(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -273,7 +304,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteHostRequest{
 		Id: h.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteHost(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHost(ctx, req)
@@ -287,7 +318,12 @@ func TestCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -295,8 +331,7 @@ func TestCreate(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	defaultHcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	require.NoError(t, err)
+	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
 		name string
@@ -319,14 +354,14 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "name"},
 					Description:   &wrappers.StringValue{Value: "desc"},
 					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -378,14 +413,14 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "no type name"},
 					Description:   &wrappers.StringValue{Value: "no type desc"},
 					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -402,7 +437,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: hc.GetPublicId(),
-				CreatedTime:   ptypes.TimestampNow(),
+				CreatedTime:   timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -410,7 +445,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -422,7 +457,7 @@ func TestCreate(t *testing.T) {
 			s, err := hosts.NewService(repoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
-			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -430,10 +465,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostPrefix))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set created after the test setup's default set
 				assert.True(gotCreateTime.After(defaultHcCreated), "New host should have been created after default host. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
 				assert.True(gotUpdateTime.After(defaultHcCreated), "New host should have been updated after default host. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
@@ -457,7 +490,12 @@ func TestUpdate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -482,8 +520,7 @@ func TestUpdate(t *testing.T) {
 		version++
 	}
 
-	hCreated, err := ptypes.Timestamp(h.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Failed to convert proto to timestamp")
+	hCreated := h.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateHostRequest{
 		Id: h.GetPublicId(),
 	}
@@ -513,7 +550,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "new"},
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
@@ -521,7 +558,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -541,7 +578,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "new"},
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
@@ -549,7 +586,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -612,14 +649,14 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -637,14 +674,14 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -663,7 +700,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "updated"},
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
@@ -671,7 +708,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -690,7 +727,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:          &wrappers.StringValue{Value: "default"},
 					Description:   &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
@@ -698,7 +735,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: []string{"read", "update", "delete"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -711,7 +748,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "new"},
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -726,7 +763,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Host{
 					Id:          "p_somethinge",
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				},
@@ -773,7 +810,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Host{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -786,7 +823,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Host{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -816,14 +853,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test some bad versions
 			req.Item.Version = version + 2
-			_, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version - 1
-			_, gErr = tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr = tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version
 
-			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -835,8 +872,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Failed to convert proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set updated after it was created
 				// TODO: This is currently failing.
 				assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)

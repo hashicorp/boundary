@@ -167,7 +167,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Option) bool {
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
@@ -257,17 +257,21 @@ func (c *Command) printListTable(items []*roles.Role) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", item.Id),
 			)
-		}
-		if c.FlagRecursive {
+		} else {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", item.Scope.Id),
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if true {
+		if c.FlagRecursive && item.ScopeId != "" {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
+			)
+		}
+		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
 			)
@@ -293,22 +297,29 @@ func (c *Command) printListTable(items []*roles.Role) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *roles.Role) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*roles.Role)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
 	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
 	}
-	if in.GrantScopeId != "" {
-		nonAttributeMap["Grant Scope ID"] = in.GrantScopeId
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.GrantScopeId != "" {
+		nonAttributeMap["Grant Scope ID"] = item.GrantScopeId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -317,39 +328,44 @@ func printItemTable(in *roles.Role) string {
 		"",
 		"Role information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
 		ret = append(ret,
 			"",
-			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
 		)
 	}
 
-	if len(in.Principals) > 0 {
+	if len(item.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, item.AuthorizedActions),
+		)
+	}
+
+	if len(item.Principals) > 0 {
 		ret = append(ret,
 			"",
 			fmt.Sprintf("  Principals:       %s", ""),
 		)
 	}
-	for _, principal := range in.Principals {
+	for _, principal := range item.Principals {
 		ret = append(ret,
 			fmt.Sprintf("    ID:             %s", principal.Id),
 			fmt.Sprintf("      Type:         %s", principal.Type),
 			fmt.Sprintf("      Scope ID:     %s", principal.ScopeId),
 		)
 	}
-	if len(in.Grants) > 0 {
+	if len(item.Grants) > 0 {
 		ret = append(ret,
 			"",
 			fmt.Sprintf("  Canonical Grants: %s", ""),
 		)
 	}
-	for _, grant := range in.Grants {
+	for _, grant := range item.Grants {
 		ret = append(ret,
 			fmt.Sprintf("    %s", grant.Canonical),
 		)

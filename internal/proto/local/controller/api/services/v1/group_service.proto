@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/groups/v1/group.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 

@@ -49,8 +49,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   [ "$status" -eq 0 ]
 }
 
-
-
 @test "boundary/role/add-principals: $NEW_ROLE role contains default principal" {	
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_principal_id $rid $DEFAULT_USER

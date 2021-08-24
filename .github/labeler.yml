@@ -82,6 +82,10 @@ core/servers:
 core/session:
   - internal/session/**/*
 
+core/sql:
+  - internal/**/*.sql
+  - internal/**/*query*.go
+
 core/target:
   - internal/target/**/*
 

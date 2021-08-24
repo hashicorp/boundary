@@ -42,13 +42,13 @@ type GormWriter struct {
 func (w *GormWriter) Create(i interface{}) error {
 	const op = "oplog.(GormWriter).Create"
 	if w.Tx == nil {
-		return errors.New(errors.InvalidParameter, op, "nil tx")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
 	}
 	if i == nil {
-		return errors.New(errors.InvalidParameter, op, "nil interface")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if err := w.Tx.Create(i).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -59,22 +59,22 @@ func (w *GormWriter) Create(i interface{}) error {
 func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []string) error {
 	const op = "oplog.(GormWriter).Update"
 	if w.Tx == nil {
-		return errors.New(errors.InvalidParameter, op, "nil tx")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
 	}
 	if i == nil {
-		return errors.New(errors.InvalidParameter, op, "nil interface")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing field mask paths and set to null paths")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing field mask paths and set to null paths")
 	}
 	// common.UpdateFields will also check to ensure that fieldMaskPaths and
 	// setToNullPaths do not intersect.
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to build update fields"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to build update fields"))
 	}
 	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -83,13 +83,13 @@ func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []stri
 func (w *GormWriter) Delete(i interface{}) error {
 	const op = "oplog.(GormWriter).Delete"
 	if w.Tx == nil {
-		return errors.New(errors.InvalidParameter, op, "nil tx")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
 	}
 	if i == nil {
-		return errors.New(errors.InvalidParameter, op, "nil interface")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if err := w.Tx.Delete(i).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -107,10 +107,10 @@ func (w *GormWriter) hasTable(tableName string) bool {
 func (w *GormWriter) createTableLike(existingTableName string, newTableName string) error {
 	const op = "oplog.(GormWriter).createTableLike"
 	if existingTableName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing existing table name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing existing table name")
 	}
 	if newTableName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing new table name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing new table name")
 	}
 	existingTableName = w.Tx.Dialect().Quote(existingTableName)
 	newTableName = w.Tx.Dialect().Quote(newTableName)
@@ -128,11 +128,11 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 			existingTableName,
 		)
 	default:
-		return errors.New(errors.InvalidParameter, op, "unsupported RDBMS")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "unsupported RDBMS")
 	}
 	err := w.Tx.Exec(sql).Error
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -141,11 +141,11 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 func (w *GormWriter) dropTableIfExists(tableName string) error {
 	const op = "oplog.(GormWriter).dropTableIfExists"
 	if tableName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing table name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing table name")
 	}
 	err := w.Tx.DropTableIfExists(tableName).Error
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

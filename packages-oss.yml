@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.1.7
+    PRODUCT_VERSION: 0.5.1
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -50,8 +50,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-# golang:1.15.8-buster
-base-image: "docker.mirror.hashicorp.services/golang@sha256:cbd6b4a560adbd00e3fe1eb1a6191a85e82839a69dcb757d57aa5be311f09cfe"
+# golang:1.16.7-buster
+base-image: "docker.mirror.hashicorp.services/golang@sha256:448a13037d13401ad9b31fabf91d6b8a3c5c35d336cc8af760b2ab4ed85d4155"
 
 layers:
   - name: base
@@ -64,32 +64,27 @@ layers:
       RUN \
           curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
-          && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
-           | tee /etc/apt/sources.list.d/yarn.list \
+          && curl -sS https://deb.nodesource.com/gpgkey/nodesource.gpg.key \
+           | apt-key add - \
+          && echo "deb https://deb.nodesource.com/node_14.x buster main" | tee /etc/apt/sources.list.d/nodesource.list \
+          && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
           && apt-get update \
-          && apt-get install -yq yarn zip \
-          && rm -rf /var/lib/apt/lists/* \
-          && go get github.com/go-bindata/go-bindata/v3/go-bindata \
-          && go-bindata --version
+          && apt-get install -yq yarn zip nodejs \
+          && rm -rf /var/lib/apt/lists/*
 
   - name: ui
     source-include: internal/ui/VERSION
     dockerfile: |
       RUN \
           SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
-          && DIR=internal/ui/source/boundary-ui \
+          && DIR=internal/ui/.tmp/boundary-ui \
           && mkdir -p "$(dirname "$DIR")" \
           && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
           && ( cd "$DIR" \
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
           && yarn install \
-          && yarn build:ui:admin; ) \
-          && TARGET=internal/ui/assets.go \
-          && UIDIR="$DIR/ui/admin/dist" \
-          && go-bindata -fs -o "$TARGET" -pkg ui \
-             -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
-          && rm -rf "$DIR"
+          && yarn build:ui:admin; )
 
   - name: go-modules
     source-include: "go.mod go.sum */go.mod */go.sum"
@@ -102,9 +97,9 @@ layers:
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   go build -v -tags '{{.BUILD_TAGS}}'
-    -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
-              -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
-              -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
-    -o $OUTPUT_DIR/{{.BINARY_NAME}}
-    ./cmd/boundary
+  -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
+  -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
+  -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
+  -o $OUTPUT_DIR/{{.BINARY_NAME}}
+  ./cmd/boundary
   && cd $OUTPUT_DIR && zip $PACKAGE_ZIP_NAME {{.BINARY_NAME}}

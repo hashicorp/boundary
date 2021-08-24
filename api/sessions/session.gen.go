@@ -58,6 +58,11 @@ type SessionDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for SessionDeleteResult
+func (n SessionDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n SessionDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
@@ -93,9 +98,9 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*SessionReadResult, error) {
-	if sessionId == "" {
-		return nil, fmt.Errorf("empty sessionId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*SessionReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -103,7 +108,7 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", sessionId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}

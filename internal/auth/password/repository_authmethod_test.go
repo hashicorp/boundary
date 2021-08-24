@@ -209,7 +209,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 				Name: "test-name-repo",
 			},
 		}
-		in2 := in.clone()
+		in2 := in.Clone()
 
 		in.ScopeId = org1.GetPublicId()
 		got, err := repo.CreateAuthMethod(context.Background(), in)
@@ -411,7 +411,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		{
 			name: "Scope with no auth methods",
 			in:   []string{noAuthMethodOrg.GetPublicId()},
-			want: []*AuthMethod{},
+			want: nil,
 		},
 		{
 			name: "With populated scope id",
@@ -456,12 +456,25 @@ func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		o := iam.TestOrg(t, iamRepo)
 		scopeIds = append(scopeIds, o.GetPublicId())
-		TestAuthMethods(t, conn, o.GetPublicId(), numPerScope)
+		ams := TestAuthMethods(t, conn, o.GetPublicId(), numPerScope)
+		iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, ams[0].PublicId)
 		total += numPerScope
 	}
-	got, err := repo.ListAuthMethods(context.Background(), scopeIds)
+	got, err := repo.ListAuthMethods(context.Background(), scopeIds, WithOrderByCreateTime(true))
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+	found := map[string]struct{}{}
+	for _, am := range got {
+		switch {
+		case am.Clone().ScopeId == "global":
+			assert.Equalf(t, false, am.IsPrimaryAuthMethod, "expected the the global auth method to not be primary")
+		default:
+			if _, ok := found[am.ScopeId]; !ok {
+				found[am.ScopeId] = struct{}{}
+				assert.Equalf(t, true, am.IsPrimaryAuthMethod, "expected the first auth method created for the scope %s to be primary", am.ScopeId)
+			}
+		}
+	}
 }
 
 func TestRepository_ListAuthMethods_Limits(t *testing.T) {
@@ -473,6 +486,8 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethodCount := 10
 	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
+	primaryAuthMethod := ams[0]
+	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, primaryAuthMethod.PublicId)
 
 	tests := []struct {
 		name     string
@@ -481,12 +496,14 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		wantLen  int
 	}{
 		{
-			name:    "With no limits",
-			wantLen: authMethodCount,
+			name:     "With no limits",
+			wantLen:  authMethodCount,
+			listOpts: []Option{WithOrderByCreateTime(true)},
 		},
 		{
 			name:     "With repo limit",
 			repoOpts: []Option{WithLimit(3)},
+			listOpts: []Option{WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
@@ -496,24 +513,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []Option{WithLimit(3), WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []Option{WithLimit(-1), WithOrderByCreateTime(true)},
 			wantLen:  authMethodCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
 			wantLen:  2,
 		},
 	}
@@ -528,6 +545,9 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			got, err := repo.ListAuthMethods(context.Background(), []string{ams[0].GetScopeId()}, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			if tt.wantLen > 0 {
+				assert.Equal(true, got[0].IsPrimaryAuthMethod)
+			}
 		})
 	}
 }

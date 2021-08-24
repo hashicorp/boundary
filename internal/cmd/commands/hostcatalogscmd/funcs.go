@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -68,19 +69,27 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if m.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", m.Id),
 			)
-		}
-		if c.FlagRecursive {
+		} else {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if true {
+		if c.FlagRecursive && m.ScopeId != "" {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", m.ScopeId),
+			)
+		}
+		if m.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", m.Version),
+			)
+		}
+		if m.Type != "" {
+			output = append(output,
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)
 		}
@@ -105,44 +114,58 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *hostcatalogs.HostCatalog) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Type":         in.Type,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*hostcatalogs.HostCatalog)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
+	}
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
 	}
 
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
-	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
-	}
-
-	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
+	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	ret := []string{
 		"",
 		"Host Catalog information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
 		ret = append(ret,
 			"",
-			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
 		)
 	}
 
-	if len(in.AuthorizedCollectionActions) > 0 {
-		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
-		for k := range in.AuthorizedCollectionActions {
+	if len(item.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, item.AuthorizedActions),
+		)
+	}
+
+	if len(item.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(item.AuthorizedCollectionActions))
+		for k := range item.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -151,17 +174,17 @@ func printItemTable(in *hostcatalogs.HostCatalog) string {
 		)
 		for _, key := range keys {
 			ret = append(ret,
-				fmt.Sprintf("    %ss:", key),
-				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
+				fmt.Sprintf("    %s:", key),
+				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
 			)
 		}
 	}
 
-	if len(in.Attributes) > 0 {
+	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
 			"  Attributes:",
-			base.WrapMap(4, maxLength, in.Attributes),
+			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 

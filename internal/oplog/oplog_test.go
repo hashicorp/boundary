@@ -334,7 +334,7 @@ func Test_UnmarshalData(t *testing.T) {
 		require.NoError(err)
 		_, err = entry.UnmarshalData(types)
 		require.Error(err)
-		assert.Equal("oplog.(Entry).UnmarshalData: error removing item from queue: oplog.(Queue).Remove: error getting the TypeName: oplog.(TypeCatalog).Get: type name not found: integrity violation: error #105", err.Error())
+		assert.Equal("oplog.(Entry).UnmarshalData: error removing item from queue: oplog.(Queue).Remove: error getting the TypeName: user: oplog.(TypeCatalog).Get: type name not found: integrity violation: error #105", err.Error())
 	})
 }
 

@@ -5,9 +5,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -134,6 +136,21 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-migrate"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
+	}
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Boundary. We also disable
@@ -174,13 +191,13 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
-	if err != nil && err != config.ErrNotAUrl {
+	migrationUrl, err := parseutil.ParsePath(migrationUrlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
 	defer clean()
 	if errCode != 0 {
 		return errCode

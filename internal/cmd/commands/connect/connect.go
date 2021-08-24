@@ -26,7 +26,7 @@ import (
 	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
 	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
@@ -40,12 +40,13 @@ import (
 const sessionCancelTimeout = 10 * time.Second
 
 type SessionInfo struct {
-	Address         string    `json:"address"`
-	Port            int       `json:"port"`
-	Protocol        string    `json:"protocol"`
-	Expiration      time.Time `json:"expiration"`
-	ConnectionLimit int32     `json:"connection_limit"`
-	SessionId       string    `json:"session_id"`
+	Address         string                       `json:"address"`
+	Port            int                          `json:"port"`
+	Protocol        string                       `json:"protocol"`
+	Expiration      time.Time                    `json:"expiration"`
+	ConnectionLimit int32                        `json:"connection_limit"`
+	SessionId       string                       `json:"session_id"`
+	Credentials     []*targets.SessionCredential `json:"credentials,omitempty"`
 }
 
 type ConnectionInfo struct {
@@ -72,6 +73,7 @@ type Command struct {
 	flagHostId     string
 	flagExec       string
 	flagUsername   string
+	flagDbname     string
 
 	// HTTP
 	httpFlags
@@ -90,6 +92,7 @@ type Command struct {
 
 	Func string
 
+	sessionAuthz     *targets.SessionAuthorization
 	sessionAuthzData *targetspb.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
@@ -97,12 +100,14 @@ type Command struct {
 	listener           *net.TCPListener
 	listenerAddr       *net.TCPAddr
 	connsLeftCh        chan int32
-	connectionsLeft    atomic.Int32
+	connectionsLeft    *atomic.Int32
 	expiration         time.Time
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
 	proxyCancel        context.CancelFunc
 	outputJsonErrors   bool
+
+	cleanupFuncs []func() error
 }
 
 func (c *Command) Synopsis() string {
@@ -314,6 +319,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
+	c.connectionsLeft = atomic.NewInt32(0)
 	c.connsLeftCh = make(chan int32)
 
 	if c.flagListenAddr == "" {
@@ -349,9 +355,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			sessionAuthz := new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), sessionAuthz); err == nil {
-				authzString = sessionAuthz.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
@@ -386,7 +392,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return base.CommandCliError
 		}
-		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -480,7 +487,19 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	if c.flagExec == "" {
+	var creds []*targets.SessionCredential
+	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
+		creds = c.sessionAuthz.Credentials
+	}
+	switch c.Func {
+	case "postgres":
+		// Credentials are brokered when connecting to the postgres db.
+		// TODO: Figure out how to handle cases where we don't automatically know how to
+		// broker the credentials like unrecognized or multiple credentials.
+	case "connect":
+		// "connect" indicates there is no subcommand to the connect function.
+		// The only way a user will be able to connect to the session is by
+		// connecting directly to the port and address we report to them here.
 		sessInfo := SessionInfo{
 			Protocol:        "tcp",
 			Address:         c.listenerAddr.IP.String(),
@@ -488,13 +507,32 @@ func (c *Command) Run(args []string) (retCode int) {
 			Expiration:      c.expiration,
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
+			Credentials:     creds,
 		}
-
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
 		case "json":
 			out, err := json.Marshal(&sessInfo)
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+				return base.CommandCliError
+			}
+			c.UI.Output(string(out))
+		}
+	default:
+		if len(creds) == 0 {
+			break
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateCredentialTableOutput(creds))
+		case "json":
+			out, err := json.Marshal(&struct {
+				Credentials []*targets.SessionCredential `json:"credentials"`
+			}{
+				Credentials: c.sessionAuthz.Credentials,
+			})
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
 				return base.CommandCliError
@@ -572,7 +610,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if c.flagExec != "" {
 		c.connWg.Add(1)
-		c.execCmdReturnValue = new(atomic.Int32)
+		c.execCmdReturnValue = atomic.NewInt32(0)
 		go c.handleExec(passthroughArgs)
 	}
 
@@ -613,6 +651,12 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 		cancel()
+	}
+
+	for _, f := range c.cleanupFuncs {
+		if err := f(); err != nil {
+			c.PrintCliError(err)
+		}
 	}
 
 	if termInfo.Reason != "" {
@@ -769,6 +813,8 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	addr := c.listenerAddr.String()
 
 	var args []string
+	var envs []string
+	var argsErr error
 
 	switch c.Func {
 	case "http":
@@ -781,7 +827,13 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		args = append(args, c.postgresFlags.buildArgs(c, port, ip, addr)...)
+		pgArgs, pgEnvs, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr)
+		if pgErr != nil {
+			argsErr = pgErr
+			break
+		}
+		args = append(args, pgArgs...)
+		envs = append(envs, pgEnvs...)
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
@@ -797,6 +849,12 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			return
 		}
 		args = append(args, kubeArgs...)
+	}
+
+	if argsErr != nil {
+		c.PrintCliError(fmt.Errorf("Failed to collect args: %w", argsErr))
+		c.execCmdReturnValue.Store(int32(2))
+		return
 	}
 
 	args = append(passthroughArgs, args...)
@@ -823,11 +881,14 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	// terminal in a weird state. It suffices to simply close the connection,
 	// which already happens, so we don't need/want CommandContext here.
 	cmd := exec.Command(c.flagExec, args...)
+	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
+	// Envs that came from subcommand handling
+	cmd.Env = append(cmd.Env, envs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

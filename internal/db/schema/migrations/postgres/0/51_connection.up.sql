@@ -79,6 +79,7 @@ begin;
   -- a endpoint for a session. The client initiates the connection to the worker
   -- and the worker initiates the connection to the endpoint.
   -- A session can have zero or more session connections.
+  -- Note: Updated to add server_id, server_type in 801
   create table session_connection (
     public_id wt_public_id primary key,
     session_id wt_public_id not null

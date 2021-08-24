@@ -10,12 +10,76 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
-message HostSet{
+message HostSource {
+	// Output only. The ID of the Host Set.
+	string id = 10;
+
+	// Output only. The Host Catalog to which this Host Source belongs.
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
+}
+
+message HostSet {
 	// Output only. The ID of the Host Set.
 	string id = 10;
 
 	// Output only. The Host Catalog to which this Host Set belongs.
 	string host_catalog_id = 20 [json_name="host_catalog_id"];
+}
+
+message CredentialSource {
+	// The ID of the Credential. May be empty if the credential is dynamically generated from a library.
+	string id = 10;
+
+	// Output only. The name of the Credential source.
+	string name = 20;
+
+	// Output only. The description of the Credential source.
+	string description = 30;
+
+	// Output only. The Credential Store to which this Credential source belongs.
+	string credential_store_id = 40 [json_name="credential_store_id"];
+
+	// Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
+	string type = 60;
+}
+
+message CredentialLibrary {
+	// The ID of the Credential Library.
+	string id = 10;
+
+	// Output only.  The name of the Credential Library.
+	string name = 20;
+
+	// Output only. The description of the Credential Library.
+	string description = 30;
+
+	// Output only. The Credential Store to which this Credential Library belongs.
+	string credential_store_id = 40 [json_name="credential_store_id"];
+
+	// Output only. The type of the credential library.
+	string type = 60;
+}
+
+// The actual secret for a session credential.
+message SessionSecret {
+	// Output only. The base64-encoded value representing the raw bytes from the
+	// credential provider.
+	string raw = 10;
+
+	// Output only. The decoded raw string, if a JSON object.
+	google.protobuf.Struct decoded = 20;
+}
+
+// Credential information for a session.
+message SessionCredential {
+	// Output only. The credential source information.
+	CredentialSource credential_source = 1;
+
+	// Output only. The library which generated this credential. Deprecated: use credential_source instead.
+	CredentialLibrary credential_library = 10 [deprecated = true];
+
+	// Output only. The secret of this credential base64 encoded.
+	SessionSecret secret = 20;
 }
 
 // Target contains all fields related to a Target resource
@@ -54,6 +118,12 @@ message Target {
 	// Output only. The Host Sets associated with this Target.
 	repeated HostSet host_sets = 110 [json_name="host_sets"];
 
+	// The IDs of the Host Sources associated with this Target.
+	repeated string host_source_ids = 420 [json_name="host_source_ids"];
+
+	// Output only. The Host Sources associated with this Target.
+	repeated HostSource host_sources = 430 [json_name="host_sources"];
+
 	// Maximum total lifetime of a created Session, in seconds.
 	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_max_seconds" that: "SessionMaxSeconds"}];
 
@@ -62,6 +132,22 @@ message Target {
 
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
+
+	// The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
+	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids", deprecated = true];
+	// Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
+	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries", deprecated = true];
+
+	// The IDs of the application credential source ids associated with this Target.
+	repeated string application_credential_source_ids = 400 [json_name="application_credential_source_ids"];
+	// Output only. The application credential sources associated with this Target.
+	repeated CredentialSource application_credential_sources = 410 [json_name="application_credential_sources"];
+
+	// TODO: Uncomment when we suport more purposes beyond application
+//	// Output only. The egress credential libraries associated with this Target.
+//	repeated CredentialLibrary egress_credential_libraries = 190 [json_name="egress_credential_libraries"];
+//	// Output only. The credential libraries associated with this Target.
+//	repeated CredentialLibrary ingress_credential_libraries = 200 [json_name="ingress_credential_libraries"];
 
 	// The attributes that are applicable for the specific Target.
 	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
@@ -149,4 +235,7 @@ message SessionAuthorization {
 
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
 	string endpoint = 100;
+
+	// Output only. The credentials for this session.
+	repeated SessionCredential credentials = 110 [json_name="credentials"];
 }

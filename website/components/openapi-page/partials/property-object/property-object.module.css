@@ -1,6 +1,6 @@
 .root {
-  border-top: 1px solid var(--gray-6);
-  border-bottom: 1px solid var(--gray-6);
+  border-top: 1px solid var(--gray-5);
+  border-bottom: 1px solid var(--gray-5);
   padding: 16px 0;
   margin: -1px 0 0 0;
 
@@ -33,7 +33,7 @@
 
   & .title,
   & .description {
-    color: var(--gray-3);
+    color: var(--gray-2);
     margin: 8px 0 0 0;
   }
 
@@ -80,6 +80,6 @@
   & .propertiesContainer {
     margin: 8px 0 0 8px;
     padding-left: 16px;
-    border-left: 1px solid var(--gray-6);
+    border-left: 1px solid var(--gray-5);
   }
 }

@@ -36,7 +36,9 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
@@ -107,6 +109,18 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithPrimaryAuthMethodId(inPrimaryAuthMethodId string) Option {
+	return func(o *options) {
+		o.postMap["primary_auth_method_id"] = inPrimaryAuthMethodId
+	}
+}
+
+func DefaultPrimaryAuthMethodId() Option {
+	return func(o *options) {
+		o.postMap["primary_auth_method_id"] = nil
 	}
 }
 

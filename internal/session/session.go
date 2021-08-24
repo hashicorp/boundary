@@ -49,6 +49,9 @@ type ComposedOf struct {
 	// existed at creation time. Round tripping it through here saves a lookup
 	// in the DB. It is not stored in the warehouse.
 	WorkerFilter string
+	// DynamicCredentials are dynamic credentials that will be retrieved
+	// for the session. DynamicCredentials optional.
+	DynamicCredentials []*DynamicCredential
 }
 
 // Session contains information about a user's session with a target
@@ -104,8 +107,12 @@ type Session struct {
 
 	// States for the session which are for read only and are ignored during
 	// write operations
-	States    []*State `gorm:"-"`
-	tableName string   `gorm:"-"`
+	States []*State `gorm:"-"`
+
+	// DynamicCredentials for the session.
+	DynamicCredentials []*DynamicCredential `gorm:"-"`
+
+	tableName string `gorm:"-"`
 }
 
 func (s *Session) GetPublicId() string {
@@ -121,19 +128,20 @@ var (
 func New(c ComposedOf, _ ...Option) (*Session, error) {
 	const op = "session.New"
 	s := Session{
-		UserId:          c.UserId,
-		HostId:          c.HostId,
-		TargetId:        c.TargetId,
-		HostSetId:       c.HostSetId,
-		AuthTokenId:     c.AuthTokenId,
-		ScopeId:         c.ScopeId,
-		Endpoint:        c.Endpoint,
-		ExpirationTime:  c.ExpirationTime,
-		ConnectionLimit: c.ConnectionLimit,
-		WorkerFilter:    c.WorkerFilter,
+		UserId:             c.UserId,
+		HostId:             c.HostId,
+		TargetId:           c.TargetId,
+		HostSetId:          c.HostSetId,
+		AuthTokenId:        c.AuthTokenId,
+		ScopeId:            c.ScopeId,
+		Endpoint:           c.Endpoint,
+		ExpirationTime:     c.ExpirationTime,
+		ConnectionLimit:    c.ConnectionLimit,
+		WorkerFilter:       c.WorkerFilter,
+		DynamicCredentials: c.DynamicCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -167,6 +175,13 @@ func (s *Session) Clone() interface{} {
 		for _, ss := range s.States {
 			cp := ss.Clone().(*State)
 			clone.States = append(clone.States, cp)
+		}
+	}
+	if len(s.DynamicCredentials) > 0 {
+		clone.DynamicCredentials = make([]*DynamicCredential, 0, len(s.DynamicCredentials))
+		for _, sc := range s.DynamicCredentials {
+			cp := sc.clone()
+			clone.DynamicCredentials = append(clone.DynamicCredentials, cp)
 		}
 	}
 	if s.TofuToken != nil {
@@ -210,51 +225,53 @@ func (s *Session) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the session
 // before it's written.
-func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
+func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "session.(Session).VetForWrite"
 	opts := db.GetOpts(opt...)
 	if s.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if err := s.validateNewSession(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		if len(s.Certificate) == 0 {
-			return errors.New(errors.InvalidParameter, op, "missing certificate")
+			return errors.New(ctx, errors.InvalidParameter, op, "missing certificate")
 		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return errors.New(errors.InvalidParameter, op, "public id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "public id is immutable")
 		case contains(opts.WithFieldMaskPaths, "UserId"):
-			return errors.New(errors.InvalidParameter, op, "user id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "user id is immutable")
 		case contains(opts.WithFieldMaskPaths, "HostId"):
-			return errors.New(errors.InvalidParameter, op, "host id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "host id is immutable")
 		case contains(opts.WithFieldMaskPaths, "TargetId"):
-			return errors.New(errors.InvalidParameter, op, "target id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "target id is immutable")
 		case contains(opts.WithFieldMaskPaths, "HostSetId"):
-			return errors.New(errors.InvalidParameter, op, "host set id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "host set id is immutable")
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
-			return errors.New(errors.InvalidParameter, op, "auth token id is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "auth token id is immutable")
 		case contains(opts.WithFieldMaskPaths, "Certificate"):
-			return errors.New(errors.InvalidParameter, op, "certificate is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "certificate is immutable")
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return errors.New(errors.InvalidParameter, op, "create time is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "create time is immutable")
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return errors.New(errors.InvalidParameter, op, "update time is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "Endpoint"):
-			return errors.New(errors.InvalidParameter, op, "endpoint is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "endpoint is immutable")
 		case contains(opts.WithFieldMaskPaths, "ExpirationTime"):
-			return errors.New(errors.InvalidParameter, op, "expiration time is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "expiration time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ConnectionLimit"):
-			return errors.New(errors.InvalidParameter, op, "connection limit is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "connection limit is immutable")
 		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
-			return errors.New(errors.InvalidParameter, op, "worker filter is immutable")
+			return errors.New(ctx, errors.InvalidParameter, op, "worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
+			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 	}
@@ -280,43 +297,43 @@ func (s *Session) SetTableName(n string) {
 func (s *Session) validateNewSession() error {
 	const op = "session.(Session).validateNewSession"
 	if s.UserId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing user id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if s.HostId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing host id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing host id")
 	}
 	if s.TargetId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing target id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if s.HostSetId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing host set id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
 	}
 	if s.AuthTokenId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing auth token id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token id")
 	}
 	if s.ScopeId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing scope id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if s.Endpoint == "" {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint")
 	}
 	if s.ExpirationTime.GetTimestamp().AsTime().IsZero() {
-		return errors.New(errors.InvalidParameter, op, "missing expiration time")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing expiration time")
 	}
 	if s.TerminationReason != "" {
-		return errors.New(errors.InvalidParameter, op, "termination reason must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "termination reason must be empty")
 	}
 	if s.ServerId != "" {
-		return errors.New(errors.InvalidParameter, op, "server id must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "server id must be empty")
 	}
 	if s.ServerType != "" {
-		return errors.New(errors.InvalidParameter, op, "server type must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "server type must be empty")
 	}
 	if s.TofuToken != nil {
-		return errors.New(errors.InvalidParameter, op, "tofu token must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "tofu token must be empty")
 	}
 	if s.CtTofuToken != nil {
-		return errors.New(errors.InvalidParameter, op, "ct must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "ct must be empty")
 	}
 	// It is okay for the worker filter to be empty, so it is not checked here.
 	return nil
@@ -331,20 +348,20 @@ func contains(ss []string, t string) bool {
 	return false
 }
 
-func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
+func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
 	if wrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
 	}
 	if userId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	if jobId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing job id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
 	}
 	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	template := &x509.Certificate{
 		ExtKeyUsage: []x509.ExtKeyUsage{
@@ -362,7 +379,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.GenCert))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.GenCert))
 	}
 	return privKey, certBytes, nil
 }
@@ -370,7 +387,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	s.KeyId = cipher.KeyID()
 	return nil
@@ -379,7 +396,7 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

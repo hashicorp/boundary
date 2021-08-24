@@ -72,6 +72,34 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	AuthMethodInactive: {
+		Message: "authentication method is inactive",
+		Kind:    State,
+	},
+	AuthAttemptExpired: {
+		Message: "authentication attempt has expired",
+		Kind:    State,
+	},
+	AccountAlreadyAssociated: {
+		Message: "account already associated with another user",
+		Kind:    Parameter,
+	},
+	InvalidJobRunState: {
+		Message: "job run is already in a final run state",
+		Kind:    Integrity,
+	},
+	JobAlreadyRunning: {
+		Message: "job already running",
+		Kind:    State,
+	},
+	SubtypeAlreadyRegistered: {
+		Message: "subtype already registered",
+		Kind:    Parameter,
+	},
+	InvalidDynamicCredential: {
+		Message: "dynamic credential for session is in an invalid state",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -112,6 +140,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
 	},
+	Internal: {
+		Message: "internal error",
+		Kind:    Other,
+	},
+	Forbidden: {
+		Message: "forbidden",
+		Kind:    Other,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,
@@ -148,6 +184,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "db exception",
 		Kind:    Integrity,
 	},
+	VersionMismatch: {
+		Message: "version mismatch",
+		Kind:    Integrity,
+	},
 	MaxRetries: {
 		Message: "too many retries",
 		Kind:    Transaction,
@@ -159,5 +199,37 @@ var errorCodeInfo = map[Code]Info{
 	MigrationLock: {
 		Message: "bad db lock",
 		Kind:    Integrity,
+	},
+	Unavailable: {
+		Message: "external system unavailable",
+		Kind:    External,
+	},
+	VaultTokenNotOrphan: {
+		Message: "vault token is not an orphan token",
+		Kind:    VaultToken,
+	},
+	VaultTokenNotPeriodic: {
+		Message: "vault token is not a periodic token",
+		Kind:    VaultToken,
+	},
+	VaultTokenNotRenewable: {
+		Message: "vault token is not renewable",
+		Kind:    VaultToken,
+	},
+	VaultTokenMissingCapabilities: {
+		Message: "vault token is missing capabilities",
+		Kind:    VaultToken,
+	},
+	VaultCredentialRequest: {
+		Message: "request for a new credential from vault failed",
+		Kind:    External,
+	},
+	OidcProviderCallbackError: {
+		Message: "oidc provider callback error",
+		Kind:    External,
+	},
+	GracefullyAborted: {
+		Message: "purposefully aborted without error",
+		Kind:    Other,
 	},
 }

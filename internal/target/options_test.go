@@ -90,11 +90,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTargetType = &target
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithHostSets", func(t *testing.T) {
+	t.Run("WithHostSources", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithHostSets([]string{"alice", "bob"}))
+		opts := getOpts(WithHostSources([]string{"alice", "bob"}))
 		testOpts := getDefaultOptions()
-		testOpts.withHostSets = []string{"alice", "bob"}
+		testOpts.withHostSources = []string{"alice", "bob"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithWorkerFilter", func(t *testing.T) {
@@ -102,6 +102,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithWorkerFilter(`"/foo" == "bar"`))
 		testOpts := getDefaultOptions()
 		testOpts.withWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithCredentialSources", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithCredentialSources([]string{"alice", "bob"}))
+		testOpts := getDefaultOptions()
+		testOpts.withCredentialSources = []string{"alice", "bob"}
 		assert.Equal(opts, testOpts)
 	})
 }

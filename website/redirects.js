@@ -100,7 +100,17 @@ module.exports = [
   },
   {
     source: '/help/admin-ui/sessions',
-    destination: '/docs/common-workflows/manage-sessions',
+    destination: '/docs/concepts/domain-model/sessions',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/credential-stores',
+    destination: '/docs/concepts/domain-model/credential-stores',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/credential-libraries',
+    destination: '/docs/concepts/domain-model/credential-libraries',
     permanent: false,
   },
 

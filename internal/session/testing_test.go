@@ -78,7 +78,6 @@ func Test_TestWorker(t *testing.T) {
 }
 
 func Test_TestCert(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	wrapper := db.TestWrapper(t)
 	userId, err := db.NewPublicId(iam.UserPrefix)

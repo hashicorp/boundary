@@ -1,13 +1,27 @@
 package db
 
 import (
+	"context"
+	stderrors "errors"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/docker"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 )
+
+var (
+	NegativeInfinityTS = time.Date(math.MinInt32, time.January, 1, 0, 0, 0, 0, time.UTC)
+	PositiveInfinityTS = time.Date(math.MaxInt32, time.December, 31, 23, 59, 59, 1e9-1, time.UTC)
+)
+
+func init() {
+	pq.EnableInfinityTs(NegativeInfinityTS, PositiveInfinityTS)
+}
 
 var StartDbInDocker = docker.StartDbInDocker
 
@@ -36,11 +50,15 @@ func Open(dbType DbType, connectionUrl string) (*gorm.DB, error) {
 }
 
 func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
+	const op = "db.GetGormLogFormatter"
+	ctx := context.TODO()
 	return func(values ...interface{}) (messages []interface{}) {
 		if len(values) > 2 && values[0].(string) == "log" {
 			switch values[2].(type) {
 			case *pq.Error:
-				log.Trace("error from database adapter", "location", values[1], "error", values[2])
+				if log.IsTrace() {
+					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo("error", values[2], "location", values[1]))
+				}
 			}
 			return nil
 		}

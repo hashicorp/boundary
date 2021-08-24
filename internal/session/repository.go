@@ -29,13 +29,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -52,8 +52,9 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opts options) error {
+func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "session.(Repository).list"
+	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	var dbOpts []db.Option
 	if opts.withLimit != 0 {
@@ -61,11 +62,14 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrder != "" {
-		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
+	case db.DescendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time"))
 	}
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -119,10 +123,10 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				if len(workingSession.CtTofuToken) > 0 {
 					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase)
 					if err != nil {
-						return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 					}
 					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, errors.Wrap(err, op, errors.WithMsg("cannot decrypt session value"))
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
 					}
 				} else {
 					workingSession.CtTofuToken = nil

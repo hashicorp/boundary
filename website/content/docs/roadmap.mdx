@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Roadmap
-sidebar_title: Roadmap
 description: Boundary Roadmap
 ---
 
@@ -26,16 +25,10 @@ Boundary’s vision is to enable an ephemeral access model that follows the prin
 
 For Boundary's upcoming releases, we have a few key product themes that will guide what we'll be delivering:
 
-1. **Bring your own identity.**
-   We feel strongly that Boundary’s identity-based controls should use the same identity that users have for their other applications. To do so, we’ll progressively add support for new auth methods for Boundary. Our first step will be in delivering an OpenID Connect (OIDC) auth method.
-
-2. **Secure, streamlined access for all users.**
-   We want to ensure Boundary is easy and secure to use for both technical and no-code users. In Boundary's initial 0.1 release, access to Boundary targets is enabled through the CLI only. Additionally, in an upcoming release we will also be delivering a GUI client for Boundary users to connect to their targets. This GUI client will be distinct from the existing administrator UI and will be focused on streamlining access for no-code/low-code users.
-
-3. **Just-in-time access.**
+1. **Just-in-time access and Target Credential Management.**
    A just-in-time access posture will be enforced at multiple levels within Boundary. Upcoming releases will offer integration with [Vault](https://www.vaultproject.io/) or your preferred secret management solution of choice to generate ephemeral credentials for Boundary sessions.
 
-4. **Target discovery.**
+2. **Target discovery.**
    To manage dynamic infrastructure users will need a way to discover and add newly provisioned hosts to targets while enforcing existing access policies on new instances. With Boundary 0.1, you can provision these targets and access policies dynamically with the [Boundary Terraform provider](https://github.com/hashicorp/terraform-provider-boundary). In the releases following launch we'll give administrators the ability to define dynamic host catalogs to discover new hosts based on predefined rules or tags for [Consul](https://www.consul.io/), each of the major cloud platforms, and Kubernetes.
 
 ## Give Feedback

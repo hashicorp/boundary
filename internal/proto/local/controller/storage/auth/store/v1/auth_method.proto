@@ -3,8 +3,6 @@ syntax = "proto3";
 package controller.storage.auth.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/auth/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-
 // TODO - fill out the comments for these protobufs... at this point, I'm just
 // trying to get aligned on the basic data structures so we can keep moving
 // forward to the prototype at the end of next week.

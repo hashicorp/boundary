@@ -5,7 +5,6 @@ package controller.api.resources.authtokens.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens;authtokens";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 
 // AuthToken contains all fields related to an Auth Token resource

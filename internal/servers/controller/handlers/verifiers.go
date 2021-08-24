@@ -13,6 +13,9 @@ import (
 
 type CustomValidatorFunc func() map[string]string
 
+// A boundary resource identifier
+type Id string
+
 var NoopValidatorFn CustomValidatorFunc = func() map[string]string { return nil }
 
 type ApiResource interface {
@@ -75,9 +78,9 @@ type UpdateRequest interface {
 	GetUpdateMask() *field_mask.FieldMask
 }
 
-func ValidateUpdateRequest(prefix string, r UpdateRequest, i ApiResource, fn CustomValidatorFunc) error {
+func ValidateUpdateRequest(r UpdateRequest, i ApiResource, fn CustomValidatorFunc, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(prefix, r.GetId()) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Improperly formatted path identifier."
 	}
 	if r.GetUpdateMask() == nil {
@@ -138,9 +141,9 @@ type GetRequest interface {
 	GetId() string
 }
 
-func ValidateGetRequest(prefix string, r GetRequest, fn CustomValidatorFunc) error {
+func ValidateGetRequest(fn CustomValidatorFunc, r GetRequest, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(prefix, r.GetId()) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Invalid formatted identifier."
 	}
 	for k, v := range fn() {
@@ -156,9 +159,9 @@ type DeleteRequest interface {
 	GetId() string
 }
 
-func ValidateDeleteRequest(prefix string, r DeleteRequest, fn CustomValidatorFunc) error {
+func ValidateDeleteRequest(fn CustomValidatorFunc, r DeleteRequest, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(prefix, r.GetId()) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	for k, v := range fn() {
@@ -172,13 +175,19 @@ func ValidateDeleteRequest(prefix string, r DeleteRequest, fn CustomValidatorFun
 
 var reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
-func ValidId(prefix, id string) bool {
-	prefix = prefix + "_"
-	if !strings.HasPrefix(id, prefix) {
-		return false
+func ValidId(i Id, prefixes ...string) bool {
+	id := string(i)
+	for _, prefix := range prefixes {
+		prefix = prefix + "_"
+		if !strings.HasPrefix(id, prefix) {
+			continue
+		}
+		id = strings.TrimPrefix(id, prefix)
+		if !reInvalidID.Match([]byte(id)) {
+			return true
+		}
 	}
-	id = strings.TrimPrefix(id, prefix)
-	return !reInvalidID.Match([]byte(id))
+	return false
 }
 
 func ValidNameDescription(in string) bool {

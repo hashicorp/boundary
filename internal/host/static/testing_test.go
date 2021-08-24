@@ -26,7 +26,6 @@ func Test_TestCatalogs(t *testing.T) {
 }
 
 func Test_TestHosts(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -46,7 +45,6 @@ func Test_TestHosts(t *testing.T) {
 }
 
 func Test_TestSets(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -66,7 +64,6 @@ func Test_TestSets(t *testing.T) {
 }
 
 func Test_TestSetMembers(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

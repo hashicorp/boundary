@@ -4,26 +4,32 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"google.golang.org/grpc/codes"
 )
 
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
+		action.ReadSelf,
 		action.Delete,
+		action.DeleteSelf,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -43,11 +49,12 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -61,57 +68,130 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthToken, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
+	if len(ul) == 0 {
+		return &pbs.ListAuthTokensResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.AuthToken, 0, len(ul))
-	res := &perms.Resource{
+	res := perms.Resource{
 		Type: resource.AuthToken,
 	}
-	for _, item := range ul {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+	for _, at := range ul {
+		res.Id = at.GetPublicId()
+		res.ScopeId = at.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
+			continue
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[at.GetScopeId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+		}
+
+		item, err := toProto(ctx, at, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
+
 	return &pbs.ListAuthTokensResponse{Items: finalItems}, nil
 }
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest) (*pbs.GetAuthTokenResponse, error) {
+	const op = "authtokens.(Service).GetAuthToken"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	at, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.GetAuthTokenResponse{Item: u}, nil
+
+	var outputFields perms.OutputFieldsMap
+	authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions)
+
+	// Check to see if we need to verify Read vs. just ReadSelf
+	if at.GetIamUserId() != authResults.UserId {
+		if !authorizedActions.HasAction(action.Read) {
+			return nil, handlers.ForbiddenError()
+		}
+		outputFields = authResults.FetchOutputFields(perms.Resource{
+			Id:      at.GetPublicId(),
+			ScopeId: at.GetScopeId(),
+			Type:    resource.AuthToken,
+		}, action.Read).SelfOrDefaults(authResults.UserId)
+	} else {
+		var ok bool
+		outputFields, ok = requests.OutputFields(ctx)
+		if !ok {
+			return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+		}
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+	}
+
+	item, err := toProto(ctx, at, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetAuthTokenResponse{Item: item}, nil
 }
 
 // DeleteAuthToken implements the interface pbs.AuthTokenServiceServer.
@@ -119,51 +199,65 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.DeleteSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	at, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthTokenResponse{}, nil
+
+	authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions)
+
+	// Check to see if we need to verify Delete vs. just DeleteSelf
+	if at.GetIamUserId() != authResults.UserId {
+		if !authorizedActions.HasAction(action.Delete) {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
+	_, err = s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*authtoken.AuthToken, error) {
+	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	u, err := repo.LookupAuthToken(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
-		}
-		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
+	at, err := repo.LookupAuthToken(ctx, id)
+	if err != nil && !errors.IsNotFoundError(err) {
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	if u == nil {
-		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
+	if at == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
-	return toProto(u), nil
+	return at, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(ctx, err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete user: %w", err)
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthToken, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*authtoken.AuthToken, error) {
 	repo, err := s.repoFn()
 	_ = repo
 	if err != nil {
@@ -173,11 +267,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.AuthToken
-	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
-	}
-	return outUl, nil
+	return ul, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -224,19 +314,49 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *authtoken.AuthToken) *pb.AuthToken {
-	out := pb.AuthToken{
-		Id:                      in.GetPublicId(),
-		ScopeId:                 in.GetScopeId(),
-		CreatedTime:             in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:             in.GetUpdateTime().GetTimestamp(),
-		ApproximateLastUsedTime: in.GetApproximateLastAccessTime().GetTimestamp(),
-		ExpirationTime:          in.GetExpirationTime().GetTimestamp(),
-		UserId:                  in.GetIamUserId(),
-		AuthMethodId:            in.GetAuthMethodId(),
-		AccountId:               in.GetAuthAccountId(),
+func toProto(ctx context.Context, in *authtoken.AuthToken, opt ...handlers.Option) (*pb.AuthToken, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building auth token proto")
 	}
-	return &out
+	outputFields := *opts.WithOutputFields
+
+	out := pb.AuthToken{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
+	}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has(globals.UserIdField) {
+		out.UserId = in.GetIamUserId()
+	}
+	if outputFields.Has(globals.AuthMethodIdField) {
+		out.AuthMethodId = in.GetAuthMethodId()
+	}
+	if outputFields.Has(globals.AccountIdField) {
+		out.AccountId = in.GetAuthAccountId()
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ApproximateLastUsedTimeField) {
+		out.ApproximateLastUsedTime = in.GetApproximateLastAccessTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ExpirationTimeField) {
+		out.ExpirationTime = in.GetExpirationTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -245,16 +365,16 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	return handlers.ValidateGetRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}

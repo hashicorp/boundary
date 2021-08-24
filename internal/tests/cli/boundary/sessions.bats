@@ -53,7 +53,7 @@ load _helpers
   [ "$unpriv_sessions" -lt "$admin_sessions" ]
 }
 
-@test "boundary/session: verify read and cancelation permissions on admin session" {
+@test "boundary/session: verify read and cancellation permissions on admin session" {
   # Find an admin session
   run login $DEFAULT_LOGIN
   [ "$status" -eq 0 ]
@@ -80,7 +80,7 @@ load _helpers
   echo $output
 }
 
-@test "boundary/session: verify read and cancelation permissions on unpriv session" {
+@test "boundary/session: verify read and cancellation permissions on unpriv session" {
   # Find an unpriv session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]

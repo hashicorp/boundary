@@ -1,18 +1,15 @@
 ---
 layout: docs
 page_title: Boundary Desktop
-sidebar_title: Desktop
 description: |-
   Get up and running with Boundary Desktop
 ---
 
 # Boundary Desktop
 
--> Boundary Desktop is currently an Alpha release still undergoing final testing before its official release. Should you experience any bugs or lack of desired functionality, please let us know so that we can evaluate a fix. You can open an issue at https://github.com/hashicorp/boundary/issues/new/choose. Your help is greatly appreciated!
-
 Boundary Desktop is a standalone application that provides a simple interface
-for browsing and connecting to targets on your local computer (macOS currently
-supported). Launch a session in Boundary Desktop and then make a connection
+for browsing and connecting to targets on your local computer (macOS and Windows
+currently supported). Launch a session in Boundary Desktop and then make a connection
 using your favorite tooling!
 
 ## Getting Started
@@ -26,25 +23,88 @@ $ boundary dev
 
 ### Install Boundary Desktop
 
-1. Download the latest .dmg installer from our [releases page](https://releases.hashicorp.com/boundary-desktop). Alternatively, if you're a homebrew user, you can run `brew install hashicorp-boundary-desktop`
-1. Double-click the downloaded .dmg to run the installer
-1. Drag and drop Boundary into the applications folder
-   ![](/img/boundary-desktop-drag-to-install.png)
+1. Download the latest .dmg installer or .exe archive from our [releases page](https://releases.hashicorp.com/boundary-desktop). Alternatively, if you're a homebrew user, you can run `brew install hashicorp-boundary-desktop`
+1. In macOS, double-click the downloaded .dmg to run the installer by draggin and dropping Boundary into the applications folder
+   ![](/img/desktop/macos/boundary-desktop-drag-to-install.png)
+1. In Windows, extract downloaded archive and find .exe to launch
 
 ### Run Boundary Desktop
 
 1. Open the Boundary Desktop application
-   ![](/img/boundary-desktop-open.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-open.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-open.png)
+
+</Tab>
+</Tabs>
+
+
 1. You'll be prompted for the Boundary server origin, this is the URL for the client
    to connect to the Boundary API. If you are running a local `dev` mode server, this
    URL will be `http://localhost:9200`
-   ![](/img/boundary-desktop-origin.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-origin.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-origin.png)
+
+</Tab>
+</Tabs>
+
+
 1. You can now login to Boundary. We're using a `dev` mode server in this example with the
    username `admin` and the password `password`
-   ![](/img/boundary-desktop-login.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-login.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-login.png)
+
+</Tab>
+</Tabs>
+
+
 1. After logging in, you should see the targets your user is authorized to connect to. Since
    we are using a `dev` mode server we see the default generated target for `127.0.0.1:22`
-   ![](/img/boundary-desktop-landing.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-landing.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-landing.png)
+
+</Tab>
+</Tabs>
+
 
 ### Connect!
 
@@ -52,10 +112,41 @@ $ boundary dev
 
 1. Click on `connect` next to the default target. A pop-up window will display the local
    address of the proxy and the ephemeral port for the session
-   ![](/img/boundary-desktop-connect.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-connect.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-connect.png)
+
+</Tab>
+</Tabs>
+
+
 1. Navigate to the `Sessions` pane and you'll see this session is in `pending` state because we
    haven't made a connection to it yet (but will!)
-   ![](/img/boundary-desktop-pending.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-pending.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-pending.png)
+
+</Tab>
+</Tabs>
+
 
 -> The next step assumes you have a SSH server running that the default target will connect to.
 
@@ -73,7 +164,39 @@ $
 ```
 
 1. Navigate back to the sessions view and you'll see this session is now active
-   ![](/img/boundary-desktop-active.png)
-1. Click `Cancel` to cancel the session and you'll see the status go to `cancelling` briefly, then `terminated`
-   ![](/img/boundary-desktop-terminated.png)
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-active.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-active.png)
+
+</Tab>
+</Tabs>
+
+
+1. Click `Cancel` to cancel the session and you'll see the status go to `canceling` briefly, then `terminated`
+
+<Tabs>
+<Tab heading="MacOS">
+
+
+![](/img/desktop/macos/boundary-desktop-terminated.png)
+
+</Tab>
+<Tab heading="Windows">
+
+
+![](/img/desktop/windows/boundary-desktop-terminated.png)
+
+</Tab>
+</Tabs>
+
+
 1. Navigate back to the CLI and you'll see your SSH session has closed

@@ -20,27 +20,27 @@ import (
 func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
 	const op = "static.(Repository).AddSetMembers"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no set id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no host ids")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no host ids")
 	}
 
 	// Create in-memory host set members
-	members, err := r.newMembers(setId, hostIds)
+	members, err := r.newMembers(ctx, setId, hostIds)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var hosts []*Host
@@ -51,33 +51,33 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		// Create host set members
 		msgs, err := createMembers(ctx, w, members)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		// Update host set version
 		if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		hosts, err = getHosts(ctx, reader, setId, unlimited)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return hosts, nil
 }
 
-func (r *Repository) newMembers(setId string, hostIds []string) ([]interface{}, error) {
+func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []string) ([]interface{}, error) {
 	var members []interface{}
 	for _, id := range hostIds {
 		var m *HostSetMember
 		m, err := NewHostSetMember(setId, id)
 		if err != nil {
-			return nil, errors.Wrap(err, "static.newMembers")
+			return nil, errors.Wrap(ctx, err, "static.newMembers")
 		}
 		members = append(members, m)
 	}
@@ -87,7 +87,7 @@ func (r *Repository) newMembers(setId string, hostIds []string) ([]interface{}, 
 func createMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*oplog.Message, error) {
 	var msgs []*oplog.Message
 	if err := w.CreateItems(ctx, members, db.NewOplogMsgs(&msgs)); err != nil {
-		return nil, errors.Wrap(err, "static.createMembers")
+		return nil, errors.Wrap(ctx, err, "static.createMembers")
 	}
 	return msgs, nil
 }
@@ -98,19 +98,19 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	rowsUpdated, err := w.Update(ctx, set, []string{"Version"}, nil, db.NewOplogMsg(setMsg), db.WithVersion(&version))
 	switch {
 	case err != nil:
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	case rowsUpdated > 1:
-		return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+		return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 	}
 	msgs = append(msgs, setMsg)
 
 	// Write oplog
 	ticket, err := w.GetTicket(set)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}
 	if err := w.WriteOplogEntryWith(ctx, wrapper, ticket, metadata, msgs); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 		params,
 		db.WithLimit(limit),
 	); err != nil {
-		return nil, errors.Wrap(err, "static.getHosts")
+		return nil, errors.Wrap(ctx, err, "static.getHosts")
 	}
 	if len(hosts) == 0 {
 		return nil, nil
@@ -161,27 +161,27 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteSetMembers"
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no set id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no host ids")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no host ids")
 	}
 
 	// Create in-memory host set members
-	members, err := r.newMembers(setId, hostIds)
+	members, err := r.newMembers(ctx, setId, hostIds)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
@@ -191,19 +191,19 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 		// Delete host set members
 		msgs, err := deleteMembers(ctx, w, members)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 
 		// Update host set version
 		err = updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		return nil
 	})
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return len(hostIds), nil
 }
@@ -213,10 +213,10 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 	var msgs []*oplog.Message
 	rowsDeleted, err := w.DeleteItems(ctx, members, db.NewOplogMsgs(&msgs))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if rowsDeleted != len(members) {
-		return nil, errors.E(errors.WithMsg(fmt.Sprintf("set members deleted %d did not match request for %d", rowsDeleted, len(members))))
+		return nil, errors.E(ctx, errors.WithMsg(fmt.Sprintf("set members deleted %d did not match request for %d", rowsDeleted, len(members))))
 	}
 	return msgs, nil
 }
@@ -229,13 +229,13 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
 	const op = "static.(Repository).SetSetMembers"
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no set id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 
 	// TODO(mgaffney) 08/2020: Oplog does not currently support bulk
@@ -253,13 +253,13 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	// this pattern.
 	changes, err := r.changes(ctx, setId, hostIds)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	var deletions, additions []interface{}
 	for _, c := range changes {
 		m, err := NewHostSetMember(setId, c.HostId)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		switch c.Action {
 		case "delete":
@@ -273,7 +273,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 	if len(changes) > 0 {
 		wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 		}
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
@@ -285,7 +285,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			if len(deletions) > 0 {
 				deletedMsgs, err := deleteMembers(ctx, w, deletions)
 				if err != nil {
-					return errors.Wrap(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 				msgs = append(msgs, deletedMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
@@ -295,7 +295,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			if len(additions) > 0 {
 				createdMsgs, err := createMembers(ctx, w, additions)
 				if err != nil {
-					return errors.Wrap(err, op)
+					return errors.Wrap(ctx, err, op)
 				}
 				msgs = append(msgs, createdMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
@@ -303,18 +303,18 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 
 			// Update host set version
 			if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 
 			hosts, err = getHosts(ctx, reader, setId, unlimited)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		})
 
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
 	return hosts, len(changes), nil
@@ -345,7 +345,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("query failed"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("query failed"))
 	}
 	defer rows.Close()
 
@@ -353,7 +353,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	for rows.Next() {
 		var chg change
 		if err := r.reader.ScanRows(rows, &chg); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &chg)
 	}

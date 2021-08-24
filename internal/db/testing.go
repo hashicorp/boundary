@@ -89,16 +89,21 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
-// TestVerifyOplog will verify that there is an oplog entry. An error is
-// returned if the entry or it's metadata is not found.  Returning an error
+// TestVerifyOplog will verify that there is an oplog entry that matches the provided resourceId.
+// By default it matches the provided resourceId against the `resource-public-id` tag.  If the
+// WithResourcePrivateId option is provided, the lookup will use the `resource-private-id` tag.
+// An error is returned if the entry or it's metadata is not found.  Returning an error
 // allows clients to test if an entry was not written, which is a valid use case.
-func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) error {
+func TestVerifyOplog(t *testing.T, r Reader, resourceId string, opt ...TestOption) error {
+	t.Helper()
+
 	// sql where clauses
 	const (
 		whereBase = `
-      key = 'resource-public-id'
+      key = ?
 and value = ?
 `
+
 		whereOptype = `
 and entry_id in (
   select entry_id
@@ -116,9 +121,15 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	withOperation := opts.withOperation
 	withCreateNotBefore := opts.withCreateNotBefore
 
+	whereKey := "resource-public-id"
+	if opts.withResourcePrivateId {
+		whereKey = "resource-private-id"
+	}
+
 	where := whereBase
 	whereArgs := []interface{}{
-		resourcePublicId,
+		whereKey,
+		resourceId,
 	}
 
 	if withOperation != oplog.OpType_OP_TYPE_UNSPECIFIED {
@@ -157,9 +168,10 @@ type TestOption func(*testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	withCreateNotBefore *int
-	withOperation       oplog.OpType
-	withTestDatabaseUrl string
+	withCreateNotBefore   *int
+	withOperation         oplog.OpType
+	withTestDatabaseUrl   string
+	withResourcePrivateId bool
 }
 
 func getDefaultTestOptions() testOptions {
@@ -189,5 +201,13 @@ func WithOperation(op oplog.OpType) TestOption {
 func WithTestDatabaseUrl(url string) TestOption {
 	return func(o *testOptions) {
 		o.withTestDatabaseUrl = url
+	}
+}
+
+// WithResourcePrivateId provides a way to specify that the resource lookup action
+// uses `resource-private-id` tag instead of the default `resource-public-id` tag
+func WithResourcePrivateId(enable bool) TestOption {
+	return func(o *testOptions) {
+		o.withResourcePrivateId = enable
 	}
 }

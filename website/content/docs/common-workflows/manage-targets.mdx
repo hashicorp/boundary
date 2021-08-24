@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Manage Targets
-sidebar_title: Manage Targets
 description: How to manage Boundary targets
 ---
 
@@ -26,7 +25,6 @@ For this example, we're going to create a target to access postgres on `localhos
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 boundary hosts create static -name postgres -description "Postgres host" -address "127.0.0.1" -host-catalog-id "hcst_1234567890"
@@ -54,7 +52,6 @@ Host information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to a host catalog (Projects > Project > Host Catalogs > Host Catalog).
 1. Choose **New Host** from the **Manage** dropdown.
 1. Fill host details.
@@ -69,7 +66,6 @@ Host information:
 
 </Tab>
 <Tab heading="Terraform">
-
 
 To define this same host using our Terraform provider:
 
@@ -86,14 +82,12 @@ resource "boundary_host" "postgres" {
 </Tab>
 </Tabs>
 
-
 ## Define a Host Set
 
-Host sets allow us to group hosts providing equivalient services together. A target works off of host sets, so even though we are only defining one host in this example, we're going to create a host set of one host.
+Host sets allow us to group hosts providing equivalent services together. A target works off of host sets, so even though we are only defining one host in this example, we're going to create a host set of one host.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 boundary host-sets create static -name "postgres" -description "Postgres host set" -host-catalog-id hcst_1234567890
@@ -117,7 +111,6 @@ Host Set information:
 
 </Tab>
 <Tab heading="Admin Console">
-
 
 1. Navigate to a host catalog, then to the **Host Sets** tab.
 1. Choose **Create Host Set** from the **Manage** dropdown.
@@ -148,7 +141,6 @@ Then associate the host set with a host:
 </Tab>
 <Tab heading="Terraform">
 
-
 To define this host set in Terraform:
 
 ```hcl
@@ -166,12 +158,10 @@ resource "boundary_host_set" "postgres" {
 </Tab>
 </Tabs>
 
-
 ## Define a Target
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 boundary targets create tcp -name 'postgres' -description 'Postgres target' -default-port 5432 -scope-id p_1234567890 -session-connection-limit '-1'
@@ -198,7 +188,6 @@ Target information:
 
 </Tab>
 <Tab heading="Admin Console">
-
 
 1. Navigate to a project, then to targets.
 1. Choose the **New** button.
@@ -229,7 +218,6 @@ Then associate the host set with a host:
 </Tab>
 <Tab heading="Terraform">
 
-
 To define this target in Terraform:
 
 ```hcl
@@ -250,4 +238,3 @@ resource "boundary_target" "postgres" {
 
 </Tab>
 </Tabs>
-

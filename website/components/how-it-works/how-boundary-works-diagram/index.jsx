@@ -13,7 +13,7 @@ export default function HowBoundaryWorksDiagram({ activeExampleIndex }) {
               strokeWidth="1.5"
               strokeMiterlimit="10"
               strokeLinecap="round"
-              stroke="#f04e54"
+              stroke="var(--boundary, #ec585d)"
               fill="none"
             />
 

@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Connect to Target
-sidebar_title: Connect to Target
 description: |-
   Connecting to your first target
 ---
@@ -36,14 +35,14 @@ within the authorized session. When you are finished making connections, simply
 
 ### Using Connect Helpers
 
-It can be annoying to keep accepting host SSH key prompts as the port changes, much less having to keep
-copying and pasting the current port. To make this easier, Boundary includes
-connect helpers that take care of this work for you. These take the form of
-`boundary connect <subcommand>`. In the following example, the helper will
-automatically execute `ssh` for you, filling in the local address/port, and setting
-an expected host ID so that future connections on different
-automatically-allocated ports don't complain about the host ID changing (you'll
-still need to accept a host key the first time):
+It can be annoying to keep accepting host SSH key prompts as the port changes,
+much less having to keep copying and pasting the current port. To make this
+easier, Boundary includes connect helpers that take care of this work for you.
+These take the form of `boundary connect <subcommand>`. In the following
+example, the helper will automatically execute `ssh` for you, filling in the
+local address/port, and setting an expected host ID so that future connections
+on different automatically-allocated ports don't complain about the host ID
+changing (you'll still need to accept a host key the first time):
 
 ```
 $ boundary connect ssh -target-id ttcp_1234567890
@@ -100,6 +99,24 @@ no built-in support for a specific client using `-exec`. The `-exec` flag is a
 very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
+
+In all cases, whether using `-exec` or one of the listed helpers, you can pass
+flags to the executed command by including them after a double-dash `--`:
+
+```
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
+```
+
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
 
 For example, if you wanted to use Boundary to create an authenticated firewall
 around 'curl', you could update the default TCP target from a default port
@@ -181,5 +198,5 @@ details.
 
 ## Next Steps
 
-See our [common workflows](/docs/common-workflows) for in depth discussion on managing scopes, targets,
+See our [basic administration workflows](https://learn.hashicorp.com/collections/boundary/basic-administration) for in depth discussion on managing scopes, targets,
 identities, and sessions.

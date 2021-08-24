@@ -50,6 +50,11 @@ type AuthTokenDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for AuthTokenDeleteResult
+func (n AuthTokenDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n AuthTokenDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
@@ -85,9 +90,9 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenReadResult, error) {
-	if authTokenId == "" {
-		return nil, fmt.Errorf("empty authTokenId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AuthTokenReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -95,7 +100,7 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -126,9 +131,9 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenDeleteResult, error) {
-	if authTokenId == "" {
-		return nil, fmt.Errorf("empty authTokenId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AuthTokenDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -136,7 +141,7 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

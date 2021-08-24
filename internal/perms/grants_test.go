@@ -1,8 +1,10 @@
 package perms
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -31,6 +33,19 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"create", "", "read"},
 			},
 			errResult: "perms.(Grant).parseAndValidateActions: empty action found: parameter violation: error #100",
+		},
+		{
+			name: "empty action with output fields",
+			input: Grant{
+				OutputFields: OutputFieldsMap{
+					"id": true,
+				},
+			},
+			result: Grant{
+				OutputFields: OutputFieldsMap{
+					"id": true,
+				},
+			},
 		},
 		{
 			name: "unknown action",
@@ -158,6 +173,23 @@ func Test_MarshalingAndCloning(t *testing.T) {
 			canonicalString: `id=baz;type=group`,
 		},
 		{
+			name: "output fields",
+			input: Grant{
+				id: "baz",
+				scope: Scope{
+					Type: scope.Project,
+				},
+				typ: resource.Group,
+				OutputFields: OutputFieldsMap{
+					"name":    true,
+					"version": true,
+					"id":      true,
+				},
+			},
+			jsonOutput:      `{"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
+			canonicalString: `id=baz;type=group;output_fields=id,name,version`,
+		},
+		{
 			name: "everything",
 			input: Grant{
 				id: "baz",
@@ -170,9 +202,14 @@ func Test_MarshalingAndCloning(t *testing.T) {
 					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
+				OutputFields: OutputFieldsMap{
+					"name":    true,
+					"version": true,
+					"id":      true,
+				},
 			},
-			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"group"}`,
-			canonicalString: `id=baz;type=group;actions=create,read`,
+			jsonOutput:      `{"actions":["create","read"],"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
+			canonicalString: `id=baz;type=group;actions=create,read;output_fields=id,name,version`,
 		},
 	}
 
@@ -248,6 +285,25 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "type" as string: parameter violation: error #100`,
 			textInput: `type=host-catalog=id`,
 			textErr:   `perms.(Grant).unmarshalText: segment "type=host-catalog=id" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
+		},
+		{
+			name: "good output fields",
+			expected: Grant{
+				OutputFields: OutputFieldsMap{
+					"name":    true,
+					"version": true,
+					"id":      true,
+				},
+			},
+			jsonInput: `{"output_fields":["id","name","version"]}`,
+			textInput: `output_fields=id,version,name`,
+		},
+		{
+			name:      "bad output fields",
+			jsonInput: `{"output_fields":true}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "output_fields" as array: parameter violation: error #100`,
+			textInput: `output_fields=id=version,name`,
+			textErr:   `perms.(Grant).unmarshalText: segment "output_fields=id=version,name" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
 		},
 		{
 			name: "good actions",
@@ -387,6 +443,16 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
 		},
 		{
+			name:  "empty output fields",
+			input: "id=*;type=*;actions=read,list;output_fields=",
+			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: segment "output_fields=" not formatted correctly, missing value: parameter violation: error #100`,
+		},
+		{
+			name:  "empty output fields json",
+			input: `{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
+			err:   "perms.Parse: parsed grant string has output_fields set but empty: parameter violation: error #100",
+		},
+		{
 			name:  "wildcard id and type and actions with list",
 			input: "id=*;type=*;actions=read,list",
 			expected: Grant{
@@ -432,6 +498,43 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
+			name:  "good json output fields",
+			input: `{"id":"foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: OutputFieldsMap{
+					"version": true,
+					"id":      true,
+					"name":    true,
+				},
+			},
+		},
+		{
+			name:  "good json output fields no action",
+			input: `{"id":"foobar","output_fields":["version","id","name"]}`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.Unknown,
+				OutputFields: OutputFieldsMap{
+					"version": true,
+					"id":      true,
+					"name":    true,
+				},
+			},
+		},
+		{
 			name:  "good text type",
 			input: `type=host-catalog;actions=create`,
 			expected: Grant{
@@ -457,6 +560,26 @@ func Test_Parse(t *testing.T) {
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
+				},
+			},
+		},
+		{
+			name:  "good output fields",
+			input: `id=foobar;actions=read;output_fields=version,id,name`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.Unknown,
+				actions: map[action.Type]bool{
+					action.Read: true,
+				},
+				OutputFields: OutputFieldsMap{
+					"version": true,
+					"id":      true,
+					"name":    true,
 				},
 			},
 		},
@@ -531,21 +654,43 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
-			name:      "bad account id template",
+			name:      "bad old account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
-			name:      "good account id template",
+			name:      "bad new account id template",
+			input:     `id={{superman}};actions=read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
+		},
+		{
+			name:      "good old account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id: "apw_1234567890",
+				id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+				actions: map[action.Type]bool{
+					action.Update: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:      "good new account id template",
+			input:     `id={{    account.id}};actions=update,read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,

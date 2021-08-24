@@ -137,7 +137,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]hostsets.Option) bool {
 	switch c.Func {
 	case "add-hosts", "remove-hosts":
 		if len(c.flagHosts) == 0 {
@@ -182,31 +182,43 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 		"",
 		"Host Set information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if m.Name != "" {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Description != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if item.Name != "" {
+			output = append(output,
+				fmt.Sprintf("    Name:                %s", item.Name),
+			)
+		}
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -214,55 +226,71 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *hostsets.HostSet) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":              in.Id,
-		"Version":         in.Version,
-		"Type":            in.Type,
-		"Created Time":    in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC1123),
-		"Host Catalog ID": in.HostCatalogId,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*hostsets.HostSet)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
+	}
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.HostCatalogId != "" {
+		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
 	}
 
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
-	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
-	}
-
-	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
+	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	ret := []string{
 		"",
 		"Host Set information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 		)
 	}
 
-	if len(in.HostIds) > 0 {
+	if len(item.HostIds) > 0 {
 		ret = append(ret,
 			"",
 			"  Host IDs:",
-			base.WrapSlice(4, in.HostIds),
+			base.WrapSlice(4, item.HostIds),
 		)
 	}
 
-	if len(in.Attributes) > 0 {
+	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
 			"  Attributes:",
-			base.WrapMap(4, maxLength, in.Attributes),
+			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 

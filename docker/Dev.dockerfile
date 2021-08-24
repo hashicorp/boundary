@@ -12,6 +12,6 @@ RUN chown -R boundary:boundary /boundary/
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
 
-USER boundary
-ENTRYPOINT ["/bin/boundary"]
+COPY ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]

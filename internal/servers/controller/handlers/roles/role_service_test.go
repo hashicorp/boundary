@@ -7,28 +7,33 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/kr/pretty"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"}
 
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -71,7 +76,7 @@ func equalPrincipals(role *pb.Role, principals []string) bool {
 
 func TestGet(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	or, pr, repo := createDefaultRolesAndRepo(t)
+	or, pr, repoFn := createDefaultRolesAndRepo(t)
 	toMerge := &pbs.GetRoleRequest{
 		Id: or.GetPublicId(),
 	}
@@ -79,27 +84,27 @@ func TestGet(t *testing.T) {
 	wantOrgRole := &pb.Role{
 		Id:                or.GetPublicId(),
 		ScopeId:           or.GetScopeId(),
-		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Name:              &wrapperspb.StringValue{Value: or.GetName()},
 		Description:       &wrapperspb.StringValue{Value: or.GetDescription()},
 		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 		CreatedTime:       or.CreateTime.GetTimestamp(),
 		UpdatedTime:       or.UpdateTime.GetTimestamp(),
 		Version:           or.GetVersion(),
-		AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	wantProjRole := &pb.Role{
 		Id:                pr.GetPublicId(),
 		ScopeId:           pr.GetScopeId(),
-		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 		Name:              &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:       &wrapperspb.StringValue{Value: pr.GetDescription()},
 		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
 		Version:           pr.GetVersion(),
-		AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -166,10 +171,10 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repo)
+			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.GetRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -196,24 +201,24 @@ func TestList(t *testing.T) {
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:                or.GetPublicId(),
 			ScopeId:           or.GetScopeId(),
-			Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+			Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:       or.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
 			GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
 			Version:           or.GetVersion(),
-			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalRoles = append(totalRoles, wantOrgRoles[i])
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
 			Id:                pr.GetPublicId(),
 			ScopeId:           pr.GetScopeId(),
-			Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: oNoRoles.GetPublicId()},
 			CreatedTime:       pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       pr.GetUpdateTime().GetTimestamp(),
 			GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 			Version:           pr.GetVersion(),
-			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalRoles = append(totalRoles, wantProjRoles[i])
 	}
@@ -292,22 +297,37 @@ func TestList(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			// Test the non-anon case
+			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err))
-			} else {
-				require.NoError(gErr)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test the anon case
+			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.PrincipalIds)
+				require.Nil(item.Principals)
+				require.Nil(item.Grants)
+				require.Nil(item.GrantStrings)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	or, pr, repo := createDefaultRolesAndRepo(t)
+	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repo)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	cases := []struct {
@@ -319,15 +339,14 @@ func TestDelete(t *testing.T) {
 	}{
 		{
 			name:    "Delete an Existing Role",
-			scopeId: or.GetPublicId(),
+			scopeId: or.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Delete bad role id",
-			scopeId: or.GetPublicId(),
+			scopeId: or.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
@@ -335,7 +354,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name:    "Bad Role Id formatting",
-			scopeId: or.GetPublicId(),
+			scopeId: or.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: "bad_format",
 			},
@@ -343,15 +362,14 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name:    "Project Scoped Delete an Existing Role",
-			scopeId: pr.GetPublicId(),
+			scopeId: pr.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad Role id",
-			scopeId: pr.GetPublicId(),
+			scopeId: pr.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
 				Id: iam.RolePrefix + "_doesntexis",
 			},
@@ -361,7 +379,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.NotNil(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteRole(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -373,14 +391,14 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	or, pr, repo := createDefaultRolesAndRepo(t)
+	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repo)
+	s, err := roles.NewService(repoFn)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(or.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(repoFn, or.GetScopeId())
 	_, gErr := s.DeleteRole(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteRole(ctx, req)
@@ -390,7 +408,7 @@ func TestDelete_twice(t *testing.T) {
 	projReq := &pbs.DeleteRoleRequest{
 		Id: pr.GetPublicId(),
 	}
-	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(pr.GetPublicId()))
+	ctx = auth.DisabledAuthTestContext(repoFn, pr.GetScopeId())
 	_, gErr = s.DeleteRole(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteRole(ctx, projReq)
@@ -399,9 +417,8 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultOrgRole, defaultProjRole, repo := createDefaultRolesAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultOrgRole.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultOrgRole, defaultProjRole, repoFn := createDefaultRolesAndRepo(t)
+	defaultCreated := defaultOrgRole.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateRoleRequest{}
 
 	cases := []struct {
@@ -422,12 +439,12 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultOrgRole.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -443,12 +460,12 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           scope.Global.String(),
-					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -465,12 +482,12 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultProjRole.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -500,7 +517,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId:     defaultProjRole.GetScopeId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -509,7 +526,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId:     defaultProjRole.GetScopeId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -521,10 +538,10 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repo)
+			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Error when getting new role service.")
 
-			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), req)
+			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
 			if tc.err != nil {
 				require.NotNil(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -532,10 +549,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a role created after the test setup's default role
 				assert.True(gotCreateTime.After(defaultCreated), "New role should have been created after default role. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.After(defaultCreated), "New role should have been updated after default role. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
@@ -610,8 +625,7 @@ func TestUpdate(t *testing.T) {
 		}
 	}
 
-	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	created := or.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateRoleRequest{
 		Id: or.GetPublicId(),
 	}
@@ -640,7 +654,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                or.GetPublicId(),
 					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
@@ -649,7 +663,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -669,7 +683,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                or.GetPublicId(),
 					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
@@ -678,7 +692,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -699,7 +713,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                pr.GetPublicId(),
 					ScopeId:           pr.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
@@ -708,7 +722,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -729,7 +743,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                pr.GetPublicId(),
 					ScopeId:           pr.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
@@ -738,7 +752,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -791,7 +805,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                or.GetPublicId(),
 					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
 					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
@@ -799,7 +813,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -819,7 +833,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                or.GetPublicId(),
 					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
@@ -828,7 +842,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -848,7 +862,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Role{
 					Id:                or.GetPublicId(),
 					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
@@ -857,7 +871,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -897,7 +911,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Role{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -910,7 +924,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Role{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -957,14 +971,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test with bad version (too high, too low)
 			req.Item.Version = ver + 2
-			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			require.Error(gErr)
 			req.Item.Version = ver - 1
-			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			require.Error(gErr)
 			req.Item.Version = ver
 
-			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -976,7 +990,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateRole response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a role updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
@@ -999,10 +1013,23 @@ func TestAddPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	o, p := iam.TestScopes(t, iamRepo)
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, iamRepo)
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1013,15 +1040,22 @@ func TestAddPrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	addCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		addUsers     []string
-		addGroups    []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		addUsers            []string
+		addGroups           []string
+		addManagedGroups    []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Add user on empty role",
@@ -1068,6 +1102,28 @@ func TestAddPrincipal(t *testing.T) {
 			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 		},
 		{
+			name:                "Add managed group on empty role",
+			setup:               func(r *iam.Role) {},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Add managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Add duplicate managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+		},
+		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			addUsers: []string{"u_recovery"},
@@ -1083,19 +1139,19 @@ func TestAddPrincipal(t *testing.T) {
 				req := &pbs.AddRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.addUsers, tc.addGroups...),
+					PrincipalIds: append(tc.addUsers, append(tc.addGroups, tc.addManagedGroups...)...),
 				}
 
-				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
 				}
 				s, ok := status.FromError(err)
-				require.True(t, ok)
+				require.True(t, ok, fmt.Sprintf("Could not run FromError; input was %s", pretty.Sprint(err)))
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}
@@ -1137,7 +1193,7 @@ func TestAddPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1157,6 +1213,20 @@ func TestSetPrincipal(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1167,15 +1237,22 @@ func TestSetPrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	setCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		setUsers     []string
-		setGroups    []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		setUsers            []string
+		setGroups           []string
+		setManagedGroups    []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Set user on empty role",
@@ -1223,6 +1300,20 @@ func TestSetPrincipal(t *testing.T) {
 			resultGroups: []string{groups[1].GetPublicId()},
 		},
 		{
+			name:                "Set managed group on empty role",
+			setup:               func(r *iam.Role) {},
+			setManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Set managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			setManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
 			name:     "Set invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			setUsers: []string{"u_recovery"},
@@ -1238,19 +1329,19 @@ func TestSetPrincipal(t *testing.T) {
 				req := &pbs.SetRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.setUsers, tc.setGroups...),
+					PrincipalIds: append(tc.setUsers, append(tc.setGroups, tc.setManagedGroups...)...),
 				}
 
-				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
 				}
 				s, ok := status.FromError(err)
-				require.True(t, ok)
+				require.True(t, ok, fmt.Sprintf("Could not run FromError; input was %s", pretty.Sprint(err)))
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}
@@ -1292,7 +1383,7 @@ func TestSetPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1312,6 +1403,20 @@ func TestRemovePrincipal(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1322,15 +1427,22 @@ func TestRemovePrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	addCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		removeUsers  []string
-		removeGroups []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		removeUsers         []string
+		removeGroups        []string
+		removeManagedGroups []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Remove user on empty role",
@@ -1405,6 +1517,39 @@ func TestRemovePrincipal(t *testing.T) {
 			removeGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 			resultGroups: []string{},
 		},
+		{
+			name:         "Remove managed group on empty role",
+			setup:        func(r *iam.Role) {},
+			removeGroups: []string{groups[1].GetPublicId()},
+			wantErr:      true,
+		},
+		{
+			name: "Remove 1 of 2 managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 duplicate managed group of 2 managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[1].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
+		},
+		{
+			name: "Remove all managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{},
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1415,10 +1560,10 @@ func TestRemovePrincipal(t *testing.T) {
 				req := &pbs.RemoveRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
+					PrincipalIds: append(tc.removeUsers, append(tc.removeGroups, tc.removeManagedGroups...)...),
 				}
 
-				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1427,7 +1572,7 @@ func TestRemovePrincipal(t *testing.T) {
 				require.True(t, ok)
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}
@@ -1469,7 +1614,7 @@ func TestRemovePrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1557,7 +1702,7 @@ func TestAddGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.add
-				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
+				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1615,7 +1760,7 @@ func TestAddGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddRoleGrants(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
@@ -1691,7 +1836,7 @@ func TestSetGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.set
-				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
+				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1741,7 +1886,7 @@ func TestSetGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1816,7 +1961,7 @@ func TestRemoveGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = tc.remove
-				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
+				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1877,7 +2022,7 @@ func TestRemoveGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

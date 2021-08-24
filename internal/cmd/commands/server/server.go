@@ -2,10 +2,14 @@ package server
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -15,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -22,7 +27,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -54,10 +60,6 @@ type Command struct {
 	reloadedCh   chan struct{}  // for tests
 	startedCh    chan struct{}  // for tests
 	presetConfig *atomic.String // for tests
-	// for tests -- Prometheus seems to use a global collector so if package
-	// tests are run it errors out even if they're not run in parallel 🙄 cause
-	// Go runs the tests within the same overall process
-	skipMetrics bool
 }
 
 func (c *Command) Synopsis() string {
@@ -131,6 +133,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -150,14 +153,32 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	base.StartMemProfiler(c.Logger)
-
-	if !c.skipMetrics {
-		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
+	var serverNames []string
+	if c.Config.Controller != nil {
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandUserError
 		}
+		serverNames = append(serverNames, c.Config.Controller.Name)
 	}
+	if c.Config.Worker != nil {
+		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		serverNames = append(serverNames, c.Config.Worker.Name)
+	}
+
+	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
+
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
+
+	base.StartMemProfiler(ctx)
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
@@ -361,11 +382,13 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		var err error
-		c.DatabaseUrl, err = config.ParseAddress(c.Config.Controller.Database.Url)
-		if err != nil && err != config.ErrNotAUrl {
+		c.DatabaseUrl, err = parseutil.ParsePath(c.Config.Controller.Database.Url)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
+		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
@@ -382,7 +405,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 		defer func() {
-			// The base context has already been cancelled so we shouldn't use it here.
+			// The base context has already been canceled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.
@@ -431,7 +454,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	if c.Config.Controller != nil {
-		if err := c.StartController(); err != nil {
+		if err := c.StartController(ctx); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
@@ -440,8 +463,10 @@ func (c *Command) Run(args []string) int {
 	if c.Config.Worker != nil {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
-			if err := c.controller.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+			if c.controller != nil {
+				if err := c.controller.Shutdown(false); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
 			}
 			return base.CommandCliError
 		}
@@ -517,14 +542,14 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *Command) StartController() error {
+func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
 	var err error
-	c.controller, err = controller.New(conf)
+	c.controller, err = controller.New(ctx, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing controller: %w", err)
 	}
@@ -566,20 +591,38 @@ func (c *Command) StartWorker() error {
 }
 
 func (c *Command) WaitForInterrupt() int {
+	const op = "server.(Command).WaitForInterrupt"
 	// Wait for shutdown
 	shutdownTriggered := false
 
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered")
+			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
 
+			// Add a force-shutdown goroutine to consume another interrupt
+			abortForceShutdownCh := make(chan struct{})
+			defer close(abortForceShutdownCh)
+			go func() {
+				shutdownCh := make(chan os.Signal, 4)
+				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+				select {
+				case <-shutdownCh:
+					c.UI.Error("Second interrupt received, forcing shutdown")
+					os.Exit(base.CommandUserError)
+				case <-abortForceShutdownCh:
+					// No-op, we just use this to shut down the goroutine
+				}
+			}()
+
+			// Do worker shutdown
 			if c.Config.Worker != nil {
 				if err := c.worker.Shutdown(false); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
 
+			// Do controller shutdown
 			if c.Config.Controller != nil {
 				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
@@ -606,13 +649,13 @@ func (c *Command) WaitForInterrupt() int {
 				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
 			}
 			if err != nil {
-				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
 				goto RUNRELOADFUNCS
 			}
 
 			// Ensure at least one config was found.
 			if newConf == nil {
-				c.Logger.Error("no config found at reload time")
+				event.WriteError(context.TODO(), op, stderrors.New("no config found at reload time"))
 				goto RUNRELOADFUNCS
 			}
 
@@ -630,7 +673,7 @@ func (c *Command) WaitForInterrupt() int {
 				case "err", "error":
 					level = hclog.Error
 				default:
-					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
+					event.WriteError(context.TODO(), op, stderrors.New("unknown log level found on reload"), event.WithInfo("level", newConf.LogLevel))
 					goto RUNRELOADFUNCS
 				}
 				c.Logger.SetLevel(level)
@@ -644,7 +687,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 
@@ -698,5 +741,5 @@ func (c *Command) verifyKmsSetup() error {
 			return nil
 		}
 	}
-	return errors.New(errors.MigrationIntegrity, op, "can't find global scoped root key")
+	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

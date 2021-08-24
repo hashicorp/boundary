@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Manage Roles and Permissions
-sidebar_title: Manage Roles
 description: How to manage Roles and Permissions
 ---
 
@@ -21,7 +20,6 @@ Roles can live in the global, org, or project scopes. In this example we will cr
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 $ boundary roles create -scope-id o_1234567890 -name my_role -description "My first role"
@@ -45,7 +43,6 @@ Role information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to an org, then to roles.
 1. Choose the **New** button.
 1. Fill the role details.
@@ -61,7 +58,6 @@ Role information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_scope" "role" {
   name        = "my_role"
@@ -73,14 +69,12 @@ resource "boundary_scope" "role" {
 </Tab>
 </Tabs>
 
-
 # Assign Principals to a Role
 
 Users and groups are granted permissions to perform actions by assigning them to a role.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 boundary roles add-principals -id $role_id -principal $principal_id
@@ -109,7 +103,6 @@ Role information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. From the role edit form, navigate to the **Principals** tab.
 1. Choose **Add Principals** from the **Manage** dropdown.
 1. Select one or more users and groups to associate with the role.
@@ -125,7 +118,6 @@ Role information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_scope" "role" {
   name        = "my_role"
@@ -138,7 +130,6 @@ resource "boundary_scope" "role" {
 </Tab>
 </Tabs>
 
-
 # Assign Grants to a Role
 
 Grants describe the actions that the principals should be allowed to perform. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions#permission-grant-formats).
@@ -147,9 +138,8 @@ In this example we give a role read and list permissions to all resources.
 <Tabs>
 <Tab heading="CLI">
 
-
 ```bash
-boundary roles add-grants -id $role_id -grant 'id=*;type=*;actions=read,list'
+boundary roles add-grants -id $role_id -grant 'id=*;type=*;actions=no-op,list'
 
 Role information:
   Created Time:        Fri, 09 Oct 2020 14:45:47 PDT
@@ -172,13 +162,12 @@ Role information:
       Scope ID:     o_1234567890
 
   Canonical Grants:
-    id=*;type=*;actions=list,read
+    id=*;type=*;actions=list,no-op
 
 ```
 
 </Tab>
 <Tab heading="Admin Console">
-
 
 1. From the role edit form, navigate to the **Grants** tab.
 1. Fill a new grant string.
@@ -205,9 +194,7 @@ Role information:
 
 </Tab>
 
-
 <Tab heading="Terraform">
-
 
 ```hcl
 resource "boundary_scope" "role" {
@@ -221,4 +208,3 @@ resource "boundary_scope" "role" {
 
 </Tab>
 </Tabs>
-

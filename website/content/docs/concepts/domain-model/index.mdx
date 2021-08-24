@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Domain Model Index
-sidebar_title: Domain Model
 description: |-
   Reference documentation for Boundary's domain model.
 ---
@@ -32,6 +31,23 @@ All resources have an ID which is unique within Boundary.
   issued from a configured [authentication method][]
   which can be used to establish the identity of a [user][].
 
+- **[Credential][]** :
+  A credential is a data structure containing one or more secrets
+  that binds an identity to a set of permissions or capabilities
+  on a [host][] for a [session][].
+
+- **[Credential Library][]** :
+  A credential library is a resource
+  that provides [credentials][]
+  of the same type and same access level
+  from a single [credential store][].
+
+- **[Credential Store][]** :
+  A credential store is a resource
+  that can retrieve, store, and potentially generate [credentials][]
+  of differing types and differing access levels.
+  It may also contain [credential libraries][].
+
 - **[Authentication Method][]** :
   An authentication method is a resource
   that provides a mechanism
@@ -58,14 +74,21 @@ All resources have an ID which is unique within Boundary.
   which are considered equivalent
   for the purposes of access control.
 
+- **[Managed Group][]** :
+  A managed group is a resource that groups [accounts][] based on criteria
+  established by a third-party service backing the [authentication method][]. It
+  can be used as a principal in [roles][].
+
 - **[Role][]** :
   A role is a resource
   that contains a collection of [permissions][]
   which are granted to any principal assigned to the role.
 
 - **[Session][]** :
-  A session is a set of related connections
-  between a [user][] and a [host][].
+  A session is a set of related connections between a [user][] and a [host][].
+  A session may include a set of [credentials][]
+  which define the permissions granted to the [user][] on the [host][] for the duration
+  of the session.
 
 - **[Scope][]** :
   A scope is a [permission][] boundary modeled as a container.
@@ -73,6 +96,7 @@ All resources have an ID which is unique within Boundary.
 - **[Target][]** :
   A target is a resource
   that represents a networked service
+  with an associated set of permissions
   a [user][] can connect to
   and interact with
   through Boundary
@@ -97,6 +121,12 @@ That page can help you understand the structure of resources within Boundary.
 [accounts]: /docs/concepts/domain-model/accounts
 [authentication method]: /docs/concepts/domain-model/auth-methods
 [authentication methods]: /docs/concepts/domain-model/auth-methods
+[credential library]: /docs/concepts/domain-model/credential-libraries
+[credential libraries]: /docs/concepts/domain-model/credential-libraries
+[credential store]: /docs/concepts/domain-model/credential-stores
+[credential stores]: /docs/concepts/domain-model/credential-stores
+[credential]: /docs/concepts/domain-model/credentials
+[credentials]: /docs/concepts/domain-model/credentials
 [group]: /docs/concepts/domain-model/groups
 [groups]: /docs/concepts/domain-model/groups
 [host catalog]: /docs/concepts/domain-model/host-catalogs
@@ -105,10 +135,12 @@ That page can help you understand the structure of resources within Boundary.
 [host sets]: /docs/concepts/domain-model/host-sets
 [host]: /docs/concepts/domain-model/hosts
 [hosts]: /docs/concepts/domain-model/hosts
+[managed group]: /docs/concepts/domain-model/managed-groups
 [role]: /docs/concepts/domain-model/roles
 [roles]: /docs/concepts/domain-model/roles
 [scope]: /docs/concepts/domain-model/scopes
 [scopes]: /docs/concepts/domain-model/scopes
+[project]: /docs/concepts/domain-model/scopes#projects
 [session]: /docs/concepts/domain-model/sessions
 [sessions]: /docs/concepts/domain-model/sessions
 [target]: /docs/concepts/domain-model/targets

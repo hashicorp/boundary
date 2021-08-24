@@ -1,111 +1,80 @@
-import VERSION from 'data/version.js'
-import Head from 'next/head'
-import HashiHead from '@hashicorp/react-head'
-import { productName, productSlug } from 'data/metadata'
-import ProductDownloader from '@hashicorp/react-product-downloader'
+import { VERSION, DESKTOP_VERSION } from 'data/version.js'
+import { productSlug } from 'data/metadata'
+import ProductDownloadsPage from '@hashicorp/react-product-downloads-page'
+import MerchDesktopClient from 'components/merch-desktop-client'
 import styles from './style.module.css'
 
-export default function DownloadsPage({ releases }) {
+const DESKTOP_BINARY_SLUG = 'boundary-desktop'
+
+export default function DownloadsPage({ binaryReleases, desktopReleases }) {
   return (
-    <div className={styles.root}>
-      <HashiHead is={Head} title={`Downloads | ${productName} by HashiCorp`} />
-      <ProductDownloader
-        releases={releases}
-        packageManagers={[
-          {
-            label: 'Homebrew',
-            commands: [
-              'brew tap hashicorp/tap',
-              'brew install hashicorp/tap/boundary',
-            ],
-            os: 'darwin',
-          },
-          {
-            label: 'Ubuntu/Debian',
-            commands: [
-              'curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -',
-              'sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"',
-              'sudo apt-get update && sudo apt-get install boundary',
-            ],
-            os: 'linux',
-          },
-          {
-            label: 'CentOS/RHEL',
-            commands: [
-              'sudo yum install -y yum-utils',
-              'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo',
-              'sudo yum -y install boundary',
-            ],
-            os: 'linux',
-          },
-          {
-            label: 'Fedora',
-            commands: [
-              'sudo dnf install -y dnf-plugins-core',
-              'sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo',
-              'sudo dnf -y install boundary',
-            ],
-            os: 'linux',
-          },
-          {
-            label: 'Amazon Linux',
-            commands: [
-              'sudo yum install -y yum-utils',
-              'sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo',
-              'sudo yum -y install boundary',
-            ],
-            os: 'linux',
-          },
-        ]}
-        productName={productName}
-        productId={productSlug}
-        latestVersion={VERSION}
-        getStartedLinks={[
-          {
-            label: 'Install Boundary',
-            href:
-              'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
-          },
-          {
-            label: 'Introduction to Boundary',
-            href:
-              'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
-          },
-          {
-            label: 'Start a Development Environment',
-            href:
-              'https://learn.hashicorp.com/tutorials/boundary/getting-started-dev',
-          },
-        ]}
-        logo={
-          <img
-            className={styles.logo}
-            alt="Boundary"
-            src={require('./img/boundary-logo.svg')}
-          />
-        }
-        brand="boundary"
-        tutorialLink={{
-          label: 'View Tutorial on HashiCorp Learn',
+    <ProductDownloadsPage
+      releases={binaryReleases}
+      latestVersion={VERSION}
+      getStartedLinks={[
+        {
+          label: 'Install Boundary',
           href:
             'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
-        }}
-      />
-    </div>
+        },
+        {
+          label: 'Introduction to Boundary',
+          href:
+            'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
+        },
+        {
+          label: 'Start a Development Environment',
+          href:
+            'https://learn.hashicorp.com/tutorials/boundary/getting-started-dev',
+        },
+      ]}
+      logo={
+        <img
+          className={styles.logo}
+          alt="Boundary"
+          src={require('@hashicorp/mktg-logos/product/boundary/primary/color.svg')}
+        />
+      }
+      product="boundary"
+      tutorialLink={{
+        label: 'View Tutorial on HashiCorp Learn',
+        href:
+          'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
+      }}
+      merchandisingSlot={
+        <MerchDesktopClient
+          version={DESKTOP_VERSION}
+          releases={desktopReleases}
+        />
+      }
+    />
   )
 }
 
 export async function getStaticProps() {
-  return fetch(`https://releases.hashicorp.com/boundary/index.json`, {
-    headers: {
-      'Cache-Control': 'no-cache',
-    },
-  })
-    .then((res) => res.json())
+  return Promise.all([
+    fetch(`https://releases.hashicorp.com/boundary/index.json`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    }).then((res) => res.json()),
+    fetch(`https://releases.hashicorp.com/boundary-desktop/index.json`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    }).then((res) => res.json()),
+  ])
     .then((result) => {
+      const binaryReleases = result.find(
+        (releases) => releases.name === productSlug
+      )
+      const desktopReleases = result.find(
+        (releases) => releases.name === DESKTOP_BINARY_SLUG
+      )
       return {
         props: {
-          releases: result,
+          binaryReleases,
+          desktopReleases,
         },
       }
     })

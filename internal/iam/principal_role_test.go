@@ -571,7 +571,7 @@ func TestGroupRole_Create(t *testing.T) {
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
-			name: "missing-user-id",
+			name: "missing-group-id",
 			args: args{
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
@@ -584,7 +584,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing user id: parameter violation: error #100",
+			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing group id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -859,6 +859,42 @@ func TestGroupRole_SetTableName(t *testing.T) {
 			s := &GroupRole{
 				GroupRole: &store.GroupRole{},
 				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
+
+func TestManagedGroupRole_SetTableName(t *testing.T) {
+	defaultTableName := managedGroupRoleDefaultTable
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := AllocManagedGroupRole()
+			require.Equal(defaultTableName, def.TableName())
+			s := &ManagedGroupRole{
+				ManagedGroupRole: &store.ManagedGroupRole{},
+				tableName:        tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
