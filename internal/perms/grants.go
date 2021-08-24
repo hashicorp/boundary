@@ -258,7 +258,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 					if action == "" {
 						return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 					}
-					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.TrimSpace(strings.ToLower(action)))
 				}
 			}
 
