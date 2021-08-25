@@ -6,4 +6,8 @@ migrations:
 	goimports -w ${GEN_BASEPATH}/internal/db/schema
 	gofumpt -w ${GEN_BASEPATH}/internal/db/schema
 
-.PHONY: migrations
+check: migrations
+	@git status --porcelain ${GEN_BASEPATH}/internal/db/schema
+	@git diff --exit-code ${GEN_BASEPATH}/internal/db/schema
+
+.PHONY: migrations check

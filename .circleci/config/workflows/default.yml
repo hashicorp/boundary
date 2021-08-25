@@ -1,5 +1,6 @@
 jobs:
   - build
+  - generated-check
   - test-sql:
       matrix:
         parameters:

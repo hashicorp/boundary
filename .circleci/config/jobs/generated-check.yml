@@ -1,0 +1,20 @@
+machine:
+  image: 'ubuntu-1604:201903-01'
+working_directory: ~/boundary
+steps:
+- checkout
+- run:
+    name: "Setup"
+    command: |
+      make install-go
+      source ~/.bashrc
+      make tools
+- run:
+    name: "Check Migrations"
+    command: |
+      source ~/.bashrc
+      make check-migrations
+- slack/status:
+    fail_only: true
+    only_for_branches: master
+    webhook: webhook
