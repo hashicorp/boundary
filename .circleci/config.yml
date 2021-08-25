@@ -974,6 +974,11 @@ jobs:
     - checkout
     - run:
         command: |
+          make install-go
+        name: Setup
+    - run:
+        command: |
+          source ~/.bashrc
           make test-ci
         name: Run Acceptance Tests
         no_output_timeout: 15m

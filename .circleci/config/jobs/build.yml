@@ -4,9 +4,14 @@ working_directory: ~/boundary
 steps:
 - checkout
 - run:
+    name: "Setup"
+    command: |
+      make install-go
+- run:
     name: "Run Acceptance Tests"
     no_output_timeout: 15m
     command: |
+      source ~/.bashrc
       make test-ci
 - slack/status:
     fail_only: true

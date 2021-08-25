@@ -156,16 +156,18 @@ website-start:
 	@npm start --prefix website/
 
 test-ci: install-go
-	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+	go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
-test: 
-	~/.go/bin/go test ./... -timeout 30m
+test:
+	go test ./... -timeout 30m
 
-install-go:
+~/.go/bin/go:
 	./ci/goinstall.sh
+
+install-go: ~/.go/bin/go
 
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
