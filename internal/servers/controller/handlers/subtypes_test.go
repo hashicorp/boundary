@@ -8,7 +8,7 @@ import (
 	accountspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	authmethodspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	hostspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
-	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"

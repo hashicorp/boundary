@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -7,7 +7,7 @@
 package services
 
 import (
-	targets "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
+	targets "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
