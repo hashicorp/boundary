@@ -4,10 +4,6 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
@@ -18,6 +14,10 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 )

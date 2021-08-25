@@ -7,14 +7,15 @@
 package services
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	credentiallibraries "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
+	credentiallibraries "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -696,21 +697,24 @@ func file_controller_api_services_v1_credential_library_service_proto_rawDescGZI
 	return file_controller_api_services_v1_credential_library_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_credential_library_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_controller_api_services_v1_credential_library_service_proto_goTypes = []interface{}{
-	(*GetCredentialLibraryRequest)(nil),           // 0: controller.api.services.v1.GetCredentialLibraryRequest
-	(*GetCredentialLibraryResponse)(nil),          // 1: controller.api.services.v1.GetCredentialLibraryResponse
-	(*ListCredentialLibrariesRequest)(nil),        // 2: controller.api.services.v1.ListCredentialLibrariesRequest
-	(*ListCredentialLibrariesResponse)(nil),       // 3: controller.api.services.v1.ListCredentialLibrariesResponse
-	(*CreateCredentialLibraryRequest)(nil),        // 4: controller.api.services.v1.CreateCredentialLibraryRequest
-	(*CreateCredentialLibraryResponse)(nil),       // 5: controller.api.services.v1.CreateCredentialLibraryResponse
-	(*UpdateCredentialLibraryRequest)(nil),        // 6: controller.api.services.v1.UpdateCredentialLibraryRequest
-	(*UpdateCredentialLibraryResponse)(nil),       // 7: controller.api.services.v1.UpdateCredentialLibraryResponse
-	(*DeleteCredentialLibraryRequest)(nil),        // 8: controller.api.services.v1.DeleteCredentialLibraryRequest
-	(*DeleteCredentialLibraryResponse)(nil),       // 9: controller.api.services.v1.DeleteCredentialLibraryResponse
-	(*credentiallibraries.CredentialLibrary)(nil), // 10: controller.api.resources.credentiallibraries.v1.CredentialLibrary
-	(*fieldmaskpb.FieldMask)(nil),                 // 11: google.protobuf.FieldMask
-}
+var (
+	file_controller_api_services_v1_credential_library_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+	file_controller_api_services_v1_credential_library_service_proto_goTypes  = []interface{}{
+		(*GetCredentialLibraryRequest)(nil),           // 0: controller.api.services.v1.GetCredentialLibraryRequest
+		(*GetCredentialLibraryResponse)(nil),          // 1: controller.api.services.v1.GetCredentialLibraryResponse
+		(*ListCredentialLibrariesRequest)(nil),        // 2: controller.api.services.v1.ListCredentialLibrariesRequest
+		(*ListCredentialLibrariesResponse)(nil),       // 3: controller.api.services.v1.ListCredentialLibrariesResponse
+		(*CreateCredentialLibraryRequest)(nil),        // 4: controller.api.services.v1.CreateCredentialLibraryRequest
+		(*CreateCredentialLibraryResponse)(nil),       // 5: controller.api.services.v1.CreateCredentialLibraryResponse
+		(*UpdateCredentialLibraryRequest)(nil),        // 6: controller.api.services.v1.UpdateCredentialLibraryRequest
+		(*UpdateCredentialLibraryResponse)(nil),       // 7: controller.api.services.v1.UpdateCredentialLibraryResponse
+		(*DeleteCredentialLibraryRequest)(nil),        // 8: controller.api.services.v1.DeleteCredentialLibraryRequest
+		(*DeleteCredentialLibraryResponse)(nil),       // 9: controller.api.services.v1.DeleteCredentialLibraryResponse
+		(*credentiallibraries.CredentialLibrary)(nil), // 10: controller.api.resources.credentiallibraries.v1.CredentialLibrary
+		(*fieldmaskpb.FieldMask)(nil),                 // 11: google.protobuf.FieldMask
+	}
+)
+
 var file_controller_api_services_v1_credential_library_service_proto_depIdxs = []int32{
 	10, // 0: controller.api.services.v1.GetCredentialLibraryResponse.item:type_name -> controller.api.resources.credentiallibraries.v1.CredentialLibrary
 	10, // 1: controller.api.services.v1.ListCredentialLibrariesResponse.items:type_name -> controller.api.resources.credentiallibraries.v1.CredentialLibrary
