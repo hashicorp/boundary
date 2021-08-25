@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.sessions.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions;sessions";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions;sessions";
 
 import "google/protobuf/timestamp.proto";
 import "controller/api/resources/scopes/v1/scope.proto";

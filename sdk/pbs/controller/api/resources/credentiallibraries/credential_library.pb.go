@@ -7,8 +7,8 @@
 package credentiallibraries
 
 import (
-	scopes "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	scopes "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"

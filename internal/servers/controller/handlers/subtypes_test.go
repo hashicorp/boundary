@@ -5,9 +5,9 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
-	hostspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	accountspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	authmethodspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	hostspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
