@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

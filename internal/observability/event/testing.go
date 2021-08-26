@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"

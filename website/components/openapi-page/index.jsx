@@ -79,7 +79,7 @@ function OpenApiPage({
               <h1 className={`${styles.pageHeading} g-type-display-2`}>
                 {info.title}
               </h1>
-              <p className={`${styles.landingPlaceholder} g-type-body-long`}>
+              <p className={`${styles.landingPlaceholder} g-type-long-body`}>
                 Select a service from the sidebar.
               </p>
             </>

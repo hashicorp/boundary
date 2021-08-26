@@ -10,6 +10,6 @@ type Config struct {
 	// Workers
 	*base.Server
 	// The underlying configuration, passed in here to avoid duplicating values
-	// everwyehere
+	// everywhere
 	RawConfig *config.Config
 }

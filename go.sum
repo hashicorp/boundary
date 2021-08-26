@@ -376,6 +376,7 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0 h1:IvO4FbbQL6n3v3M1rQNobZ61SGL0gJLdvKA5KETM7Xs=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0/go.mod h1:d2gYTOTUQklu06xp0AJYYmRdTVU1VKrqhkYfYag2L08=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
+github.com/hashicorp/boundary v0.5.1/go.mod h1:vV9WCTfUvyCswxWogsWxlmgQw1NESPtm+vPKzzdZeUU=
 github.com/hashicorp/cap v0.1.1 h1:GjO4+9+H0wv/89YoEsxeVc2jIizL19r5v5l2lpaH8Kg=
 github.com/hashicorp/cap v0.1.1/go.mod h1:VfBvK2ULRyqsuqAnjgZl7HJ7/CGMC7ro4H5eXiZuun8=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
@@ -406,6 +407,8 @@ github.com/hashicorp/go-hclog v0.16.2/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0 h1:vN9wG1D6KG6YHRTWr8512cxGOVgTMEfgEdSj/hr8MPc=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
+github.com/hashicorp/go-kms-wrapping v0.6.5 h1:iKcwiqpm2dvkMLymEyJQpbazwR70l7XINUPFduLdbAs=
+github.com/hashicorp/go-kms-wrapping v0.6.5/go.mod h1:9aLqFi2fqK1WMCyTe9bVjB0X6XxCxD+oINL1ovxpgJE=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210820140919-c878735c9139 h1:LGiHCqTMC/81STlHAWwUzLaq/rbZ7dRjVVGWy9HbWX4=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210820140919-c878735c9139/go.mod h1:FPAjD/ivCVWYdtBzDYMvewmscDAb8IEUhX5Mi3lcsRI=
@@ -437,6 +440,8 @@ github.com/hashicorp/go-secure-stdlib/awsutil v0.1.1/go.mod h1:QRJZ7siKie+SZJB9j
 github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1 h1:6KMBnfEv0/kLAz0O76sliN5mXbCDcLfs2kP7ssP7+DQ=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1/go.mod h1:EdWO6czbmthiwZ3/PUsDV+UD1D5IRU4ActiaWGwt0Yw=
+github.com/hashicorp/go-secure-stdlib/configutil v0.1.2 h1:ai0P91rxlyGWkYUH/zFr7mduW2Q+2FMrXawkLM8e7NU=
+github.com/hashicorp/go-secure-stdlib/configutil v0.1.2/go.mod h1:EN1DJMjv9y5e/uRAuP2WPibAox5KHEiq2BjZl00aNPQ=
 github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e h1:DZj9ffdK4RkR6u9TIxKirpgOX9sNinYaYw320ee6rd0=
 github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e/go.mod h1:jPJNRD5IhyUuUmhX4jZ12ydgqBsCRGNIDbfVo8qknJA=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1 h1:9um9R8i0+HbRHS9d64kdvWR0/LJvo12sIonvR9zr1+U=

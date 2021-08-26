@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.5.1 (2021/08/16)
+
 ### New and Improved
 
 * Data Warehouse: Add OIDC auth method and accounts to the database warehouse.

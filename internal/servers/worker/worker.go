@@ -2,16 +2,23 @@ package worker
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
@@ -100,7 +107,7 @@ func New(conf *Config) (*Worker, error) {
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
 	if w.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
+		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
 
@@ -135,9 +142,8 @@ func (w *Worker) Start() error {
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
 	const op = "worker.(Worker).Shutdown"
-	ctx := context.TODO()
 	if !w.started.Load() {
-		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
+		event.WriteSysEvent(w.baseContext, op, "already shut down, skipping")
 		return nil
 	}
 
@@ -163,7 +169,7 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
 			break
 		}
 
@@ -210,4 +216,101 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	}
 	w.tags.Store(tags)
 	w.updateTags.Store(true)
+}
+
+func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
+	rawConn := w.controllerSessionConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load controller session service connection")
+	}
+	sessClient, ok := rawConn.(pbs.SessionServiceClient)
+	if !ok {
+		return nil, fmt.Errorf("invalid session client %T", rawConn)
+	}
+	if sessClient == nil {
+		return nil, fmt.Errorf("session client is nil")
+	}
+
+	return sessClient, nil
+}
+
+func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	const op = "worker.(Worker).getSessionTls"
+	ctx := w.baseContext
+	var sessionId string
+	switch {
+	case strings.HasPrefix(hello.ServerName, "s_"):
+		sessionId = hello.ServerName
+	default:
+		event.WriteSysEvent(ctx, op, "invalid session in SNI", "session_id", hello.ServerName)
+		return nil, fmt.Errorf("could not find session ID in SNI")
+	}
+
+	conn, err := w.ControllerSessionConn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
+	}
+
+	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
+	defer cancel()
+
+	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
+		ServerId:  w.conf.RawConfig.Worker.Name,
+		SessionId: sessionId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error validating session: %w", err)
+	}
+
+	if resp.GetExpiration().AsTime().Before(time.Now()) {
+		return nil, fmt.Errorf("session is expired")
+	}
+
+	parsedCert, err := x509.ParseCertificate(resp.GetAuthorization().Certificate)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing session certificate: %w", err)
+	}
+
+	if len(parsedCert.DNSNames) != 1 {
+		return nil, fmt.Errorf("invalid length of DNS names (%d) in parsed certificate", len(parsedCert.DNSNames))
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(parsedCert)
+
+	tlsConf := &tls.Config{
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{resp.GetAuthorization().Certificate},
+				PrivateKey:  ed25519.PrivateKey(resp.GetAuthorization().PrivateKey),
+				Leaf:        parsedCert,
+			},
+		},
+		ServerName: parsedCert.DNSNames[0],
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  certPool,
+		MinVersion: tls.VersionTLS13,
+	}
+
+	si := &session.Info{
+		Id:                    resp.GetAuthorization().GetSessionId(),
+		SessionTls:            tlsConf,
+		LookupSessionResponse: resp,
+		Status:                resp.GetStatus(),
+		ConnInfoMap:           make(map[string]*session.ConnInfo),
+	}
+	// TODO: Periodically clean this up. We can't rely on things in here but
+	// not in cancellation because they could be on the way to being
+	// established. However, since cert lifetimes are short, we can simply range
+	// through and remove values that are expired.
+	actualSiRaw, loaded := w.sessionInfoMap.LoadOrStore(sessionId, si)
+	if loaded {
+		// Update the response to the latest
+		actualSi := actualSiRaw.(*session.Info)
+		actualSi.Lock()
+		actualSi.LookupSessionResponse = resp
+		actualSi.Unlock()
+	}
+
+	return tlsConf, nil
 }

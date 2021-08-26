@@ -1,16 +1,12 @@
 /* Global Component Styles */
 @import '~@hashicorp/mktg-global-styles/style.css';
-@import '~@hashicorp/mktg-global-styles/_temporary-to-remove/layout.css';
-@import '~@hashicorp/mktg-global-styles/_temporary-to-remove/tables.css';
 
 @import '~@hashicorp/react-hero/style.css';
 @import '~@hashicorp/react-button/styles/index.css';
 @import '~@hashicorp/react-consent-manager/style.css';
 @import '~@hashicorp/react-toggle/style.css';
 @import '~@hashicorp/react-vertical-text-block-list/style.css';
-@import '~@hashicorp/react-docs-page/style.css';
 @import '~@hashicorp/react-search/style.css';
-@import '~@hashicorp/react-content/style.css';
 @import '~@hashicorp/react-subnav/style.css';
 @import '~@hashicorp/react-tabs/style.css';
 @import '~@hashicorp/react-enterprise-alert/style.css';
@@ -22,7 +18,6 @@
 @import '../components/footer/style.css';
 
 /* Local Pages */
-@import './community/style.css';
 @import './home/style.css';
 
 /* Print Styles */

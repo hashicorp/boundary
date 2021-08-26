@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.roles.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles;roles";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles;roles";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";

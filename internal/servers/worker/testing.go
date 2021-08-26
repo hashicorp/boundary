@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -83,7 +84,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 // the worker's local session state. This detail is a point-in-time
 // snapshot of what's in sessionInfoMap for a particular session, and
 // may not contain all of the information that is contained within
-// it, or the underlying connInfoMap. Only details that are really
+// it, or the underlying ConnInfoMap. Only details that are really
 // important to testing are passed along.
 type TestSessionInfo struct {
 	Id     string
@@ -117,21 +118,21 @@ func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 		return result, false
 	}
 
-	sess := raw.(*sessionInfo)
+	sess := raw.(*session.Info)
 	sess.RLock()
 	defer sess.RUnlock()
 
 	conns := make(map[string]TestConnectionInfo)
-	for _, conn := range sess.connInfoMap {
-		conns[conn.id] = TestConnectionInfo{
-			Id:        conn.id,
-			Status:    conn.status,
-			CloseTime: conn.closeTime,
+	for _, conn := range sess.ConnInfoMap {
+		conns[conn.Id] = TestConnectionInfo{
+			Id:        conn.Id,
+			Status:    conn.Status,
+			CloseTime: conn.CloseTime,
 		}
 	}
 
-	result.Id = sess.id
-	result.Status = sess.status
+	result.Id = sess.Id
+	result.Status = sess.Status
 	result.Connections = conns
 
 	return result, true
