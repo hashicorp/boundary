@@ -8,7 +8,7 @@ package services
 
 import (
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	hostcatalogs "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
+	hostcatalogs "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

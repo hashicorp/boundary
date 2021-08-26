@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.authtokens.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens;authtokens";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens;authtokens";
 
 import "google/protobuf/timestamp.proto";
 import "controller/api/resources/scopes/v1/scope.proto";

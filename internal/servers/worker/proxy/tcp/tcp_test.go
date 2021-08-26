@@ -6,10 +6,10 @@ import (
 	"net"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/servers/worker/proxy"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

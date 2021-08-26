@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"google.golang.org/genproto/protobuf/field_mask"
 )
 

@@ -8,7 +8,7 @@ package services
 
 import (
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	users "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
+	users "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
