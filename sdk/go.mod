@@ -5,6 +5,7 @@ go 1.16
 replace github.com/hashicorp/boundary/plugins => ../plugins
 
 require (
+	github.com/hashicorp/boundary/plugins v0.0.0-20210826145033-423a0b14037e
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820135956-a636a4d9cd5a
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e
