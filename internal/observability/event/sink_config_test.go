@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSinkConfig_validate(t *testing.T) {
+func TestSinkConfig_Validate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name            string
@@ -19,9 +19,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			name: "missing-name",
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing sink name",
@@ -29,10 +31,12 @@ func TestSinkConfig_validate(t *testing.T) {
 		{
 			name: "missing-EventType",
 			sc: SinkConfig{
-				Name:     "sink-name",
-				SinkType: FileSink,
-				FileName: "tmp.file",
-				Format:   JSONSinkFormat,
+				Name: "sink-name",
+				Type: FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing event types",
@@ -42,9 +46,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{"invalid"},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid event type",
@@ -54,8 +60,10 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink type",
@@ -65,9 +73,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				EventTypes: []Type{EveryType},
-				SinkType:   "invalid",
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       "invalid",
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink type",
@@ -76,9 +86,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			name: "missing-format",
 			sc: SinkConfig{
 				Name:       "sink-name",
-				SinkType:   FileSink,
+				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink format",
@@ -88,9 +100,11 @@ func TestSinkConfig_validate(t *testing.T) {
 			sc: SinkConfig{
 				Name:       "sink-name",
 				Format:     "invalid",
-				SinkType:   FileSink,
+				Type:       FileSink,
 				EventTypes: []Type{EveryType},
-				FileName:   "tmp.file",
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
 			},
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not a valid sink format",
@@ -99,27 +113,76 @@ func TestSinkConfig_validate(t *testing.T) {
 			name: "file-sink-with-no-file-name",
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
+				Type:       FileSink,
 				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{},
 			},
 			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "missing sink file name",
+			wantErrContains: "missing file name",
+		},
+		{
+			name: "type mismatch file type stderr config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         FileSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `missing "file" block`,
+		},
+		{
+			name: "type mismatch stderr type file config",
+			sc: SinkConfig{
+				EventTypes: []Type{EveryType},
+				Type:       StderrSink,
+				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `mismatch between sink type and sink configuration block`,
+		},
+		{
+			name: "type mismatch both types file config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         FileSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+				FileConfig:   &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `too many sink type config blocks`,
+		},
+		{
+			name: "type mismatch both types stderr config",
+			sc: SinkConfig{
+				EventTypes:   []Type{EveryType},
+				Type:         StderrSink,
+				Format:       JSONSinkFormat,
+				StderrConfig: &StderrSinkTypeConfig{},
+				FileConfig:   &FileSinkTypeConfig{},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `too many sink type config blocks`,
 		},
 		{
 			name: "valid",
 			sc: SinkConfig{
 				Name:       "valid",
 				EventTypes: []Type{EveryType},
-				SinkType:   FileSink,
-				FileName:   "tmp.file",
-				Format:     JSONSinkFormat,
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := tt.sc.validate()
+			err := tt.sc.Validate()
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.ErrorIs(err, tt.wantErrIs)

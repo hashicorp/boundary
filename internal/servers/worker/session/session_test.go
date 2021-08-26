@@ -1,4 +1,4 @@
-package worker
+package session
 
 import (
 	"errors"
@@ -20,7 +20,7 @@ func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
 			{ConnectionId: "bar", Reason: session.UnknownReason.String()},
 		},
 	}
-	actual := new(Worker).makeCloseConnectionRequest(in)
+	actual := makeCloseConnectionRequest(in)
 	require.ElementsMatch(expected.GetCloseRequestData(), actual.GetCloseRequestData())
 }
 
@@ -41,21 +41,21 @@ func TestMakeSessionCloseInfo(t *testing.T) {
 			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 		},
 	}
-	actual, err := new(Worker).makeSessionCloseInfo(closeInfo, response)
+	actual, err := makeSessionCloseInfo(closeInfo, response)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestMakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 	require := require.New(t)
-	actual, err := new(Worker).makeSessionCloseInfo(nil, nil)
+	actual, err := makeSessionCloseInfo(nil, nil)
 	require.Nil(actual)
 	require.ErrorIs(err, errMakeSessionCloseInfoNilCloseInfo)
 }
 
 func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := new(Worker).makeSessionCloseInfo(make(map[string]string), nil)
+	actual, err := makeSessionCloseInfo(make(map[string]string), nil)
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
@@ -74,21 +74,21 @@ func TestMakeFakeSessionCloseInfo(t *testing.T) {
 			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 		},
 	}
-	actual, err := new(Worker).makeFakeSessionCloseInfo(closeInfo)
+	actual, err := makeFakeSessionCloseInfo(closeInfo)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestMakeFakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 	require := require.New(t)
-	actual, err := new(Worker).makeFakeSessionCloseInfo(nil)
+	actual, err := makeFakeSessionCloseInfo(nil)
 	require.Nil(actual)
 	require.ErrorIs(err, errMakeSessionCloseInfoNilCloseInfo)
 }
 
 func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := new(Worker).makeFakeSessionCloseInfo(make(map[string]string))
+	actual, err := makeFakeSessionCloseInfo(make(map[string]string))
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
@@ -117,22 +117,22 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			sessionInfoMap: func() *sync.Map {
 				m := new(sync.Map)
-				m.Store("one", &sessionInfo{
-					id: "one",
-					connInfoMap: map[string]*connInfo{
-						"foo": {id: "foo"},
+				m.Store("one", &Info{
+					Id: "one",
+					ConnInfoMap: map[string]*ConnInfo{
+						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &sessionInfo{
-					id: "two",
-					connInfoMap: map[string]*connInfo{
-						"bar": {id: "bar"},
+				m.Store("two", &Info{
+					Id: "two",
+					ConnInfoMap: map[string]*ConnInfo{
+						"bar": {Id: "bar"},
 					},
 				})
-				m.Store("three", &sessionInfo{
-					id: "three",
-					connInfoMap: map[string]*connInfo{
-						"baz": {id: "baz"},
+				m.Store("three", &Info{
+					Id: "three",
+					ConnInfoMap: map[string]*ConnInfo{
+						"baz": {Id: "baz"},
 					},
 				})
 
@@ -156,16 +156,16 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			sessionInfoMap: func() *sync.Map {
 				m := new(sync.Map)
-				m.Store("one", &sessionInfo{
-					id: "one",
-					connInfoMap: map[string]*connInfo{
-						"foo": {id: "foo"},
+				m.Store("one", &Info{
+					Id: "one",
+					ConnInfoMap: map[string]*ConnInfo{
+						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &sessionInfo{
-					id: "two",
-					connInfoMap: map[string]*connInfo{
-						"bar": {id: "bar"},
+				m.Store("two", &Info{
+					Id: "two",
+					ConnInfoMap: map[string]*ConnInfo{
+						"bar": {Id: "bar"},
 					},
 				})
 
@@ -188,10 +188,10 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			sessionInfoMap: func() *sync.Map {
 				m := new(sync.Map)
-				m.Store("one", &sessionInfo{
-					id: "one",
-					connInfoMap: map[string]*connInfo{
-						"foo": {id: "foo"},
+				m.Store("one", &Info{
+					Id: "one",
+					ConnInfoMap: map[string]*ConnInfo{
+						"foo": {Id: "foo"},
 					},
 				})
 
@@ -217,13 +217,13 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			sessionInfoMap: func() *sync.Map {
 				m := new(sync.Map)
-				m.Store("one", &sessionInfo{
-					id: "one",
-					connInfoMap: map[string]*connInfo{
-						"foo": {id: "foo"},
+				m.Store("one", &Info{
+					Id: "one",
+					ConnInfoMap: map[string]*ConnInfo{
+						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &sessionInfo{id: "two"})
+				m.Store("two", &Info{Id: "two"})
 
 				return m
 			},
@@ -240,10 +240,10 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			sessionCloseInfo: make(map[string][]*pbs.CloseConnectionResponseData),
 			sessionInfoMap: func() *sync.Map {
 				m := new(sync.Map)
-				m.Store("one", &sessionInfo{
-					id: "one",
-					connInfoMap: map[string]*connInfo{
-						"foo": {id: "foo"},
+				m.Store("one", &Info{
+					Id: "one",
+					ConnInfoMap: map[string]*ConnInfo{
+						"foo": {Id: "foo"},
 					},
 				})
 
@@ -258,19 +258,17 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			w := &Worker{
-				sessionInfoMap: tc.sessionInfoMap(),
-			}
-			actual, actualErr := w.setCloseTimeForResponse(tc.sessionCloseInfo)
+			sessionInfoMap := tc.sessionInfoMap()
+			actual, actualErr := setCloseTimeForResponse(sessionInfoMap, tc.sessionCloseInfo)
 
 			// Assert all close times were set
-			w.sessionInfoMap.Range(func(key, value interface{}) bool {
+			sessionInfoMap.Range(func(key, value interface{}) bool {
 				t.Helper()
-				for _, ci := range value.(*sessionInfo).connInfoMap {
-					if _, ok := tc.expectedClosed[ci.id]; ok {
-						require.NotEqual(time.Time{}, ci.closeTime)
+				for _, ci := range value.(*Info).ConnInfoMap {
+					if _, ok := tc.expectedClosed[ci.Id]; ok {
+						require.NotEqual(time.Time{}, ci.CloseTime)
 					} else {
-						require.Equal(time.Time{}, ci.closeTime)
+						require.Equal(time.Time{}, ci.CloseTime)
 					}
 				}
 

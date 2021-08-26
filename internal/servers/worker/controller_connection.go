@@ -59,7 +59,7 @@ func (w *Worker) startControllerConnections() error {
 	return nil
 }
 
-func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
 	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		tlsConf, authInfo, err := w.workerAuthTLSConfig()
@@ -96,7 +96,7 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 }
 
 func (w *Worker) createClientConn(addr string) error {
-	const op = "worker.(Worker)createClientConn"
+	const op = "worker.(Worker).createClientConn"
 	defaultTimeout := (time.Second + time.Nanosecond).String()
 	defServiceConfig := fmt.Sprintf(`
 	  {
@@ -130,11 +130,11 @@ func (w *Worker) createClientConn(addr string) error {
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
-	event.WriteSysEvent(context.TODO(), op, "connected to controller", "address", addr)
+	event.WriteSysEvent(w.baseContext, op, "connected to controller", "address", addr)
 	return nil
 }
 
-func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
 		Name:        w.conf.RawConfig.Worker.Name,

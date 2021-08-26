@@ -38,24 +38,24 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				int(opts.withNextRunIn.Round(time.Second).Seconds()),
 			})
 			if err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been created")
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been created", errors.WithoutEvent())
 				}
 				rowCnt++
 				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"), errors.WithoutEvent())
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(ctx, errors.NotSpecificIntegrity, op, "failed to create new job")
+				return errors.New(ctx, errors.NotSpecificIntegrity, op, "failed to create new job", errors.WithoutEvent())
 			}
 
 			return nil
@@ -63,7 +63,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)), errors.WithoutEvent())
 		}
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -1,16 +1,3 @@
-.root {
-  /** DEBT — remove color overrides with upgrade to product-download-page */
-  & :global(.g-tab-trigger.active) {
-    & :global(.inner) {
-      border-bottom-color: var(--black);
-    }
-  }
-
-  & a {
-    color: var(--brand-link) !important;
-  }
-}
-
 .logo {
   width: 140px;
 }

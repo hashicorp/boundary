@@ -57,4 +57,3 @@ type ManagedGroup interface {
 	GetAuthMethodId() string
 	GetVersion() uint32
 }
-

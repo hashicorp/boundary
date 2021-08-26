@@ -1,0 +1,28 @@
+---
+layout: docs
+page_title: Controller - Events - stderr Sink - Configuration
+description: |-
+  The stderr sink configures Boundary to send events to a stderr.
+---
+
+# `stderr` Sink
+
+The stderr sink configures Boundary to send events to a stderr.
+
+```hcl
+
+sink "stderr" = {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "hclog-text"
+}
+```
+
+## common parameters
+
+These parameters are shared across all sink types: [common sink parameters](/docs/configuration/events/common)
+
+## `stderr` parameters
+
+There are parameters are only valid for a `stderr` sink.

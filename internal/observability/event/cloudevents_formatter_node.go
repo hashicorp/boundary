@@ -11,17 +11,17 @@ import (
 	"github.com/hashicorp/go-bexpr"
 )
 
-// Node represents an eventlogger.Node which filters events based on allow and
+// cloudEventsFormatterFilter represents an eventlogger.cloudEventsFormatterFilter which filters events based on allow and
 // deny bexpr filters
-type Node struct {
+type cloudEventsFormatterFilter struct {
 	*cloudevents.FormatterFilter
 	allow []*filter
 	deny  []*filter
 }
 
-// NewCloudEventsNode creates a new filter node using the optional allow and deny filters
+// newCloudEventsFormatterFilter creates a new filter node using the optional allow and deny filters
 // provided. Support for WithAllow and WithDeny options.
-func NewCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Option) (*Node, error) {
+func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, opt ...Option) (*cloudEventsFormatterFilter, error) {
 	const op = "event.NewCloudEventsNode"
 	if source == nil {
 		return nil, fmt.Errorf("%s: missing source: %w", op, ErrInvalidParameter)
@@ -32,7 +32,7 @@ func NewCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Optio
 		return nil, fmt.Errorf("%s: invalid format '%s': %w", op, format, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	n := Node{
+	n := cloudEventsFormatterFilter{
 		FormatterFilter: &cloudevents.FormatterFilter{
 			Source: source,
 			Schema: opts.withSchema,
@@ -91,7 +91,7 @@ func newPredicate(allow, deny []*filter) func(ctx context.Context, ce interface{
 	}
 }
 
-var _ eventlogger.Node = &Node{}
+var _ eventlogger.Node = &cloudEventsFormatterFilter{}
 
 type filter struct {
 	raw  string

@@ -11,6 +11,7 @@ require (
 	github.com/bufbuild/buf v0.37.0
 	github.com/dhui/dktest v0.3.4
 	github.com/fatih/color v1.12.0
+	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
@@ -23,15 +24,15 @@ require (
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/go-bexpr v0.1.8
+	github.com/hashicorp/go-bexpr v0.1.9
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.3
+	github.com/hashicorp/go-kms-wrapping v0.6.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil v0.1.1
+	github.com/hashicorp/go-secure-stdlib/configutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1

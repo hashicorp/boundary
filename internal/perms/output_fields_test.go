@@ -248,6 +248,7 @@ func Test_ACLSelfOrDefault(t *testing.T) {
 				globals.DescriptionField:                 true,
 				globals.TypeField:                        true,
 				globals.IsPrimaryField:                   true,
+				globals.PrimaryAuthMethodIdField:         true,
 				globals.AuthorizedActionsField:           true,
 				globals.AuthorizedCollectionActionsField: true,
 			},

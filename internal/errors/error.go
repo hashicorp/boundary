@@ -107,7 +107,7 @@ func E(ctx context.Context, opt ...Option) error {
 				eventErr.Op = "unknown operation"
 			}
 		}
-		event.WriteError(ctx, event.Op(err.Op), eventErr)
+		event.WriteError(ctx, event.Op(eventErr.Op), eventErr)
 	}
 
 	return err
@@ -182,6 +182,7 @@ func WrapDeprecated(e error, op Op, opt ...Option) error {
 // and attempt to add a helpful error msg as well. If that's not possible, it
 // will return nil
 func Convert(e error) *Err {
+	ctx := context.TODO()
 	if e == nil {
 		return nil
 	}
@@ -196,24 +197,24 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return E(context.TODO(), WithoutEvent(), WithMsg(pqError.Message), WithWrap(EDeprecated(WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
+				return E(ctx, WithoutEvent(), WithMsg(pqError.Message), WithWrap(E(ctx, WithoutEvent(), WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return E(context.TODO(), WithoutEvent(), WithMsg(msg), WithWrap(EDeprecated(WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
+				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return E(context.TODO(), WithoutEvent(), WithMsg(msg), WithWrap(EDeprecated(WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
+				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
 			default:
-				return E(context.TODO(), WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
+				return E(ctx, WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
 			}
 		}
 		switch pqError.Code {
 		case "42P01":
-			return E(context.TODO(), WithoutEvent(), WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
 		case "42703":
-			return E(context.TODO(), WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
 		case "P0001":
-			return E(context.TODO(), WithoutEvent(), WithCode(Exception), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(Exception), WithMsg(pqError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

@@ -578,7 +578,7 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
-	if outputFields.Has(globals.PrimaryAuthMethodId) && in.GetPrimaryAuthMethodId() != "" {
+	if outputFields.Has(globals.PrimaryAuthMethodIdField) && in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
 	}
 

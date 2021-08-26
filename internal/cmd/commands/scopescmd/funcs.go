@@ -150,7 +150,7 @@ func printItemTable(result api.GenericResult) string {
 		nonAttributeMap["Description"] = item.Description
 	}
 	if item.PrimaryAuthMethodId != "" {
-		nonAttributeMap[flagPrimaryAuthMethodIdName] = item.PrimaryAuthMethodId
+		nonAttributeMap["Primary Auth Method ID"] = item.PrimaryAuthMethodId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)

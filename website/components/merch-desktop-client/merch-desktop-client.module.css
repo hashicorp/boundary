@@ -1,6 +1,6 @@
 .container {
   width: 100%;
-  border: 1px solid var(--gray-6);
+  border: 1px solid var(--gray-5);
   display: flex;
   justify-content: center;
   min-height: 193px;

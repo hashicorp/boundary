@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
-
 func init() {
 	if err := auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
 		panic(err)

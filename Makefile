@@ -155,6 +155,9 @@ website-start:
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
+test-sql:
+	$(MAKE) -C internal/db/sqltest/ test
+
 test: 
 	~/.go/bin/go test ./... -timeout 30m
 
@@ -164,7 +167,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.4.0
+VERSION?=0.5.1
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker

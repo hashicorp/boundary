@@ -11,7 +11,7 @@ const (
 
 type SinkType string // SinkType defines the type of sink in a config stanza (file, stderr)
 
-func (t SinkType) validate() error {
+func (t SinkType) Validate() error {
 	const op = "event.(SinkType).validate"
 	switch t {
 	case StderrSink, FileSink:

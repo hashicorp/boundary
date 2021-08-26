@@ -1,12 +1,12 @@
 import './style.css'
-import '@hashicorp/nextjs-scripts/lib/nprogress/style.css'
-import NProgress from '@hashicorp/nextjs-scripts/lib/nprogress'
-import createConsentManager from '@hashicorp/nextjs-scripts/lib/consent-manager'
-import useAnchorLinkAnalytics from '@hashicorp/nextjs-scripts/lib/anchor-link-analytics'
+import '@hashicorp/platform-util/nprogress/style.css'
+import NProgress from '@hashicorp/platform-util/nprogress'
+import createConsentManager from '@hashicorp/react-consent-manager/loader'
+import useAnchorLinkAnalytics from '@hashicorp/platform-util/anchor-link-analytics'
 import HashiStackMenu from '@hashicorp/react-hashi-stack-menu'
 import Router from 'next/router'
 import HashiHead from '@hashicorp/react-head'
-import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
+import { ErrorBoundary } from '@hashicorp/platform-runtime-error-monitoring'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
 import Error from './_error'
@@ -38,7 +38,7 @@ export default function App({ Component, pageProps }) {
         <meta name="og:description" property="og:title" content={description} />
       </HashiHead>
       {ALERT_BANNER_ACTIVE && (
-        <AlertBanner {...alertBannerData} product="boundary" />
+        <AlertBanner {...alertBannerData} product="boundary" hideOnMobile />
       )}
       <HashiStackMenu />
       <ProductSubnav />

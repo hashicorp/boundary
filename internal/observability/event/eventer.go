@@ -203,7 +203,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
-		switch s.SinkType {
+		switch s.Type {
 		case StderrSink:
 			sinkNode = &writer.Sink{
 				Format: string(s.Format),
@@ -214,23 +214,27 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
-		default:
-			if _, found := allSinkFilenames[s.Path+s.FileName]; found {
-				return nil, fmt.Errorf("%s: duplicate file sink: %s %s", op, s.Path, s.FileName)
+		case FileSink:
+			fsc := s.FileConfig
+			if _, found := allSinkFilenames[fsc.Path+fsc.FileName]; found {
+				return nil, fmt.Errorf("%s: duplicate file sink: %s %s: %w", op, fsc.Path, fsc.FileName, ErrInvalidParameter)
 			}
+			allSinkFilenames[fsc.Path+fsc.FileName] = true
 			sinkNode = &eventlogger.FileSink{
 				Format:      string(s.Format),
-				Path:        s.Path,
-				FileName:    s.FileName,
-				MaxBytes:    s.RotateBytes,
-				MaxDuration: s.RotateDuration,
-				MaxFiles:    s.RotateMaxFiles,
+				Path:        fsc.Path,
+				FileName:    fsc.FileName,
+				MaxBytes:    fsc.RotateBytes,
+				MaxDuration: fsc.RotateDuration,
+				MaxFiles:    fsc.RotateMaxFiles,
 			}
-			id, err := NewId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
+			id, err := NewId(fmt.Sprintf("file_%s_%s_", fsc.Path, fsc.FileName))
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
+		default:
+			return nil, fmt.Errorf("%s: unknown sink type %s", op, s.Type)
 		}
 		err = e.broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
@@ -417,29 +421,47 @@ func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, even
 	if serverName == "" {
 		return "", nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
-	id, err := NewId("cloudevents")
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
-	}
-	var sourceUrl *url.URL
-	switch {
-	case c.EventSourceUrl != "":
-		sourceUrl, err = url.Parse(c.EventSourceUrl)
+	var fmtId eventlogger.NodeID
+	var fmtNode eventlogger.Node
+	switch c.Format {
+	case TextHclogSinkFormat, JSONHclogSinkFormat:
+		id, err := NewId(string(c.Format))
 		if err != nil {
-			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
 		}
+		fmtId = eventlogger.NodeID(id)
+
+		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
+		}
+
 	default:
-		s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
-		sourceUrl, err = url.Parse(s)
+		id, err := NewId("cloudevents")
 		if err != nil {
-			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+			return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+		}
+		fmtId = eventlogger.NodeID(id)
+		var sourceUrl *url.URL
+		switch {
+		case c.EventSourceUrl != "":
+			sourceUrl, err = url.Parse(c.EventSourceUrl)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+			}
+		default:
+			s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
+			sourceUrl, err = url.Parse(s)
+			if err != nil {
+				return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+			}
+		}
+		fmtNode, err = newCloudEventsFormatterFilter(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
-	fmtNode, err := NewCloudEventsNode(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: %w", op, err)
-	}
-	return eventlogger.NodeID(id), fmtNode, nil
+	return fmtId, fmtNode, nil
 }
 
 func DefaultEventerConfig() *EventerConfig {
@@ -456,7 +478,7 @@ func DefaultSink() SinkConfig {
 		Name:       "default",
 		EventTypes: []Type{EveryType},
 		Format:     JSONSinkFormat,
-		SinkType:   StderrSink,
+		Type:       StderrSink,
 	}
 }
 
@@ -592,7 +614,7 @@ func (e *Eventer) StandardWriter(ctx context.Context, typ Type) (io.Writer, erro
 	if typ == "" {
 		return nil, fmt.Errorf("%s: missing type: %w", op, ErrInvalidParameter)
 	}
-	if err := typ.validate(); err != nil {
+	if err := typ.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	newEventer := *e

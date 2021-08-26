@@ -1,0 +1,47 @@
+---
+layout: docs
+page_title: Controller/Worker - Events - File Sink - Configuration
+description: |-
+  The file sink configures Boundary to send events to a file.
+---
+
+# `file` Sink
+
+The file sink configures Boundary to send events to a file.
+
+```hcl
+sink = {
+    name = "obs-sink"
+    description = "Observations sent to a file"
+    event_types = ["observation"]
+    format = "cloudevents-json"
+    file {
+      file_name = "file-name"
+    }
+  }
+```
+
+The `sink` stanza may be specified more than once to make Boundary send events
+to multiple sinks; however, each file sink must have a unique `path` +
+`file_name`.
+
+
+## common parameters
+
+These parameters are shared across all sink types: [common sink parameters](/docs/configuration/events/common)
+
+## `file` parameters
+
+These parameters are only valid for a `file` sink.
+
+- `path` - Specifies the file path for the sink.
+
+- `file_name` - Specifies the file name for the sink.
+
+- `rotate_bytes` - Specifies the number of bytes that should trigger rotation of
+  a file sink.
+
+- `rotate_duration` - Specifies how often a file sink should be rotated.
+
+- `rotate_max_files` - Specifies how many historical rotated files should be kept
+  for a file sink.

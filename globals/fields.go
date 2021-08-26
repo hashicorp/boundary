@@ -30,7 +30,7 @@ const (
 	GrantScopeIdField                    = "grant_scope_id"
 	GrantsField                          = "grants"
 	GrantStringsField                    = "grant_strings"
-	PrimaryAuthMethodId                  = "primary_auth_method_id"
+	PrimaryAuthMethodIdField             = "primary_auth_method_id"
 	TargetIdField                        = "target_id"
 	HostIdField                          = "host_id"
 	HostSetIdField                       = "host_set_id"

@@ -113,7 +113,7 @@ func Test_InitSysEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StderrSink,
+							Type:       StderrSink,
 						},
 					},
 				},
@@ -354,6 +354,8 @@ func Test_NewEventer(t *testing.T) {
 
 	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t), testWithSysSink(t))
 
+	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", testWithSinkFormat(t, TextHclogSinkFormat))
+
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
@@ -395,6 +397,29 @@ func Test_NewEventer(t *testing.T) {
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
+			name: "dup-sink-filename",
+			config: func() EventerConfig {
+				dupFileConfig := TestEventerConfig(t, "dup-sink-filename")
+				dupFileConfig.EventerConfig.Sinks = append(dupFileConfig.EventerConfig.Sinks,
+					SinkConfig{
+						Name:       "err-file-sink",
+						Type:       FileSink,
+						EventTypes: []Type{ErrorType},
+						Format:     JSONSinkFormat,
+						FileConfig: &FileSinkTypeConfig{
+							Path:     "./",
+							FileName: dupFileConfig.ErrorEvents.Name(),
+						},
+					},
+				)
+				return dupFileConfig.EventerConfig
+			}(),
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "dup-sink-filename",
+			wantErrIs:  ErrInvalidParameter,
+		},
+		{
 			name:       "success-with-default-config",
 			config:     EventerConfig{},
 			logger:     testLogger,
@@ -408,7 +433,7 @@ func Test_NewEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StderrSink,
+							Type:       StderrSink,
 						},
 					},
 				},
@@ -521,6 +546,46 @@ func Test_NewEventer(t *testing.T) {
 				"system":      3,
 				"observation": 3,
 				"audit":       3,
+			},
+		},
+		{
+			name:       "testSetup-with-hclog",
+			config:     testHclogSetup.EventerConfig,
+			logger:     testLogger,
+			lock:       testLock,
+			serverName: "testSetup",
+			want: &Eventer{
+				logger: testLogger,
+				conf:   testHclogSetup.EventerConfig,
+			},
+			wantRegistered: []string{
+				"hclog-text",        // stderr
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
+				"hclog-text",        // every-type-file-sync
+				"tmp-all-events",    // every-type-file-sync
+				"gated-observation", // every-type-file-sync
+				"gated-audit",       // every-type-file-sync
+				"hclog-text",        // error-file-sink
+				"tmp-errors",        // error-file-sink
+			},
+			wantPipelines: []string{
+				"audit",       // every-type-file-sync
+				"audit",       // stderr
+				"observation", // every-type-file-sync
+				"observation", // stderr
+				"error",       // every-type-file-sync
+				"error",       // stderr
+				"error",       // error-file-sink
+				"system",      // stderr
+				"system",      // stderr
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"error":       3,
+				"system":      2,
+				"observation": 2,
+				"audit":       2,
 			},
 		},
 	}

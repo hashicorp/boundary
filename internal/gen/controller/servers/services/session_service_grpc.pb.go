@@ -25,7 +25,7 @@ type SessionServiceClient interface {
 	ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error)
 	// CancelSession allows a worker to request that the controller cancel a session.
 	CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error)
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	AuthorizeConnection(ctx context.Context, in *AuthorizeConnectionRequest, opts ...grpc.CallOption) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
 	ConnectConnection(ctx context.Context, in *ConnectConnectionRequest, opts ...grpc.CallOption) (*ConnectConnectionResponse, error)
@@ -106,7 +106,7 @@ type SessionServiceServer interface {
 	ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error)
 	// CancelSession allows a worker to request that the controller cancel a session.
 	CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
 	ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error)

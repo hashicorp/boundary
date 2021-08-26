@@ -106,7 +106,6 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 				if err != nil {
 					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing termination of completed sessions"))
 				} else if terminationCount > 0 {
-					event.WriteSysEvent(cancelCtx, op, "terminating completed sessions successful", "sessions_terminated", terminationCount)
 				}
 			}
 			timer.Reset(getRandomInterval())

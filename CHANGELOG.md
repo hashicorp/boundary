@@ -4,6 +4,25 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.5.1 (2021/08/16)
+
+### New and Improved
+
+* Data Warehouse: Add OIDC auth method and accounts to the database warehouse.
+  Four new columns have been added to the `wh_user_dimension` table:
+  `auth_method_external_id`, `auth_account_external_id`,
+  `auth_account_full_name`, and `auth_account_email`.
+  ([PR](https://github.com/hashicorp/boundary/pull/1455))
+
+### Bug Fixes
+
+* events: Fix panic when using the `hclog-text` event's format.
+  ([PR](https://github.com/hashicorp/boundary/pull/1456))
+* oidc managed groups: Allow colons in selector paths
+  ([PR](https://github.com/hashicorp/boundary/pull/1453))
+
+## 0.5.0 (2021/08/02)
+
 ### Deprecations/Changes
 
 * With respect to Target resources, two naming changes are taking place. Note
@@ -83,6 +102,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 
   PRs: 
+    [hclog json,text formats](https://github.com/hashicorp/boundary/pull/1440),
     [log adapters](https://github.com/hashicorp/boundary/pull/1434),
     [unneeded log deps](https://github.com/hashicorp/boundary/pull/1433),
     [update eventlogger](https://github.com/hashicorp/boundary/pull/1411),
@@ -102,6 +122,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   well as the error message)
   ([issue](https://github.com/hashicorp/boundary/issues/1305),
   [PR](https://github.com/hashicorp/boundary/pull/1384))
+* server: Fix panic on worker startup failure when the server was not also
+  configured as a controller
+  ([PR](https://github.com/hashicorp/boundary/pull/1432))
 
 ### New and Improved
 
