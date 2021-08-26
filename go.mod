@@ -6,6 +6,8 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+replace github.com/hashicorp/boundary/plugins => ./plugins
+
 require (
 	github.com/armon/go-metrics v0.3.9
 	github.com/bufbuild/buf v0.37.0

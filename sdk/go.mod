@@ -2,6 +2,8 @@ module github.com/hashicorp/boundary/sdk
 
 go 1.16
 
+replace github.com/hashicorp/boundary/plugins => ../plugins
+
 require (
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820135956-a636a4d9cd5a
