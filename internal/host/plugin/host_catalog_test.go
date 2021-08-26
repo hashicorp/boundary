@@ -272,14 +272,13 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := TestPlugin(t, conn, "delete-plugin")
-		//cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
-		_ = prj
+		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)
 		require.NoError(t, err)
 		require.Equal(t, 1, deleted)
 
-		//err = w.LookupById(ctx, cat)
+		err = w.LookupById(ctx, cat)
 		require.Error(t, err)
 		assert.True(t, errors.IsNotFoundError(err))
 	})

@@ -59,9 +59,8 @@ begin;
     return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
-  comment on function insert_plugin_subtype() is
-    'insert_plugin_subtype() inserts sub type name into the base type plugin table';
-
+comment on function delete_plugin_subtype is
+  'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
 
   /*
     ┌──────────────────┐         ┌───────────────────┐

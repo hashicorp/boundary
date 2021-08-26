@@ -121,6 +121,24 @@ func TestPlugin_Create(t *testing.T) {
 	}
 }
 
+func TestPlugin_Update(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	w := db.New(conn)
+	ctx := context.Background()
+	plg := TestPlugin(t, conn, "delete-plugin")
+	assert.Equal(t, uint32(1), plg.Version)
+
+	plg.Name = "New"
+	plg.Description = "Description"
+	rowCount, err := w.Update(ctx, plg, []string{"Name", "Description"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, rowCount)
+
+	assert.Equal(t, uint32(2), plg.Version)
+	assert.Equal(t, "New", plg.Name)
+	assert.Equal(t, "Description", plg.Description)
+}
+
 func TestPlugin_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)

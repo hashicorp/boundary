@@ -24,11 +24,7 @@ begin;
   └──────────────────┘
 */
   create table host_plugin (
-    public_id wt_plugin_id primary key
-      constraint host_plugin_fkey
-        references plugin(public_id)
-        on delete cascade
-        on update cascade,
+    public_id wt_plugin_id primary key,
     scope_id wt_scope_id,
     name wt_name,
     description text,
@@ -66,7 +62,7 @@ begin;
     for each row execute procedure update_plugin_subtype();
 
   create trigger delete_plugin_subtype after delete on host_plugin
-    for each row execute procedure insert_plugin_subtype();
+    for each row execute procedure delete_plugin_subtype();
 
   insert into oplog_ticket (name, version)
   values
