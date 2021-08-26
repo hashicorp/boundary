@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 )
 
 type MaskManager map[string]string

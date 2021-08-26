@@ -8,7 +8,7 @@ package store
 
 import (
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
-	_ "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	_ "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
