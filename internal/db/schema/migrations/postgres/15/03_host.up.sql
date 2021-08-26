@@ -57,7 +57,6 @@ begin;
   comment on function update_host_catalog_subtype() is
     'update_host_catalog_subtype() will update base host catalog type name column with new values from sub type';
 
-
   create trigger update_host_catalog_subtype before update on static_host_catalog
     for each row execute procedure update_host_catalog_subtype();
 

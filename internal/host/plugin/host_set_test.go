@@ -15,7 +15,7 @@ func TestHostSet_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 	cat2 := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 

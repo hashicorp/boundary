@@ -14,7 +14,7 @@ begin;
                             ┌─────────────────────┐
                             │ plugin_host_catalog │
                             ├─────────────────────┤      ┌───────────────────────────┐
-    ┌────────────────┐      │public_id (pk)       │      │plugin_host_catalog_secrets│
+    ┌────────────────┐      │public_id (pk)       │      │plugin_host_catalog_secret │
     │host_catalog    │      │plugin_id (fk)       │      ├───────────────────────────┤
     ├────────────────┤      │scope_id (fk)        │      │host_catalog_id (pk, fk)   │
     │public_id       │┼┼──○┼│name                 │┼┼──○┼│secret                     │
@@ -38,19 +38,18 @@ begin;
 */
 
   create table plugin_host_catalog (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null
-      references iam_scope (public_id)
-      on delete cascade
-      on update cascade,
-    plugin_id wt_scope_id
-      not null
-      references host_plugin (public_id)
-      on delete cascade
-      on update cascade,
-    name text,
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
+      constraint scope_fkey
+        references iam_scope (public_id)
+        on delete cascade
+        on update cascade,
+    plugin_id wt_plugin_id not null
+      constraint host_plugin_fkey
+        references host_plugin (public_id)
+        on delete cascade
+        on update cascade,
+    name wt_name,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -73,7 +72,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on plugin_host_catalog
-    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
+    for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
   create trigger insert_host_catalog_subtype before insert on plugin_host_catalog
     for each row execute procedure insert_host_catalog_subtype();
@@ -113,10 +112,11 @@ begin;
   create table plugin_host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
-      references plugin_host_catalog (public_id)
-      on delete cascade
-      on update cascade,
-    name text,
+      constraint host_catalog_fkey
+        references plugin_host_catalog (public_id)
+        on delete cascade
+        on update cascade,
+    name wt_name,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,

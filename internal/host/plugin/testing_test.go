@@ -13,7 +13,7 @@ func Test_TestPlugins(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 }
@@ -26,7 +26,7 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(proj)
 	assert.NotEmpty(proj.GetPublicId())
 
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -46,7 +46,7 @@ func Test_TestSets(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 

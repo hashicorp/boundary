@@ -21,7 +21,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	new := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 	tests := []struct {
@@ -86,7 +86,7 @@ func TestPluginHostSet_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 	sets := TestSets(t, conn, cat.GetPublicId(), 1)
 
@@ -150,11 +150,9 @@ func TestHostPlugin_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
-	wrapper := db.TestWrapper(t)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 
 	newPlugin := plg
 
@@ -173,15 +171,6 @@ func TestHostPlugin_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"PublicId"},
 		},
 		{
-			name: "scope id",
-			update: func() *Plugin {
-				c := newPlugin.testClonePlugin()
-				c.ScopeId = prj.PublicId
-				return c
-			}(),
-			fieldMask: []string{"ScopeId"},
-		},
-		{
 			name: "create time",
 			update: func() *Plugin {
 				c := newPlugin.testClonePlugin()
@@ -191,22 +180,13 @@ func TestHostPlugin_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "name",
+			name: "pluginName",
 			update: func() *Plugin {
 				c := newPlugin.testClonePlugin()
-				c.Name = "different name"
+				c.PluginName = "different pluginName"
 				return c
 			}(),
-			fieldMask: []string{"Name"},
-		},
-		{
-			name: "id prefix",
-			update: func() *Plugin {
-				c := newPlugin.testClonePlugin()
-				c.IdPrefix = "different prefix"
-				return c
-			}(),
-			fieldMask: []string{"IdPrefix"},
+			fieldMask: []string{"PluginName"},
 		},
 	}
 	for _, tt := range tests {

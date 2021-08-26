@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlugin(t *testing.T, conn *gorm.DB, name, prefix string) *Plugin {
+func TestPlugin(t *testing.T, conn *gorm.DB, name string) *Plugin {
 	t.Helper()
-	p := NewPlugin(name, prefix)
+	p := NewPlugin(name)
 	id, err := newPluginId()
 	require.NoError(t, err)
 	p.PublicId = id

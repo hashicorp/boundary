@@ -20,7 +20,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 
 	type args struct {
 		pluginId string
@@ -173,8 +173,8 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	_, prj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test1", "test1")
-	plg2 := TestPlugin(t, conn, "test2", "test2")
+	plg := TestPlugin(t, conn, "test1")
+	plg2 := TestPlugin(t, conn, "test2")
 
 	got, err := NewHostCatalog(context.Background(), plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
@@ -182,19 +182,19 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	require.NoError(t, err)
 	w.Create(ctx, got)
 
-	// Can't create another resource with the same name in the same scope
+	// Can't create another resource with the same pluginName in the same scope
 	got.PublicId, err = newHostCatalogId()
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can't create another resource with same name in same scope even for different plugin
+	// Can't create another resource with same pluginName in same scope even for different plugin
 	got, err = NewHostCatalog(context.Background(), plg2.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId()
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can create another resource with same name in different scope even for same plugin
+	// Can create another resource with same pluginName in different scope even for same plugin
 	got, err = NewHostCatalog(context.Background(), plg.GetPublicId(), prj2.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId()
@@ -206,7 +206,7 @@ func TestHostCatalog_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test", "test")
+	plg := TestPlugin(t, conn, "test")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	ignoredCat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	_ = ignoredCat
@@ -257,7 +257,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-scope", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := TestPlugin(t, conn, "delete-scope", "delete-scope")
+		plg := TestPlugin(t, conn, "delete-scope")
 		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
@@ -271,14 +271,15 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := TestPlugin(t, conn, "delete-plugin", "delete-plugin")
-		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		plg := TestPlugin(t, conn, "delete-plugin")
+		//cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		_ = prj
 
 		deleted, err := w.Delete(ctx, plg)
 		require.NoError(t, err)
 		require.Equal(t, 1, deleted)
 
-		err = w.LookupById(ctx, cat)
+		//err = w.LookupById(ctx, cat)
 		require.Error(t, err)
 		assert.True(t, errors.IsNotFoundError(err))
 	})
