@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

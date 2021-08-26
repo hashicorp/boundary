@@ -3,7 +3,7 @@ package controller.custom_options.v1;
 
 import "google/protobuf/descriptor.proto";
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/protooptions;protooptions";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions;protooptions";
 
 extend google.protobuf.FieldOptions {
 	// mask_mapping is an option which tags a field with the expected field mask
