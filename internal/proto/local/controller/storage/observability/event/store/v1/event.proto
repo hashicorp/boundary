@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package controller.storage.observability.event.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/observability/event/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+
+message EventConfig{
+    // public_id is used to access EventConfig 
+    // via an API
+    // @inject_tag: `gorm:"primary_key"`
+    string public_id = 10;
+
+    // scope_id for EventConfig
+    // only global scope is supported
+    // @inject_tag: `gorm:"not_null"`
+    string scope_id = 20;
+
+    // name is the optional friendly name
+    // used to access EventConfig via an API
+    // must be unique to the sscope_id
+    // @inject_tag: `gorm:"default:null"`
+    string name = 30
+      [(custom_options.v1.mask_mapping) = { this: "name" that: "name" }];
+
+    // description of the EventConfig
+    // @inject_tag: `gorm:"default:null"`
+    string description = 40 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
+
+    // create_time from the RDBMS
+    // @inject_tag: `gorm:"default:current_timestamp"`
+    timestamp.v1.Timestamp create_time = 50;
+
+    // update_time from the RDBMS
+    // @inject_tag: `gorm:"default:current_timestamp"`
+    timestamp.v1.Timestamp update_time = 60;
+
+    // version allows optimistic locking of the EventConfig when modifying the
+    // EventConfig
+    // @inject_tag: `gorm:"default:null"`
+    uint32 version = 70;
+}
+
+message EventTypeEnabled{
+  // config_id is sued to access
+  // EventTypeEnabled via an API
+  // @inject_tag: `gorm:"primary_key"`
+  string config_id = 10;
+
+  // event_type is an enum from the event_type_enm table
+  // @inject_tag: `gorm:"primary_key;column:event_type_name"`
+  string event_type = 20;
+}
+
+message EventSink{
+    // public_id is used to access EventSink 
+    // via an API
+    // @inject_tag: `gorm:"primary_key"`
+    string public_id = 10;
+
+    // config_id is used to reference 
+    // event_config public_id
+    // @inject_tag: `gorm:"primary_key"`
+    string config_id = 20; 
+
+}
+
+message EventFileSink {
+    // public_id is used to access EventFileSink 
+    // via an API
+    // @inject_tag: `gorm:"primary_key"`
+    string public_id = 10;
+
+    // config_id is used to reference
+    // event_sink config_id
+    // @inject_tag: `gorm:"not_null"`
+    string config_id = 20;
+
+    // event_type is an enum from the event_type_enm table
+    // @inject_tag: `gorm:"primary_key;column:event_type_name"`
+    string event_type = 30;
+
+    // format_type is an enum from the event_format_type_enm table
+    // @inject_tag: `gorm:"primary_key;column:event_format_type_name"`
+    string format_type = 40;
+
+    // path is the path the sink will
+    // write to
+    // @inject_tag: `gorm:"not_null"`
+    string path = 70;
+
+    // file_name is the name of the file_name
+    // the sink will write to
+    // file_name and path must be unique
+    // @inject_tag: `gorm:"not_null"`
+    string file_name = 80;
+
+    // rotate_bytes is when the file will
+    // be rotated
+    // @inject_tag: `gorm:"deffalut:null"`
+    int32 rotate_bytes = 90;
+
+    // rotate_duration is when the file
+    // will be rotated
+    // @inject_tag: `gorm:"deffalut:null"`
+    int32 rotate_duration = 100;
+
+    // rotate_max_files is the maximum
+    // files
+    // @inject_tag: `gorm:"deffalut:null"`
+    int32 rotate_max_files = 110;
+}
+
+message EventStdErrSink {
+    // public_id is used to access EventFileSink 
+    // via an API
+    // @inject_tag: `gorm:"primary_key"`
+    string public_id = 10;
+
+    // config_id is used to reference
+    // event_sink config_id
+    // @inject_tag: `gorm:"not_null"`
+    string config_id = 20;
+
+    // event_type is an enum from the event_type_enm table
+    // @inject_tag: `gorm:"primary_key;column:event_type_name"`
+    string event_type = 30;
+
+    // format_type is an enum from the event_format_type_enm table
+    // @inject_tag: `gorm:"primary_key;column:event_format_type_name"`
+    string format_type = 40;
+}
+
+message EventFilter {
+  //public_id is used to access EventFilter
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  //sink_id is used to reference
+  //event_sync public_id
+  // @inject_tag: `gorm:"not_null"`
+  string sink_id = 20;
+
+  //filter_type is an enum from the 
+  // event_filter_type_enm table
+  // @inject_tag: `gorm:"primary_key;column:event_filter_type_name"`
+  string filter_type = 30;
+
+  //filter is the go-bexpr filter
+  //@inject_tag: `gorm:"default:null"`
+  string filter = 40 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "attributes.filter" }];
+}

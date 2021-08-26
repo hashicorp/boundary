@@ -136,6 +136,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/observability/event/store/event.pb.go
+
 
 	@rm -R ${TMP_DIR}
 
