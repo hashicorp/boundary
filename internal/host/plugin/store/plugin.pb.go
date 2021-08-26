@@ -29,7 +29,7 @@ type Plugin struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.

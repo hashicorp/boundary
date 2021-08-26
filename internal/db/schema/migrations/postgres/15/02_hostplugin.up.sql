@@ -14,7 +14,7 @@ begin;
             ┼                            ┼
   ┌──────────────────┐                  ╱│╲
   │   host_plugin    │       ┌──────────────────────┐
-  ├──────────────────┤       │    plugin_binary     │
+  ├──────────────────┤       │  plugin_executable   │
   │public_id (pk)    │       ├──────────────────────┤
   │scope_id (fk)     │       │version_id (pk, fk)   │
   │name              │       │operating_system (pk) │

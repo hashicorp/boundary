@@ -8,7 +8,7 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
 
 message Plugin {
-  // public_is is a surrogate key suitable for use in a public API.
+  // public_id is a surrogate key suitable for use in a public API.
   // @inject_tag: `gorm:"primary_key"`
   string public_id = 10;
 

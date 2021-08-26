@@ -78,7 +78,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	}
 }
 
-func TestPluginHostSet_ImmutableFields(t *testing.T) {
+func TestHostSet_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)

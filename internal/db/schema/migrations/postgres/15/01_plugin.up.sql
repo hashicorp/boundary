@@ -75,14 +75,14 @@ comment on function delete_plugin_subtype is
                                            │
                                            ┼
                                           ╱│╲
-                                 ┌───────────────────┐
-                                 │ plugin_executable │
-                                 ├───────────────────┤
-                                 │version_id (pk, fk)│
-                                 │os (pk)            │
-                                 │architecture (pk)  │
-                                 │executable         │
-                                 └───────────────────┘
+                               ┌──────────────────────┐
+                               │  plugin_executable   │
+                               ├──────────────────────┤
+                               │version_id (pk, fk)   │
+                               │operating_system (pk) │
+                               │architecture (pk)     │
+                               │executable            │
+                               └──────────────────────┘
    */
   create table plugin_version (
     public_id wt_public_id primary key,
@@ -109,14 +109,14 @@ comment on function delete_plugin_subtype is
 
  -- Values retrieved by using $ go tool dist list | cut -d / -f1 | uniq
   create table plugin_operating_system_enm (
-    string text not null primary key
+    name text not null primary key
       constraint only_predefined_operating_systems_allowed
-      check(string in ('unknown', 'aix', 'android', 'darwin', 'dragonfly',
+      check(name in ('unknown', 'aix', 'android', 'darwin', 'dragonfly',
                        'freebsd', 'illumos', 'ios', 'js', 'linux', 'netbsd',
                        'openbsd', 'plan9', 'solaris', 'windows'))
   );
 
-  insert into plugin_operating_system_enm (string)
+  insert into plugin_operating_system_enm (name)
   values
     ('unknown'),
     ('aix'),
@@ -139,18 +139,18 @@ comment on function delete_plugin_subtype is
     immutable_columns
     before
       update on plugin_operating_system_enm
-    for each row execute procedure immutable_columns('string');
+    for each row execute procedure immutable_columns('name');
 
   -- Values retrieved by using $ go tool dist list | cut -d / -f2 | sort | uniq
   create table plugin_operating_architecture_enm (
-    string text not null primary key
+    name text not null primary key
       constraint only_predefined_architectures_allowed
-        check(string in ('unknown', '386', 'amd64', 'arm', 'arm64', 'mips',
+        check(name in ('unknown', '386', 'amd64', 'arm', 'arm64', 'mips',
                          'mips64', 'mips64le', 'mipsle', 'ppc64', 'ppc64le',
                          'riscv64', 's390x', 'wasm'))
   );
 
-  insert into plugin_operating_architecture_enm (string)
+  insert into plugin_operating_architecture_enm (name)
   values
     ('unknown'),
     ('386'),
@@ -172,7 +172,7 @@ comment on function delete_plugin_subtype is
     immutable_columns
     before
       update on plugin_operating_architecture_enm
-    for each row execute procedure immutable_columns('string');
+    for each row execute procedure immutable_columns('name');
 
   create table plugin_executable (
     version_id wt_public_id
@@ -180,11 +180,11 @@ comment on function delete_plugin_subtype is
         on delete cascade
         on update cascade,
     operating_system text not null
-      references plugin_operating_system_enm(string)
+      references plugin_operating_system_enm(name)
       on delete restrict
       on update cascade,
     architecture text not null
-      references plugin_operating_architecture_enm(string)
+      references plugin_operating_architecture_enm(name)
         on delete restrict
         on update cascade,
     executable bytea not null

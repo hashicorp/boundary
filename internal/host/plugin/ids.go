@@ -16,10 +16,10 @@ func init() {
 // PublicId prefixes for the resources in the plugin package.
 const (
 	// TODO: Pull these out of being constants and have them derivable at run time.
-	HostCatalogPrefix = "hcplg"
-	HostSetPrefix     = "hsplg"
+	HostCatalogPrefix = "hcpi"
+	HostSetPrefix     = "hspi"
 
-	PluginPrefix = "plgh"
+	PluginPrefix = "pih"
 
 	Subtype = subtypes.Subtype("plugin")
 )
