@@ -28,7 +28,7 @@ cleangen:
 	@rm -f ${GENERATED_CODE}
 
 build-kms-plugins-ifne-dev:
-ifeq (,$(wildcard ${THIS_DIR}sdk/kms/assets/${GOOS}_${GOARCH}/gkw-aead ${THIS_DIR}sdk/kms/assets/${GOOS}_${GOARCH}/gkw-aead.gz))
+ifeq (,$(wildcard ${THIS_DIR}plugins/kms/assets/${GOOS}_${GOARCH}/gkw-aead ${THIS_DIR}plugins/kms/assets/${GOOS}_${GOARCH}/gkw-aead.gz))
 	@echo "==> No KMS plugins found, building..."
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
 else

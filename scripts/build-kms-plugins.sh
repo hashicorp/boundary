@@ -15,8 +15,8 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that directory
 cd "$DIR"
 
-PLUGINS_DIR="${DIR}/sdk/kms/plugins"
-ASSETS_DIR="${DIR}/sdk/kms/assets"
+PLUGINS_DIR="${DIR}/plugins/kms/mains"
+ASSETS_DIR="${DIR}/plugins/kms/assets"
 
 # Set build tags
 BUILD_TAGS="${BUILD_TAGS:-"boundary"}"
@@ -45,8 +45,8 @@ esac
 
 # Delete the old dir
 echo "==> Removing old assets directory..."
-rm -f "${ASSETS_DIR}/*"
-mkdir -p "${ASSETS_DIR}/"
+rm -rf ${ASSETS_DIR}/
+mkdir -p ${ASSETS_DIR}/
 
 # Build!
 # If GOX_PARALLEL_BUILDS is set, it will be used to add a "-parallel=${GOX_PARALLEL_BUILDS}" gox parameter

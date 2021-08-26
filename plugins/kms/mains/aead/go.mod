@@ -1,4 +1,4 @@
-module github.com/hashicorp/boundary/sdk/kms/plugins/aead
+module github.com/hashicorp/boundary/plugins/kms/mains/aead
 
 go 1.16
 
