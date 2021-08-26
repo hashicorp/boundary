@@ -119,6 +119,7 @@ main
 /pkg/
 /bin/
 update-ui-assets*
+/plugins/kms/assets/
 
 # Test config file
 test*.hcl

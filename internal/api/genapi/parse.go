@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 
 	"github.com/iancoleman/strcase"
