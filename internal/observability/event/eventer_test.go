@@ -108,13 +108,13 @@ func Test_InitSysEventer(t *testing.T) {
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
-					Sinks: []SinkConfig{
 					Sinks: []*SinkConfig{
 						{
-							Name:       "default",
-							EventTypes: []Type{EveryType},
-							Format:     JSONSinkFormat,
-							Type:       StderrSink,
+							Name:        "default",
+							EventTypes:  []Type{EveryType},
+							Format:      JSONSinkFormat,
+							Type:        StderrSink,
+							AuditConfig: DefaultAuditConfig(),
 						},
 					},
 				},
@@ -363,19 +363,110 @@ func Test_NewEventer(t *testing.T) {
 		Name:  "test",
 	})
 
+	twrapper := testWrapper(t)
+
 	tests := []struct {
-		name           string
-		config         EventerConfig
-		opts           []Option
-		logger         hclog.Logger
-		lock           *sync.Mutex
-		serverName     string
-		want           *Eventer
-		wantRegistered []string
-		wantPipelines  []string
-		wantThresholds map[eventlogger.EventType]int
-		wantErrIs      error
+		name            string
+		config          EventerConfig
+		opts            []Option
+		logger          hclog.Logger
+		lock            *sync.Mutex
+		serverName      string
+		want            *Eventer
+		wantRegistered  []string
+		wantPipelines   []string
+		wantThresholds  map[eventlogger.EventType]int
+		wantErrIs       error
+		wantErrContains string
 	}{
+		{
+			name: "missing-require-wrapper",
+			config: func() EventerConfig {
+				cfg := EventerConfig{
+					AuditEnabled: true,
+					Sinks: []*SinkConfig{
+						{
+							Name:       "test",
+							EventTypes: []Type{AuditType},
+							Type:       StderrSink,
+							Format:     JSONHclogSinkFormat,
+							AuditConfig: &AuditConfig{
+								FilterOverrides: AuditFilterOperations{
+									SensitiveClassification: EncryptOperation,
+								},
+							},
+						},
+					},
+				}
+				return cfg
+			}(),
+			lock:            testLock,
+			logger:          testLogger,
+			serverName:      "missing-required-wrapper",
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing wrapper and encrypt filter operation requires a wrapper",
+		},
+		{
+			name: "valid-audit-config-with-wrapper",
+			config: func() EventerConfig {
+				cfg := EventerConfig{
+					AuditEnabled: true,
+					Sinks: []*SinkConfig{
+						{
+							Name:       "test",
+							EventTypes: []Type{AuditType},
+							Type:       StderrSink,
+							Format:     JSONSinkFormat,
+							AuditConfig: &AuditConfig{
+								FilterOverrides: AuditFilterOperations{
+									SensitiveClassification: EncryptOperation,
+								},
+							},
+						},
+					},
+				}
+				return cfg
+			}(),
+			opts:       []Option{WithAuditWrapper(twrapper)},
+			lock:       testLock,
+			logger:     testLogger,
+			serverName: "valid-audit-config-with-wrapper",
+			want: &Eventer{
+				logger: testLogger,
+				conf: EventerConfig{
+					AuditEnabled: true,
+					Sinks: []*SinkConfig{
+						{
+							Name:       "test",
+							EventTypes: []Type{AuditType},
+							Format:     JSONSinkFormat,
+							Type:       StderrSink,
+							AuditConfig: &AuditConfig{
+								wrapper: twrapper,
+								FilterOverrides: AuditFilterOperations{
+									SensitiveClassification: EncryptOperation,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRegistered: []string{
+				"cloudevents",   // fmt for everything
+				"stderr",        // stderr
+				"gated-audit",   // stderr
+				"encrypt-audit", // stderr
+			},
+			wantPipelines: []string{
+				"audit", // stderr
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"error":       0,
+				"system":      0,
+				"observation": 0,
+				"audit":       1,
+			},
+		},
 		{
 			name:       "missing-logger",
 			config:     testSetup.EventerConfig,
@@ -402,7 +493,7 @@ func Test_NewEventer(t *testing.T) {
 			config: func() EventerConfig {
 				dupFileConfig := TestEventerConfig(t, "dup-sink-filename")
 				dupFileConfig.EventerConfig.Sinks = append(dupFileConfig.EventerConfig.Sinks,
-					SinkConfig{
+					&SinkConfig{
 						Name:       "err-file-sink",
 						Type:       FileSink,
 						EventTypes: []Type{ErrorType},
@@ -429,12 +520,13 @@ func Test_NewEventer(t *testing.T) {
 			want: &Eventer{
 				logger: testLogger,
 				conf: EventerConfig{
-					Sinks: []SinkConfig{
+					Sinks: []*SinkConfig{
 						{
-							Name:       "default",
-							EventTypes: []Type{EveryType},
-							Format:     JSONSinkFormat,
-							Type:       StderrSink,
+							Name:        "default",
+							EventTypes:  []Type{EveryType},
+							Format:      JSONSinkFormat,
+							Type:        StderrSink,
+							AuditConfig: DefaultAuditConfig(),
 						},
 					},
 				},
@@ -444,6 +536,7 @@ func Test_NewEventer(t *testing.T) {
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"encrypt-audit",     // stderr
 			},
 			wantPipelines: []string{
 				"audit",       // stderr
@@ -473,10 +566,12 @@ func Test_NewEventer(t *testing.T) {
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"encrypt-audit",     // stderr
 				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"encrypt-audit",     // every-type-file-sync
 				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
 			},
@@ -513,10 +608,12 @@ func Test_NewEventer(t *testing.T) {
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"encrypt-audit",     // stderr
 				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"encrypt-audit",     // every-type-file-sync
 				"cloudevents",       // error-file-sink
 				"tmp-errors",        // error-file-sink
 				"cloudevents",       // observation-file-sink
@@ -524,6 +621,7 @@ func Test_NewEventer(t *testing.T) {
 				"tmp-observation",   // observations-file-sink
 				"cloudevents",       // audit-file-sink
 				"gated-audit",       // audit-file-sink
+				"encrypt-audit",     // audit-file-sink
 				"tmp-audit",         // audit-file-sink
 				"cloudevents",       // sys-file-sink
 				"tmp-sysevents",     // sys-file-sink
@@ -564,10 +662,12 @@ func Test_NewEventer(t *testing.T) {
 				"stderr",            // stderr
 				"gated-observation", // stderr
 				"gated-audit",       // stderr
+				"encrypt-audit",     // stderr
 				"hclog-text",        // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
+				"encrypt-audit",     // every-type-file-sync
 				"hclog-text",        // error-file-sink
 				"tmp-errors",        // error-file-sink
 			},
@@ -595,11 +695,18 @@ func Test_NewEventer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
-			got, err := NewEventer(tt.logger, tt.lock, tt.serverName, tt.config, TestWithBroker(t, testBroker))
+			opts := []Option{TestWithBroker(t, testBroker)}
+			if tt.opts != nil {
+				opts = append(opts, tt.opts...)
+			}
+			got, err := NewEventer(tt.logger, tt.lock, tt.serverName, tt.config, opts...)
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)
 				assert.ErrorIs(err, tt.wantErrIs)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
 				return
 			}
 			require.NoError(err)

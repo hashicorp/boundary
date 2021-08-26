@@ -27,7 +27,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Format: JSONSinkFormat,
 				AuditConfig: &AuditConfig{
 					FilterOverrides: AuditFilterOperations{
-						SensitiveClassification: EncryptOperation,
+						SensitiveClassification: "invalid",
 					},
 				},
 			},
@@ -46,7 +46,7 @@ func TestSinkConfig_Validate(t *testing.T) {
 				Format: JSONSinkFormat,
 				AuditConfig: &AuditConfig{
 					FilterOverrides: AuditFilterOperations{
-						SensitiveClassification: EncryptOperation,
+						"invalid": EncryptOperation,
 					},
 				},
 			},

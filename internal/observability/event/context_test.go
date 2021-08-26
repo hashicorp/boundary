@@ -13,13 +13,11 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -671,25 +669,25 @@ func Test_WriteAudit(t *testing.T) {
 			}},
 		}},
 	}
-	testAuthorizedActions := []string{"no-op", "read", "update", "delete"}
+	// testAuthorizedActions := []string{"no-op", "read", "update", "delete"}
 
-	testResp := &event.Response{
-		StatusCode: 200,
-		Details: &pbs.CreateHostResponse{
-			Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
-			Item: &pb.Host{
-				HostCatalogId: "hc_1234567890",
-				Scope:         &scopes.ScopeInfo{Id: "proj_1234567890", Type: scope.Project.String(), ParentScopeId: "org_1234567890"},
-				Name:          &wrappers.StringValue{Value: "name"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          "static",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"address": structpb.NewStringValue("123.456.789"),
-				}},
-				AuthorizedActions: testAuthorizedActions,
-			},
-		},
-	}
+	// testResp := &event.Response{
+	// 	StatusCode: 200,
+	// 	Details: &pbs.CreateHostResponse{
+	// 		Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
+	// 		Item: &pb.Host{
+	// 			HostCatalogId: "hc_1234567890",
+	// 			Scope:         &scopes.ScopeInfo{Id: "proj_1234567890", Type: scope.Project.String(), ParentScopeId: "org_1234567890"},
+	// 			Name:          &wrappers.StringValue{Value: "name"},
+	// 			Description:   &wrappers.StringValue{Value: "desc"},
+	// 			Type:          "static",
+	// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+	// 				"address": structpb.NewStringValue("123.456.789"),
+	// 			}},
+	// 			AuthorizedActions: testAuthorizedActions,
+	// 		},
+	// 	},
+	// }
 	tests := []struct {
 		name              string
 		auditOpts         [][]event.Option
@@ -703,55 +701,75 @@ func Test_WriteAudit(t *testing.T) {
 		wantErrIs         error
 		wantErrContains   string
 	}{
-		{
-			name: "missing-ctx",
-			auditOpts: [][]event.Option{
-				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
-				},
-			},
-			wantErrIs:       event.ErrInvalidParameter,
-			wantErrContains: "missing context",
-		},
-		{
-			name: "missing-op",
-			ctx:  ctx,
-			auditOpts: [][]event.Option{
-				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
-				},
-			},
-			noOperation:     true,
-			wantErrIs:       event.ErrInvalidParameter,
-			wantErrContains: "missing operation",
-		},
-		{
-			name: "no-ctx-eventer-and-syseventer-not-initialized",
-			ctx:  context.Background(),
-			auditOpts: [][]event.Option{
-				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
-				},
-			},
-			wantErrIs:       event.ErrInvalidParameter,
-			wantErrContains: "missing both context and system eventer",
-		},
+		// {
+		// 	name: "missing-ctx",
+		// 	auditOpts: [][]event.Option{
+		// 		{
+		// 			event.WithAuth(testAuth),
+		// 			event.WithRequest(testReq),
+		// 		},
+		// 	},
+		// 	wantErrIs:       event.ErrInvalidParameter,
+		// 	wantErrContains: "missing context",
+		// },
+		// {
+		// 	name: "missing-op",
+		// 	ctx:  ctx,
+		// 	auditOpts: [][]event.Option{
+		// 		{
+		// 			event.WithAuth(testAuth),
+		// 			event.WithRequest(testReq),
+		// 		},
+		// 	},
+		// 	noOperation:     true,
+		// 	wantErrIs:       event.ErrInvalidParameter,
+		// 	wantErrContains: "missing operation",
+		// },
+		// {
+		// 	name: "no-ctx-eventer-and-syseventer-not-initialized",
+		// 	ctx:  context.Background(),
+		// 	auditOpts: [][]event.Option{
+		// 		{
+		// 			event.WithAuth(testAuth),
+		// 			event.WithRequest(testReq),
+		// 		},
+		// 	},
+		// 	wantErrIs:       event.ErrInvalidParameter,
+		// 	wantErrContains: "missing both context and system eventer",
+		// },
 		{
 			name:    "use-syseventer",
 			noFlush: true,
 			ctx:     context.Background(),
 			auditOpts: [][]event.Option{
 				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
+					event.WithAuth(
+						func() *event.Auth {
+							dup, err := copystructure.Copy(testAuth)
+							require.NoError(t, err)
+							return dup.(*event.Auth)
+						}(),
+					),
+					event.WithRequest(
+						func() *event.Request {
+							dup, err := copystructure.Copy(testReq)
+							require.NoError(t, err)
+							return dup.(*event.Request)
+						}(),
+					),
 				},
 			},
 			wantAudit: &testAudit{
-				Auth:    testAuth,
-				Request: testReq,
+				Auth: func() *event.Auth {
+					dup, err := copystructure.Copy(testAuth)
+					require.NoError(t, err)
+					return dup.(*event.Auth)
+				}(),
+				Request: func() *event.Request {
+					dup, err := copystructure.Copy(testReq)
+					require.NoError(t, err)
+					return dup.(*event.Request)
+				}(),
 			},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
@@ -759,50 +777,50 @@ func Test_WriteAudit(t *testing.T) {
 			cleanup:           func() { event.TestResetSystEventer(t) },
 			auditSinkFileName: c.AllEvents.Name(),
 		},
-		{
-			name:    "use-syseventer-with-cancelled-ctx",
-			noFlush: true,
-			ctx: func() context.Context {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-				return ctx
-			}(),
-			auditOpts: [][]event.Option{
-				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
-				},
-			},
-			wantAudit: &testAudit{
-				Auth:    testAuth,
-				Request: testReq,
-			},
-			setup: func() error {
-				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
-			},
-			cleanup:           func() { event.TestResetSystEventer(t) },
-			auditSinkFileName: c.AllEvents.Name(),
-		},
-		{
-			name: "simple",
-			ctx:  ctx,
-			auditOpts: [][]event.Option{
-				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
-				},
-				{
-					event.WithResponse(testResp),
-				},
-			},
-			wantAudit: &testAudit{
-				Id:       "411",
-				Auth:     testAuth,
-				Request:  testReq,
-				Response: testResp,
-			},
-			auditSinkFileName: c.AllEvents.Name(),
-		},
+		// {
+		// 	name:    "use-syseventer-with-cancelled-ctx",
+		// 	noFlush: true,
+		// 	ctx: func() context.Context {
+		// 		ctx, cancel := context.WithCancel(context.Background())
+		// 		defer cancel()
+		// 		return ctx
+		// 	}(),
+		// 	auditOpts: [][]event.Option{
+		// 		{
+		// 			event.WithAuth(testAuth),
+		// 			event.WithRequest(testReq),
+		// 		},
+		// 	},
+		// 	wantAudit: &testAudit{
+		// 		Auth:    testAuth,
+		// 		Request: testReq,
+		// 	},
+		// 	setup: func() error {
+		// 		return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
+		// 	},
+		// 	cleanup:           func() { event.TestResetSystEventer(t) },
+		// 	auditSinkFileName: c.AllEvents.Name(),
+		// },
+		// {
+		// 	name: "simple",
+		// 	ctx:  ctx,
+		// 	auditOpts: [][]event.Option{
+		// 		{
+		// 			event.WithAuth(testAuth),
+		// 			event.WithRequest(testReq),
+		// 		},
+		// 		{
+		// 			event.WithResponse(testResp),
+		// 		},
+		// 	},
+		// 	wantAudit: &testAudit{
+		// 		Id:       "411",
+		// 		Auth:     testAuth,
+		// 		Request:  testReq,
+		// 		Response: testResp,
+		// 	},
+		// 	auditSinkFileName: c.AllEvents.Name(),
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -861,6 +879,7 @@ func Test_WriteAudit(t *testing.T) {
 						"version":         testAuditVersion,
 					},
 				}
+				// fmt.Println("wantEvent: ", wantEvent)
 				if tt.wantAudit.Id != "" {
 					wantEvent.Data.(map[string]interface{})["id"] = tt.wantAudit.Id
 					wantEvent.Data.(map[string]interface{})["request_info"] = event.RequestInfo{

@@ -12,10 +12,10 @@ type (
 // RequestInfo defines the fields captured about a Boundary request.
 type RequestInfo struct {
 	EventId  string `json:"-"`
-	Id       string `json:"id,omitempty"`
-	Method   string `json:"method,omitempty"`
-	Path     string `json:"path,omitempty"`
-	PublicId string `json:"public_id,omitempty"`
+	Id       string `json:"id,omitempty" class:"public"`
+	Method   string `json:"method,omitempty" class:"public"`
+	Path     string `json:"path,omitempty" class:"public"`
+	PublicId string `json:"public_id,omitempty" class:"public"`
 }
 
 // UserInfo defines the fields captured about a user for a Boundary request.
@@ -43,9 +43,9 @@ type Auth struct {
 }
 
 type Request struct {
-	Operation string        `json:"operation"` // std audit field
-	Endpoint  string        `json:"endpoint"`  // std audit field
-	Details   proto.Message `json:"details"`   // boundary field
+	Operation string        `json:"operation,omitempty" class:"public"` // std audit field
+	Endpoint  string        `json:"endpoint,omitempty" class:"public"`  // std audit field
+	Details   proto.Message `json:"details,omitempty"`                  // boundary field
 }
 
 type Response struct {
