@@ -27,38 +27,20 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
-build-kms-plugins-ifne-dev:
-ifeq (,$(wildcard ${THIS_DIR}plugins/kms/assets/${GOOS}_${GOARCH}/gkw-aead ${THIS_DIR}plugins/kms/assets/${GOOS}_${GOARCH}/gkw-aead.gz))
-	@echo "==> No KMS plugins found, building..."
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
-else
-	@echo "==> KMS plugins found, use build-kms-plugins-dev target to update"
-endif
-
-build-kms-plugins-dev:
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
-
-build-kms-plugins:
-	@echo "==> Building Boundary KMS plugins"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build-kms-plugins.sh'"
-
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
-dev: build-kms-plugins-ifne-dev
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 cleandev: BUILD_TAGS+=dev
 cleandev: BUILD_TAGS+=ui
-cleandev: build-kms-plugins-dev
 cleandev: build-ui
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 bin: BUILD_TAGS+=ui
 bin: build-ui
-bin: build-kms-plugins
 	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
@@ -181,7 +163,6 @@ website-start:
 
 test-ci: install-go
 test-ci: export CI_BUILD=1
-test-ci: build-kms-plugins-dev
 test-ci:
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 

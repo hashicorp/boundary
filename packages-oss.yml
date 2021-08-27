@@ -107,7 +107,6 @@ build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
     for CURR_PLUGIN in $(ls); do
       gzip -9 $CURR_PLUGIN;
-      echo final plugin files in $(pwd) is $(ls);
     done;
     cd $ORIG_PATH;
   done;
