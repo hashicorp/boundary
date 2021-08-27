@@ -1,7 +1,12 @@
 begin;
 
-  alter domain wt_plugin_id drop not null;
-
+  -- We are updating the plugin table here to have a scope id, since
+  -- subtypes of plugin should be scoped.  We use 'global' as the default
+  -- just for the purpose of the migration since the scope cannot be null
+  -- and the one plugin that already exists (pi_system) can be globally
+  -- scoped.  The immediately following statement removes this default.
+  -- We add a name so we can enforce that all plugins have a unique name
+  -- in a specific scope across all plugin subtypes.
   alter table plugin
     add column name wt_name,
     add column scope_id wt_scope_id
@@ -14,14 +19,18 @@ begin;
   alter table plugin
     alter column scope_id drop default;
 
+  -- Add constraints that enforce names are unique across all plugin subtypes
+  -- in a specific scope.
   alter table plugin
     add constraint plugin_scope_id_public_id_uq
       unique (scope_id, public_id),
     add constraint plugin_scope_id_name_uq
       unique (scope_id, name);
 
-  -- insert_plugin_subtype() is a before insert trigger
-  -- function for subtypes of plugin
+
+  -- insert, update, and delete plugin_subtypes are created since we are adding
+  -- subtyped plugins and we need to keep the base table plugin in sync with all
+  -- subtype tables.
   create or replace function insert_plugin_subtype()
     returns trigger
   as $$
@@ -48,8 +57,8 @@ begin;
   comment on function update_plugin_subtype() is
     'update_plugin_subtype() will update base plugin type name column with new values from sub type';
 
-  -- delete_plugin_subtype() is an after delete trigger
-  -- function for subtypes of plugin
+  -- delete_plugin_subtype() is an after delete trigger function
+  -- for subtypes of plugin
   create or replace function delete_plugin_subtype()
     returns trigger
   as $$
@@ -59,8 +68,8 @@ begin;
     return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
-comment on function delete_plugin_subtype is
-  'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
+  comment on function delete_plugin_subtype is
+    'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
 
   /*
     ┌──────────────────┐         ┌───────────────────┐
@@ -106,7 +115,9 @@ comment on function delete_plugin_subtype is
   create trigger immutable_columns before update on plugin_version
     for each row execute procedure immutable_columns('public_id', 'plugin_id', 'create_time', 'semantic_version');
 
- -- Values retrieved by using $ go tool dist list | cut -d / -f1 | uniq
+  -- Values retrieved by using $ go tool dist list | cut -d / -f1 | uniq
+  -- TODO: Remove this and rely on go logic to enforce these values so we
+  --   avoid the toil of keeping this up to date.
   create table plugin_operating_system_enm (
     name text not null primary key
       constraint only_predefined_operating_systems_allowed
@@ -141,6 +152,8 @@ comment on function delete_plugin_subtype is
     for each row execute procedure immutable_columns('name');
 
   -- Values retrieved by using $ go tool dist list | cut -d / -f2 | sort | uniq
+  -- TODO: Remove this and rely on go logic to enforce these values so we
+  --   avoid the toil of keeping this up to date.
   create table plugin_operating_architecture_enm (
     name text not null primary key
       constraint only_predefined_architectures_allowed

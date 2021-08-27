@@ -222,12 +222,14 @@ func (c *plugin) testClonePlugin() *plugin {
 		Plugin: cp.(*store.Plugin),
 	}
 }
+
 func (c *PluginVersion) testClonePluginVersion() *PluginVersion {
 	cp := proto.Clone(c.PluginVersion)
 	return &PluginVersion{
 		PluginVersion: cp.(*store.PluginVersion),
 	}
 }
+
 func (c *PluginExecutable) testClonePluginExecutable() *PluginExecutable {
 	cp := proto.Clone(c.PluginExecutable)
 	return &PluginExecutable{
