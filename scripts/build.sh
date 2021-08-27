@@ -33,14 +33,9 @@ case $(uname) in
         ;;
 esac
 
-# Delete the old dir
-echo "==> Removing old directory..."
-rm -f bin/*
-mkdir -p bin/
-
-BINARY_NAME="boundary"
-if [ "${GOOS}s" == "windowsx" ]; then
-    BINARY_NAME="boundary.exe"
+BINARY_SUFFIX=""
+if [ "${GOOS}x" == "windowsx" ]; then
+    BINARY_SUFFIX=".exe"
 fi
 
 # Build needed plugins first
@@ -49,7 +44,7 @@ for PLUGIN_TYPE in kms; do
     rm -f $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}*
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
         cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
-        go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN} .;
+        go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN}${BINARY_SUFFIX} .;
         cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
@@ -59,8 +54,12 @@ for PLUGIN_TYPE in kms; do
     cd $ORIG_PATH;
 done;
 
+# Delete the old dir
+echo "==> Removing old directory..."
+rm -f bin/*
+mkdir -p bin/
+
 # Build!
-# If GOX_PARALLEL_BUILDS is set, it will be used to add a "-parallel=${GOX_PARALLEL_BUILDS}" gox parameter
 echo "==> Building..."
 go build -tags="${BUILD_TAGS}" \
     -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \

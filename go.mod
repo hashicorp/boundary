@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210827162702-3bed4f8dfbb6
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1

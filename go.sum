@@ -437,8 +437,8 @@ github.com/hashicorp/go-rootcerts v1.0.2/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR3
 github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1 h1:6KMBnfEv0/kLAz0O76sliN5mXbCDcLfs2kP7ssP7+DQ=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1/go.mod h1:EdWO6czbmthiwZ3/PUsDV+UD1D5IRU4ActiaWGwt0Yw=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e h1:DZj9ffdK4RkR6u9TIxKirpgOX9sNinYaYw320ee6rd0=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210820155204-abdbebc55c5e/go.mod h1:jPJNRD5IhyUuUmhX4jZ12ydgqBsCRGNIDbfVo8qknJA=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210827162702-3bed4f8dfbb6 h1:YcOwB8s/v3uv9YnqIM0e4AIH1NfoJVTDIBHQ7Q6oWmM=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210827162702-3bed4f8dfbb6/go.mod h1:jPJNRD5IhyUuUmhX4jZ12ydgqBsCRGNIDbfVo8qknJA=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1 h1:9um9R8i0+HbRHS9d64kdvWR0/LJvo12sIonvR9zr1+U=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1/go.mod h1:6RoRTSMDK2H/rKh3P/JIsk1tK8aatKTt3JyvIopi3GQ=
 github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1 h1:IJgULbAXuvWxzKFfu+Au1FUmHIJulS6N4F7Hkn+Kck0=
