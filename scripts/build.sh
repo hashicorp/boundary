@@ -11,6 +11,10 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that directory
 cd "$DIR"
 
+if [ "${CI_BUILD}x" != "x" ]; then
+    source /home/circleci/.bashrc
+fi
+
 # Set build tags
 BUILD_TAGS="${BUILD_TAGS:-"boundary"}"
 
@@ -53,6 +57,10 @@ for PLUGIN_TYPE in kms; do
     done;
     cd $ORIG_PATH;
 done;
+
+if [ "${CI_BUILD}x" != "x" ]; then
+    exit
+fi
 
 # Delete the old dir
 echo "==> Removing old directory..."
