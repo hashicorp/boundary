@@ -20,7 +20,6 @@ package tools
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 //go:generate go install golang.org/x/tools/cmd/goimports
 //go:generate go install github.com/oligot/go-mod-upgrade
-//go:generate go install github.com/mitchellh/gox
 //go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
 //go:generate go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
@@ -38,8 +37,6 @@ import (
 	_ "golang.org/x/tools/cmd/goimports"
 
 	_ "github.com/oligot/go-mod-upgrade"
-
-	_ "github.com/mitchellh/gox"
 
 	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 

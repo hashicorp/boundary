@@ -96,8 +96,6 @@ the first place.
     * Sarah
 * github.com/mitchellh/go-wordwrap
     * Jeff
-* github.com/mitchellh/gox
-    * Jeff
 * github.com/mitchellh/mapstructure
     * Jeff
     * Louis
