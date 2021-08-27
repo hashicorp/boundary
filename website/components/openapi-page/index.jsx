@@ -15,6 +15,7 @@ function OpenApiPage({
   productName,
   productSlug,
   currentPath,
+  pathFromRoot,
   massageOperationPathFn = (path) => path,
 }) {
   const operationsRef = useRef(null)
@@ -40,7 +41,7 @@ function OpenApiPage({
         product={productSlug}
         Link={Link}
         currentPath={currentPath}
-        baseRoute={'api-docs'}
+        baseRoute={pathFromRoot}
         disableFilter={true}
         navData={navData}
       />
