@@ -5,18 +5,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_TestPlugins(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-
-	plg := TestPlugin(t, conn, "test")
-	require.NotNil(plg)
-	assert.NotEmpty(plg.GetPublicId())
-}
 
 func Test_TestCatalogs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -26,7 +18,7 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(proj)
 	assert.NotEmpty(proj.GetPublicId())
 
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "prefix")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -46,7 +38,7 @@ func Test_TestSets(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "prefix")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 

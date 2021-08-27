@@ -86,17 +86,16 @@ comment on function delete_plugin_subtype is
    */
   create table plugin_version (
     public_id wt_public_id primary key,
-    plugin_id wt_public_id
+    plugin_id wt_public_id not null
       constraint plugin_fkey
         references plugin (public_id)
         on delete cascade
         on update cascade,
-    semantic_version text,
+    semantic_version text not null
+      constraint plugin_version_requires_semantic_version
+      check(length(semantic_version) > 4), -- minimum length is length("0.0.0")
     create_time wt_timestamp,
 
-    -- The order of columns is important for performance. See:
-    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
-    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
     unique(plugin_id, public_id),
     unique(plugin_id, semantic_version)
   );
@@ -190,10 +189,8 @@ comment on function delete_plugin_subtype is
     executable bytea not null
       constraint executable_is_not_empty
       check(length(executable) > 0),
+    create_time wt_timestamp,
 
-    -- The order of columns is important for performance. See:
-    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
-    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
     primary key(operating_system, architecture, version_id)
   );
 
@@ -203,11 +200,10 @@ comment on function delete_plugin_subtype is
   create trigger immutable_columns before update on plugin_executable
     for each row execute procedure immutable_columns('version_id', 'operating_system', 'architecture', 'executable');
 
-
   insert into oplog_ticket (name, version)
   values
     ('plugin', 1),
     ('plugin_version', 1),
-    ('plugin_binary', 1);
+    ('plugin_executable', 1);
 
 commit;

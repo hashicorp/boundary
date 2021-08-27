@@ -21,6 +21,7 @@ begin;
   │description       │       │architecture (pk)     │
   │version           │       │executable            │
   │plugin_name       │       └──────────────────────┘
+  │id_prefix         │
   └──────────────────┘
 */
   create table host_plugin (
@@ -35,6 +36,11 @@ begin;
       not null
       constraint plugin_name_must_be_not_empty
         check(length(trim(plugin_name)) > 0)
+      unique,
+    id_prefix text
+      not null
+      constraint plugin_id_prefix_must_be_not_empty
+        check(length(trim(id_prefix)) > 0)
       unique,
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
@@ -53,7 +59,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on host_plugin
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name');
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name', 'id_prefix');
 
   create trigger insert_plugin_subtype before insert on host_plugin
     for each row execute procedure insert_plugin_subtype();

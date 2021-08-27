@@ -1,8 +1,8 @@
 syntax = "proto3";
 
 // Package store provides protobufs for storing types in the host package.
-package controller.storage.host.plugin.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/host/plugin/store;store";
+package controller.storage.plugin.host.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/plugin/host/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
@@ -22,11 +22,11 @@ message Plugin {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 4 [(custom_options.v1.mask_mapping) = {this:"Name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 50 [(custom_options.v1.mask_mapping) = {this:"Description" that: "description"}];
 
   // The scope_id of the owning scope and must be set.
   // @inject_tag: `gorm:"not_null"`
@@ -38,4 +38,8 @@ message Plugin {
   // plugin_name is required.  The value must be unique across all host plugins
   // @inject_tag: `gorm:"default:null"`
   string plugin_name = 80;
+
+  // id_prefix is required.  The value must be unique across all host plugins
+  // @inject_tag: `gorm:"default:null"`
+  string id_prefix = 90;
 }

@@ -1,12 +1,12 @@
-package plugin
+package host
 
 import (
-	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/plugin/host/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-// A HostCatalog contains plugin host sets. It is owned by
-// a scope.
+// A Plugin enables additional logic to be used by boundary.
+// It is owned by a scope.
 type Plugin struct {
 	*store.Plugin
 	tableName string `gorm:"-"`
@@ -14,11 +14,12 @@ type Plugin struct {
 
 // NewPlugin creates a new in memory Plugin assigned to the global scope.
 // Name, Description are the only allowed option. All other options are ignored.
-func NewPlugin(pluginName string, opt ...Option) *Plugin {
+func NewPlugin(pluginName string, idPrefix string, opt ...Option) *Plugin {
 	opts := getOpts(opt...)
 	p := &Plugin{
 		Plugin: &store.Plugin{
 			PluginName:  pluginName,
+			IdPrefix:    idPrefix,
 			ScopeId:     scope.Global.String(),
 			Name:        opts.withName,
 			Description: opts.withDescription,

@@ -16,23 +16,14 @@ func init() {
 // PublicId prefixes for the resources in the plugin package.
 const (
 	// TODO: Pull these out of being constants and have them derivable at run time.
-	HostCatalogPrefix = "hcpi"
-	HostSetPrefix     = "hspi"
-
-	PluginPrefix = "pih"
+	HostCatalogPrefix = "hcplg"
+	HostSetPrefix     = "hsplg"
 
 	Subtype = subtypes.Subtype("plugin")
 )
 
-func newPluginId() (string, error) {
-	id, err := db.NewPublicId(PluginPrefix)
-	if err != nil {
-		return "", errors.WrapDeprecated(err, "plugin.newPluginId")
-	}
-	return id, nil
-}
-
 func newHostCatalogId() (string, error) {
+	// TODO: Take in a prefix portion as an argument.
 	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "plugin.newHostCatalogId")
@@ -41,6 +32,7 @@ func newHostCatalogId() (string, error) {
 }
 
 func newHostSetId() (string, error) {
+	// TODO: Take in a prefix portion as an argument.
 	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "plugin.newHostSetId")

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "prefix")
 
 	type args struct {
 		pluginId string
@@ -173,8 +174,8 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	_, prj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test1")
-	plg2 := TestPlugin(t, conn, "test2")
+	plg := host.TestPlugin(t, conn, "test1", "prefix1")
+	plg2 := host.TestPlugin(t, conn, "test2", "prefix2")
 
 	got, err := NewHostCatalog(context.Background(), plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
@@ -206,7 +207,7 @@ func TestHostCatalog_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	ignoredCat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	_ = ignoredCat
@@ -257,7 +258,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-scope", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := TestPlugin(t, conn, "delete-scope")
+		plg := host.TestPlugin(t, conn, "delete-scope", "delete-scope")
 		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
@@ -271,7 +272,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := TestPlugin(t, conn, "delete-plugin")
+		plg := host.TestPlugin(t, conn, "delete-plugin", "delete-plugin")
 		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)

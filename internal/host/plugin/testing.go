@@ -10,18 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlugin(t *testing.T, conn *gorm.DB, name string) *Plugin {
-	t.Helper()
-	p := NewPlugin(name)
-	id, err := newPluginId()
-	require.NoError(t, err)
-	p.PublicId = id
-
-	w := db.New(conn)
-	require.NoError(t, w.Create(context.Background(), p))
-	return p
-}
-
 // TestCatalogs creates count number of plugin host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.

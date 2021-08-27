@@ -6421,12 +6421,14 @@ comment on function delete_plugin_subtype is
    */
   create table plugin_version (
     public_id wt_public_id primary key,
-    plugin_id wt_public_id
+    plugin_id wt_public_id not null
       constraint plugin_fkey
         references plugin (public_id)
         on delete cascade
         on update cascade,
-    semantic_version text,
+    semantic_version text not null
+      constraint plugin_version_requires_semantic_version
+      check(length(semantic_version) > 4), -- minimum length is length("0.0.0")
     create_time wt_timestamp,
 
     -- The order of columns is important for performance. See:
@@ -6525,6 +6527,7 @@ comment on function delete_plugin_subtype is
     executable bytea not null
       constraint executable_is_not_empty
       check(length(executable) > 0),
+    create_time wt_timestamp,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -6567,6 +6570,7 @@ comment on function delete_plugin_subtype is
   │description       │       │architecture (pk)     │
   │version           │       │executable            │
   │plugin_name       │       └──────────────────────┘
+  │id_prefix         │
   └──────────────────┘
 */
   create table host_plugin (
@@ -6581,6 +6585,11 @@ comment on function delete_plugin_subtype is
       not null
       constraint plugin_name_must_be_not_empty
         check(length(trim(plugin_name)) > 0)
+      unique,
+    id_prefix text
+      not null
+      constraint plugin_id_prefix_must_be_not_empty
+        check(length(trim(id_prefix)) > 0)
       unique,
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
@@ -6599,7 +6608,7 @@ comment on function delete_plugin_subtype is
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on host_plugin
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name');
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name', 'id_prefix');
 
   create trigger insert_plugin_subtype before insert on host_plugin
     for each row execute procedure insert_plugin_subtype();

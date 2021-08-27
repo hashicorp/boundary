@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -22,7 +23,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "test")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 	type args struct {
@@ -118,7 +119,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := TestPlugin(t, conn, "test")
+	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 
