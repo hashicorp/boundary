@@ -99,9 +99,9 @@ build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   for PLUGIN_TYPE in $(ls plugins/); do
     for CURR_PLUGIN in $(ls plugins/$PLUGIN_TYPE); do
-      echo "Building $PLUGIN_TYPE/$CURR_PLUGIN"
-    done
-  done
+      echo "Building $PLUGIN_TYPE/$CURR_PLUGIN";
+    done;
+  done;
   go build -v -tags '{{.BUILD_TAGS}}'
   -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
   -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
