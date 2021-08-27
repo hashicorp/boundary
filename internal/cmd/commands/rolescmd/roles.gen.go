@@ -170,7 +170,7 @@ func (c *Command) Run(args []string) int {
 	if c.WrapperCleanupFunc != nil {
 		defer func() {
 			if err := c.WrapperCleanupFunc(); err != nil {
-				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w"))
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w"), err)
 			}
 		}()
 	}
