@@ -66,7 +66,7 @@ func testPluginVersion(t *testing.T, conn *gorm.DB, pluginId, ver string) *Plugi
 	return p
 }
 
-func testPluginExecutable(t *testing.T, conn *gorm.DB, verId, os, arch string, exe []byte) *PluginExecutable {
+func testPluginExecutable(t *testing.T, conn *gorm.DB, verId string, os OperatingSystem, arch Architecture, exe []byte) *PluginExecutable {
 	t.Helper()
 	p := NewPluginExecutable(verId, os, arch, exe)
 

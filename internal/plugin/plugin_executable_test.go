@@ -21,9 +21,10 @@ func TestPluginExecutable_Create(t *testing.T) {
 
 	type args struct {
 		verId string
-		os, arch string
-		exe []byte
-		opts     []Option
+		os    OperatingSystem
+		arch  Architecture
+		exe   []byte
+		opts  []Option
 	}
 
 	tests := []struct {
@@ -33,15 +34,117 @@ func TestPluginExecutable_Create(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "blank-os",
+			name: "blank-versionid",
 			args: args{
-				verId: plgVer.GetPublicId(),
-				exe: sample,
+				os:   WindowsOS,
+				arch: Amd64Arch,
+				exe:  sample,
 			},
 			want: &PluginExecutable{
 				PluginExecutable: &store.PluginExecutable{
-					VersionId: plgVer.GetPublicId(),
-					Executable: sample,
+					OperatingSystem: WindowsOS,
+					Architecture:    Amd64Arch,
+					Executable:      sample,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "blank-os",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				arch:  Amd64Arch,
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:    plgVer.GetPublicId(),
+					Architecture: Amd64Arch,
+					Executable:   sample,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "blank-arch",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				os:    WindowsOS,
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:       plgVer.GetPublicId(),
+					OperatingSystem: WindowsOS,
+					Executable:      sample,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad-os",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				os:    OperatingSystem("something"),
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:       plgVer.GetPublicId(),
+					OperatingSystem: "something",
+					Executable:      sample,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad-arch",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				arch:  Architecture("something"),
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:    plgVer.GetPublicId(),
+					Architecture: "something",
+					Executable:   sample,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "success",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				os:    WindowsOS,
+				arch:  Amd64Arch,
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:       plgVer.GetPublicId(),
+					OperatingSystem: WindowsOS,
+					Architecture:    Amd64Arch,
+					Executable:      sample,
+				},
+			},
+		},
+		// this must be run after success
+		{
+			name: "duplicate",
+			args: args{
+				verId: plgVer.GetPublicId(),
+				os:    WindowsOS,
+				arch:  Amd64Arch,
+				exe:   sample,
+			},
+			want: &PluginExecutable{
+				PluginExecutable: &store.PluginExecutable{
+					VersionId:       plgVer.GetPublicId(),
+					OperatingSystem: WindowsOS,
+					Architecture:    Amd64Arch,
+					Executable:      sample,
 				},
 			},
 			wantErr: true,
@@ -69,15 +172,13 @@ func TestPluginExecutable_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	ctx := context.Background()
-	os := "windows"
-	arch := "amd64"
 	exe := []byte("test")
 
 	t.Run("cascade-plugin", func(t *testing.T) {
 		plg := testPlugin(t, conn, "cascade-plugin")
 		plgVer := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
 
-		plgExe := NewPluginExecutable(plgVer.GetPublicId(), os, arch, exe)
+		plgExe := NewPluginExecutable(plgVer.GetPublicId(), WindowsOS, Amd64Arch, exe)
 		require.NoError(t, w.Create(ctx, plgExe))
 
 		deleted, err := w.Delete(ctx, plg)
@@ -93,7 +194,7 @@ func TestPluginExecutable_Delete(t *testing.T) {
 		plg := testPlugin(t, conn, "cascade-version")
 		plgVer := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
 
-		plgExe := NewPluginExecutable(plgVer.GetPublicId(), os, arch, exe)
+		plgExe := NewPluginExecutable(plgVer.GetPublicId(), WindowsOS, Amd64Arch, exe)
 		require.NoError(t, w.Create(ctx, plgExe))
 
 		deleted, err := w.Delete(ctx, plgVer)
@@ -109,7 +210,7 @@ func TestPluginExecutable_Delete(t *testing.T) {
 		plg := testPlugin(t, conn, "direct-delete")
 		plgVer := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
 
-		plgExe := NewPluginExecutable(plgVer.GetPublicId(), os, arch, exe)
+		plgExe := NewPluginExecutable(plgVer.GetPublicId(), WindowsOS, Amd64Arch, exe)
 		require.NoError(t, w.Create(ctx, plgExe))
 
 		deleted, err := w.Delete(ctx, plgExe)
@@ -150,7 +251,7 @@ func TestPluginExecutable_SetTableName(t *testing.T) {
 			require.Equal(defaultTableName, def.TableName())
 			s := &PluginExecutable{
 				PluginExecutable: &store.PluginExecutable{},
-				tableName:     tt.initialName,
+				tableName:        tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
