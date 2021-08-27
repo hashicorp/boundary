@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	kmsplugins "github.com/hashicorp/boundary/plugins/kms"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -47,7 +48,8 @@ func getWrapper(ctx context.Context, kmses []*configutil.KMS, purpose string) (w
 		kms,
 		nil,
 		nil,
-		configutil.WithKmsPluginsFilesystem("gkw-", kmsplugins.FileSystem()),
+		configutil.WithKmsPluginsFilesystem("boundary-plugin-kms-", kmsplugins.FileSystem()),
+		configutil.WithLogger(hclog.NewNullLogger()),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error configuring kms: %w", err)
