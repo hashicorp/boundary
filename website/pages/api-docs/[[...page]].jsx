@@ -6,7 +6,7 @@ import OpenApiPage, {
   getPropsForPage,
 } from '../../components/openapi-page'
 
-const targetFile = '../internal/gen/controller.swagger.json'
+const targetFile = './pages/api-docs/packer-test.swagger.json'
 const pathFromRoot = 'api-docs'
 
 export default function OpenApiDocsPage(props) {
@@ -16,6 +16,12 @@ export default function OpenApiDocsPage(props) {
       productName={productName}
       productSlug={productSlug}
       pathFromRoot={pathFromRoot}
+      massageOperationPathFn={(path) =>
+        path.replace(
+          '/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}',
+          ''
+        )
+      }
     />
   )
 }

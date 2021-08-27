@@ -15,6 +15,7 @@ function OpenApiPage({
   productName,
   productSlug,
   currentPath,
+  massageOperationPathFn = (path) => path,
 }) {
   const operationsRef = useRef(null)
   const [expandedOperations, setExpandedOperations] = useState([])
@@ -62,7 +63,7 @@ function OpenApiPage({
                   return (
                     <OperationObject
                       key={op.__type + op.__path}
-                      path={op.__path}
+                      path={massageOperationPathFn(op.__path)}
                       type={op.__type}
                       data={op}
                       isCollapsed={!isExpanded}

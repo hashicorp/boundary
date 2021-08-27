@@ -1,0 +1,2192 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "HashiCorp Cloud Platform Packer Artifact Registry",
+    "description": "API for managing Packer images.",
+    "version": "2021-04-30"
+  },
+  "host": "api.cloud.hashicorp.com",
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/builds/{build_id}": {
+      "get": {
+        "summary": "TODO: make it possible to query by iteration.incremental_version, not just ULID",
+        "operationId": "GetBuild",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetBuildResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "build_id",
+            "description": "build ULID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "delete": {
+        "operationId": "DeleteBuild",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.DeleteBuildResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "build_id",
+            "description": "build ULID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "patch": {
+        "operationId": "UpdateBuild",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateBuildResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "build_id",
+            "description": "build ULID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateBuildRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images": {
+      "get": {
+        "operationId": "ListBuckets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.ListBucketsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.page_size",
+            "description": "The max number of results per page that should be returned. If the number\nof available results is larger than `page_size`, a `next_page_token` is\nreturned which can be used to get the next page of results in subsequent\nrequests. A value of zero will cause `page_size` to be defaulted.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "pagination.next_page_token",
+            "description": "Specifies a page token to use to retrieve the next page. Set this to the\n`next_page_token` returned by previous list requests to get the next page of\nresults. If set, `previous_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.previous_page_token",
+            "description": "Specifies a page token to use to retrieve the previous page. Set this to\nthe `previous_page_token` returned by previous list requests to get the\nprevious page of results. If set, `next_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sorting.order_by",
+            "description": "Specifies the list of per field ordering that should be used for sorting. \nThe order matters as rows are sorted in order by fields and when the field\nmatches, the next field is used to tie break the ordering.\nThe per field default ordering is ascending.  \n\nThe fields should be immutabile, unique, and orderable. If the field is\nnot unique, more than one sort fields should be passed.\n\nExample: oder_by=name,age desc,created_at asc\nIn that case, 'name' will get the default 'ascending' order.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "put": {
+        "summary": "Operations realted to images\n-------------------------------------------------------------------------",
+        "operationId": "CreateBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateBucketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateBucketRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}": {
+      "get": {
+        "operationId": "GetBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetBucketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "bucket_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "delete": {
+        "operationId": "DeleteBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.DeleteBucketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "patch": {
+        "operationId": "UpdateBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateBucketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "base-ubuntu-18-secure",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateBucketRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/channels": {
+      "get": {
+        "operationId": "ListChannels",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.ListChannelsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "same as in Bucket",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "post": {
+        "summary": "Operations related to channels (mutable aliases/pointers for an image iteration)\n-------------------------------------------------------------------------",
+        "operationId": "CreateChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "same as in Bucket",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateChannelRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/channels/{slug}": {
+      "get": {
+        "operationId": "GetChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "same as in Bucket",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "slug",
+            "description": "production-stable",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "delete": {
+        "operationId": "DeleteChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.DeleteChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "The bucket slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "slug",
+            "description": "The channel slug. e.g. production-stable",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "revocation_message",
+            "description": "Optional field to provide the reason for why this channel is being revoked.\nOnly useful for a channel that is assigned to an iteration.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "patch": {
+        "operationId": "UpdateChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "same as in Bucket",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "slug",
+            "description": "production-stable",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateChannelRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iteration": {
+      "get": {
+        "summary": "GetIteration allows to get an iteration by\n * iteration_id\n * incremental_version\n * fingerprint\nThese are supplied as a query parameter: e.g.:",
+        "description": "images/mybucket/iteration?iteration_id=fingerprint\n\nbucket_slug must always be set because it is possible for iterations to\nhave the same incremental_version or fingerprint across buckets",
+        "operationId": "GetIteration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetIterationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "incremental_version",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "iteration_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fingerprint",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iterations": {
+      "get": {
+        "operationId": "ListIterations",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.ListIterationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "include_incomplete",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "pagination.page_size",
+            "description": "The max number of results per page that should be returned. If the number\nof available results is larger than `page_size`, a `next_page_token` is\nreturned which can be used to get the next page of results in subsequent\nrequests. A value of zero will cause `page_size` to be defaulted.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "pagination.next_page_token",
+            "description": "Specifies a page token to use to retrieve the next page. Set this to the\n`next_page_token` returned by previous list requests to get the next page of\nresults. If set, `previous_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.previous_page_token",
+            "description": "Specifies a page token to use to retrieve the previous page. Set this to\nthe `previous_page_token` returned by previous list requests to get the\nprevious page of results. If set, `next_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sorting.order_by",
+            "description": "Specifies the list of per field ordering that should be used for sorting. \nThe order matters as rows are sorted in order by fields and when the field\nmatches, the next field is used to tie break the ordering.\nThe per field default ordering is ascending.  \n\nThe fields should be immutabile, unique, and orderable. If the field is\nnot unique, more than one sort fields should be passed.\n\nExample: oder_by=name,age desc,created_at asc\nIn that case, 'name' will get the default 'ascending' order.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "post": {
+        "summary": "Operations related to image iterations\n-------------------------------------------------------------------------",
+        "operationId": "CreateIteration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateIterationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateIterationRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iterations/{build.iteration_id}": {
+      "post": {
+        "operationId": "CreateBuild",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateBuildResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "bucket info",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "build.iteration_id",
+            "description": "ULID of the iteration",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.CreateBuildRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iterations/{incremental_version}/ancestors": {
+      "get": {
+        "summary": "API Endpoints to ease UI implementation",
+        "operationId": "GetAncestorImages",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetAncestorImagesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "incremental_version",
+            "description": "may need to replace with image iteration id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iterations/{incremental_version}/children": {
+      "get": {
+        "operationId": "GetChildImages",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.GetChildImagesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "incremental_version",
+            "description": "may need to replace with image iteration id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/images/{bucket_slug}/iterations/{iteration_id}/builds": {
+      "get": {
+        "operationId": "ListBuilds",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.ListBuildsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "description": "bucket info",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "iteration_id",
+            "description": "iteration info",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.page_size",
+            "description": "The max number of results per page that should be returned. If the number\nof available results is larger than `page_size`, a `next_page_token` is\nreturned which can be used to get the next page of results in subsequent\nrequests. A value of zero will cause `page_size` to be defaulted.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "pagination.next_page_token",
+            "description": "Specifies a page token to use to retrieve the next page. Set this to the\n`next_page_token` returned by previous list requests to get the next page of\nresults. If set, `previous_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.previous_page_token",
+            "description": "Specifies a page token to use to retrieve the previous page. Set this to\nthe `previous_page_token` returned by previous list requests to get the\nprevious page of results. If set, `next_page_token` must not be set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sorting.order_by",
+            "description": "Specifies the list of per field ordering that should be used for sorting. \nThe order matters as rows are sorted in order by fields and when the field\nmatches, the next field is used to tie break the ordering.\nThe per field default ordering is ascending.  \n\nThe fields should be immutabile, unique, and orderable. If the field is\nnot unique, more than one sort fields should be passed.\n\nExample: oder_by=name,age desc,created_at asc\nIn that case, 'name' will get the default 'ascending' order.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    },
+    "/packer/2021-04-30/organizations/{location.organization_id}/projects/{location.project_id}/iterations/{iteration_id}": {
+      "delete": {
+        "operationId": "DeleteIteration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.DeleteIterationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "iteration_id",
+            "description": "id of the iteration you would like to delete",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.region.provider",
+            "description": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "location.region.region",
+            "description": "region is the cloud region (\"us-west1\", \"us-east1\").",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "bucket_slug",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": ["PackerService"]
+      },
+      "patch": {
+        "summary": "Only used to set incremental_version once all builds are complete.\nOtherwise, UpdateBuild is used for specific build updates.",
+        "operationId": "UpdateIteration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateIterationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/grpc.gateway.runtime.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "location.organization_id",
+            "description": "organization_id is the id of the organization.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "location.project_id",
+            "description": "project_id is the projects id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "iteration_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/hashicorp.cloud.packer.UpdateIterationRequest"
+            }
+          }
+        ],
+        "tags": ["PackerService"]
+      }
+    }
+  },
+  "definitions": {
+    "google.protobuf.Any": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "Must be a valid serialized protocol buffer of the above specified type."
+        }
+      },
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := ptypes.MarshalAny(foo)\n     ...\n     foo := \u0026pb.Foo{}\n     if err := ptypes.UnmarshalAny(any, foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "grpc.gateway.runtime.Error": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/google.protobuf.Any"
+          }
+        }
+      }
+    },
+    "hashicorp.cloud.common.PaginationRequest": {
+      "type": "object",
+      "properties": {
+        "page_size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The max number of results per page that should be returned. If the number\nof available results is larger than `page_size`, a `next_page_token` is\nreturned which can be used to get the next page of results in subsequent\nrequests. A value of zero will cause `page_size` to be defaulted."
+        },
+        "next_page_token": {
+          "type": "string",
+          "description": "Specifies a page token to use to retrieve the next page. Set this to the\n`next_page_token` returned by previous list requests to get the next page of\nresults. If set, `previous_page_token` must not be set."
+        },
+        "previous_page_token": {
+          "type": "string",
+          "description": "Specifies a page token to use to retrieve the previous page. Set this to\nthe `previous_page_token` returned by previous list requests to get the\nprevious page of results. If set, `next_page_token` must not be set."
+        }
+      },
+      "description": "PaginationRequest are the parameters for a paginated list request."
+    },
+    "hashicorp.cloud.common.PaginationResponse": {
+      "type": "object",
+      "properties": {
+        "next_page_token": {
+          "type": "string",
+          "description": "This token allows you to get the next page of results for list requests.\nIf the number of results is larger than `page_size`, use the\n`next_page_token` as a value for the query parameter `next_page_token` in\nthe next request. The value will become empty when there are no more pages."
+        },
+        "previous_page_token": {
+          "type": "string",
+          "description": "This token allows you to get the previous page of results for list\nrequests. If the number of results is larger than `page_size`, use the\n`previous_page_token` as a value for the query parameter\n`previous_page_token` in the next request. The value will become empty when\nthere are no more pages."
+        }
+      },
+      "description": "PaginationResponse is the response holding the page tokens for a paginated\nlist response."
+    },
+    "hashicorp.cloud.common.SortingRequest": {
+      "type": "object",
+      "properties": {
+        "order_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specifies the list of per field ordering that should be used for sorting. \nThe order matters as rows are sorted in order by fields and when the field\nmatches, the next field is used to tie break the ordering.\nThe per field default ordering is ascending.  \n\nThe fields should be immutabile, unique, and orderable. If the field is\nnot unique, more than one sort fields should be passed.\n\nExample: oder_by=name,age desc,created_at asc\nIn that case, 'name' will get the default 'ascending' order."
+        }
+      },
+      "description": "SortingRequest are the parameters for a sorted list request."
+    },
+    "hashicorp.cloud.location.Location": {
+      "type": "object",
+      "properties": {
+        "organization_id": {
+          "type": "string",
+          "description": "organization_id is the id of the organization."
+        },
+        "project_id": {
+          "type": "string",
+          "description": "project_id is the projects id."
+        },
+        "region": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Region",
+          "description": "region is the region that the resource is located in. It is\noptional if the object being referenced is a global object."
+        }
+      },
+      "description": "Location represents a target for an operation in HCP."
+    },
+    "hashicorp.cloud.location.Region": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "title": "provider is the named cloud provider (\"aws\", \"gcp\", \"azure\")"
+        },
+        "region": {
+          "type": "string",
+          "title": "region is the cloud region (\"us-west1\", \"us-east1\")"
+        }
+      },
+      "description": "Region identifies a Cloud data-plane region."
+    },
+    "hashicorp.cloud.packer.Bucket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID"
+        },
+        "slug": {
+          "type": "string",
+          "title": "base-ubuntu-18-secure"
+        },
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        },
+        "latest_iteration": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Iteration",
+          "title": "latest iteration regardless of completion status"
+        },
+        "latest_version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "latest completed version"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "[\"aws\", \"gcp\"]"
+        },
+        "description": {
+          "type": "string",
+          "title": "\"This image is a hardened platform for other teams\""
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Slot for unstructured metadata tags\nfor example {\"repo\": \"https://github.com/hashicorp/common\"}"
+        },
+        "iteration_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "number of total iterations (not just versions), for UI."
+        }
+      }
+    },
+    "hashicorp.cloud.packer.Build": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID"
+        },
+        "iteration_id": {
+          "type": "string",
+          "title": "ULID of the iteration"
+        },
+        "component_type": {
+          "type": "string",
+          "title": "builder or post-processor used to build this"
+        },
+        "packer_run_uuid": {
+          "type": "string"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Image"
+          }
+        },
+        "cloud_provider": {
+          "type": "string",
+          "title": "aws"
+        },
+        "status": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.BuildStatus",
+          "title": "complete"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "unstructured metadata"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.BuildStatus": {
+      "type": "string",
+      "enum": ["UNSET", "RUNNING", "DONE", "CANCELLED", "FAILED"],
+      "default": "UNSET",
+      "title": "- UNSET: UNSET is a sentinel zero value so that an uninitialized value can be\ndetected.\n - RUNNING: Running means the Packer build is currently running\n - DONE: Done means the Packer build has finished successfully\n - CANCELLED: Cancelled means the Packer build was cancelled by a user\n - FAILED: Failed means the Packer build and therefore iteration creation failed"
+    },
+    "hashicorp.cloud.packer.BuildUpdates": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.BuildStatus",
+          "title": "Running, Done, Failed"
+        },
+        "cloud_provider": {
+          "type": "string",
+          "description": "aws, gcp, etc."
+        },
+        "packer_run_uuid": {
+          "type": "string",
+          "description": "Packer build run UUID can change because we may be updating a build that\npreviously failed."
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Image"
+          },
+          "description": "The length of this list determines how many\nrows this combination of iteration_id and builder_type have in the\nbuild table."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels to add to the build."
+        }
+      },
+      "description": "BuildUpdates is used to group the elements of a Build that are\nallowed to be updated after the build has been created. It is part of the\nUpdateBuildRequest."
+    },
+    "hashicorp.cloud.packer.Channel": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID of this chanel"
+        },
+        "slug": {
+          "type": "string",
+          "title": "Something like \"production-stable\""
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "image bucket this belongs to"
+        },
+        "author_id": {
+          "type": "string",
+          "title": "The author who created the channel"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "timestamp this channel was created at"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "timestamp this channel was revoked at"
+        },
+        "revocation_message": {
+          "type": "string",
+          "title": "message with the reason of why this channel was revoked"
+        },
+        "pointer": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.ChannelIterationPointer",
+          "title": "The channel pointer to the iteration"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.ChannelIterationPointer": {
+      "type": "object",
+      "properties": {
+        "iteration": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Iteration",
+          "title": "The iteration the channel is pointing to"
+        },
+        "author_id": {
+          "type": "string",
+          "title": "The author who pointed the channel to the iteration"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "timestamp this channel pointer was created at"
+        }
+      },
+      "title": "The information about a channel pointer to a iteration"
+    },
+    "hashicorp.cloud.packer.CreateBucketRequest": {
+      "type": "object",
+      "properties": {
+        "bucket_slug": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateBucketResponse": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Bucket"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateBuildRequest": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location",
+          "title": "org and project info"
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "bucket info"
+        },
+        "build": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Build",
+          "description": "Custom build info.\nTODO: We may want to make this input object not contain the\nID or ULID, since those are not user-settable."
+        },
+        "fingerprint": {
+          "type": "string",
+          "title": "Git sha to match against nascent iteration"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateBuildResponse": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Build"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateChannelRequest": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Name of this channel, something like \"production\"."
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "same as in Bucket"
+        },
+        "incremental_version": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "iteration_id": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        }
+      },
+      "title": "Image Channel Messages"
+    },
+    "hashicorp.cloud.packer.CreateChannelResponse": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Channel"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateIterationRequest": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        },
+        "bucket_slug": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string",
+          "description": "fingerprint of the build; this will allow to regroup image builds under\nthe same iteration. So it could be for example a git sha."
+        }
+      }
+    },
+    "hashicorp.cloud.packer.CreateIterationResponse": {
+      "type": "object",
+      "properties": {
+        "iteration": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Iteration"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.DeleteBucketResponse": {
+      "type": "object"
+    },
+    "hashicorp.cloud.packer.DeleteBuildResponse": {
+      "type": "object"
+    },
+    "hashicorp.cloud.packer.DeleteChannelResponse": {
+      "type": "object"
+    },
+    "hashicorp.cloud.packer.DeleteIterationResponse": {
+      "type": "object"
+    },
+    "hashicorp.cloud.packer.GetAncestorImagesResponse": {
+      "type": "object",
+      "properties": {
+        "ancestors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Iteration"
+          }
+        }
+      }
+    },
+    "hashicorp.cloud.packer.GetBucketResponse": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Bucket"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.GetBuildResponse": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Build"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.GetChannelResponse": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Channel"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.GetChildImagesResponse": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Iteration"
+          }
+        }
+      }
+    },
+    "hashicorp.cloud.packer.GetIterationResponse": {
+      "type": "object",
+      "properties": {
+        "iteration": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Iteration"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.Image": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID for the image"
+        },
+        "image_id": {
+          "type": "string",
+          "description": "ID or URL of the remote cloud image as given by a build."
+        },
+        "region": {
+          "type": "string",
+          "title": "region as given by `packer build`. eg. \"ap-east-1\""
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp at which this image was created"
+        }
+      },
+      "description": "Represents the actual region:image_id mapping for a single image, in a\nsingle build."
+    },
+    "hashicorp.cloud.packer.Iteration": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID"
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "same bucket_slug as in the Bucket object"
+        },
+        "iteration_ancestor_id": {
+          "type": "string",
+          "title": "what image was used as source"
+        },
+        "incremental_version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "e.g 15"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "If true, this iteration is considered \"ready to use\" and will be\nreturned even if the include_incomplete flage is \"false\" in the\nlist iterations request."
+        },
+        "author_id": {
+          "type": "string",
+          "title": "who created the iteration"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "when iteration was created or updated"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fingerprint": {
+          "type": "string",
+          "description": "fingerprint of the build; this will allow to regroup image builds under\nthe same iteration. So it could be for example a git sha."
+        },
+        "builds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Build"
+          },
+          "title": "link to set of builds for an image iteration"
+        }
+      },
+      "title": "image iterations messages"
+    },
+    "hashicorp.cloud.packer.IterationforList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ULID"
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "same bucket_slug as in the Bucket object"
+        },
+        "iteration_ancestor_id": {
+          "type": "string",
+          "title": "what image was used as source"
+        },
+        "incremental_version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "e.g 15"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "If true, this iteration is considered \"ready to use\" and will be\nreturned even if the include_incomplete flage is \"false\" in the\nlist iterations request."
+        },
+        "author_id": {
+          "type": "string",
+          "title": "who created the iteration"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "when iteration was created or updated"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fingerprint": {
+          "type": "string",
+          "description": "fingerprint of the build; this will allow to regroup image builds under\nthe same iteration. So it could be for example a git sha."
+        }
+      },
+      "description": "The list endpoint should not return build information, but should return\nwhat channels are associated with a given iteration."
+    },
+    "hashicorp.cloud.packer.ListBucketsResponse": {
+      "type": "object",
+      "properties": {
+        "buckets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Bucket"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/hashicorp.cloud.common.PaginationResponse",
+          "description": "pagination contains the pagination tokens for a subsequent request."
+        }
+      }
+    },
+    "hashicorp.cloud.packer.ListBuildsResponse": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        },
+        "pagination": {
+          "$ref": "#/definitions/hashicorp.cloud.common.PaginationResponse"
+        },
+        "builds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Build"
+          }
+        }
+      }
+    },
+    "hashicorp.cloud.packer.ListChannelsResponse": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.Channel"
+          }
+        }
+      }
+    },
+    "hashicorp.cloud.packer.ListIterationsResponse": {
+      "type": "object",
+      "properties": {
+        "iterations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hashicorp.cloud.packer.IterationforList"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/hashicorp.cloud.common.PaginationResponse"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateBucketRequest": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "base-ubuntu-18-secure"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "[\"aws\", \"gcp\"]"
+        },
+        "description": {
+          "type": "string",
+          "title": "\"This image is a hardened platform for other teams\""
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Slot for unstructured metadata tags\nfor example {\"repo\": \"https://github.com/hashicorp/common\"}"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateBucketResponse": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Bucket"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateBuildRequest": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location",
+          "title": "org and project info"
+        },
+        "build_id": {
+          "type": "string",
+          "title": "build ULID"
+        },
+        "updates": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.BuildUpdates",
+          "title": "custom build info"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateBuildResponse": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Build",
+          "title": "custom build info"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateChannelRequest": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "title": "production-stable"
+        },
+        "bucket_slug": {
+          "type": "string",
+          "title": "same as in Bucket"
+        },
+        "incremental_version": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "iteration_id": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "ratify": {
+          "type": "boolean",
+          "title": "Ratifies a revoked channel prior to the update"
+        },
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateChannelResponse": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Channel"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateIterationRequest": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/hashicorp.cloud.location.Location"
+        },
+        "bucket_slug": {
+          "type": "string"
+        },
+        "iteration_id": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "hashicorp.cloud.packer.UpdateIterationResponse": {
+      "type": "object",
+      "properties": {
+        "iteration": {
+          "$ref": "#/definitions/hashicorp.cloud.packer.Iteration"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "bearer": {
+      "type": "apiKey",
+      "description": "Authentication token, prefixed by Bearer: Bearer \u003ctoken\u003e",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ]
+}
