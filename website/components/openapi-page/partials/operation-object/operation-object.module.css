@@ -48,7 +48,7 @@
   }
 
   &[data-is-hovered='true'] {
-    color: var(--brand);
+    color: var(--brand-link);
   }
 }
 
@@ -59,7 +59,7 @@
     color: var(--gray-3);
 
     &[data-is-hovered='true'] {
-      color: var(--brand);
+      color: var(--brand-link);
     }
   }
 
@@ -70,7 +70,7 @@
 
 .toggleButton {
   border: none;
-  color: var(--brand);
+  color: var(--brand-link);
   background: none;
   display: flex;
   align-items: center;
@@ -92,10 +92,10 @@
 
     & svg {
       & [fill] {
-        fill: var(--brand);
+        fill: var(--brand-link);
       }
       & [stroke] {
-        stroke: var(--brand);
+        stroke: var(--brand-link);
       }
     }
 

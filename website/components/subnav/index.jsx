@@ -9,7 +9,7 @@ export default function ProductSubnav() {
   return (
     <Subnav
       titleLink={{
-        text: 'Boundary',
+        text: 'Packer',
         url: '/',
       }}
       ctaLinks={[

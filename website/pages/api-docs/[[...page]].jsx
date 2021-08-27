@@ -1,4 +1,4 @@
-import { productName, productSlug } from 'data/metadata'
+// import { productName, productSlug } from 'data/metadata'
 import path from 'path'
 import parseSwagger from '../../lib/swagger-parser'
 import OpenApiPage, {
@@ -13,8 +13,8 @@ export default function OpenApiDocsPage(props) {
   return (
     <OpenApiPage
       {...props}
-      productName={productName}
-      productSlug={productSlug}
+      productName={'Packer'}
+      productSlug={'packer'}
       pathFromRoot={pathFromRoot}
       massageOperationPathFn={(path) =>
         path.replace(

@@ -13,7 +13,7 @@
   }
 
   & .name {
-    color: var(--brand);
+    color: var(--brand-link);
     background: rgba(29, 30, 35, 0.07);
     border-radius: 3px;
     padding: 0.3em 0.625em;
@@ -38,9 +38,8 @@
   }
 
   & .toggleButton {
-    border: 1px solid red;
     border: none;
-    color: var(--brand);
+    color: var(--brand-link);
     background: none;
     display: flex;
     align-items: center;
@@ -60,10 +59,10 @@
 
       & svg {
         & [fill] {
-          fill: var(--brand);
+          fill: var(--brand-link);
         }
         & [stroke] {
-          stroke: var(--brand);
+          stroke: var(--brand-link);
         }
       }
 

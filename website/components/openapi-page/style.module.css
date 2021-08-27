@@ -13,9 +13,17 @@
   }
 
   /* currently only supports "boundary", may want to extend to support other product themes */
-  &[data-theme='boundary'] {
+
+  /* &[data-theme='boundary'] {
     --brand: var(--boundary);
-  }
+  } */
+
+  /* currently only supports "boundary", may want to extend to support other product themes */
+
+  /* &[data-theme='packer'] {
+    --brand: var(--packer);
+    --brand-text: var(--packer-text-link);
+  } */
 
   & .pageHeading {
     margin: 0;
