@@ -634,6 +634,7 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0/go.mod h1:d2gYTOTUQklu06xp0AJYY
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0 h1:ajue7SzQMywqRjg2fK7dcpc0QhFGpTR2plWfV4EZWR4=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0/go.mod h1:r1hZAcvfFXuYmcKyCJI9wlyOPIZUJl6FCB8Cpca/NLE=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
+github.com/hashicorp/boundary v0.5.0/go.mod h1:s9we/WZi5oD1QztYxMjRKXjRyQCIU0uG4Gkor/MM+DY=
 github.com/hashicorp/cap v0.1.1 h1:GjO4+9+H0wv/89YoEsxeVc2jIizL19r5v5l2lpaH8Kg=
 github.com/hashicorp/cap v0.1.1/go.mod h1:VfBvK2ULRyqsuqAnjgZl7HJ7/CGMC7ro4H5eXiZuun8=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
@@ -650,6 +651,7 @@ github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/eventlogger v0.1.0 h1:S6xc4gZVzewuDUP4R4Ngko419h/CGDuV/b4ADL3XLik=
 github.com/hashicorp/eventlogger v0.1.0/go.mod h1:a3IXf1aEJfpCPzseTOrwKj4fVW/Qn3oEmpQeaIznzH0=
+github.com/hashicorp/go-bexpr v0.1.8/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
 github.com/hashicorp/go-bexpr v0.1.9 h1:ouAaFgGdp28SwSFYbJycLo9hNWwbtgESzTVKeBC21pw=
 github.com/hashicorp/go-bexpr v0.1.9/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
 github.com/hashicorp/go-bexpr v0.1.10 h1:9kuI5PFotCboP3dkDYFr/wi0gg0QVbSNz5oFRpxn4uE=
@@ -685,7 +687,6 @@ github.com/hashicorp/go-plugin v1.0.1/go.mod h1:++UyYGoz3o5w9ZzAdZxtQKrWWP+iqPBn
 github.com/hashicorp/go-retryablehttp v0.5.3/go.mod h1:9B5zBasrRhHXnJnui7y6sL7es7NDiJgTc6Er0maI1Xs=
 github.com/hashicorp/go-retryablehttp v0.6.2/go.mod h1:gEx6HMUGxYYhJScX7W1Il64m6cc2C1mDaW3NQ9sY1FY=
 github.com/hashicorp/go-retryablehttp v0.6.6/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER/9wtLZZ8meHqQvEYWY=
-github.com/hashicorp/go-retryablehttp v0.6.8/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER/9wtLZZ8meHqQvEYWY=
 github.com/hashicorp/go-retryablehttp v0.7.0 h1:eu1EI/mbirUgP5C8hVsTNaGZreBDlYiwC1FZWkvQPQ4=
 github.com/hashicorp/go-retryablehttp v0.7.0/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER/9wtLZZ8meHqQvEYWY=
 github.com/hashicorp/go-rootcerts v1.0.0/go.mod h1:K6zTfqpRlCUIjkwsN4Z+hiSfzSTQa6eBIzfwKfwNnHU=
@@ -696,6 +697,7 @@ github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2 h1:AEcLbDoaRC9JMmtZXsuCykzt
 github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1 h1:6KMBnfEv0/kLAz0O76sliN5mXbCDcLfs2kP7ssP7+DQ=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1/go.mod h1:EdWO6czbmthiwZ3/PUsDV+UD1D5IRU4ActiaWGwt0Yw=
+github.com/hashicorp/go-secure-stdlib/configutil v0.1.1/go.mod h1:5CQ5+MqV+qf46nta8piifri5TdcZ0sE/PCz9vgzeh0U=
 github.com/hashicorp/go-secure-stdlib/configutil v0.1.2 h1:ai0P91rxlyGWkYUH/zFr7mduW2Q+2FMrXawkLM8e7NU=
 github.com/hashicorp/go-secure-stdlib/configutil v0.1.2/go.mod h1:EN1DJMjv9y5e/uRAuP2WPibAox5KHEiq2BjZl00aNPQ=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1 h1:9um9R8i0+HbRHS9d64kdvWR0/LJvo12sIonvR9zr1+U=

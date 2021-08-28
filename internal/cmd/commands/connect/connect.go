@@ -2,16 +2,12 @@ package connect
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -21,18 +17,15 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/proxy"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
-	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	exec "golang.org/x/sys/execabs"
-	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
@@ -93,7 +86,7 @@ type Command struct {
 	Func string
 
 	sessionAuthz     *targets.SessionAuthorization
-	sessionAuthzData *targetspb.SessionAuthorizationData
+	sessionAuthzData *targets.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
@@ -332,6 +325,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	authzString := c.flagAuthzToken
+	var token targets.AuthorizationToken
 	switch {
 	case authzString != "":
 		if authzString == "-" {
@@ -355,9 +349,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			c.sessionAuthz = new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
-				authzString = c.sessionAuthz.AuthorizationToken
+			sessionAuthz := new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), sessionAuthz); err == nil {
+				token = targets.AuthorizationToken(sessionAuthz.AuthorizationToken)
 			}
 		}
 
@@ -392,68 +386,24 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return base.CommandCliError
 		}
-		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
-		authzString = c.sessionAuthz.AuthorizationToken
+		token = targets.AuthorizationToken(sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken)
 	}
-
-	marshaled, err := base58.FastBase58Decoding(authzString)
+	sessionAuthzData, tlsConf, err := token.GetConfig()
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to base58-decode authorization data: %w", err))
-		return base.CommandUserError
-	}
-	if len(marshaled) == 0 {
-		c.PrintCliError(errors.New("Zero length authorization information after decoding"))
+		c.PrintCliError(err)
 		return base.CommandUserError
 	}
 
-	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
-	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to proto-decode authorization data: %w", err))
-		return base.CommandUserError
-	}
+	c.sessionAuthzData = sessionAuthzData
+	c.connectionsLeft.Store(sessionAuthzData.ConnectionLimit)
 
-	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
-		c.PrintCliError(errors.New("No workers found in authorization string"))
-		return base.CommandUserError
-	}
-
-	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
-	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
-
-	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
-		return base.CommandUserError
-	}
-
-	if len(parsedCert.DNSNames) != 1 {
-		c.PrintCliError(fmt.Errorf("mTLS certificate has invalid parameters: %w", err))
-		return base.CommandUserError
-	}
-
-	c.expiration = parsedCert.NotAfter
+	c.expiration = tlsConf.Certificates[0].Leaf.NotAfter
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
 	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
 	defer c.proxyCancel()
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(parsedCert)
-
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{c.sessionAuthzData.Certificate},
-				PrivateKey:  ed25519.PrivateKey(c.sessionAuthzData.PrivateKey),
-				Leaf:        parsedCert,
-			},
-		},
-		RootCAs:    certPool,
-		ServerName: parsedCert.DNSNames[0],
-		MinVersion: tls.VersionTLS13,
-	}
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
@@ -568,10 +518,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			go func() {
 				defer listeningConn.Close()
 				defer c.connWg.Done()
-				wsConn, err := c.getWsConn(
-					c.proxyCtx,
-					workerAddr,
-					transport)
+				wsConn, err := token.Connect(c.proxyCtx, transport)
 				if err != nil {
 					c.PrintCliError(err)
 				} else {
@@ -642,7 +589,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if sendSessionCancel {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
-		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
+		wsConn, err := token.Connect(ctx, transport)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err))
 		} else {
@@ -674,44 +621,6 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	return
-}
-
-func (c *Command) getWsConn(
-	ctx context.Context,
-	workerAddr string,
-	transport *http.Transport) (*websocket.Conn, error) {
-	conn, resp, err := websocket.Dial(
-		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
-		&websocket.DialOptions{
-			HTTPClient: &http.Client{
-				Transport: transport,
-			},
-			Subprotocols: []string{globals.TcpProxyV1},
-		},
-	)
-	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "tls: internal error"):
-			return nil, errors.New("Session credentials were not accepted, or session is unauthorized")
-		case strings.Contains(err.Error(), "connect: connection refused"):
-			return nil, fmt.Errorf("Unable to connect to worker at %s", workerAddr)
-		default:
-			return nil, fmt.Errorf("Error dialing the worker: %w", err)
-		}
-	}
-
-	if resp == nil {
-		return nil, errors.New("Response from worker is nil")
-	}
-	if resp.Header == nil {
-		return nil, errors.New("Response header is nil")
-	}
-	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-	if negProto != globals.TcpProxyV1 {
-		return nil, fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
-	}
-	return conn, nil
 }
 
 func (c *Command) sendSessionTeardown(

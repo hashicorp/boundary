@@ -47,13 +47,10 @@ require (
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
-	github.com/jinzhu/now v1.1.1 // indirect
-	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-colorable v0.1.8
-	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
@@ -66,7 +63,6 @@ require (
 	github.com/pires/go-proxyproto v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
-	github.com/spf13/cobra v1.1.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.8.0
@@ -78,7 +74,6 @@ require (
 	google.golang.org/grpc v1.38.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )
