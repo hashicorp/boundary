@@ -2,6 +2,8 @@ package schema
 
 import (
 	"sort"
+
+	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 )
 
 // statementProvider provides the migration statements in order.
@@ -10,7 +12,7 @@ import (
 type statementProvider struct {
 	pos      int
 	versions []int
-	up       map[int][]byte
+	up       map[int]migrations.UpVersion
 }
 
 func newStatementProvider(dialect string, curVer int, opt ...Option) *statementProvider {
@@ -42,9 +44,10 @@ func (q *statementProvider) Version() int {
 }
 
 // ReadUp reads the current up migration
-func (q *statementProvider) ReadUp() []byte {
+func (q *statementProvider) ReadUp() *migrations.UpVersion {
 	if q.pos < 0 || q.pos >= len(q.versions) {
 		return nil
 	}
-	return q.up[q.versions[q.pos]]
+	ver := q.up[q.versions[q.pos]]
+	return &ver
 }

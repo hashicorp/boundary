@@ -177,6 +177,11 @@ func (p *Postgres) StartRun(ctx context.Context) error {
 	return nil
 }
 
+// Tx returns the transaction in use, if any
+func (p *Postgres) Tx() *sql.Tx {
+	return p.tx
+}
+
 // CommitRun commits the pending transaction if there is one
 func (p *Postgres) CommitRun() error {
 	const op = "postgres.(Postgres).CommitRun"

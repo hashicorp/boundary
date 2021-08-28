@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -126,7 +127,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 	state, err := m.CurrentState(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, nState.binarySchemaVersion, state.DatabaseSchemaVersion)
+	assert.Equal(t, nState.BinarySchemaVersion, state.DatabaseSchemaVersion)
 	assert.False(t, state.Dirty)
 
 	// Restore the full set of sql scripts and roll the rest of the way forward.
@@ -137,7 +138,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	assert.NoError(t, newM.RollForward(ctx))
 	state, err = newM.CurrentState(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, oState.binarySchemaVersion, state.DatabaseSchemaVersion)
+	assert.Equal(t, oState.BinarySchemaVersion, state.DatabaseSchemaVersion)
 	assert.False(t, state.Dirty)
 }
 
@@ -168,8 +169,10 @@ func TestRollForward_BadSQL(t *testing.T) {
 	defer func() { migrationStates[dialect] = oState }()
 
 	nState := createPartialMigrationState(oState, 8)
-	nState.binarySchemaVersion = 10
-	nState.upMigrations[10] = []byte("SELECT 1 FROM NonExistantTable;")
+	nState.BinarySchemaVersion = 10
+	nState.UpMigrations[10] = migrations.UpVersion{
+		Statements: []byte("SELECT 1 FROM NonExistantTable;"),
+	}
 	migrationStates[dialect] = nState
 
 	c, u, _, err := docker.StartDbInDocker(dialect)
@@ -334,18 +337,18 @@ func Test_GetMigrationLog(t *testing.T) {
 }
 
 // Creates a new migrationState only with the versions <= the provided maxVer
-func createPartialMigrationState(om migrationState, maxVer int) migrationState {
-	nState := migrationState{
-		upMigrations: make(map[int][]byte),
+func createPartialMigrationState(om migrations.MigrationState, maxVer int) migrations.MigrationState {
+	nState := migrations.MigrationState{
+		UpMigrations: make(map[int]migrations.UpVersion),
 	}
-	for k := range om.upMigrations {
+	for k := range om.UpMigrations {
 		if k > maxVer {
 			// Don't store any versions past our test version.
 			continue
 		}
-		nState.upMigrations[k] = om.upMigrations[k]
-		if nState.binarySchemaVersion < k {
-			nState.binarySchemaVersion = k
+		nState.UpMigrations[k] = om.UpMigrations[k]
+		if nState.BinarySchemaVersion < k {
+			nState.BinarySchemaVersion = k
 		}
 	}
 	return nState

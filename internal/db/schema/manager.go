@@ -23,6 +23,8 @@ type driver interface {
 	// Either starts a transactioon internal to the driver or sets a dirty
 	// bit so if the Run fails the CurrentState reflects it.
 	StartRun(context.Context) error
+	// Returns the transaction in use. This can be used for pre/post hooks.
+	Tx() *sql.Tx
 	// Either commits the transaction or clears the dirty bit.
 	CommitRun() error
 	// Performs the mutation on the driver.  This should always be
@@ -205,8 +207,19 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
-		if err := b.driver.Run(ctx, bytes.NewReader(qp.ReadUp()), qp.Version()); err != nil {
-			return errors.Wrap(ctx, err, op)
+		upVer := qp.ReadUp()
+		if upVer.PreHook != nil {
+			if err := upVer.PreHook(ctx, b.driver.Tx()); err != nil {
+				return errors.Wrap(err, op)
+			}
+		}
+		if err := b.driver.Run(ctx, bytes.NewReader(upVer.Statements), qp.Version()); err != nil {
+			return errors.Wrap(err, op)
+		}
+		if upVer.PostHook != nil {
+			if err := upVer.PostHook(ctx, b.driver.Tx()); err != nil {
+				return errors.Wrap(err, op)
+			}
 		}
 	}
 	if err := b.driver.CommitRun(); err != nil {

@@ -1,21 +1,23 @@
 package schema
 
+import (
+	"github.com/hashicorp/boundary/internal/db/schema/migrations"
+	"github.com/hashicorp/boundary/internal/db/schema/postgres"
+)
+
 const nilVersion = -1
 
-// migrationState is meant to be populated by the generated migration code and
-// contains the internal representation of a schema in the current binary.
-type migrationState struct {
-	// binarySchemaVersion provides the database schema version supported by
-	// this binary.
-	binarySchemaVersion int
+// migrationStates is populated by the generated migration code with the key being the dialect.
+var migrationStates = make(map[string]migrations.MigrationState)
 
-	upMigrations map[int][]byte
+func init() {
+	migrationStates["postgres"] = postgres.MigrationStates()
 }
 
 // migrationStates is populated by the generated migration code with the key being the dialect.
 var migrationStates = make(map[string]migrationState)
 
-func getUpMigration(dialect string, opt ...Option) map[int][]byte {
+func getUpMigration(dialect string, opt ...Option) map[int]migrations.UpVersion {
 	opts := getOpts(opt...)
 	var ms migrationState
 	var ok bool
@@ -27,7 +29,7 @@ func getUpMigration(dialect string, opt ...Option) map[int][]byte {
 	if !ok {
 		return nil
 	}
-	return ms.upMigrations
+	return ms.UpMigrations
 }
 
 // BinarySchemaVersion provides the schema version that this binary supports for the provided dialect.
@@ -37,7 +39,7 @@ func BinarySchemaVersion(dialect string) int {
 	if !ok {
 		return nilVersion
 	}
-	return ms.binarySchemaVersion
+	return ms.BinarySchemaVersion
 }
 
 func cloneMigrationStates(states map[string]migrationState) map[string]migrationState {

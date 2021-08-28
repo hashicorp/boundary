@@ -3,17 +3,18 @@ package schema
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStatementProvider(t *testing.T) {
 	testDialect := "test"
-	migrationStates[testDialect] = migrationState{
-		binarySchemaVersion: 5,
-		upMigrations: map[int][]byte{
-			1: []byte("one"),
-			2: []byte("two"),
-			3: []byte("three"),
+	migrationStates[testDialect] = migrations.MigrationState{
+		BinarySchemaVersion: 5,
+		UpMigrations: map[int]migrations.UpVersion{
+			1: {Statements: []byte("one")},
+			2: {Statements: []byte("two")},
+			3: {Statements: []byte("three")},
 		},
 	}
 
