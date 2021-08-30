@@ -6450,90 +6450,17 @@ alter table wh_user_dimension
   create trigger immutable_columns before update on plugin_version
     for each row execute procedure immutable_columns('public_id', 'plugin_id', 'create_time', 'semantic_version');
 
-  -- Values retrieved by using $ go tool dist list | cut -d / -f1 | uniq
-  -- TODO: Remove this and rely on go logic to enforce these values so we
-  --   avoid the toil of keeping this up to date.
-  create table plugin_operating_system_enm (
-    name text not null primary key
-      constraint only_predefined_operating_systems_allowed
-      check(name in ('unknown', 'aix', 'android', 'darwin', 'dragonfly',
-                       'freebsd', 'illumos', 'ios', 'js', 'linux', 'netbsd',
-                       'openbsd', 'plan9', 'solaris', 'windows'))
-  );
-
-  insert into plugin_operating_system_enm (name)
-  values
-    ('unknown'),
-    ('aix'),
-    ('android'),
-    ('darwin'),
-    ('dragonfly'),
-    ('freebsd'),
-    ('illumos'),
-    ('ios'),
-    ('js'),
-    ('linux'),
-    ('netbsd'),
-    ('openbsd'),
-    ('plan9'),
-    ('solaris'),
-    ('windows');
-
-  -- define the immutable fields for plugin_operating_system_enm (all of them)
-  create trigger
-    immutable_columns
-    before
-      update on plugin_operating_system_enm
-    for each row execute procedure immutable_columns('name');
-
-  -- Values retrieved by using $ go tool dist list | cut -d / -f2 | sort | uniq
-  -- TODO: Remove this and rely on go logic to enforce these values so we
-  --   avoid the toil of keeping this up to date.
-  create table plugin_operating_architecture_enm (
-    name text not null primary key
-      constraint only_predefined_architectures_allowed
-        check(name in ('unknown', '386', 'amd64', 'arm', 'arm64', 'mips',
-                         'mips64', 'mips64le', 'mipsle', 'ppc64', 'ppc64le',
-                         'riscv64', 's390x', 'wasm'))
-  );
-
-  insert into plugin_operating_architecture_enm (name)
-  values
-    ('unknown'),
-    ('386'),
-    ('amd64'),
-    ('arm'),
-    ('arm64'),
-    ('mips'),
-    ('mips64'),
-    ('mips64le'),
-    ('mipsle'),
-    ('ppc64'),
-    ('ppc64le'),
-    ('riscv64'),
-    ('s390x'),
-    ('wasm');
-
-  -- define the immutable fields for plugin_operating_architecture_enm (all of them)
-  create trigger
-    immutable_columns
-    before
-      update on plugin_operating_architecture_enm
-    for each row execute procedure immutable_columns('name');
-
   create table plugin_executable (
     version_id wt_public_id
       references plugin_version(public_id)
         on delete cascade
         on update cascade,
     operating_system text not null
-      references plugin_operating_system_enm(name)
-      on delete restrict
-      on update cascade,
+      constraint operating_system_is_not_empty
+        check(length(operating_system) > 0),
     architecture text not null
-      references plugin_operating_architecture_enm(name)
-        on delete restrict
-        on update cascade,
+      constraint architecture_is_not_empty
+        check(length(architecture) > 0),
     executable bytea not null
       constraint executable_is_not_empty
       check(length(executable) > 0),
