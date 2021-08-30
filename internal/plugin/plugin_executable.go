@@ -7,41 +7,26 @@ import (
 // OperatingSystem defines the operating systems supported for plugin executables
 type OperatingSystem string
 
+// TODO: Auto generate the constraints on what the OS and ARCHs we support are.
 const (
-	UnknownOS   OperatingSystem = "unknown"
-	AixOS                       = "aix"
-	AndroidOS                   = "android"
-	DarwinOS                    = "darwin"
-	DragonflyOS                 = "dragonfly"
-	FreebsdOS                   = "freebsd"
-	IllumosOS                   = "illumos"
-	IosOS                       = "ios"
-	JsOS                        = "js"
-	LinuxOS                     = "linux"
-	NetbsdOS                    = "netbsd"
-	OpenbsdOS                   = "openbsd"
-	Plan9OS                     = "plan9"
-	SolarisOS                   = "solaris"
-	WindowsOS                   = "windows"
+	UnknownOS OperatingSystem = "unknown"
+	DarwinOS                  = "darwin"
+	FreebsdOS                 = "freebsd"
+	LinuxOS                   = "linux"
+	NetbsdOS                  = "netbsd"
+	OpenbsdOS                 = "openbsd"
+	SolarisOS                 = "solaris"
+	WindowsOS                 = "windows"
 )
 
 type Architecture string
 
 const (
-	UnknownArch  Architecture = "unknown"
-	Three86Arch               = "386"
-	Amd64Arch                 = "amd64"
-	ArmArch                   = "arm"
-	Arm64Arch                 = "arm64"
-	MipsArch                  = "mips"
-	Mips64Arch                = "mips64"
-	Mips64leArch              = "mips64le"
-	MipsleArch                = "mipsle"
-	Ppc64Arch                 = "ppc64"
-	Ppc64leArch               = "ppc64le"
-	Riscv64Arch               = "riscv64"
-	S390xArch                 = "s390x"
-	WasmArch                  = "wasm"
+	UnknownArch Architecture = "unknown"
+	Three86Arch              = "386"
+	Amd64Arch                = "amd64"
+	ArmArch                  = "arm"
+	Arm64Arch                = "arm64"
 )
 
 // A PluginExecutable is owned by a plugin version.

@@ -194,6 +194,15 @@ func TestPluginExecutable_ImmutableFields(t *testing.T) {
 			}(),
 			fieldMask: []string{"Architecture"},
 		},
+		{
+			name: "exe",
+			update: func() *PluginExecutable {
+				c := newPluginExe.testClonePluginExecutable()
+				c.Executable = []byte("another value")
+				return c
+			}(),
+			fieldMask: []string{"Executable"},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
