@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -109,12 +110,26 @@ func TestPluginVersion_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	ctx := context.Background()
-	plg := testPlugin(t, conn, "test")
-	plgver := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
+	t.Run("cascade plugin", func(t *testing.T) {
+		plg := testPlugin(t, conn, "cascadeplugin")
+		plgver := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
 
-	deleted, err := w.Delete(ctx, plgver)
-	require.NoError(t, err)
-	require.Equal(t, 1, deleted)
+		deleted, err := w.Delete(ctx, plg)
+		require.NoError(t, err)
+		require.Equal(t, 1, deleted)
+		err = w.LookupById(ctx, plgver)
+		assert.Error(t, err)
+		assert.True(t, errors.IsNotFoundError(err))
+	})
+
+	t.Run("directly delete", func(t *testing.T) {
+		plg := testPlugin(t, conn, "direct")
+		plgver := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
+
+		deleted, err := w.Delete(ctx, plgver)
+		require.NoError(t, err)
+		require.Equal(t, 1, deleted)
+	})
 }
 
 func TestPluginVersion_SetTableName(t *testing.T) {
