@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"google.golang.org/protobuf/proto"
 )
 
 // A HostSet is a collection of hosts from the set's catalog.
@@ -50,4 +52,29 @@ func (s *HostSet) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (s *HostSet) SetTableName(n string) {
 	s.tableName = n
+}
+
+func allocHostSet() *HostSet {
+	return &HostSet{
+		HostSet: &store.HostSet{},
+	}
+}
+
+func (s *HostSet) clone() *HostSet {
+	cp := proto.Clone(s.HostSet)
+	return &HostSet{
+		HostSet: cp.(*store.HostSet),
+	}
+}
+
+func (s *HostSet) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{s.PublicId},
+		"resource-type":      []string{"plugin-host-set"},
+		"op-type":            []string{op.String()},
+	}
+	if s.CatalogId != "" {
+		metadata["catalog-id"] = []string{s.CatalogId}
+	}
+	return metadata
 }
