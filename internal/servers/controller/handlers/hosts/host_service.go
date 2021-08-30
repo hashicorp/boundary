@@ -456,6 +456,9 @@ func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, o
 			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
 		}
 	}
+	if outputFields.Has(globals.HostAddressField) {
+		out.Address = in.Address
+	}
 	if outputFields.Has(globals.AttributesField) {
 		st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
 		if err != nil {

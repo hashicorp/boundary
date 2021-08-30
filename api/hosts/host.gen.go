@@ -24,6 +24,7 @@ type Host struct {
 	Type              string                 `json:"type,omitempty"`
 	HostSetIds        []string               `json:"host_set_ids,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	Address           string                 `json:"address,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response

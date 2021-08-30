@@ -59,6 +59,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:   h.UpdateTime.GetTimestamp(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:          "static",
+		Address:       h.GetAddress(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
@@ -143,7 +144,9 @@ func TestList(t *testing.T) {
 			CreatedTime:   h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
 			Version:       h.GetVersion(),
-			Type:          static.Subtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			Type:          static.Subtype.String(),
+			Address:       h.GetAddress(),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
 			AuthorizedActions: testAuthorizedActions,
@@ -346,6 +349,7 @@ func TestCreate(t *testing.T) {
 				Name:          &wrappers.StringValue{Value: "name"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "static",
+				Address:       "123.456.789",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"address": structpb.NewStringValue("123.456.789"),
 				}},
@@ -358,6 +362,7 @@ func TestCreate(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "name"},
 					Description:   &wrappers.StringValue{Value: "desc"},
 					Type:          "static",
+					Address:       "123.456.789",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
@@ -390,6 +395,18 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Create with incorrectly-supplied address (in output-only field)",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "static",
+				Address:       "123.456.789",
+				Attributes:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: hc.GetPublicId(),
@@ -417,6 +434,7 @@ func TestCreate(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "no type name"},
 					Description:   &wrappers.StringValue{Value: "no type desc"},
 					Type:          "static",
+					Address:       "123.456.789",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
@@ -555,6 +573,7 @@ func TestUpdate(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -583,6 +602,7 @@ func TestUpdate(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -653,6 +673,7 @@ func TestUpdate(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -678,6 +699,7 @@ func TestUpdate(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -705,6 +727,7 @@ func TestUpdate(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -732,6 +755,7 @@ func TestUpdate(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
+					Address:       "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -824,6 +848,19 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Host{
 					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify top-level address",
+			req: &pbs.UpdateHostRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Host{
+					Address: "updatedaddress",
 				},
 			},
 			res: nil,

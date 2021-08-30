@@ -135,6 +135,9 @@ func printItemTable(result api.GenericResult) string {
 	if item.HostCatalogId != "" {
 		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
 	}
+	if item.Address != "" {
+		nonAttributeMap["Address"] = item.Address
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
