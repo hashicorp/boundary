@@ -121,18 +121,26 @@ begin;
   create table plugin_operating_system_enm (
     name text not null primary key
       constraint only_predefined_operating_systems_allowed
-      check(name in ('unknown', 'darwin', 'freebsd', 'linux', 'netbsd',
-                       'openbsd', 'solaris', 'windows'))
+      check(name in ('unknown', 'aix', 'android', 'darwin', 'dragonfly',
+                       'freebsd', 'illumos', 'ios', 'js', 'linux', 'netbsd',
+                       'openbsd', 'plan9', 'solaris', 'windows'))
   );
 
   insert into plugin_operating_system_enm (name)
   values
     ('unknown'),
+    ('aix'),
+    ('android'),
     ('darwin'),
+    ('dragonfly'),
     ('freebsd'),
+    ('illumos'),
+    ('ios'),
+    ('js'),
     ('linux'),
     ('netbsd'),
     ('openbsd'),
+    ('plan9'),
     ('solaris'),
     ('windows');
 
@@ -149,7 +157,9 @@ begin;
   create table plugin_operating_architecture_enm (
     name text not null primary key
       constraint only_predefined_architectures_allowed
-        check(name in ('unknown', '386', 'amd64', 'arm', 'arm64'))
+        check(name in ('unknown', '386', 'amd64', 'arm', 'arm64', 'mips',
+                         'mips64', 'mips64le', 'mipsle', 'ppc64', 'ppc64le',
+                         'riscv64', 's390x', 'wasm'))
   );
 
   insert into plugin_operating_architecture_enm (name)
@@ -158,7 +168,16 @@ begin;
     ('386'),
     ('amd64'),
     ('arm'),
-    ('arm64');
+    ('arm64'),
+    ('mips'),
+    ('mips64'),
+    ('mips64le'),
+    ('mipsle'),
+    ('ppc64'),
+    ('ppc64le'),
+    ('riscv64'),
+    ('s390x'),
+    ('wasm');
 
   -- define the immutable fields for plugin_operating_architecture_enm (all of them)
   create trigger
