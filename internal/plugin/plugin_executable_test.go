@@ -82,25 +82,27 @@ func TestPluginExecutable_Create(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "bad-os",
+			name: "unknown-os",
 			args: args{
 				verId: plgVer.GetPublicId(),
 				os:    OperatingSystem("something"),
+				arch:  Amd64Arch,
 				exe:   sample,
 			},
 			want: &PluginExecutable{
 				PluginExecutable: &store.PluginExecutable{
 					VersionId:       plgVer.GetPublicId(),
 					OperatingSystem: "something",
+					Architecture:    Amd64Arch,
 					Executable:      sample,
 				},
 			},
-			wantErr: true,
 		},
 		{
-			name: "bad-arch",
+			name: "unknown-arch",
 			args: args{
 				verId: plgVer.GetPublicId(),
+				os:    WindowsOS,
 				arch:  Architecture("something"),
 				exe:   sample,
 			},
@@ -111,7 +113,6 @@ func TestPluginExecutable_Create(t *testing.T) {
 					Executable:   sample,
 				},
 			},
-			wantErr: true,
 		},
 		{
 			name: "success",
