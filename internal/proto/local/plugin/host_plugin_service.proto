@@ -47,7 +47,7 @@ message OnCreateCatalogRequest {
 message OnCreateCatalogResponse {
   // Secret data to persist encrypted within Boundary. This should be
   // used to store authentication data and other necessary
-  // configuration to be used in later hooks and calls. Returning an
+  // configuration to be used in later calls to the host plugin service. Returning an
   // error from the call will cause this data to not be persisted.
   HostCatalogPersisted persisted = 10;
 }
