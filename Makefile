@@ -137,6 +137,11 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 
+	# these protos, services and openapi artifacts are purely for testing purposes
+	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=testing:internal/gen/testing/event/. internal/proto/local/testing/event/v1/*.proto
+
+
 	@rm -R ${TMP_DIR}
 
 protolint:
