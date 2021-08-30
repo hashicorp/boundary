@@ -65,7 +65,7 @@ require (
 	github.com/oligot/go-mod-upgrade v0.6.1
 	github.com/ory/dockertest/v3 v3.6.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pires/go-proxyproto v0.5.0
+	github.com/pires/go-proxyproto v0.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/spf13/cobra v1.1.1 // indirect
