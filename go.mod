@@ -30,7 +30,6 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.9
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.5
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820140919-c878735c9139
 	github.com/hashicorp/go-multierror v1.1.1
