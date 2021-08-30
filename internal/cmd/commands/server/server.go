@@ -547,7 +547,7 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 				return nil, base.CommandCliError
 			}
 		}
-		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
 		if ifWrapper != nil {
 			if err := ifWrapper.Finalize(c.Context); err != nil {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
