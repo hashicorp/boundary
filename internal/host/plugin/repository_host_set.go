@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
@@ -19,7 +18,7 @@ import (
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (host.Set, error) {
+func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (*HostSet, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -87,7 +86,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // LookupSet will look up a host set in the repository and return the host
 // set. If the host set is not found, it will return nil, nil.
 // All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...Option) (host.Set, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...Option) (*HostSet, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
