@@ -17,8 +17,8 @@ func TestHostSet_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
-	cat := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
-	cat2 := testCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	cat := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	cat2 := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 	type args struct {
 		catalogId string

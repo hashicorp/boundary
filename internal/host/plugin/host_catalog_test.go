@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/plugin/host"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -208,8 +207,8 @@ func TestHostCatalog_Delete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
-	cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
-	ignoredCat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+	cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+	ignoredCat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	_ = ignoredCat
 	tests := []struct {
 		name        string
@@ -259,7 +258,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	t.Run("delete-scope", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := host.TestPlugin(t, conn, "delete-scope", "delete-scope")
-		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
 		require.NoError(t, err)
@@ -273,7 +272,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := host.TestPlugin(t, conn, "delete-plugin", "delete-plugin")
-		cat := testCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)
 		require.NoError(t, err)
@@ -283,12 +282,6 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.IsNotFoundError(err))
 	})
-}
-
-func testCatalog(t *testing.T, conn *gorm.DB, pluginId, scopeId string) *HostCatalog {
-	t.Helper()
-	cats := TestCatalogs(t, conn, pluginId, scopeId, 1)
-	return cats[0]
 }
 
 func TestHostCatalog_SetTableName(t *testing.T) {
