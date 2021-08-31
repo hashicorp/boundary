@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -19,6 +20,7 @@ type (
 	PasswordAuthRepoFactory    func() (*password.Repository, error)
 	ServersRepoFactory         func() (*servers.Repository, error)
 	StaticRepoFactory          func() (*static.Repository, error)
+	PluginHostRepoFactory      func() (*pluginhost.Repository, error)
 	SessionRepoFactory         func() (*session.Repository, error)
 	TargetRepoFactory          func() (*target.Repository, error)
 )

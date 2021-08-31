@@ -214,7 +214,7 @@ func TestRepository_LookupSet(t *testing.T) {
 
 	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 	hostSet := TestSet(t, conn, catalog.PublicId)
-	hostSetId, err := newHostSetId("test")
+	hostSetId, err := newHostSetId(plg.GetIdPrefix())
 	require.NoError(t, err)
 
 	tests := []struct {

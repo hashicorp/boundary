@@ -36,7 +36,7 @@ func TestCatalog(t *testing.T, conn *gorm.DB, pluginId, scopeId string, opt ...O
 	return cat
 }
 
-// TestSet creates count number of plugin host sets in the provided DB
+// TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
 func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *HostSet {

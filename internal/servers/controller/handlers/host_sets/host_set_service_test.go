@@ -11,9 +11,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
@@ -32,7 +34,7 @@ import (
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"}
 
-func TestGet(t *testing.T) {
+func TestGet_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -48,6 +50,9 @@ func TestGet(t *testing.T) {
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -105,7 +110,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(repoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -122,7 +127,8 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestGet_Plugin(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -137,6 +143,101 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+
+	name := "test"
+	plg := host.TestPlugin(t, conn, name, name)
+	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+	hs := plugin.TestSet(t, conn, hc.GetPublicId())
+
+	toMerge := &pbs.GetHostSetRequest{}
+
+	pHost := &pb.HostSet{
+		HostCatalogId:     hc.GetPublicId(),
+		Id:                hs.GetPublicId(),
+		CreatedTime:       hs.CreateTime.GetTimestamp(),
+		UpdatedTime:       hs.UpdateTime.GetTimestamp(),
+		Type:              name,
+		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		AuthorizedActions: testAuthorizedActions,
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.GetHostSetRequest
+		res  *pbs.GetHostSetResponse
+		err  error
+	}{
+		{
+			name: "Get an Existing Host",
+			req:  &pbs.GetHostSetRequest{Id: hs.GetPublicId()},
+			res:  &pbs.GetHostSetResponse{Item: pHost},
+		},
+		{
+			name: "Get a non existing Host Set",
+			req:  &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Wrong id prefix",
+			req:  &pbs.GetHostSetRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "space in id",
+			req:  &pbs.GetHostSetRequest{Id: static.HostPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
+			proto.Merge(req, tc.req)
+
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			require.NoError(err, "Couldn't create a new host set service.")
+
+			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+
+			if tc.res != nil {
+				tc.res.Item.Version = 1
+			}
+			assert.Empty(cmp.Diff(got.GetItem(), tc.res.GetItem(), protocmp.Transform()), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList_Static(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -190,7 +291,108 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_sets.NewService(repoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
+			require.NoError(err, "Couldn't create new host set service.")
+
+			// Test with non-anon user
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test with anon user
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+				require.Empty(item.HostIds)
+			}
+		})
+	}
+}
+
+func TestList_Plugin(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	name := "test"
+	plg := host.TestPlugin(t, conn, name, name)
+	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+	hcNoHosts := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+
+	var wantHs []*pb.HostSet
+	for i := 0; i < 10; i++ {
+		h := plugin.TestSet(t, conn, hc.GetPublicId())
+		wantHs = append(wantHs, &pb.HostSet{
+			Id:                h.GetPublicId(),
+			HostCatalogId:     h.GetCatalogId(),
+			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:       h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
+			Version:           h.GetVersion(),
+			Type:              name,
+			AuthorizedActions: testAuthorizedActions,
+		})
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.ListHostSetsRequest
+		res  *pbs.ListHostSetsResponse
+		err  error
+	}{
+		{
+			name: "List Many Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId()},
+			res:  &pbs.ListHostSetsResponse{Items: wantHs},
+		},
+		{
+			name: "List No Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
+			res:  &pbs.ListHostSetsResponse{},
+		},
+		{
+			name: "Filter To One Host Set",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantHs[1].GetId())},
+			res:  &pbs.ListHostSetsResponse{Items: wantHs[1:2]},
+		},
+		{
+			name: "Filter To No Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"/item/name"=="doesnt match"`},
+			res:  &pbs.ListHostSetsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
@@ -234,10 +436,13 @@ func TestDelete(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(repoFn)
+	s, err := host_sets.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -310,10 +515,13 @@ func TestDelete_twice(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(repoFn)
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostSetRequest{
 		Id: h.GetPublicId(),
@@ -326,7 +534,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
-func TestCreate(t *testing.T) {
+func TestCreate_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -342,6 +550,9 @@ func TestCreate(t *testing.T) {
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
+	}
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
@@ -434,7 +645,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := host_sets.NewService(repoFn)
+			s, err := host_sets.NewService(repoFn, plgRepoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -445,6 +656,153 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix), got.GetItem().GetId())
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				require.NoError(err, "Error converting proto to timestamp.")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
+				require.NoError(err, "Error converting proto to timestamp")
+				// Verify it is a set created after the test setup's default set
+				assert.True(gotCreateTime.After(defaultHcCreated), "New set should have been created after default set. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
+				assert.True(gotUpdateTime.After(defaultHcCreated), "New set should have been updated after default set. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
+
+				// Clear all values which are hard to compare against.
+				got.Uri, tc.res.Uri = "", ""
+				got.Item.Id, tc.res.Item.Id = "", ""
+				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+			}
+			if tc.res != nil {
+				tc.res.Item.Version = 1
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestCreate_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	name := "test"
+	plg := host.TestPlugin(t, conn, name, name)
+	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+
+	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
+
+	cases := []struct {
+		name string
+		req  *pbs.CreateHostSetRequest
+		res  *pbs.CreateHostSetResponse
+		err  error
+	}{
+		{
+			name: "Create a valid Host",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          name,
+			}},
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Item: &pb.HostSet{
+					HostCatalogId:     hc.GetPublicId(),
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:              &wrappers.StringValue{Value: "name"},
+					Description:       &wrappers.StringValue{Value: "desc"},
+					Type:              name,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create with unknown type",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "ThisIsMadeUp",
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Create with no type",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "no type name"},
+				Description:   &wrappers.StringValue{Value: "no type desc"},
+			}},
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Item: &pb.HostSet{
+					HostCatalogId:     hc.GetPublicId(),
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:              &wrappers.StringValue{Value: "no type name"},
+					Description:       &wrappers.StringValue{Value: "no type desc"},
+					Type:              name,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Can't specify Id",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				Id:            "not allowed to be set",
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				CreatedTime:   timestamppb.Now(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				UpdatedTime:   timestamppb.Now(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := host_sets.NewService(repoFn, plgRepoFn)
+			require.NoError(err, "Failed to create a new host set service.")
+
+			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			if got != nil {
+				assert.Contains(got.GetUri(), tc.res.GetUri())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), plugin.HostSetPrefix), got.GetItem().GetId())
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -512,7 +870,10 @@ func TestUpdate(t *testing.T) {
 		Id: hs.GetPublicId(),
 	}
 
-	tested, err := host_sets.NewService(repoFn)
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	tested, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
@@ -848,7 +1209,10 @@ func TestAddHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	s, err := host_sets.NewService(repoFn)
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -965,7 +1329,10 @@ func TestSetHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	s, err := host_sets.NewService(repoFn)
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -1078,7 +1445,10 @@ func TestRemoveHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	s, err := host_sets.NewService(repoFn)
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
+	}
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
