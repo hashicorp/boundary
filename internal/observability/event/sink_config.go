@@ -17,6 +17,7 @@ type SinkConfig struct {
 	Type           SinkType              `hcl:"type"`             // Type defines the type of sink (StderrSink or FileSink).
 	StderrConfig   *StderrSinkTypeConfig `hcl:"stderr"`           // StderrConfig defines parameters for a stderr output.
 	FileConfig     *FileSinkTypeConfig   `hcl:"file"`             // FileConfig defines parameters for a file output.
+	AuditConfig    *AuditConfig          `hcl:"audit_config"`     // AuditConfig defines optional parameters for audit events (if EventTypes contains audit)
 }
 
 func (sc *SinkConfig) Validate() error {
@@ -62,11 +63,22 @@ func (sc *SinkConfig) Validate() error {
 	if len(sc.EventTypes) == 0 {
 		return fmt.Errorf("%s: missing event types: %w", op, ErrInvalidParameter)
 	}
+
 	for _, et := range sc.EventTypes {
 		if err := et.Validate(); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
+		// well, if there's an event type of audit, we need to check the audit
+		// config, if it's optionally provided.  We are intentionally only
+		// checking the FilterOverrides, because there's no way to specify the
+		// wrapper in a config.
+		if (et == AuditType || et == EveryType) && sc.AuditConfig != nil && sc.AuditConfig.FilterOverrides != nil {
+			if err := sc.AuditConfig.FilterOverrides.Validate(); err != nil {
+				return fmt.Errorf("%s: invalid audit config: %w", op, err)
+			}
+		}
 	}
+
 	return nil
 }
 

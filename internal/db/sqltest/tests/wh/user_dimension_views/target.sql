@@ -6,7 +6,7 @@ begin;
 
   insert into wh_user_dimension
     (
-      id,
+      key,
       user_id,                  user_name,                       user_description,
       auth_account_id,          auth_account_type,               auth_account_name,             auth_account_description,
       auth_account_external_id, auth_account_full_name,          auth_account_email,

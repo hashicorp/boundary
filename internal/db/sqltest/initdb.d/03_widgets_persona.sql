@@ -20,12 +20,12 @@ begin;
       ('o_____widget', 'project', 'p____swidget', 'Small Widget Factory');
 
     -- Add global users
-    insert into iam_user
-      (scope_id, public_id, name)
-    values
-      ('global', 'u_______gary', 'Gary'),
-      ('global', 'u_______gina', 'Gina'),
-      ('global', 'u______nancy', 'Nancy');
+    -- insert into iam_user
+    --   (scope_id, public_id, name)
+    -- values
+    --   ('global', 'u_______gary', 'Gary'),
+    --   ('global', 'u_______gina', 'Gina'),
+    --   ('global', 'u______nancy', 'Nancy');
 
     -- Add organization users
     insert into iam_user
@@ -39,7 +39,7 @@ begin;
     insert into iam_group
       (scope_id, public_id, name)
     values
-      ('global',       'g___gg-group', 'Global Group'),
+      -- ('global',       'g___gg-group', 'Global Group'),
       ('o_____widget', 'g___ow-group', 'Widget Inc Group'),
       ('p____bwidget', 'g___wb-group', 'Big Widget Group'),
       ('p____swidget', 'g___ws-group', 'Small Widget Group');
@@ -47,7 +47,7 @@ begin;
     insert into iam_group_member_user
       (group_id, member_id)
     values
-      ('g___gg-group', 'u_______gary'),
+      -- ('g___gg-group', 'u_______gary'),
       ('g___ow-group', 'u_____walter'),
       ('g___wb-group', 'u_____warren'),
       ('g___ws-group', 'u_____waylon');
@@ -55,18 +55,18 @@ begin;
     insert into iam_role
       (scope_id, grant_scope_id, public_id, name)
     values
+            -- ('global', 'global',       'r_gg_____buy', 'Purchaser'),
+            -- ('global', 'global',       'r_gg____shop', 'Shopper'),
       ('p____bwidget', 'p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
       ('p____swidget', 'p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
       ('o_____widget', 'p____swidget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'o_____widget', 'r_oo_____eng', 'Widget Engineer'),
-            ('global', 'global',       'r_gg_____buy', 'Purchaser'),
-            ('global', 'global',       'r_gg____shop', 'Shopper');
+      ('o_____widget', 'o_____widget', 'r_oo_____eng', 'Widget Engineer');
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)
     values
-      ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
-      ('r_gg____shop', 'type=*;action=view',        'view anything'),
+      -- ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
+      -- ('r_gg____shop', 'type=*;action=view',        'view anything'),
       ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
       ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
       ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
@@ -81,11 +81,11 @@ begin;
       ('r_pp_bw__bld', 'g___wb-group'), -- widget
       ('r_pp_sw__bld', 'g___ws-group'); -- widget
 
-    insert into iam_user_role
-      (role_id, principal_id)
-    values
-      ('r_gg_____buy', 'u_auth'),
-      ('r_gg____shop', 'u_anon');
+    -- insert into iam_user_role
+    --   (role_id, principal_id)
+    -- values
+    --   ('r_gg_____buy', 'u_auth'),
+    --   ('r_gg____shop', 'u_anon');
   end;
   $$ language plpgsql;
 
@@ -234,7 +234,8 @@ begin;
     select h.public_id, s.public_id, s.catalog_id
       from static_host as h,
            static_host_set as s
-     where h.catalog_id = s.catalog_id;
+     where h.catalog_id = s.catalog_id
+       and h.address like '%.widget';
   end;
   $$ language plpgsql;
 

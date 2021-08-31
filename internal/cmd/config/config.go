@@ -487,10 +487,10 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 		}
 
 		// Append to result
-		result.Sinks = append(result.Sinks, s)
+		result.Sinks = append(result.Sinks, &s)
 	}
 	if len(result.Sinks) == 0 {
-		result.Sinks = []event.SinkConfig{event.DefaultSink()}
+		result.Sinks = []*event.SinkConfig{event.DefaultSink()}
 	}
 	return &result, nil
 }

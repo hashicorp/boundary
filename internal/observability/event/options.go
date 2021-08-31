@@ -3,6 +3,8 @@ package event
 import (
 	"net/url"
 	"time"
+
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 const msgField = "msg"
@@ -23,21 +25,23 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withId            string
-	withDetails       map[string]interface{}
-	withHeader        map[string]interface{}
-	withFlush         bool
-	withInfo          map[string]interface{}
-	withRequestInfo   *RequestInfo
-	withNow           time.Time
-	withRequest       *Request
-	withResponse      *Response
-	withAuth          *Auth
-	withEventer       *Eventer
-	withEventerConfig *EventerConfig
-	withAllow         []string
-	withDeny          []string
-	withSchema        *url.URL
+	withId               string
+	withDetails          map[string]interface{}
+	withHeader           map[string]interface{}
+	withFlush            bool
+	withInfo             map[string]interface{}
+	withRequestInfo      *RequestInfo
+	withNow              time.Time
+	withRequest          *Request
+	withResponse         *Response
+	withAuth             *Auth
+	withEventer          *Eventer
+	withEventerConfig    *EventerConfig
+	withAllow            []string
+	withDeny             []string
+	withSchema           *url.URL
+	withAuditWrapper     wrapping.Wrapper
+	withFilterOperations AuditFilterOperations
 
 	withBroker          broker     // test only option
 	withAuditSink       bool       // test only option
@@ -176,5 +180,19 @@ func WithAllow(f ...string) Option {
 func WithDeny(f ...string) Option {
 	return func(o *options) {
 		o.withDeny = f
+	}
+}
+
+// WithAuditWrapper is an optional wrapper for audit events
+func WithAuditWrapper(w wrapping.Wrapper) Option {
+	return func(o *options) {
+		o.withAuditWrapper = w
+	}
+}
+
+// WithFilterOperations is an optional set of filter operations
+func WithFilterOperations(fop AuditFilterOperations) Option {
+	return func(o *options) {
+		o.withFilterOperations = fop
 	}
 }
