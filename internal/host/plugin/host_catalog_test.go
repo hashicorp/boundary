@@ -142,7 +142,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostCatalogId()
+			id, err := newHostCatalogId(plg.GetIdPrefix())
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id
@@ -178,26 +178,26 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 
 	got, err := NewHostCatalog(context.Background(), plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	w.Create(ctx, got)
 
 	// Can't create another resource with the same pluginName in the same scope
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
 	// Can't create another resource with same pluginName in same scope even for different plugin
 	got, err = NewHostCatalog(context.Background(), plg2.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg2.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
 	// Can create another resource with same pluginName in different scope even for same plugin
 	got, err = NewHostCatalog(context.Background(), plg.GetPublicId(), prj2.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.NoError(t, w.Create(ctx, got))
 }

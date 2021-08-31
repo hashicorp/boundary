@@ -6,8 +6,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 )
 
 // CreateSet inserts s into the repository and returns a new HostSet
@@ -17,7 +19,7 @@ import (
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, opt ...Option) (*HostSet, error) {
+func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (host.Set, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -35,10 +37,22 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	s = s.clone()
-	// TODO: Retrieve the Catalog, Plugin Client, and call OnCreateSet.  Use the plugin to generate
-	//    the host set id with the correct prefix.
 
-	id, err := newHostSetId()
+	c := allocHostCatalog()
+	c.PublicId = s.GetCatalogId()
+	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host catalog"))
+	}
+
+	// TODO: Contain the following plugin logic inside a plugin manager as well as
+	//  calling the plugin which we have looked up.
+	plg := hostplg.NewPlugin("", "")
+	plg.PublicId = c.GetPluginId()
+	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host plugin"))
+	}
+
+	id, err := newHostSetId(plg.GetIdPrefix())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -73,7 +87,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // LookupSet will look up a host set in the repository and return the host
 // set. If the host set is not found, it will return nil, nil.
 // All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...Option) (host.Set, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")

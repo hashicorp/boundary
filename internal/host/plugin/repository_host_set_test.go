@@ -10,11 +10,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -27,8 +28,8 @@ func TestRepository_CreateSet(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := host.TestPlugin(t, conn, "create", "create")
-	catalog := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 1)[0]
+	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 	tests := []struct {
 		name      string
@@ -126,10 +127,10 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NotNil(got)
 			assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 			assert.NotSame(tt.in, got)
-			assert.Equal(tt.want.Name, got.Name)
-			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(got.CreateTime, got.UpdateTime)
-			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+			assert.Equal(tt.want.Name, got.GetName())
+			assert.Equal(tt.want.Description, got.GetDescription())
+			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 
@@ -140,7 +141,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 1)[0]
+		catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
@@ -154,9 +155,9 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(got)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(got.CreateTime, got.UpdateTime)
+		assert.Equal(in.Name, got.GetName())
+		assert.Equal(in.Description, got.GetDescription())
+		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
@@ -170,9 +171,8 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogs := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 2)
-
-		catalogA, catalogB := catalogs[0], catalogs[1]
+		catalogA := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+		catalogB := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
@@ -187,9 +187,9 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(got)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(got.CreateTime, got.UpdateTime)
+		assert.Equal(in.Name, got.GetName())
+		assert.Equal(in.Description, got.GetDescription())
+		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
 		in2.CatalogId = catalogB.PublicId
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
@@ -197,9 +197,9 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(got2)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 		assert.NotSame(in2, got2)
-		assert.Equal(in2.Name, got2.Name)
-		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(got2.CreateTime, got2.UpdateTime)
+		assert.Equal(in2.Name, got2.GetName())
+		assert.Equal(in2.Description, got2.GetDescription())
+		assert.Equal(got2.GetCreateTime(), got2.GetUpdateTime())
 	})
 }
 
@@ -210,17 +210,17 @@ func TestRepository_LookupSet(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := host.TestPlugin(t, conn, "lookup", "lookup")
+	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
 
-	catalog := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 1)[0]
-	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
-	hostSetId, err := newHostSetId()
+	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	hostSet := TestSet(t, conn, catalog.PublicId)
+	hostSetId, err := newHostSetId("test")
 	require.NoError(t, err)
 
 	tests := []struct {
 		name      string
 		in        string
-		want      *HostSet
+		want      host.Set
 		wantIsErr errors.Code
 	}{
 		{
@@ -232,9 +232,9 @@ func TestRepository_LookupSet(t *testing.T) {
 			in:   hostSetId,
 		},
 		{
-			name:      "with-existing-host-set-id",
-			in:        hostSet.PublicId,
-			want:      hostSet,
+			name: "with-existing-host-set-id",
+			in:   hostSet.PublicId,
+			want: hostSet,
 		},
 	}
 
@@ -265,11 +265,15 @@ func TestRepository_ListSets(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := host.TestPlugin(t, conn, "list", "list")
-	catalogs := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 2)
-	catalogA, catalogB := catalogs[0], catalogs[1]
+	plg := hostplg.TestPlugin(t, conn, "list", "list")
+	catalogA := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	catalogB := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
-	hostSets := TestSets(t, conn, catalogA.PublicId, 3)
+	hostSets := []*HostSet{
+		TestSet(t, conn, catalogA.PublicId),
+		TestSet(t, conn, catalogA.PublicId),
+		TestSet(t, conn, catalogA.PublicId),
+	}
 
 	tests := []struct {
 		name      string
@@ -325,10 +329,13 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := host.TestPlugin(t, conn, "listlimit", "listlimit")
-	catalog := TestCatalogs(t, conn, plg.GetPublicId(), prj.PublicId, 1)[0]
+	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
+	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 	count := 10
-	hostSets := TestSets(t, conn, catalog.PublicId, count)
+	var hostSets []*HostSet
+	for i := 0; i < count; i++ {
+		hostSets = append(hostSets, TestSet(t, conn, catalog.PublicId))
+	}
 
 	tests := []struct {
 		name     string

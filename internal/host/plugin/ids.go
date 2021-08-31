@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
@@ -22,18 +24,18 @@ const (
 	Subtype = subtypes.Subtype("plugin")
 )
 
-func newHostCatalogId() (string, error) {
-	// TODO: Take in a prefix portion as an argument.
-	id, err := db.NewPublicId(HostCatalogPrefix)
+func newHostCatalogId(upre string) (string, error) {
+	prefix := fmt.Sprintf("%s_%s", HostCatalogPrefix, upre)
+	id, err := db.NewPublicId(prefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "plugin.newHostCatalogId")
 	}
 	return id, nil
 }
 
-func newHostSetId() (string, error) {
-	// TODO: Take in a prefix portion as an argument.
-	id, err := db.NewPublicId(HostSetPrefix)
+func newHostSetId(upre string) (string, error) {
+	prefix := fmt.Sprintf("%s_%s", HostSetPrefix, upre)
+	id, err := db.NewPublicId(prefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "plugin.newHostSetId")
 	}

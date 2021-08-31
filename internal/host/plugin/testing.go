@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,15 +17,21 @@ import (
 func TestCatalog(t *testing.T, conn *gorm.DB, pluginId, scopeId string, opt ...Option) *HostCatalog {
 	t.Helper()
 	ctx := context.Background()
+	w := db.New(conn)
+
 	cat, err := NewHostCatalog(ctx, pluginId, scopeId, opt...)
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
-	id, err := newHostCatalogId()
+
+	plg := host.NewPlugin("", "")
+	plg.PublicId = pluginId
+	require.NoError(t, w.LookupByPublicId(ctx, plg))
+
+	id, err := newHostCatalogId(plg.GetIdPrefix())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, id)
 	cat.PublicId = id
 
-	w := db.New(conn)
 	require.NoError(t, w.Create(ctx, cat))
 	return cat
 }
@@ -35,16 +42,26 @@ func TestCatalog(t *testing.T, conn *gorm.DB, pluginId, scopeId string, opt ...O
 func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *HostSet {
 	t.Helper()
 	ctx := context.Background()
+	w := db.New(conn)
+
 	assert := assert.New(t)
 	set, err := NewHostSet(ctx, catalogId, opt...)
 	require.NoError(t, err)
 	assert.NotNil(set)
-	id, err := newHostSetId()
+
+	cg := allocHostCatalog()
+	cg.PublicId = catalogId
+	require.NoError(t, w.LookupByPublicId(ctx, cg))
+
+	plg := host.NewPlugin("", "")
+	plg.PublicId = cg.GetPluginId()
+	require.NoError(t, w.LookupByPublicId(ctx, plg))
+
+	id, err := newHostSetId(plg.GetIdPrefix())
 	assert.NoError(err)
 	assert.NotEmpty(id)
 	set.PublicId = id
 
-	w := db.New(conn)
 	require.NoError(t, w.Create(ctx, set))
 	return set
 }
