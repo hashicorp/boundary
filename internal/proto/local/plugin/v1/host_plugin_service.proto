@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package plugin;
+package plugin.v1;
 
 option go_package = "github.com/hashicorp/boundary/plugin/proto;proto";
 

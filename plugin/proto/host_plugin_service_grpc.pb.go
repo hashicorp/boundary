@@ -47,7 +47,7 @@ func NewHostPluginServiceClient(cc grpc.ClientConnInterface) HostPluginServiceCl
 
 func (c *hostPluginServiceClient) OnCreateCatalog(ctx context.Context, in *OnCreateCatalogRequest, opts ...grpc.CallOption) (*OnCreateCatalogResponse, error) {
 	out := new(OnCreateCatalogResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnCreateCatalog", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnCreateCatalog", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (c *hostPluginServiceClient) OnCreateCatalog(ctx context.Context, in *OnCre
 
 func (c *hostPluginServiceClient) OnUpdateCatalog(ctx context.Context, in *OnUpdateCatalogRequest, opts ...grpc.CallOption) (*OnUpdateCatalogResponse, error) {
 	out := new(OnUpdateCatalogResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnUpdateCatalog", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnUpdateCatalog", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *hostPluginServiceClient) OnUpdateCatalog(ctx context.Context, in *OnUpd
 
 func (c *hostPluginServiceClient) OnDeleteCatalog(ctx context.Context, in *OnDeleteCatalogRequest, opts ...grpc.CallOption) (*OnDeleteCatalogResponse, error) {
 	out := new(OnDeleteCatalogResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnDeleteCatalog", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnDeleteCatalog", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (c *hostPluginServiceClient) OnDeleteCatalog(ctx context.Context, in *OnDel
 
 func (c *hostPluginServiceClient) OnCreateSet(ctx context.Context, in *OnCreateSetRequest, opts ...grpc.CallOption) (*OnCreateSetResponse, error) {
 	out := new(OnCreateSetResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnCreateSet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnCreateSet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (c *hostPluginServiceClient) OnCreateSet(ctx context.Context, in *OnCreateS
 
 func (c *hostPluginServiceClient) OnUpdateSet(ctx context.Context, in *OnUpdateSetRequest, opts ...grpc.CallOption) (*OnUpdateSetResponse, error) {
 	out := new(OnUpdateSetResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnUpdateSet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnUpdateSet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (c *hostPluginServiceClient) OnUpdateSet(ctx context.Context, in *OnUpdateS
 
 func (c *hostPluginServiceClient) OnDeleteSet(ctx context.Context, in *OnDeleteSetRequest, opts ...grpc.CallOption) (*OnDeleteSetResponse, error) {
 	out := new(OnDeleteSetResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/OnDeleteSet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnDeleteSet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (c *hostPluginServiceClient) OnDeleteSet(ctx context.Context, in *OnDeleteS
 
 func (c *hostPluginServiceClient) ListHosts(ctx context.Context, in *ListHostsRequest, opts ...grpc.CallOption) (*ListHostsResponse, error) {
 	out := new(ListHostsResponse)
-	err := c.cc.Invoke(ctx, "/plugin.HostPluginService/ListHosts", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/ListHosts", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func _HostPluginService_OnCreateCatalog_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnCreateCatalog",
+		FullMethod: "/plugin.v1.HostPluginService/OnCreateCatalog",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnCreateCatalog(ctx, req.(*OnCreateCatalogRequest))
@@ -198,7 +198,7 @@ func _HostPluginService_OnUpdateCatalog_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnUpdateCatalog",
+		FullMethod: "/plugin.v1.HostPluginService/OnUpdateCatalog",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnUpdateCatalog(ctx, req.(*OnUpdateCatalogRequest))
@@ -216,7 +216,7 @@ func _HostPluginService_OnDeleteCatalog_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnDeleteCatalog",
+		FullMethod: "/plugin.v1.HostPluginService/OnDeleteCatalog",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnDeleteCatalog(ctx, req.(*OnDeleteCatalogRequest))
@@ -234,7 +234,7 @@ func _HostPluginService_OnCreateSet_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnCreateSet",
+		FullMethod: "/plugin.v1.HostPluginService/OnCreateSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnCreateSet(ctx, req.(*OnCreateSetRequest))
@@ -252,7 +252,7 @@ func _HostPluginService_OnUpdateSet_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnUpdateSet",
+		FullMethod: "/plugin.v1.HostPluginService/OnUpdateSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnUpdateSet(ctx, req.(*OnUpdateSetRequest))
@@ -270,7 +270,7 @@ func _HostPluginService_OnDeleteSet_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/OnDeleteSet",
+		FullMethod: "/plugin.v1.HostPluginService/OnDeleteSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnDeleteSet(ctx, req.(*OnDeleteSetRequest))
@@ -288,7 +288,7 @@ func _HostPluginService_ListHosts_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/plugin.HostPluginService/ListHosts",
+		FullMethod: "/plugin.v1.HostPluginService/ListHosts",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).ListHosts(ctx, req.(*ListHostsRequest))
@@ -300,7 +300,7 @@ func _HostPluginService_ListHosts_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var HostPluginService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "plugin.HostPluginService",
+	ServiceName: "plugin.v1.HostPluginService",
 	HandlerType: (*HostPluginServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -333,5 +333,5 @@ var HostPluginService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/host_plugin_service.proto",
+	Metadata: "plugin/v1/host_plugin_service.proto",
 }
