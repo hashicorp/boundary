@@ -22,15 +22,13 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
-	count := 4
-	cs := TestCatalogs(t, conn, plg.GetPublicId(), proj.GetPublicId(), count)
-	assert.Len(cs, count)
-	for _, c := range cs {
-		assert.NotEmpty(c.GetPublicId())
-	}
+	cs := TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId(), WithName("foo"), WithDescription("bar"))
+	assert.NotEmpty(cs.GetPublicId())
+	assert.Equal("foo", cs.GetName())
+	assert.Equal("bar", cs.GetDescription())
 }
 
-func Test_TestSets(t *testing.T) {
+func Test_TestSet(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -42,12 +40,9 @@ func Test_TestSets(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
-	c := TestCatalogs(t, conn, plg.GetPublicId(), prj.GetPublicId(), 1)[0]
-
-	count := 4
-	sets := TestSets(t, conn, c.GetPublicId(), count)
-	assert.Len(sets, count)
-	for _, s := range sets {
-		assert.NotEmpty(s.GetPublicId())
-	}
+	c := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+	set := TestSet(t, conn, c.GetPublicId(), WithName("foo"), WithDescription("bar"))
+	assert.NotEmpty(set.GetPublicId())
+	assert.Equal("foo", set.GetName())
+	assert.Equal("bar", set.GetDescription())
 }

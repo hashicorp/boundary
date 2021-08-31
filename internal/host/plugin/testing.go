@@ -10,50 +10,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalogs creates count number of plugin host catalogs to the provided DB
+// TestCatalog creates count number of plugin host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalogs(t *testing.T, conn *gorm.DB, pluginId, scopeId string, count int) []*HostCatalog {
+func TestCatalog(t *testing.T, conn *gorm.DB, pluginId, scopeId string, opt ...Option) *HostCatalog {
 	t.Helper()
 	ctx := context.Background()
-	var cats []*HostCatalog
-	for i := 0; i < count; i++ {
-		cat, err := NewHostCatalog(ctx, pluginId, scopeId)
-		require.NoError(t, err)
-		assert.NotNil(t, cat)
-		id, err := newHostCatalogId()
-		assert.NoError(t, err)
-		assert.NotEmpty(t, id)
-		cat.PublicId = id
+	cat, err := NewHostCatalog(ctx, pluginId, scopeId, opt...)
+	require.NoError(t, err)
+	assert.NotNil(t, cat)
+	id, err := newHostCatalogId()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, id)
+	cat.PublicId = id
 
-		w := db.New(conn)
-		require.NoError(t, w.Create(ctx, cat))
-		cats = append(cats, cat)
-	}
-	return cats
+	w := db.New(conn)
+	require.NoError(t, w.Create(ctx, cat))
+	return cat
 }
 
-// TestSets creates count number of plugin host sets in the provided DB
+// TestSet creates count number of plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostSet {
+func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *HostSet {
 	t.Helper()
 	ctx := context.Background()
 	assert := assert.New(t)
-	var sets []*HostSet
+	set, err := NewHostSet(ctx, catalogId, opt...)
+	require.NoError(t, err)
+	assert.NotNil(set)
+	id, err := newHostSetId()
+	assert.NoError(err)
+	assert.NotEmpty(id)
+	set.PublicId = id
 
-	for i := 0; i < count; i++ {
-		set, err := NewHostSet(ctx, catalogId)
-		require.NoError(t, err)
-		assert.NotNil(set)
-		id, err := newHostSetId()
-		assert.NoError(err)
-		assert.NotEmpty(id)
-		set.PublicId = id
-
-		w := db.New(conn)
-		require.NoError(t, w.Create(ctx, set))
-		sets = append(sets, set)
-	}
-	return sets
+	w := db.New(conn)
+	require.NoError(t, w.Create(ctx, set))
+	return set
 }
