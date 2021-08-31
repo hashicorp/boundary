@@ -21,7 +21,6 @@ func (req *TestAuthenticateRequest) Tags() ([]encrypt.PointerTag, error) {
 // Tags implements the encrypt.Taggable interface which allows
 // TestEventAuthenResponse Attributes to be classified for the encrypt filter.
 func (req *TestAuthenticateResponse) Tags() ([]encrypt.PointerTag, error) {
-
 	var tags []encrypt.PointerTag
 
 	if req.Attributes != nil {
