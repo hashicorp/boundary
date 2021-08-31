@@ -33,7 +33,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithEventerConfig", func(t *testing.T) {
 		assert := assert.New(t)
 		c := event.EventerConfig{
-			Sinks: []event.SinkConfig{
+			Sinks: []*event.SinkConfig{
 				// not a valid sink, but it doesn't need to be to test the
 				// option is properly supported.
 				{

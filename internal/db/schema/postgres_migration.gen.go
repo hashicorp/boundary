@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 15004,
+		binarySchemaVersion: 15002,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6335,442 +6335,609 @@ alter table wh_user_dimension
   $$ language plpgsql;
 `),
 			15001: []byte(`
--- We are updating the plugin table here to have a scope id, since
-  -- subtypes of plugin should be scoped.  We use 'global' as the default
-  -- just for the purpose of the migration since the scope cannot be null
-  -- and the one plugin that already exists (pi_system) can be globally
-  -- scoped.  The immediately following statement removes this default.
-  -- We add a name so we can enforce that all plugins have a unique name
-  -- in a specific scope across all plugin subtypes.
-  alter table plugin
-    add column name wt_name,
-    add column scope_id wt_scope_id
-      not null
-      default 'global'
-      references iam_scope(public_id)
-        on delete cascade
-        on update cascade;
+alter table wh_date_dimension
+    rename column id to key;
 
-  alter table plugin
-    alter column scope_id drop default;
+  alter table wh_time_of_day_dimension
+    rename column id to key;
 
-  -- Add constraints that enforce names are unique across all plugin subtypes
-  -- in a specific scope.
-  alter table plugin
-    add constraint plugin_scope_id_public_id_uq
-      unique (scope_id, public_id),
-    add constraint plugin_scope_id_name_uq
-      unique (scope_id, name);
+  alter table wh_host_dimension
+    rename column id to key;
 
+  alter table wh_user_dimension
+    rename column id to key;
 
-  -- insert, update, and delete plugin_subtypes are created since we are adding
-  -- subtyped plugins and we need to keep the base table plugin in sync with all
-  -- subtype tables.
-  create or replace function insert_plugin_subtype()
-    returns trigger
+  alter table wh_session_accumulating_fact
+    rename column host_id to host_key;
+  alter table wh_session_accumulating_fact
+    rename column user_id to user_key;
+  alter table wh_session_accumulating_fact
+    rename column session_pending_date_id to session_pending_date_key;
+  alter table wh_session_accumulating_fact
+    rename column session_pending_time_id to session_pending_time_key;
+  alter table wh_session_accumulating_fact
+    rename column session_active_date_id to session_active_date_key;
+  alter table wh_session_accumulating_fact
+    rename column session_active_time_id to session_active_time_key;
+  alter table wh_session_accumulating_fact
+    rename column session_canceling_date_id to session_canceling_date_key;
+  alter table wh_session_accumulating_fact
+    rename column session_canceling_time_id to session_canceling_time_key;
+  alter table wh_session_accumulating_fact
+    rename column session_terminated_date_id to session_terminated_date_key;
+  alter table wh_session_accumulating_fact
+    rename column session_terminated_time_id to session_terminated_time_key;
+
+  alter table wh_session_connection_accumulating_fact
+    rename column host_id to host_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column user_id to user_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_authorized_date_id to connection_authorized_date_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_authorized_time_id to connection_authorized_time_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_connected_date_id to connection_connected_date_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_connected_time_id to connection_connected_time_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_closed_date_id to connection_closed_date_key;
+  alter table wh_session_connection_accumulating_fact
+    rename column connection_closed_time_id to connection_closed_time_key;
+
+  -- rename function from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  alter function wh_dim_id rename to wh_dim_key;
+
+  -- rename domain from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  alter domain wh_dim_id rename to wh_dim_key;
+
+  -- removes unused function from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  drop function wh_current_date_id;
+
+  -- removes unused function from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  drop function wh_current_time_id;
+
+  -- rename function from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  alter function wh_date_id rename to wh_date_key;
+
+  -- rename function from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql
+  alter function wh_time_id rename to wh_time_key;
+
+  -- replaces view from 14/01_wh_user_dimension_oidc.up.sql
+  drop view whx_user_dimension_target;
+  create view whx_user_dimension_target as
+    select key,
+           user_id,
+           user_name,
+           user_description,
+           auth_account_id,
+           auth_account_type,
+           auth_account_name,
+           auth_account_description,
+           auth_account_external_id,
+           auth_account_full_name,
+           auth_account_email,
+           auth_method_id,
+           auth_method_type,
+           auth_method_name,
+           auth_method_description,
+           auth_method_external_id,
+           user_organization_id,
+           user_organization_name,
+           user_organization_description
+      from wh_user_dimension
+     where current_row_indicator = 'Current'
+  ;
+
+  -- replaces function from 14/01_wh_user_dimension_oidc.up.sql
+  drop function wh_upsert_user;
+  create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
+    returns wh_dim_key
   as $$
+  declare
+    src     whx_user_dimension_target%rowtype;
+    target  whx_user_dimension_target%rowtype;
+    new_row wh_user_dimension%rowtype;
+    acct_id wt_public_id;
   begin
-    insert into plugin
-    (public_id, scope_id, name)
-    values
-      (new.public_id, new.scope_id, new.name);
-    return new;
+    select auth_account_id into strict acct_id
+      from auth_token
+     where public_id = p_auth_token_id;
+
+    select * into target
+      from whx_user_dimension_target as t
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
+
+    select target.key, t.* into src
+      from whx_user_dimension_source as t
+     where t.user_id               = p_user_id
+       and t.auth_account_id       = acct_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_user_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where user_id               = p_user_id
+         and auth_account_id       = acct_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_user_dimension (
+             user_id,                  user_name,              user_description,
+             auth_account_id,          auth_account_type,      auth_account_name,             auth_account_description,
+             auth_account_external_id, auth_account_full_name, auth_account_email,
+             auth_method_id,           auth_method_type,       auth_method_name,              auth_method_description,
+             auth_method_external_id,
+             user_organization_id,     user_organization_name, user_organization_description,
+             current_row_indicator,    row_effective_time,     row_expiration_time
+      )
+      select user_id,                  user_name,              user_description,
+             auth_account_id,          auth_account_type,      auth_account_name,             auth_account_description,
+             auth_account_external_id, auth_account_full_name, auth_account_email,
+             auth_method_id,           auth_method_type,       auth_method_name,              auth_method_description,
+             auth_method_external_id,
+             user_organization_id,     user_organization_name, user_organization_description,
+             'Current',                current_timestamp,      'infinity'::timestamptz
+        from whx_user_dimension_source
+       where user_id               = p_user_id
+         and auth_account_id       = acct_id
+      returning * into new_row;
+
+      return new_row.key;
+    end if;
+    return target.key;
+
   end;
   $$ language plpgsql;
-  comment on function insert_plugin_subtype() is
-    'insert_plugin_subtype() inserts sub type name into the base type plugin table';
 
-  create or replace function
-    update_plugin_subtype()
-    returns trigger
+  -- replaces view from 0/65_wh_session_dimensions.up.sql
+  drop view whx_host_dimension_target;
+  create view whx_host_dimension_target as
+  select key,
+         host_id,
+         host_type,
+         host_name,
+         host_description,
+         host_address,
+         host_set_id,
+         host_set_type,
+         host_set_name,
+         host_set_description,
+         host_catalog_id,
+         host_catalog_type,
+         host_catalog_name,
+         host_catalog_description,
+         target_id,
+         target_type,
+         target_name,
+         target_description,
+         target_default_port_number,
+         target_session_max_seconds,
+         target_session_connection_limit,
+         project_id,
+         project_name,
+         project_description,
+         host_organization_id,
+         host_organization_name,
+         host_organization_description
+    from wh_host_dimension
+   where current_row_indicator = 'Current'
+  ;
+
+  -- replaces function from 0/66_wh_session_dimensions.up.sql
+  drop function wh_upsert_host;
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+    returns wh_dim_key
   as $$
+  declare
+    src     whx_host_dimension_target%rowtype;
+    target  whx_host_dimension_target%rowtype;
+    new_row wh_host_dimension%rowtype;
   begin
-    update plugin set name = new.name where public_id = new.public_id and new.name != name;
-    return new;
+    select * into target
+      from whx_host_dimension_target as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    select target.key, t.* into src
+      from whx_host_dimension_source as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_host_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_host_dimension (
+             host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             current_row_indicator,      row_effective_time,         row_expiration_time
+      )
+      select host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             host_organization_id,       host_organization_name,     host_organization_description,
+             'Current',                  current_timestamp,          'infinity'::timestamptz
+        from whx_host_dimension_source
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+      returning * into new_row;
+
+      return new_row.key;
+    end if;
+    return target.key;
+
   end;
   $$ language plpgsql;
-  comment on function update_plugin_subtype() is
-    'update_plugin_subtype() will update base plugin type name column with new values from sub type';
 
-  -- delete_plugin_subtype() is an after delete trigger function
-  -- for subtypes of plugin
-  create or replace function delete_plugin_subtype()
+  -- replaces function from 0/69_wh_session_facts.up.sql
+  drop trigger wh_insert_session on session;
+  drop function wh_insert_session;
+  create function wh_insert_session()
     returns trigger
   as $$
+  declare
+    new_row wh_session_accumulating_fact%rowtype;
   begin
-    delete from plugin
-    where public_id = old.public_id;
-    return null; -- result is ignored since this is an after trigger
+    with
+    pending_timestamp (date_dim_key, time_dim_key, ts) as (
+      select wh_date_key(start_time), wh_time_key(start_time), start_time
+        from session_state
+       where session_id = new.public_id
+         and state = 'pending'
+    )
+    insert into wh_session_accumulating_fact (
+           session_id,
+           auth_token_id,
+           host_key,
+           user_key,
+           session_pending_date_key,
+           session_pending_time_key,
+           session_pending_time
+    )
+    select new.public_id,
+           new.auth_token_id,
+           wh_upsert_host(new.host_id, new.host_set_id, new.target_id),
+           wh_upsert_user(new.user_id, new.auth_token_id),
+           pending_timestamp.date_dim_key,
+           pending_timestamp.time_dim_key,
+           pending_timestamp.ts
+      from pending_timestamp
+      returning * into strict new_row;
+    return null;
   end;
   $$ language plpgsql;
-  comment on function delete_plugin_subtype is
-    'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
+  create trigger wh_insert_session
+    after insert on session
+    for each row
+    execute function wh_insert_session();
 
-  /*
-    ┌──────────────────┐         ┌───────────────────┐
-    │      plugin      │         │  plugin_version   │
-    ├──────────────────┤         ├───────────────────┤
-    │public_id (pk)    │        ╱│public_id (pk)     │
-    │scope_id (fk)     │┼┼────┼──│plugin_id (fk)     │
-    └──────────────────┘        ╲│semantic_version   │
-                                 └───────────────────┘
-                                           ┼
-                                           ┼
-                                           │
-                                           ┼
-                                          ╱│╲
-                               ┌──────────────────────┐
-                               │  plugin_executable   │
-                               ├──────────────────────┤
-                               │version_id (pk, fk)   │
-                               │operating_system (pk) │
-                               │architecture (pk)     │
-                               │executable            │
-                               └──────────────────────┘
-   */
-  create table plugin_version (
-    public_id wt_public_id primary key,
-    plugin_id wt_public_id not null
-      constraint plugin_fkey
-        references plugin (public_id)
-        on delete cascade
-        on update cascade,
-    semantic_version text not null
-      constraint plugin_version_requires_semantic_version
-      check(length(semantic_version) > 4), -- minimum length is length("0.0.0")
-    create_time wt_timestamp,
+  -- replaces function from 0/69_wh_session_facts.up.sql
+  drop trigger wh_insert_session_connection on session_connection;
+  drop function wh_insert_session_connection;
+  create function wh_insert_session_connection()
+    returns trigger
+  as $$
+  declare
+    new_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+    with
+    authorized_timestamp (date_dim_key, time_dim_key, ts) as (
+      select wh_date_key(start_time), wh_time_key(start_time), start_time
+        from session_connection_state
+       where connection_id = new.public_id
+         and state = 'authorized'
+    ),
+    session_dimension (host_dim_key, user_dim_key) as (
+      select host_key, user_key
+        from wh_session_accumulating_fact
+       where session_id = new.session_id
+    )
+    insert into wh_session_connection_accumulating_fact (
+           connection_id,
+           session_id,
+           host_key,
+           user_key,
+           connection_authorized_date_key,
+           connection_authorized_time_key,
+           connection_authorized_time,
+           client_tcp_address,
+           client_tcp_port_number,
+           endpoint_tcp_address,
+           endpoint_tcp_port_number,
+           bytes_up,
+           bytes_down
+    )
+    select new.public_id,
+           new.session_id,
+           session_dimension.host_dim_key,
+           session_dimension.user_dim_key,
+           authorized_timestamp.date_dim_key,
+           authorized_timestamp.time_dim_key,
+           authorized_timestamp.ts,
+           new.client_tcp_address,
+           new.client_tcp_port,
+           new.endpoint_tcp_address,
+           new.endpoint_tcp_port,
+           new.bytes_up,
+           new.bytes_down
+      from authorized_timestamp,
+           session_dimension
+      returning * into strict new_row;
+    perform wh_rollup_connections(new.session_id);
+    return null;
+  end;
+  $$ language plpgsql;
 
-    unique(plugin_id, public_id),
-    unique(plugin_id, semantic_version)
-  );
+  create trigger wh_insert_session_connection
+    after insert on session_connection
+    for each row
+    execute function wh_insert_session_connection();
 
-  create trigger default_create_time_column before insert on plugin_version
-    for each row execute procedure default_create_time();
+  -- replaces function from 0/69_wh_session_facts.up.sql
+  drop trigger wh_insert_session_state on session_state;
+  drop function wh_insert_session_state;
+  create function wh_insert_session_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    session_row wh_session_accumulating_fact%rowtype;
+  begin
+    if new.state = 'pending' then
+      -- The pending state is the first state which is handled by the
+      -- wh_insert_session trigger. The update statement in this trigger will
+      -- fail for the pending state because the row for the session has not yet
+      -- been inserted into the wh_session_accumulating_fact table.
+      return null;
+    end if;
 
-  create trigger immutable_columns before update on plugin_version
-    for each row execute procedure immutable_columns('public_id', 'plugin_id', 'create_time', 'semantic_version');
+    date_col = 'session_' || new.state || '_date_key';
+    time_col = 'session_' || new.state || '_time_key';
+    ts_col   = 'session_' || new.state || '_time';
 
-  create table plugin_executable (
-    version_id wt_public_id
-      references plugin_version(public_id)
-        on delete cascade
-        on update cascade,
-    operating_system text not null
-      constraint operating_system_is_not_empty
-        check(length(operating_system) > 0),
-    architecture text not null
-      constraint architecture_is_not_empty
-        check(length(architecture) > 0),
-    executable bytea not null
-      constraint executable_is_not_empty
-      check(length(executable) > 0),
-    create_time wt_timestamp,
+    q = format('update wh_session_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_key(%L), wh_time_key(%L), %L::timestamptz)
+                 where session_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.session_id);
+    execute q into strict session_row;
 
-    primary key(operating_system, architecture, version_id)
-  );
+    return null;
+  end;
+  $$ language plpgsql;
 
-  create trigger default_create_time_column before insert on plugin_executable
-    for each row execute procedure default_create_time();
+  create trigger wh_insert_session_state
+    after insert on session_state
+    for each row
+    execute function wh_insert_session_state();
 
-  create trigger immutable_columns before update on plugin_executable
-    for each row execute procedure immutable_columns('version_id', 'operating_system', 'architecture', 'executable');
+  -- replaces function from 0/69_wh_session_facts.up.sql
+  drop trigger wh_insert_session_connection_state on session_connection_state;
+  drop function wh_insert_session_connection_state;
+  create function wh_insert_session_connection_state()
+    returns trigger
+  as $$
+  declare
+    date_col text;
+    time_col text;
+    ts_col text;
+    q text;
+    connection_row wh_session_connection_accumulating_fact%rowtype;
+  begin
+    if new.state = 'authorized' then
+      -- The authorized state is the first state which is handled by the
+      -- wh_insert_session_connection trigger. The update statement in this
+      -- trigger will fail for the authorized state because the row for the
+      -- session connection has not yet been inserted into the
+      -- wh_session_connection_accumulating_fact table.
+      return null;
+    end if;
 
-  insert into oplog_ticket (name, version)
-  values
-    ('plugin', 1),
-    ('plugin_version', 1),
-    ('plugin_executable', 1);
+    date_col = 'connection_' || new.state || '_date_key';
+    time_col = 'connection_' || new.state || '_time_key';
+    ts_col   = 'connection_' || new.state || '_time';
+
+    q = format('update wh_session_connection_accumulating_fact
+                   set (%I, %I, %I) = (select wh_date_key(%L), wh_time_key(%L), %L::timestamptz)
+                 where connection_id = %L
+                returning *',
+                date_col,       time_col,       ts_col,
+                new.start_time, new.start_time, new.start_time,
+                new.connection_id);
+    execute q into strict connection_row;
+
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger wh_insert_session_connection_state
+    after insert on session_connection_state
+    for each row
+    execute function wh_insert_session_connection_state();
 `),
 			15002: []byte(`
-/*
-  ┌──────────────────┐         ┌───────────────────┐
-  │      plugin      │         │  plugin_version   │
-  ├──────────────────┤         ├───────────────────┤
-  │public_id (pk)    │        ╱│public_id (pk)     │
-  │scope_id (fk)     │┼┼────┼──│plugin_id (fk)     │
-  └──────────────────┘        ╲│semantic_version   │
-            ┼                  └───────────────────┘
-            ┼                            ┼
-            │                            ┼
-            ┼                            │
-            ┼                            ┼
-  ┌──────────────────┐                  ╱│╲
-  │   host_plugin    │       ┌──────────────────────┐
-  ├──────────────────┤       │  plugin_executable   │
-  │public_id (pk)    │       ├──────────────────────┤
-  │scope_id (fk)     │       │version_id (pk, fk)   │
-  │name              │       │operating_system (pk) │
-  │description       │       │architecture (pk)     │
-  │version           │       │executable            │
-  │plugin_name       │       └──────────────────────┘
-  │id_prefix         │
-  └──────────────────┘
-*/
-  create table host_plugin (
-    public_id wt_plugin_id primary key,
-    scope_id wt_scope_id,
-    name wt_name,
-    description text,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    plugin_name text
-      not null
-      constraint plugin_name_must_be_not_empty
-        check(length(trim(plugin_name)) > 0)
-      unique,
-    id_prefix text
-      not null
-      constraint plugin_id_prefix_must_be_not_empty
-        check(length(trim(id_prefix)) > 0)
-      unique,
-    foreign key (scope_id, public_id)
-      references plugin(scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(scope_id, name)
-  );
+alter table wh_host_dimension
+    rename column host_organization_id to organization_id;
+  alter table wh_host_dimension
+    rename column host_organization_name to organization_name;
+  alter table wh_host_dimension
+    rename column host_organization_description to organization_description;
 
-  create trigger update_version_column after update on host_plugin
-    for each row execute procedure update_version_column();
+  -- replaces view from 0/65_wh_session_dimensions.up.sql
+  drop view whx_host_dimension_source;
+  create view whx_host_dimension_source as
+  select -- id is the first column in the target view
+         h.public_id                     as host_id,
+         'static host'                   as host_type,
+         coalesce(h.name, 'None')        as host_name,
+         coalesce(h.description, 'None') as host_description,
+         coalesce(h.address, 'Unknown')  as host_address,
+         s.public_id                     as host_set_id,
+         'static host set'               as host_set_type,
+         coalesce(s.name, 'None')        as host_set_name,
+         coalesce(s.description, 'None') as host_set_description,
+         c.public_id                     as host_catalog_id,
+         'static host catalog'           as host_catalog_type,
+         coalesce(c.name, 'None')        as host_catalog_name,
+         coalesce(c.description, 'None') as host_catalog_description,
+         t.public_id                     as target_id,
+         'tcp target'                    as target_type,
+         coalesce(t.name, 'None')        as target_name,
+         coalesce(t.description, 'None') as target_description,
+         coalesce(t.default_port, 0)     as target_default_port_number,
+         t.session_max_seconds           as target_session_max_seconds,
+         t.session_connection_limit      as target_session_connection_limit,
+         p.public_id                     as project_id,
+         coalesce(p.name, 'None')        as project_name,
+         coalesce(p.description, 'None') as project_description,
+         o.public_id                     as organization_id,
+         coalesce(o.name, 'None')        as organization_name,
+         coalesce(o.description, 'None') as organization_description
+    from static_host as h,
+         static_host_catalog as c,
+         static_host_set_member as m,
+         static_host_set as s,
+         target_host_set as ts,
+         target_tcp as t,
+         iam_scope as p,
+         iam_scope as o
+   where h.catalog_id = c.public_id
+     and h.public_id = m.host_id
+     and s.public_id = m.set_id
+     and t.public_id = ts.target_id
+     and s.public_id = ts.host_set_id
+     and p.public_id = t.scope_id
+     and p.type = 'project'
+     and o.public_id = p.parent_id
+     and o.type = 'org'
+  ;
 
-  create trigger update_time_column before update on host_plugin
-    for each row execute procedure update_time_column();
+  -- replaces view from 15/01_wh_rename_key_columns.up.sql
+  drop view whx_host_dimension_target;
+  create view whx_host_dimension_target as
+  select key,
+         host_id,
+         host_type,
+         host_name,
+         host_description,
+         host_address,
+         host_set_id,
+         host_set_type,
+         host_set_name,
+         host_set_description,
+         host_catalog_id,
+         host_catalog_type,
+         host_catalog_name,
+         host_catalog_description,
+         target_id,
+         target_type,
+         target_name,
+         target_description,
+         target_default_port_number,
+         target_session_max_seconds,
+         target_session_connection_limit,
+         project_id,
+         project_name,
+         project_description,
+         organization_id,
+         organization_name,
+         organization_description
+    from wh_host_dimension
+   where current_row_indicator = 'Current'
+  ;
 
-  create trigger default_create_time_column before insert on host_plugin
-    for each row execute procedure default_create_time();
-
-  create trigger immutable_columns before update on host_plugin
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name', 'id_prefix');
-
-  create trigger insert_plugin_subtype before insert on host_plugin
-    for each row execute procedure insert_plugin_subtype();
-
-  create trigger update_plugin_subtype before update on host_plugin
-    for each row execute procedure update_plugin_subtype();
-
-  create trigger delete_plugin_subtype after delete on host_plugin
-    for each row execute procedure delete_plugin_subtype();
-
-  insert into oplog_ticket (name, version)
-  values
-    ('host_plugin', 1);
-`),
-			15003: []byte(`
--- We are adding the name to the base host catalog type. This allows the db
-  -- to ensure that catalog names are unique in a scope across all subtypes.
-  alter table host_catalog
-    add column name wt_name;
-
-  alter table host_catalog
-    add constraint host_catalog_scope_id_name_uq
-      unique (scope_id, name);
-
-  -- Now that we've added the name column to the base type, we copy
-  -- the name from the static host catalog table into the base table.
-  update host_catalog
-  set name = st.name
-  from
-    static_host_catalog st
-  where
-    host_catalog.public_id = st.public_id and
-    st.name is not null;
-
-  -- Replace the insert_host_catalog_subtype function defined in 0/20_host.up.sql
-  -- to include the name.
-  -- insert_host_catalog_subtype() is a before insert trigger
-  -- function for subtypes of host_catalog
-  create or replace function
-    insert_host_catalog_subtype()
-    returns trigger
+  -- replaces function from 15/01_wh_rename_key_columns.up.sql
+  drop function wh_upsert_host;
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
+    returns wh_dim_key
   as $$
+  declare
+    src     whx_host_dimension_target%rowtype;
+    target  whx_host_dimension_target%rowtype;
+    new_row wh_host_dimension%rowtype;
   begin
-    insert into host_catalog
-    (public_id, scope_id, name)
-    values
-      (new.public_id, new.scope_id, new.name);
-    return new;
+    select * into target
+      from whx_host_dimension_target as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    select target.key, t.* into src
+      from whx_host_dimension_source as t
+     where t.host_id               = p_host_id
+       and t.host_set_id           = p_host_set_id
+       and t.target_id             = p_target_id;
+
+    if src is distinct from target then
+
+      -- expire the current row
+      update wh_host_dimension
+         set current_row_indicator = 'Expired',
+             row_expiration_time   = current_timestamp
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+         and current_row_indicator = 'Current';
+
+      -- insert a new row
+      insert into wh_host_dimension (
+             host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             organization_id,            organization_name,          organization_description,
+             current_row_indicator,      row_effective_time,         row_expiration_time
+      )
+      select host_id,                    host_type,                  host_name,                       host_description,         host_address,
+             host_set_id,                host_set_type,              host_set_name,                   host_set_description,
+             host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
+             target_id,                  target_type,                target_name,                     target_description,
+             target_default_port_number, target_session_max_seconds, target_session_connection_limit,
+             project_id,                 project_name,               project_description,
+             organization_id,            organization_name,          organization_description,
+             'Current',                  current_timestamp,          'infinity'::timestamptz
+        from whx_host_dimension_source
+       where host_id               = p_host_id
+         and host_set_id           = p_host_set_id
+         and target_id             = p_target_id
+      returning * into new_row;
+
+      return new_row.key;
+    end if;
+    return target.key;
+
   end;
   $$ language plpgsql;
-  comment on function insert_host_catalog_subtype() is
-    'insert_host_catalog_subtype() inserts sub type name into the base type host catalog table';
-
-  -- Now that we are tracking the name, which is mutable, we need to also
-  -- update the base table when the subtype tables are updated.
-  -- update_host_catalog_subtype() is intended to be used as a before update
-  -- trigger for all host catalog sub types.  The purpose is to ensure that the
-  -- base table for host catalog to contain the updated names for each host catalog
-  -- in order to enforce uniqueness across all host catalogs, regardless of subtype,
-  -- in a given scope.
-  create or replace function
-    update_host_catalog_subtype()
-    returns trigger
-  as $$
-  begin
-    update host_catalog set name = new.name where public_id = new.public_id and new.name != name;
-    return new;
-  end;
-  $$ language plpgsql;
-  comment on function update_host_catalog_subtype() is
-    'update_host_catalog_subtype() will update base host catalog type name column with new values from sub type';
-
-  create trigger update_host_catalog_subtype before update on static_host_catalog
-    for each row execute procedure update_host_catalog_subtype();
-`),
-			15004: []byte(`
-/*
-                             ┌──────────────────┐
-                             │   host_plugin    │
-                             ├──────────────────┤
-                             │public_id (pk)    │
-                             │...               │
-                             └──────────────────┘
-                                       ┼
-                                       ┼
-                                       ○
-                                      ╱│╲
-                            ┌─────────────────────┐
-                            │ plugin_host_catalog │
-                            ├─────────────────────┤      ┌───────────────────────────┐
-    ┌────────────────┐      │public_id (pk)       │      │plugin_host_catalog_secret │
-    │host_catalog    │      │plugin_id (fk)       │      ├───────────────────────────┤
-    ├────────────────┤      │scope_id (fk)        │      │host_catalog_id (pk, fk)   │
-    │public_id       │┼┼──○┼│name                 │┼┼──○┼│secret                     │
-    │scope_id        │      │description          │      │key_id (fk)                │
-    └────────────────┘      │attributes           │      └───────────────────────────┘
-             ┼              └─────────────────────┘
-             ┼                         ┼
-             │                         ┼
-             │                         ○
-             ○                        ╱│╲
-            ╱│╲             ┌────────────────────┐
-    ┌────────────────┐      │  plugin_host_set   │
-    │    host_set    │      ├────────────────────┤
-    ├────────────────┤      │public_id (pk)      │
-    │public_id       │      │host_catalog_id (fk)│
-    │host_catalog_id │┼┼──○┼│name                │
-    └────────────────┘      │description         │
-                            │attributes          │
-                            └────────────────────┘
-
-*/
-
-  create table plugin_host_catalog (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id not null
-      constraint scope_fkey
-        references iam_scope (public_id)
-        on delete cascade
-        on update cascade,
-    plugin_id wt_plugin_id not null
-      constraint host_plugin_fkey
-        references host_plugin (public_id)
-        on delete cascade
-        on update cascade,
-    name wt_name,
-    description text,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    attributes bytea,
-    foreign key (scope_id, public_id)
-      references host_catalog (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(scope_id, name)
-  );
-
-  create trigger update_version_column after update on plugin_host_catalog
-    for each row execute procedure update_version_column();
-
-  create trigger update_time_column before update on plugin_host_catalog
-    for each row execute procedure update_time_column();
-
-  create trigger default_create_time_column before insert on plugin_host_catalog
-    for each row execute procedure default_create_time();
-
-  create trigger immutable_columns before update on plugin_host_catalog
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
-
-  create trigger insert_host_catalog_subtype before insert on plugin_host_catalog
-    for each row execute procedure insert_host_catalog_subtype();
-
-  create trigger update_host_catalog_subtype before update on plugin_host_catalog
-    for each row execute procedure update_host_catalog_subtype();
-
-  create trigger delete_host_catalog_subtype after delete on plugin_host_catalog
-    for each row execute procedure delete_host_catalog_subtype();
-
-  create table plugin_host_catalog_secret (
-    catalog_id wt_public_id primary key
-      references plugin_host_catalog (public_id)
-        on delete cascade
-        on update cascade,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    secret bytea not null  -- encrypted value
-      constraint secret_must_not_be_empty
-        check(length(secret) > 0),
-    key_id wt_private_id not null
-      constraint kms_database_key_version_fkey
-        references kms_database_key_version (private_id)
-        on delete restrict
-        on update cascade
-  );
-
-  create trigger update_time_column before update on plugin_host_catalog_secret
-      for each row execute procedure update_time_column();
-
-  create trigger default_create_time_column before insert on plugin_host_catalog_secret
-      for each row execute procedure default_create_time();
-
-  create trigger immutable_columns before update on plugin_host_catalog_secret
-      for each row execute procedure immutable_columns('catalog_id', 'create_time');
-
-  create table plugin_host_set (
-    public_id wt_public_id primary key,
-    catalog_id wt_public_id not null
-      constraint host_catalog_fkey
-        references plugin_host_catalog (public_id)
-        on delete cascade
-        on update cascade,
-    name wt_name,
-    description text,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    attributes bytea,
-    unique(catalog_id, name),
-    foreign key (catalog_id, public_id)
-      references host_set (catalog_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(catalog_id, public_id)
-  );
-
-  create trigger update_version_column after update on plugin_host_set
-    for each row execute procedure update_version_column();
-
-  create trigger update_time_column before update on plugin_host_set
-    for each row execute procedure update_time_column();
-
-  create trigger default_create_time_column before insert on plugin_host_set
-    for each row execute procedure default_create_time();
-
-  create trigger immutable_columns before update on plugin_host_set
-    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
-
-  create trigger insert_host_set_subtype before insert on plugin_host_set
-    for each row execute procedure insert_host_set_subtype();
-
-  create trigger delete_host_set_subtype after delete on plugin_host_set
-    for each row execute procedure delete_host_set_subtype();
-
-  insert into oplog_ticket (name, version)
-  values
-    ('plugin_host_catalog', 1),
-    ('plugin_host_catalog_secret', 1),
-    ('plugin_host_set', 1);
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

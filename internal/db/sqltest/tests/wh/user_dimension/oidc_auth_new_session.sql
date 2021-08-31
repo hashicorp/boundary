@@ -6,7 +6,7 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension;
+  select is(count(*), 0::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
 
   -- insert first session, should result in a new user dimension
   insert into session
@@ -14,30 +14,30 @@ begin;
   values
     ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____walter' , 'oidc__walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
 
-  select is(count(*),                      1::bigint)                  from wh_user_dimension;
-  select is(user_id,                       'u_____walter')             from wh_user_dimension;
-  select is(user_name,                     'Walter')                   from wh_user_dimension;
-  select is(user_description,              'None')                     from wh_user_dimension;
+  select is(count(*),                      1::bigint)                  from wh_user_dimension where user_id = 'u_____walter';
+  select is(user_id,                       'u_____walter')             from wh_user_dimension where user_id = 'u_____walter';
+  select is(user_name,                     'Walter')                   from wh_user_dimension where user_id = 'u_____walter';
+  select is(user_description,              'None')                     from wh_user_dimension where user_id = 'u_____walter';
 
-  select is(auth_account_id,               'aoa___walter')             from wh_user_dimension;
-  select is(auth_account_type,             'oidc auth account')        from wh_user_dimension;
-  select is(auth_account_name,             'walter account')           from wh_user_dimension;
-  select is(auth_account_description,      'Walter OIDC Account')      from wh_user_dimension;
-  select is(auth_account_external_id,      'sub___walter')             from wh_user_dimension;
-  select is(auth_account_full_name,        'Walter')                   from wh_user_dimension;
-  select is(auth_account_email,            'walter@widget.test')       from wh_user_dimension;
+  select is(auth_account_id,               'aoa___walter')             from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_type,             'oidc auth account')        from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_name,             'walter account')           from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_description,      'Walter OIDC Account')      from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_external_id,      'sub___walter')             from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_full_name,        'Walter')                   from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_account_email,            'walter@widget.test')       from wh_user_dimension where user_id = 'u_____walter';
 
-  select is(auth_method_id,                'aom___widget')             from wh_user_dimension;
-  select is(auth_method_type,              'oidc auth method')         from wh_user_dimension;
-  select is(auth_method_name,              'Widget OIDC')              from wh_user_dimension;
-  select is(auth_method_description,       'None')                     from wh_user_dimension;
-  select is(auth_method_external_id,       'https://oidc.widget.test') from wh_user_dimension;
+  select is(auth_method_id,                'aom___widget')             from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_method_type,              'oidc auth method')         from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_method_name,              'Widget OIDC')              from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_method_description,       'None')                     from wh_user_dimension where user_id = 'u_____walter';
+  select is(auth_method_external_id,       'https://oidc.widget.test') from wh_user_dimension where user_id = 'u_____walter';
 
-  select is(user_organization_id,          'o_____widget')             from wh_user_dimension;
-  select is(user_organization_name,        'Widget Inc')               from wh_user_dimension;
-  select is(user_organization_description, 'None')                     from wh_user_dimension;
+  select is(user_organization_id,          'o_____widget')             from wh_user_dimension where user_id = 'u_____walter';
+  select is(user_organization_name,        'Widget Inc')               from wh_user_dimension where user_id = 'u_____walter';
+  select is(user_organization_description, 'None')                     from wh_user_dimension where user_id = 'u_____walter';
 
-  select is(current_row_indicator,         'Current')                  from wh_user_dimension;
+  select is(current_row_indicator,         'Current')                  from wh_user_dimension where user_id = 'u_____walter';
 
   -- insert session without full name or email
   insert into session
