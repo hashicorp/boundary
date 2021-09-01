@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -220,7 +219,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	tests := []struct {
 		name      string
 		in        string
-		want      host.Set
+		want      *HostSet
 		wantIsErr errors.Code
 	}{
 		{

@@ -6,11 +6,11 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension;
+  select is(count(*), 0::bigint) from wh_user_dimension where user_id = 'u_____walter';
 
   insert into wh_user_dimension
     (
-      id,
+      key,
       user_id,                  user_name,                       user_description,
       auth_account_id,          auth_account_type,               auth_account_name,             auth_account_description,
       auth_account_external_id, auth_account_full_name,          auth_account_email,
@@ -34,8 +34,8 @@ begin;
   select lives_ok($$select wh_upsert_user('u_____walter', 'tok___walter')$$);
 
   -- upsert should insert a user_dimension
-  select is(count(*), 2::bigint) from wh_user_dimension;
-  select is(count(*), 1::bigint) from wh_user_dimension where current_row_indicator = 'Current';
+  select is(count(*), 2::bigint) from wh_user_dimension where user_id = 'u_____walter';
+  select is(count(*), 1::bigint) from wh_user_dimension where user_id = 'u_____walter' and current_row_indicator = 'Current';
 
   select * from finish();
 rollback;

@@ -123,7 +123,7 @@ func TestServer_SetupEventing(t *testing.T) {
 			logger: testLogger,
 			lock:   testLock,
 			opt: []Option{WithEventerConfig(&event.EventerConfig{
-				Sinks: []event.SinkConfig{
+				Sinks: []*event.SinkConfig{
 					{
 						Format: "invalid-format",
 					},
