@@ -46,8 +46,11 @@ message Host {
 	// The attributes that are applicable to the specific Host type.
 	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
 	
-	// Output only. The address of the host.
-	string address = 120 [json_name="address"];
+  // Output only. The preferred address of the host as determined by
+  // Boundary. This is the address that will be used when connecting
+  // to a target. Useful when working with host types that return
+  // multiple addresses.
+	string preferred_address = 120 [json_name="preferred_address"];
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];

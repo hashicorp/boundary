@@ -3794,9 +3794,9 @@
           "type": "object",
           "description": "The attributes that are applicable to the specific Host type."
         },
-        "address": {
+        "preferred_address": {
           "type": "string",
-          "description": "Output only. The address of the host.",
+          "description": "Output only. The preferred address of the host as determined by\nBoundary. This is the address that will be used when connecting\nto a target. Useful when working with host types that return\nmultiple addresses.",
           "readOnly": true
         },
         "authorized_actions": {
