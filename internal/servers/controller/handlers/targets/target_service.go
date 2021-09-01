@@ -1098,6 +1098,13 @@ HostSourceIterationLoop:
 				CredentialStoreId: l.GetStoreId(),
 				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
+			CredentialSource: &pb.CredentialSource{
+				Id:                l.GetPublicId(),
+				Name:              l.GetName(),
+				Description:       l.GetDescription(),
+				CredentialStoreId: l.GetStoreId(),
+				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+			},
 			Secret: &pb.SessionSecret{
 				Raw:     base64.StdEncoding.EncodeToString(jSecret),
 				Decoded: sSecret,
