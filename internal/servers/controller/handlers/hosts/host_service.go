@@ -456,8 +456,8 @@ func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, o
 			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
 		}
 	}
-	if outputFields.Has(globals.HostAddressField) {
-		out.Address = in.Address
+	if outputFields.Has(globals.HostPreferredAddressField) {
+		out.PreferredAddress = in.Address
 	}
 	if outputFields.Has(globals.AttributesField) {
 		st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
@@ -490,6 +490,9 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if req.GetItem().GetPreferredAddress() != "" {
+			badFields["prefered_address"] = "This is an output-only field."
+		}
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
@@ -524,6 +527,9 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if req.GetItem().GetPreferredAddress() != "" {
+			badFields["prefered_address"] = "This is an output-only field."
+		}
 		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {

@@ -53,13 +53,13 @@ func TestGet(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
 	pHost := &pb.Host{
-		HostCatalogId: hc.GetPublicId(),
-		Id:            h.GetPublicId(),
-		CreatedTime:   h.CreateTime.GetTimestamp(),
-		UpdatedTime:   h.UpdateTime.GetTimestamp(),
-		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Type:          "static",
-		Address:       h.GetAddress(),
+		HostCatalogId:    hc.GetPublicId(),
+		Id:               h.GetPublicId(),
+		CreatedTime:      h.CreateTime.GetTimestamp(),
+		UpdatedTime:      h.UpdateTime.GetTimestamp(),
+		Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		Type:             "static",
+		PreferredAddress: h.GetAddress(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
@@ -138,14 +138,14 @@ func TestList(t *testing.T) {
 	var wantHs []*pb.Host
 	for _, h := range static.TestHosts(t, conn, hc.GetPublicId(), 10) {
 		wantHs = append(wantHs, &pb.Host{
-			Id:            h.GetPublicId(),
-			HostCatalogId: h.GetCatalogId(),
-			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-			CreatedTime:   h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
-			Version:       h.GetVersion(),
-			Type:          static.Subtype.String(),
-			Address:       h.GetAddress(),
+			Id:               h.GetPublicId(),
+			HostCatalogId:    h.GetCatalogId(),
+			Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:      h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:      h.GetUpdateTime().GetTimestamp(),
+			Version:          h.GetVersion(),
+			Type:             static.Subtype.String(),
+			PreferredAddress: h.GetAddress(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
@@ -349,7 +349,6 @@ func TestCreate(t *testing.T) {
 				Name:          &wrappers.StringValue{Value: "name"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "static",
-				Address:       "123.456.789",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"address": structpb.NewStringValue("123.456.789"),
 				}},
@@ -357,12 +356,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateHostResponse{
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "name"},
-					Description:   &wrappers.StringValue{Value: "desc"},
-					Type:          "static",
-					Address:       "123.456.789",
+					HostCatalogId:    hc.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "name"},
+					Description:      &wrappers.StringValue{Value: "desc"},
+					Type:             "static",
+					PreferredAddress: "123.456.789",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
@@ -395,14 +394,14 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Create with incorrectly-supplied address (in output-only field)",
+			name: "Create with incorrectly-supplied preferred address (output-only field)",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
-				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "name"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          "static",
-				Address:       "123.456.789",
-				Attributes:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				HostCatalogId:    hc.GetPublicId(),
+				Name:             &wrappers.StringValue{Value: "name"},
+				Description:      &wrappers.StringValue{Value: "desc"},
+				Type:             "static",
+				PreferredAddress: "123.456.789",
+				Attributes:       &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -429,12 +428,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateHostResponse{
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "no type name"},
-					Description:   &wrappers.StringValue{Value: "no type desc"},
-					Type:          "static",
-					Address:       "123.456.789",
+					HostCatalogId:    hc.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "no type name"},
+					Description:      &wrappers.StringValue{Value: "no type desc"},
+					Type:             "static",
+					PreferredAddress: "123.456.789",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
@@ -566,14 +565,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "new"},
-					Description:   &wrappers.StringValue{Value: "desc"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "new"},
+					Description:      &wrappers.StringValue{Value: "desc"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -595,14 +594,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "new"},
-					Description:   &wrappers.StringValue{Value: "desc"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "new"},
+					Description:      &wrappers.StringValue{Value: "desc"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -667,13 +666,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Description:   &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Description:      &wrappers.StringValue{Value: "default"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -693,13 +692,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "default"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -720,14 +719,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "updated"},
-					Description:   &wrappers.StringValue{Value: "default"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "updated"},
+					Description:      &wrappers.StringValue{Value: "default"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -748,14 +747,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateHostResponse{
 				Item: &pb.Host{
-					HostCatalogId: hc.GetPublicId(),
-					Id:            h.GetPublicId(),
-					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:          &wrappers.StringValue{Value: "default"},
-					Description:   &wrappers.StringValue{Value: "notignored"},
-					CreatedTime:   h.GetCreateTime().GetTimestamp(),
-					Type:          "static",
-					Address:       "defaultaddress",
+					HostCatalogId:    hc.GetPublicId(),
+					Id:               h.GetPublicId(),
+					Scope:            &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:             &wrappers.StringValue{Value: "default"},
+					Description:      &wrappers.StringValue{Value: "notignored"},
+					CreatedTime:      h.GetCreateTime().GetTimestamp(),
+					Type:             "static",
+					PreferredAddress: "defaultaddress",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
@@ -854,13 +853,13 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Cant specify top-level address",
+			name: "Cant specify preferred address",
 			req: &pbs.UpdateHostRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"address"},
+					Paths: []string{"preferred_address"},
 				},
 				Item: &pb.Host{
-					Address: "updatedaddress",
+					PreferredAddress: "updatedaddress",
 				},
 			},
 			res: nil,
