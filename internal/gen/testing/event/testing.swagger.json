@@ -1,0 +1,98 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "testing/event/v1/event.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "TestAuthMethodService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/auth-methods/{auth_method_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "operationId": "TestAuthMethodService_TestAuthenticate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/testing.event.v1.TestAuthenticateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "description": "The ID of the Auth Method in the system that should be used for authentication.\n@inject_tag: `class:\"public\"`",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/testing.event.v1.TestAuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "testing.event.v1.TestAuthMethodService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "google.protobuf.NullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "testing.event.v1.TestAuthenticateRequest": {
+      "type": "object",
+      "properties": {
+        "auth_method_id": {
+          "type": "string",
+          "title": "The ID of the Auth Method in the system that should be used for authentication.\n@inject_tag: `class:\"public\"`"
+        },
+        "token_type": {
+          "type": "string",
+          "title": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser.\n@inject_tag: `class:\"public\"`"
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "title": "The command to perform.\n@inject_tag: `class:\"public\"`"
+        }
+      }
+    },
+    "testing.event.v1.TestAuthenticateResponse": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "object",
+          "description": "Valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "title": "The command that was performed.\n@inject_tag: `class:\"public\"`"
+        }
+      }
+    }
+  }
+}

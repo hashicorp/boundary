@@ -11,7 +11,7 @@ The stderr sink configures Boundary to send events to a stderr.
 
 ```hcl
 
-sink "stderr" = {
+sink "stderr" {
     name = "all-events"
     description = "All events sent to stderr"
     event_types = ["*"]
