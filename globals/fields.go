@@ -58,4 +58,5 @@ const (
 	ApplicationCredentialLibrariesField  = "application_credential_libraries"
 	ApplicationCredentialSourceIdsField  = "application_credential_source_ids"
 	ApplicationCredentialSourcesField    = "application_credential_sources"
+	HostPreferredAddressField            = "preferred_address"
 )
