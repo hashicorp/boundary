@@ -1,8 +1,10 @@
 package host
 
 import (
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/plugin/host/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"google.golang.org/protobuf/proto"
 )
 
 // A Plugin enables additional logic to be used by boundary.
@@ -40,4 +42,29 @@ func (c *Plugin) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (c *Plugin) SetTableName(n string) {
 	c.tableName = n
+}
+
+func allocPlugin() *Plugin {
+	return &Plugin{
+		Plugin:    &store.Plugin{},
+	}
+}
+
+func (c *Plugin) clone() *Plugin {
+	cp := proto.Clone(c.Plugin)
+	return &Plugin{
+		Plugin: cp.(*store.Plugin),
+	}
+}
+
+func newPluginMetadata(p *Plugin, op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{p.GetPublicId()},
+		"resource-type":      []string{"host plugin"},
+		"op-type":            []string{op.String()},
+	}
+	if p.ScopeId != "" {
+		metadata["scope-id"] = []string{p.ScopeId}
+	}
+	return metadata
 }
