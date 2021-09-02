@@ -6,6 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* controller: Fix issue with recursive listing across services when using the
+  unauthenticated user (`u_anon`) with no token and the list was started in a
+  scope where the user does not have permission
+  ([PR](https://github.com/hashicorp/boundary/pull/1478))
 * grants: Fix grant format `type=<type>;output_fields=<fields>` with no action
   specified. In some code paths this format would trigger an error when
   validating even though it is correctly handled within the ACL code.

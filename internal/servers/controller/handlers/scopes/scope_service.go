@@ -121,8 +121,9 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
-		// may have authorization on downstream scopes.
-		if authResults.Error == handlers.ForbiddenError() &&
+		// may have authorization on downstream scopes. Or, if they've not
+		// authenticated, still process in case u_anon has permissions.
+		if (authResults.Error == handlers.ForbiddenError() || authResults.Error == handlers.UnauthenticatedError()) &&
 			req.GetRecursive() &&
 			authResults.AuthenticationFinished {
 		} else {
