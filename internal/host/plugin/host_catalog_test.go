@@ -285,7 +285,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 }
 
 func TestHostCatalog_SetTableName(t *testing.T) {
-	defaultTableName := "plugin_host_catalog"
+	defaultTableName := "host_plugin_catalog"
 	tests := []struct {
 		name        string
 		initialName string

@@ -16,13 +16,3 @@ func Test_testPlugin(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 }
-
-func Test_TestPluginVersion(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-
-	plg := testPlugin(t, conn, "test")
-	plgVer := testPluginVersion(t, conn, plg.GetPublicId(), "0.0.1")
-	require.NotNil(plgVer)
-	assert.NotEmpty(plgVer.GetPublicId())
-}

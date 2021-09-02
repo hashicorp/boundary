@@ -33,7 +33,7 @@ func (c *Plugin) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return "host_plugin"
+	return "plugin_host"
 }
 
 // SetTableName sets the table name. If the caller attempts to

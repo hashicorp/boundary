@@ -53,24 +53,3 @@ func testPlugin(t *testing.T, conn *gorm.DB, name string) *plugin {
 	require.NoError(t, w.Create(context.Background(), p))
 	return p
 }
-
-func testPluginVersion(t *testing.T, conn *gorm.DB, pluginId, ver string) *PluginVersion {
-	t.Helper()
-	p := NewPluginVersion(pluginId, ver)
-	id, err := newPluginVersionId()
-	require.NoError(t, err)
-	p.PublicId = id
-
-	w := db.New(conn)
-	require.NoError(t, w.Create(context.Background(), p))
-	return p
-}
-
-func testPluginExecutable(t *testing.T, conn *gorm.DB, verId string, os OperatingSystem, arch Architecture, exe []byte) *PluginExecutable {
-	t.Helper()
-	p := NewPluginExecutable(verId, os, arch, exe)
-
-	w := db.New(conn)
-	require.NoError(t, w.Create(context.Background(), p))
-	return p
-}

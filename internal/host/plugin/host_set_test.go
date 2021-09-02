@@ -141,7 +141,7 @@ func TestHostSet_Create(t *testing.T) {
 }
 
 func TestHostSet_SetTableName(t *testing.T) {
-	defaultTableName := "plugin_host_set"
+	defaultTableName := "host_plugin_set"
 	tests := []struct {
 		name        string
 		initialName string

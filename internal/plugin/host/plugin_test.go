@@ -193,7 +193,7 @@ func TestPlugin_Delete(t *testing.T) {
 }
 
 func TestPlugin_SetTableName(t *testing.T) {
-	defaultTableName := "host_plugin"
+	defaultTableName := "plugin_host"
 	tests := []struct {
 		name        string
 		initialName string

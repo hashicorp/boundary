@@ -53,7 +53,7 @@ func (c *HostCatalog) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return "plugin_host_catalog"
+	return "host_plugin_catalog"
 }
 
 // SetTableName sets the table name. If the caller attempts to
