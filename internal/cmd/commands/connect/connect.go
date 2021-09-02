@@ -23,8 +23,8 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/proxy"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
@@ -501,7 +501,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 		sessInfo := SessionInfo{
-			Protocol:        "tcp",
+			Protocol:        c.sessionAuthzData.GetType(),
 			Address:         c.listenerAddr.IP.String(),
 			Port:            c.listenerAddr.Port,
 			Expiration:      c.expiration,

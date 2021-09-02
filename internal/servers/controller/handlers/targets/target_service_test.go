@@ -16,9 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
-	credpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -36,6 +33,9 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	credpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -2545,11 +2545,11 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	_, err = s.AddTargetCredentialLibraries(ctx,
-		&pbs.AddTargetCredentialLibrariesRequest{
-			Id:                              tar.GetPublicId(),
-			ApplicationCredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-			Version:                         apiTar.GetItem().GetVersion(),
+	_, err = s.AddTargetCredentialSources(ctx,
+		&pbs.AddTargetCredentialSourcesRequest{
+			Id:                             tar.GetPublicId(),
+			ApplicationCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+			Version:                        apiTar.GetItem().GetVersion(),
 		})
 	require.NoError(t, err)
 
@@ -2590,6 +2590,13 @@ func TestAuthorizeSession(t *testing.T) {
 		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
 		Credentials: []*pb.SessionCredential{{
 			CredentialLibrary: &pb.CredentialLibrary{
+				Id:                clsResp.GetItem().GetId(),
+				Name:              clsResp.GetItem().GetName().GetValue(),
+				Description:       clsResp.GetItem().GetDescription().GetValue(),
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.Subtype.String(),
+			},
+			CredentialSource: &pb.CredentialSource{
 				Id:                clsResp.GetItem().GetId(),
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),

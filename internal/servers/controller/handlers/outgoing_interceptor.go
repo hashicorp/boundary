@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	authtokenpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authtokenpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 
 	"google.golang.org/protobuf/proto"
 )

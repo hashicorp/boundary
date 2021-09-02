@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -34,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/pointerstructure"
@@ -1092,6 +1092,13 @@ HostSourceIterationLoop:
 		}
 		creds = append(creds, &pb.SessionCredential{
 			CredentialLibrary: &pb.CredentialLibrary{
+				Id:                l.GetPublicId(),
+				Name:              l.GetName(),
+				Description:       l.GetDescription(),
+				CredentialStoreId: l.GetStoreId(),
+				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+			},
+			CredentialSource: &pb.CredentialSource{
 				Id:                l.GetPublicId(),
 				Name:              l.GetName(),
 				Description:       l.GetDescription(),

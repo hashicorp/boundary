@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.targets.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets;targets";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets;targets";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";

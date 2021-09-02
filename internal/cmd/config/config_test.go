@@ -347,7 +347,7 @@ func TestController_EventingConfig(t *testing.T) {
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        true,
 				ObservationsEnabled: false,
-				Sinks: []event.SinkConfig{
+				Sinks: []*event.SinkConfig{
 					event.DefaultSink(),
 				},
 			},
@@ -362,7 +362,7 @@ func TestController_EventingConfig(t *testing.T) {
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
-				Sinks: []event.SinkConfig{
+				Sinks: []*event.SinkConfig{
 					event.DefaultSink(),
 				},
 			},
@@ -470,7 +470,7 @@ func TestController_EventingConfig(t *testing.T) {
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        false,
 				ObservationsEnabled: true,
-				Sinks: []event.SinkConfig{
+				Sinks: []*event.SinkConfig{
 					{
 						Type:       "file",
 						Name:       "configured-sink",

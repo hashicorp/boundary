@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
