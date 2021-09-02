@@ -6,6 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* grants: Fix grant format `type=<type>;output_fields=<fields>` with no action
+  specified. In some code paths this format would trigger an error when
+  validating even though it is correctly handled within the ACL code.
+  ([PR](https://github.com/hashicorp/boundary/pull/1474))
 * targets: Fix panic when using `boundary targets authorize-session`
   ([issue](https://github.com/hashicorp/boundary/issues/1488),
   [PR](https://github.com/hashicorp/boundary/pull/1496)).
