@@ -1,6 +1,6 @@
 FROM docker.mirror.hashicorp.services/alpine:3.13
 
-ARG VERSION=0.5.0
+ARG VERSION=0.5.1
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
@@ -33,13 +33,13 @@ RUN set -eux && \
     rm boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS boundary_${VERSION}_SHA256SUMS.sig && \
     mkdir /boundary
 
-COPY config.hcl /boundary/config.hcl
+COPY docker/config.hcl /boundary/config.hcl
 
 RUN chown -R boundary:boundary /boundary/ 
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
 
-COPY ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
