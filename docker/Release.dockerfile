@@ -1,4 +1,4 @@
-FROM docker.mirror.hashicorp.services/alpine:3.13
+FROM docker.mirror.hashicorp.services/alpine:3.11
 
 ARG VERSION=0.5.1
 
