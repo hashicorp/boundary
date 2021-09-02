@@ -7065,14 +7065,17 @@ alter table wh_host_dimension
     plugin_name text not null
       constraint plugin_name_must_be_not_empty
         check(length(trim(plugin_name)) > 0)
+      constraint plugin_name_must_be_lowercase
+        check(lower(trim(plugin_name)) = plugin_name)
       constraint plugin_name_must_be_unique
-      unique,
-    id_prefix text
-      not null
+        unique,
+    id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
         check(length(trim(id_prefix)) > 0)
+      constraint plugin_id_must_fit_format
+        check (id_prefix ~ '^[a-z0-9]*$')
       constraint plugin_id_prefix_must_be_unique
-      unique,
+        unique,
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
       on delete cascade
