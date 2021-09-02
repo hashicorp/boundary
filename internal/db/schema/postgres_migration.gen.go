@@ -7011,15 +7011,6 @@ alter table wh_host_dimension
   comment on function delete_plugin_subtype is
     'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
 
-  /*
-    ┌──────────────────┐
-    │      plugin      │
-    ├──────────────────┤
-    │public_id (pk)    │
-    │scope_id (fk)     │
-    └──────────────────┘
-   */
-
   insert into oplog_ticket (name, version)
   values
     ('plugin', 1);
@@ -7283,7 +7274,7 @@ alter table wh_host_dimension
   create table host_plugin_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
-      constraint host_catalog_fkey
+      constraint host_plugin_catalog_fkey
         references host_plugin_catalog (public_id)
         on delete cascade
         on update cascade,

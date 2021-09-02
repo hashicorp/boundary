@@ -115,7 +115,7 @@ begin;
   create table host_plugin_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
-      constraint host_catalog_fkey
+      constraint host_plugin_catalog_fkey
         references host_plugin_catalog (public_id)
         on delete cascade
         on update cascade,

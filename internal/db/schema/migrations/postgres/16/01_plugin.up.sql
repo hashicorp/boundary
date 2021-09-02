@@ -71,15 +71,6 @@ begin;
   comment on function delete_plugin_subtype is
     'delete_plugin_subtype() is an after trigger function for subytypes of plugin';
 
-  /*
-    ┌──────────────────┐
-    │      plugin      │
-    ├──────────────────┤
-    │public_id (pk)    │
-    │scope_id (fk)     │
-    └──────────────────┘
-   */
-
   insert into oplog_ticket (name, version)
   values
     ('plugin', 1);
