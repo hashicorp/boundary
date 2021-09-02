@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -24,6 +26,7 @@ func Test_TestCatalogs(t *testing.T) {
 
 	cs := TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId(), WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(cs.GetPublicId())
+	assert.True(strings.HasPrefix(cs.GetPublicId(), fmt.Sprintf("%s_%s", HostCatalogPrefix, "prefix")))
 	assert.Equal("foo", cs.GetName())
 	assert.Equal("bar", cs.GetDescription())
 }
@@ -43,6 +46,7 @@ func Test_TestSet(t *testing.T) {
 	c := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 	set := TestSet(t, conn, c.GetPublicId(), WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
+	assert.True(strings.HasPrefix(set.GetPublicId(), fmt.Sprintf("%s_%s", HostSetPrefix, "prefix")))
 	assert.Equal("foo", set.GetName())
 	assert.Equal("bar", set.GetDescription())
 }
