@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	pba "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"google.golang.org/grpc/codes"
 )
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/hashicorp/boundary/globals"
@@ -75,7 +76,6 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		tofuToken := si.LookupSessionResponse.GetTofuToken()
 		version := si.LookupSessionResponse.GetVersion()
 		endpoint := si.LookupSessionResponse.GetEndpoint()
-		// userId := si.LookupSessionResponse.GetAuthorization()
 		sessStatus := si.Status
 		si.RUnlock()
 
@@ -163,10 +163,18 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 
-		// Verify the subprotocol has a supported proxy before calling AuthorizeConnection
-		handleProxyFn, err := proxyHandlers.GetHandler(conn.Subprotocol())
+		// Verify the protocol has a supported proxy before calling AuthorizeConnection
+		endpointUrl, err := url.Parse(endpoint)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol %s", conn.Subprotocol()))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", endpoint))
+			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+		handleProxyFn, err := proxyHandlers.GetHandler(endpointUrl.Scheme)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol", "protocol", endpointUrl.Scheme))
 			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}

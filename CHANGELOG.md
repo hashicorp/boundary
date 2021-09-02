@@ -10,6 +10,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   unauthenticated user (`u_anon`) with no token and the list was started in a
   scope where the user does not have permission
   ([PR](https://github.com/hashicorp/boundary/pull/1478))
+* grants: Fix grant format `type=<type>;output_fields=<fields>` with no action
+  specified. In some code paths this format would trigger an error when
+  validating even though it is correctly handled within the ACL code.
+  ([PR](https://github.com/hashicorp/boundary/pull/1474))
+* targets: Fix panic when using `boundary targets authorize-session`
+  ([issue](https://github.com/hashicorp/boundary/issues/1488),
+  [PR](https://github.com/hashicorp/boundary/pull/1496)).
 
 ## 0.5.1 (2021/08/16)
 

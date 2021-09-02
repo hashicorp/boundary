@@ -11,15 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/static"
+	pbs "github.com/hashicorp/boundary/internal/gen/testing/event"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -584,7 +581,7 @@ func Test_DefaultEventerConfig(t *testing.T) {
 			AuditEnabled:        false,
 			ObservationsEnabled: true,
 			SysEventsEnabled:    true,
-			Sinks:               []event.SinkConfig{event.DefaultSink()},
+			Sinks:               []*event.SinkConfig{event.DefaultSink()},
 		}, event.DefaultEventerConfig())
 	})
 }
@@ -657,39 +654,46 @@ func Test_WriteAudit(t *testing.T) {
 	ctx, err = event.NewRequestInfoContext(ctx, info)
 	require.NoError(t, err)
 
-	testAuth := &event.Auth{}
-	testReq := &event.Request{
-		Operation: "POST",
-		Endpoint:  "/v1/hosts",
-		Details: &pbs.CreateHostRequest{Item: &pb.Host{
-			HostCatalogId: "hc_1234567890",
-			Name:          &wrappers.StringValue{Value: "name"},
-			Description:   &wrappers.StringValue{Value: "desc"},
-			Type:          "static",
-			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"address": structpb.NewStringValue("123.456.789"),
-			}},
-		}},
-	}
-	testAuthorizedActions := []string{"no-op", "read", "update", "delete"}
-
-	testResp := &event.Response{
-		StatusCode: 200,
-		Details: &pbs.CreateHostResponse{
-			Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
-			Item: &pb.Host{
-				HostCatalogId: "hc_1234567890",
-				Scope:         &scopes.ScopeInfo{Id: "proj_1234567890", Type: scope.Project.String(), ParentScopeId: "org_1234567890"},
-				Name:          &wrappers.StringValue{Value: "name"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          "static",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"address": structpb.NewStringValue("123.456.789"),
-				}},
-				AuthorizedActions: testAuthorizedActions,
+	testAuth := &event.Auth{
+		AuthTokenId: "test_auth_token_id",
+		UserEmail:   "test_user_email",
+		UserName:    "test_user_name",
+		UserInfo: &event.UserInfo{
+			UserId:        "test_user_id",
+			AuthAccountId: "test_auth_account_id",
+		},
+		GrantsInfo: &event.GrantsInfo{
+			Grants: []event.GrantsPair{
+				{
+					Grant:   "test_grant",
+					ScopeId: "test_grant_scope_id",
+				},
 			},
 		},
 	}
+	testReq := &event.Request{
+		Operation: "POST",
+		Endpoint:  "/v1/hosts",
+		Details: &pbs.TestAuthenticateRequest{
+			AuthMethodId: "test_1234567890",
+			TokenType:    "test-cookie",
+			Command:      "test-command",
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"password": structpb.NewStringValue("fido"),
+			}},
+		},
+	}
+
+	testResp := &event.Response{
+		StatusCode: 200,
+		Details: &pbs.TestAuthenticateResponse{
+			Command: "test-command",
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"token": structpb.NewStringValue("test-token"),
+			}},
+		},
+	}
+
 	tests := []struct {
 		name              string
 		auditOpts         [][]event.Option
@@ -745,13 +749,40 @@ func Test_WriteAudit(t *testing.T) {
 			ctx:     context.Background(),
 			auditOpts: [][]event.Option{
 				{
-					event.WithAuth(testAuth),
-					event.WithRequest(testReq),
+					event.WithAuth(
+						func() *event.Auth {
+							dup, err := copystructure.Copy(testAuth)
+							require.NoError(t, err)
+							return dup.(*event.Auth)
+						}(),
+					),
+					event.WithRequest(
+						func() *event.Request {
+							dup, err := copystructure.Copy(testReq)
+							require.NoError(t, err)
+							return dup.(*event.Request)
+						}(),
+					),
 				},
 			},
 			wantAudit: &testAudit{
-				Auth:    testAuth,
-				Request: testReq,
+				Auth: func() *event.Auth {
+					dup, err := copystructure.Copy(testAuth)
+					require.NoError(t, err)
+					dup.(*event.Auth).UserEmail = encrypt.RedactedData
+					dup.(*event.Auth).UserName = encrypt.RedactedData
+					return dup.(*event.Auth)
+				}(),
+				Request: func() *event.Request {
+					dup, err := copystructure.Copy(testReq)
+					require.NoError(t, err)
+					dup.(*event.Request).Details.(*pbs.TestAuthenticateRequest).Attributes = &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"password": structpb.NewStringValue(encrypt.RedactedData),
+						},
+					}
+					return dup.(*event.Request)
+				}(),
 			},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
@@ -774,8 +805,23 @@ func Test_WriteAudit(t *testing.T) {
 				},
 			},
 			wantAudit: &testAudit{
-				Auth:    testAuth,
-				Request: testReq,
+				Auth: func() *event.Auth {
+					dup, err := copystructure.Copy(testAuth)
+					require.NoError(t, err)
+					dup.(*event.Auth).UserEmail = encrypt.RedactedData
+					dup.(*event.Auth).UserName = encrypt.RedactedData
+					return dup.(*event.Auth)
+				}(),
+				Request: func() *event.Request {
+					dup, err := copystructure.Copy(testReq)
+					require.NoError(t, err)
+					dup.(*event.Request).Details.(*pbs.TestAuthenticateRequest).Attributes = &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"password": structpb.NewStringValue(encrypt.RedactedData),
+						},
+					}
+					return dup.(*event.Request)
+				}(),
 			},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
@@ -796,10 +842,34 @@ func Test_WriteAudit(t *testing.T) {
 				},
 			},
 			wantAudit: &testAudit{
-				Id:       "411",
-				Auth:     testAuth,
-				Request:  testReq,
-				Response: testResp,
+				Id: "411",
+				Auth: func() *event.Auth {
+					dup, err := copystructure.Copy(testAuth)
+					require.NoError(t, err)
+					dup.(*event.Auth).UserEmail = encrypt.RedactedData
+					dup.(*event.Auth).UserName = encrypt.RedactedData
+					return dup.(*event.Auth)
+				}(),
+				Request: func() *event.Request {
+					dup, err := copystructure.Copy(testReq)
+					require.NoError(t, err)
+					dup.(*event.Request).Details.(*pbs.TestAuthenticateRequest).Attributes = &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"password": structpb.NewStringValue(encrypt.RedactedData),
+						},
+					}
+					return dup.(*event.Request)
+				}(),
+				Response: func() *event.Response {
+					dup, err := copystructure.Copy(testResp)
+					require.NoError(t, err)
+					dup.(*event.Response).Details.(*pbs.TestAuthenticateResponse).Attributes = &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"token": structpb.NewStringValue(encrypt.RedactedData),
+						},
+					}
+					return dup.(*event.Response)
+				}(),
 			},
 			auditSinkFileName: c.AllEvents.Name(),
 		},
