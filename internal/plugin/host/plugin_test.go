@@ -18,6 +18,7 @@ func TestPlugin_Create(t *testing.T) {
 	type args struct {
 		pluginName string
 		idPrefix   string
+		semVer     string
 		opts       []Option
 	}
 
@@ -54,15 +55,60 @@ func TestPlugin_Create(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "valid-no-options",
+			name: "idprefix-capitalized",
 			args: args{
-				pluginName: "valid-no-options",
-				idPrefix:   "valid-no-options",
+				pluginName: "idprefixcapitalized",
+				idPrefix:   "IdPrefixCapitalized",
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName: "valid-no-options",
-					IdPrefix:   "valid-no-options",
+					PluginName: "idprefixcapitalized",
+					IdPrefix:   "IdPrefixCapitalized",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "idprefix-space",
+			args: args{
+				pluginName: "idprefix space",
+				idPrefix:   "idprefix space",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "idprefix space",
+					IdPrefix:   "idprefix space",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pluginName-capitalized",
+			args: args{
+				pluginName: "PluginNameCapitalized",
+				idPrefix:   "pluginnamecapitalized",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "PluginNameCapitalized",
+					IdPrefix:   "pluginnamecapitalized",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid-no-options",
+			args: args{
+				pluginName: "validnooptions",
+				idPrefix:   "validnooptions",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "validnooptions",
+					IdPrefix:   "validnooptions",
 					ScopeId:    scope.Global.String(),
 				},
 			},
@@ -70,16 +116,16 @@ func TestPlugin_Create(t *testing.T) {
 		{
 			name: "valid-with-description",
 			args: args{
-				pluginName: "valid-with-description",
-				idPrefix:   "valid-with-description",
+				pluginName: "validwithdescription",
+				idPrefix:   "validwithdescription",
 				opts: []Option{
 					WithDescription("description"),
 				},
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:  "valid-with-description",
-					IdPrefix:    "valid-with-description",
+					PluginName:  "validwithdescription",
+					IdPrefix:    "validwithdescription",
 					ScopeId:     scope.Global.String(),
 					Description: "description",
 				},
@@ -88,8 +134,8 @@ func TestPlugin_Create(t *testing.T) {
 		{
 			name: "valid-pluginName-name-option",
 			args: args{
-				pluginName: "valid-ignore-pluginName-option",
-				idPrefix:   "valid-pluginName-name-option",
+				pluginName: "validpluginnamenameoption",
+				idPrefix:   "validpluginnamenameoption",
 				opts: []Option{
 					WithName("valid-pluginName-name-option"),
 					WithDescription("description"),
@@ -97,8 +143,8 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:  "valid-ignore-pluginName-option",
-					IdPrefix:    "valid-pluginName-name-option",
+					PluginName:  "validpluginnamenameoption",
+					IdPrefix:    "validpluginnamenameoption",
 					ScopeId:     scope.Global.String(),
 					Name:        "valid-pluginName-name-option",
 					Description: "description",
@@ -109,13 +155,13 @@ func TestPlugin_Create(t *testing.T) {
 		{
 			name: "duplicate-pluginName",
 			args: args{
-				pluginName: "valid-no-options",
-				idPrefix:   "duplicate-pluginName",
+				pluginName: "validnooptions",
+				idPrefix:   "duplicatepluginname",
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName: "valid-no-options",
-					IdPrefix:   "duplicate-pluginName",
+					PluginName: "validnooptions",
+					IdPrefix:   "duplicatepluginname",
 					ScopeId:    scope.Global.String(),
 				},
 			},
@@ -124,13 +170,13 @@ func TestPlugin_Create(t *testing.T) {
 		{
 			name: "duplicate-idPrefix",
 			args: args{
-				pluginName: "duplicate-idPrefix",
-				idPrefix:   "valid-no-options",
+				pluginName: "duplicateidprefix",
+				idPrefix:   "validnooptions",
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName: "duplicate-idPrefix",
-					IdPrefix:   "valid-no-options",
+					PluginName: "duplicateidprefix",
+					IdPrefix:   "validnooptions",
 					ScopeId:    scope.Global.String(),
 				},
 			},
@@ -193,7 +239,7 @@ func TestPlugin_Delete(t *testing.T) {
 }
 
 func TestPlugin_SetTableName(t *testing.T) {
-	defaultTableName := "host_plugin"
+	defaultTableName := "plugin_host"
 	tests := []struct {
 		name        string
 		initialName string

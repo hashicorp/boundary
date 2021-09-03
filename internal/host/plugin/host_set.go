@@ -45,7 +45,7 @@ func (s *HostSet) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return "plugin_host_set"
+	return "host_plugin_set"
 }
 
 // SetTableName sets the table name. If the caller attempts to

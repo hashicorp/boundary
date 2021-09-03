@@ -40,7 +40,7 @@ func (c *HostCatalogSecret) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return "plugin_host_catalog_secret"
+	return "host_plugin_catalog_secret"
 }
 
 // SetTableName sets the table name. If the caller attempts to

@@ -501,7 +501,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 		sessInfo := SessionInfo{
-			Protocol:        "tcp",
+			Protocol:        c.sessionAuthzData.GetType(),
 			Address:         c.listenerAddr.IP.String(),
 			Port:            c.listenerAddr.Port,
 			Expiration:      c.expiration,

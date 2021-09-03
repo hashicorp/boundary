@@ -29,6 +29,7 @@ func TestRepository_CreateSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
 	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	attrs := []byte("{}")
 
 	tests := []struct {
 		name      string
@@ -49,7 +50,9 @@ func TestRepository_CreateSet(t *testing.T) {
 		{
 			name: "invalid-no-catalog-id",
 			in: &HostSet{
-				HostSet: &store.HostSet{},
+				HostSet: &store.HostSet{
+					Attributes: attrs,
+				},
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
@@ -59,6 +62,16 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					PublicId:  "abcd_OOOOOOOOOO",
+					Attributes: attrs,
+				},
+			},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "invalid-no-attribte",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId: catalog.PublicId,
 				},
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -68,11 +81,13 @@ func TestRepository_CreateSet(t *testing.T) {
 			in: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
+					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
+					Attributes: attrs,
 				},
 			},
 		},
@@ -82,12 +97,14 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					Name:      "test-name-repo",
+					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId: catalog.PublicId,
 					Name:      "test-name-repo",
+					Attributes: attrs,
 				},
 			},
 		},
@@ -97,12 +114,14 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
+					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
+					Attributes: attrs,
 				},
 			},
 		},
@@ -146,6 +165,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			HostSet: &store.HostSet{
 				CatalogId: catalog.PublicId,
 				Name:      "test-name-repo",
+				Attributes: []byte("{}"),
 			},
 		}
 
@@ -176,6 +196,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in := &HostSet{
 			HostSet: &store.HostSet{
 				Name: "test-name-repo",
+				Attributes: []byte("{}"),
 			},
 		}
 		in2 := in.clone()

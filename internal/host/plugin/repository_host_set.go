@@ -35,6 +35,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if scopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
+	if s.Attributes == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
+	}
 	s = s.clone()
 
 	c := allocHostCatalog()

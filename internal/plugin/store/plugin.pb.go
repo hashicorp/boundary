@@ -9,7 +9,7 @@
 package store
 
 import (
-	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
+	_ "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -94,174 +94,6 @@ func (x *Plugin) GetName() string {
 	return ""
 }
 
-type PluginVersion struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// public_id is a surrogate key suitable for use in a public API.
-	// @inject_tag: `gorm:"primary_key"`
-	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
-	// plugin_id is a foreign key to the plugin table.
-	// @inject_tag: `gorm:"default:null"`
-	PluginId string `protobuf:"bytes,20,opt,name=plugin_id,json=pluginId,proto3" json:"plugin_id,omitempty" gorm:"default:null"`
-	// The create_time is set by the database.
-	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	// semantic_version is required and is the symantic version for the above plugin.
-	// @inject_tag: `gorm:"default:null"`
-	SemanticVersion string `protobuf:"bytes,4,opt,name=semantic_version,json=semanticVersion,proto3" json:"semantic_version,omitempty" gorm:"default:null"`
-}
-
-func (x *PluginVersion) Reset() {
-	*x = PluginVersion{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PluginVersion) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PluginVersion) ProtoMessage() {}
-
-func (x *PluginVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PluginVersion.ProtoReflect.Descriptor instead.
-func (*PluginVersion) Descriptor() ([]byte, []int) {
-	return file_controller_storage_plugin_store_v1_plugin_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *PluginVersion) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-func (x *PluginVersion) GetPluginId() string {
-	if x != nil {
-		return x.PluginId
-	}
-	return ""
-}
-
-func (x *PluginVersion) GetCreateTime() *timestamp.Timestamp {
-	if x != nil {
-		return x.CreateTime
-	}
-	return nil
-}
-
-func (x *PluginVersion) GetSemanticVersion() string {
-	if x != nil {
-		return x.SemanticVersion
-	}
-	return ""
-}
-
-type PluginExecutable struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// version_id is a foreign key to the plugin version table.
-	// @inject_tag: `gorm:"primary_key"`
-	VersionId string `protobuf:"bytes,10,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty" gorm:"primary_key"`
-	// operating_system to the operating system this executable is built to run on.
-	// @inject_tag: `gorm:"primary_key"`
-	OperatingSystem string `protobuf:"bytes,20,opt,name=operating_system,json=operatingSystem,proto3" json:"operating_system,omitempty" gorm:"primary_key"`
-	// architecture to the architecture this executable is built to run on.
-	// @inject_tag: `gorm:"primary_key"`
-	Architecture string `protobuf:"bytes,30,opt,name=architecture,proto3" json:"architecture,omitempty" gorm:"primary_key"`
-	// The create_time is set by the database.
-	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,40,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	// executable is required and is the compressed executable for this plugin.
-	// @inject_tag: `gorm:"default:null"`
-	Executable []byte `protobuf:"bytes,50,opt,name=executable,proto3" json:"executable,omitempty" gorm:"default:null"`
-}
-
-func (x *PluginExecutable) Reset() {
-	*x = PluginExecutable{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PluginExecutable) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PluginExecutable) ProtoMessage() {}
-
-func (x *PluginExecutable) ProtoReflect() protoreflect.Message {
-	mi := &file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PluginExecutable.ProtoReflect.Descriptor instead.
-func (*PluginExecutable) Descriptor() ([]byte, []int) {
-	return file_controller_storage_plugin_store_v1_plugin_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *PluginExecutable) GetVersionId() string {
-	if x != nil {
-		return x.VersionId
-	}
-	return ""
-}
-
-func (x *PluginExecutable) GetOperatingSystem() string {
-	if x != nil {
-		return x.OperatingSystem
-	}
-	return ""
-}
-
-func (x *PluginExecutable) GetArchitecture() string {
-	if x != nil {
-		return x.Architecture
-	}
-	return ""
-}
-
-func (x *PluginExecutable) GetCreateTime() *timestamp.Timestamp {
-	if x != nil {
-		return x.CreateTime
-	}
-	return nil
-}
-
-func (x *PluginExecutable) GetExecutable() []byte {
-	if x != nil {
-		return x.Executable
-	}
-	return nil
-}
-
 var File_controller_storage_plugin_store_v1_plugin_proto protoreflect.FileDescriptor
 
 var file_controller_storage_plugin_store_v1_plugin_proto_rawDesc = []byte{
@@ -278,39 +110,12 @@ var file_controller_storage_plugin_store_v1_plugin_proto_rawDesc = []byte{
 	0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x49, 0x64, 0x12, 0x19, 0x0a,
 	0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65,
-	0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0xc1, 0x01, 0x0a,
-	0x0d, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1b,
-	0x0a, 0x09, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x08, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x70,
-	0x6c, 0x75, 0x67, 0x69, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
-	0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x49, 0x64, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61,
-	0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e,
-	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61,
-	0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e,
-	0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74,
-	0x65, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x29, 0x0a, 0x10, 0x73, 0x65, 0x6d, 0x61, 0x6e, 0x74, 0x69,
-	0x63, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0f, 0x73, 0x65, 0x6d, 0x61, 0x6e, 0x74, 0x69, 0x63, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
-	0x22, 0xed, 0x01, 0x0a, 0x10, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x45, 0x78, 0x65, 0x63, 0x75,
-	0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
-	0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x76, 0x65, 0x72, 0x73, 0x69,
-	0x6f, 0x6e, 0x49, 0x64, 0x12, 0x29, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6e,
-	0x67, 0x5f, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f,
-	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x12,
-	0x22, 0x0a, 0x0c, 0x61, 0x72, 0x63, 0x68, 0x69, 0x74, 0x65, 0x63, 0x74, 0x75, 0x72, 0x65, 0x18,
-	0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x61, 0x72, 0x63, 0x68, 0x69, 0x74, 0x65, 0x63, 0x74,
-	0x75, 0x72, 0x65, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69,
-	0x6d, 0x65, 0x18, 0x28, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
-	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69,
-	0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73,
-	0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65,
-	0x12, 0x1e, 0x0a, 0x0a, 0x65, 0x78, 0x65, 0x63, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x32,
-	0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x65, 0x78, 0x65, 0x63, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65,
-	0x42, 0x3b, 0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68,
-	0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72,
-	0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x6c, 0x75, 0x67, 0x69,
-	0x6e, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x3b, 0x5a, 0x39,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
+	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e,
+	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f, 0x73, 0x74,
+	0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -325,21 +130,16 @@ func file_controller_storage_plugin_store_v1_plugin_proto_rawDescGZIP() []byte {
 	return file_controller_storage_plugin_store_v1_plugin_proto_rawDescData
 }
 
-var file_controller_storage_plugin_store_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_storage_plugin_store_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_controller_storage_plugin_store_v1_plugin_proto_goTypes = []interface{}{
-	(*Plugin)(nil),              // 0: controller.storage.plugin.store.v1.Plugin
-	(*PluginVersion)(nil),       // 1: controller.storage.plugin.store.v1.PluginVersion
-	(*PluginExecutable)(nil),    // 2: controller.storage.plugin.store.v1.PluginExecutable
-	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
+	(*Plugin)(nil), // 0: controller.storage.plugin.store.v1.Plugin
 }
 var file_controller_storage_plugin_store_v1_plugin_proto_depIdxs = []int32{
-	3, // 0: controller.storage.plugin.store.v1.PluginVersion.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 1: controller.storage.plugin.store.v1.PluginExecutable.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_plugin_store_v1_plugin_proto_init() }
@@ -360,30 +160,6 @@ func file_controller_storage_plugin_store_v1_plugin_proto_init() {
 				return nil
 			}
 		}
-		file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PluginVersion); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_controller_storage_plugin_store_v1_plugin_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PluginExecutable); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -391,7 +167,7 @@ func file_controller_storage_plugin_store_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_plugin_store_v1_plugin_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
