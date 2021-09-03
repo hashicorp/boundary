@@ -11,7 +11,7 @@ import (
 
 func TestPlugin(t *testing.T, conn *gorm.DB, name string, prefix string) *Plugin {
 	t.Helper()
-	p := NewPlugin(name, prefix, "0.0.1")
+	p := NewPlugin(name, prefix)
 	id, err := newPluginId()
 	require.NoError(t, err)
 	p.PublicId = id

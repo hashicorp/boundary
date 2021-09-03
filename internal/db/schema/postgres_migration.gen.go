@@ -7055,10 +7055,6 @@ alter table wh_host_dimension
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    semantic_version text not null
-      constraint plugin_semantic_version_must_be_properly_formatted
-        -- see https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-        check(semantic_version ~ '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'),
     plugin_name text not null
       constraint plugin_name_must_be_not_empty
         check(length(trim(plugin_name)) > 0)
@@ -7069,7 +7065,7 @@ alter table wh_host_dimension
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
         check(length(trim(id_prefix)) > 0)
-      constraint plugin_id_must_fit_format
+      constraint plugin_id_prefix_must_fit_format
         check (id_prefix ~ '^[a-z0-9]*$')
       constraint plugin_id_prefix_must_be_unique
         unique,
@@ -7210,7 +7206,7 @@ alter table wh_host_dimension
         on delete cascade
         on update cascade,
     plugin_id wt_plugin_id not null
-      constraint host_plugin_fkey
+      constraint plugin_host_fkey
         references plugin_host (public_id)
         on delete cascade
         on update cascade,

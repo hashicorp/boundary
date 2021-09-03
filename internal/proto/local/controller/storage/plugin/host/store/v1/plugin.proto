@@ -42,9 +42,4 @@ message Plugin {
   // id_prefix is required.  The value must be unique across all host plugins
   // @inject_tag: `gorm:"default:null"`
   string id_prefix = 90;
-
-  // semantic_version is required and should be a valid semantic version as described in
-  // https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
-  // @inject_tag: `gorm:"default:null"`
-  string semantic_version = 100;
 }
