@@ -46,7 +46,7 @@ func (c *Plugin) SetTableName(n string) {
 
 func allocPlugin() *Plugin {
 	return &Plugin{
-		Plugin:    &store.Plugin{},
+		Plugin: &store.Plugin{},
 	}
 }
 

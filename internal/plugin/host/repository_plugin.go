@@ -52,8 +52,8 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, _ ...Option) (
 
 	id, err := newPluginId()
 	if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	p.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, p.ScopeId, kms.KeyPurposeOplog)

@@ -118,7 +118,7 @@ message OnDeleteSetRequest {
 	controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
   
 	// The host set to delete.
-	controller.api.resources.hostsets.v1.HostSet current_set = 20;
+	controller.api.resources.hostsets.v1.HostSet set = 20;
   
 	// The persisted data for the host catalog that the set belongs to.
 	HostCatalogPersisted persisted = 30;

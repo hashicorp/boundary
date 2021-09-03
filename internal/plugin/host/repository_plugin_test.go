@@ -45,15 +45,15 @@ func TestRepository_CreatePlugin(t *testing.T) {
 			name: "valid-no-options",
 			in: &Plugin{
 				Plugin: &store.Plugin{
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-no-options",
+					ScopeId:    scope.Global.String(),
+					IdPrefix:   "valid-no-options",
 					PluginName: "valid-no-options",
 				},
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-no-options",
+					ScopeId:    scope.Global.String(),
+					IdPrefix:   "valid-no-options",
 					PluginName: "valid-no-options",
 				},
 			},
@@ -62,17 +62,17 @@ func TestRepository_CreatePlugin(t *testing.T) {
 			name: "valid-with-name",
 			in: &Plugin{
 				Plugin: &store.Plugin{
-					Name: "test-name-repo",
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-with-name",
+					Name:       "test-name-repo",
+					ScopeId:    scope.Global.String(),
+					IdPrefix:   "valid-with-name",
 					PluginName: "valid-with-name",
 				},
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					Name: "test-name-repo",
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-with-name",
+					Name:       "test-name-repo",
+					ScopeId:    scope.Global.String(),
+					IdPrefix:   "valid-with-name",
 					PluginName: "valid-with-name",
 				},
 			},
@@ -82,17 +82,17 @@ func TestRepository_CreatePlugin(t *testing.T) {
 			in: &Plugin{
 				Plugin: &store.Plugin{
 					Description: "test-description-repo",
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-with-description",
-					PluginName: "valid-with-description",
+					ScopeId:     scope.Global.String(),
+					IdPrefix:    "valid-with-description",
+					PluginName:  "valid-with-description",
 				},
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
 					Description: "test-description-repo",
-					ScopeId: scope.Global.String(),
-					IdPrefix: "valid-with-description",
-					PluginName: "valid-with-description",
+					ScopeId:     scope.Global.String(),
+					IdPrefix:    "valid-with-description",
+					PluginName:  "valid-with-description",
 				},
 			},
 		},
@@ -100,8 +100,8 @@ func TestRepository_CreatePlugin(t *testing.T) {
 			name: "mismatching-prefix-plugin-name",
 			in: &Plugin{
 				Plugin: &store.Plugin{
-					ScopeId: scope.Global.String(),
-					IdPrefix: "foo",
+					ScopeId:    scope.Global.String(),
+					IdPrefix:   "foo",
 					PluginName: "bar",
 				},
 			},
@@ -111,8 +111,8 @@ func TestRepository_CreatePlugin(t *testing.T) {
 			name: "non-global-scope",
 			in: &Plugin{
 				Plugin: &store.Plugin{
-					ScopeId: "o_1234567890",
-					IdPrefix: "foo",
+					ScopeId:    "o_1234567890",
+					IdPrefix:   "foo",
 					PluginName: "foo",
 				},
 			},
@@ -150,10 +150,10 @@ func TestRepository_CreatePlugin(t *testing.T) {
 		assert.NotNil(repo)
 		in := &Plugin{
 			Plugin: &store.Plugin{
-				ScopeId: scope.Global.String(),
-				IdPrefix: "invalid-duplicate-names",
+				ScopeId:    scope.Global.String(),
+				IdPrefix:   "invalid-duplicate-names",
 				PluginName: "invalid-duplicate-names",
-				Name:    "invalid-duplicate-names",
+				Name:       "invalid-duplicate-names",
 			},
 		}
 
@@ -179,8 +179,8 @@ func TestRepository_CreatePlugin(t *testing.T) {
 		assert.NotNil(repo)
 		in := &Plugin{
 			Plugin: &store.Plugin{
-				ScopeId: scope.Global.String(),
-				IdPrefix: "invalid-duplicate-plugin-names",
+				ScopeId:    scope.Global.String(),
+				IdPrefix:   "invalid-duplicate-plugin-names",
 				PluginName: "invalid-duplicate-plugin-names",
 			},
 		}
@@ -267,4 +267,3 @@ func TestRepository_LookupPlugin(t *testing.T) {
 		})
 	}
 }
-
