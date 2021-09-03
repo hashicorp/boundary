@@ -741,16 +741,19 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 			out.HostIds = append(out.HostIds, h.GetPublicId())
 		}
 	}
+
 	switch h := in.(type) {
-	case plugin.HostSet:
+	case *plugin.HostSet:
 		attrs := map[string]interface{}{}
-		err := json.Unmarshal(h.Attributes, attrs)
+		err := json.Unmarshal(h.Attributes, &attrs)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		out.Attributes, err = structpb.NewStruct(attrs)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+		if len(attrs) > 0 {
+			out.Attributes, err = structpb.NewStruct(attrs)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
 		}
 	}
 
@@ -781,6 +784,9 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 	}
 	if item.GetDescription() != nil {
 		opts = append(opts, plugin.WithDescription(item.GetDescription().GetValue()))
+	}
+	if item.GetAttributes() != nil {
+		opts = append(opts, plugin.WithAttributes(item.GetAttributes().AsMap()))
 	}
 	hs, err := plugin.NewHostSet(ctx, catalogId, opts...)
 	if err != nil {

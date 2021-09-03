@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -701,6 +702,28 @@ func TestCreate_Plugin(t *testing.T) {
 	plg := host.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
 
+	testAttrs, err := structpb.NewStruct(map[string]interface{}{
+		"int": 1,
+		"zero int": 0,
+		"string": "foo",
+		"zero string": "",
+		"bytes": []byte("bar"),
+		"zero bytes": nil,
+		"bool": true,
+		"zero bool": false,
+		"nested": map[string]interface{}{
+			"int": 1,
+			"zero int": 0,
+			"string": "foo",
+			"zero string": "",
+			"bytes": []byte("bar"),
+			"zero bytes": nil,
+			"bool": true,
+			"zero bool": false,
+		},
+	})
+	require.NoError(t, err)
+
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
@@ -710,10 +733,10 @@ func TestCreate_Plugin(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Create a valid Host",
+			name: "No Attributes",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
 				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "name"},
+				Name:          &wrappers.StringValue{Value: "No Attributes"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          name,
 			}},
@@ -722,7 +745,7 @@ func TestCreate_Plugin(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:              &wrappers.StringValue{Value: "name"},
+					Name:              &wrappers.StringValue{Value: "No Attributes"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					Type:              name,
 					AuthorizedActions: testAuthorizedActions,
@@ -730,7 +753,29 @@ func TestCreate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Create with unknown type",
+			name: "With Attributes",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "With Attributes"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          name,
+				Attributes: testAttrs,
+			}},
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Item: &pb.HostSet{
+					HostCatalogId:     hc.GetPublicId(),
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:              &wrappers.StringValue{Value: "With Attributes"},
+					Description:       &wrappers.StringValue{Value: "desc"},
+					Type:              name,
+					AuthorizedActions: testAuthorizedActions,
+					Attributes: testAttrs,
+				},
+			},
+		},
+		{
+			name: "Create with mismatched type/name",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
 				HostCatalogId: hc.GetPublicId(),
 				Name:          &wrappers.StringValue{Value: "name"},
