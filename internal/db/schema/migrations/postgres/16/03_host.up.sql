@@ -23,8 +23,7 @@ begin;
   -- to include the name.
   -- insert_host_catalog_subtype() is a before insert trigger
   -- function for subtypes of host_catalog
-  create or replace function
-    insert_host_catalog_subtype()
+  create or replace function insert_host_catalog_subtype()
     returns trigger
   as $$
   begin
@@ -45,8 +44,7 @@ begin;
   -- base table for host catalog to contain the updated names for each host catalog
   -- in order to enforce uniqueness across all host catalogs, regardless of subtype,
   -- in a given scope.
-  create or replace function
-    update_host_catalog_subtype()
+  create function update_host_catalog_subtype()
     returns trigger
   as $$
   begin

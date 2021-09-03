@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/worker/proxy"
@@ -16,7 +15,7 @@ import (
 )
 
 func init() {
-	err := proxy.RegisterHandler(globals.TcpProxyV1, handleTcpProxyV1)
+	err := proxy.RegisterHandler("tcp", handleTcpProxyV1)
 	if err != nil {
 		panic(err)
 	}

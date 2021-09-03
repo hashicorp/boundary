@@ -2,7 +2,7 @@ package plugin
 
 const (
 	upsertHostCatalogSecretQuery = `
-insert into plugin_host_catalog_secret
+insert into host_plugin_catalog_secret
   (catalog_id, secret, key_id)
 values
   ($1, $2, $3)
@@ -13,7 +13,7 @@ returning *;
 `
 
 	deleteHostCatalogSecretQuery = `
-delete from plugin_host_catalog_secret
+delete from host_plugin_catalog_secret
  where catalog_id = $1;
 `
 )

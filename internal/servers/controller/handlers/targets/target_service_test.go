@@ -2545,11 +2545,11 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	_, err = s.AddTargetCredentialLibraries(ctx,
-		&pbs.AddTargetCredentialLibrariesRequest{
-			Id:                              tar.GetPublicId(),
-			ApplicationCredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-			Version:                         apiTar.GetItem().GetVersion(),
+	_, err = s.AddTargetCredentialSources(ctx,
+		&pbs.AddTargetCredentialSourcesRequest{
+			Id:                             tar.GetPublicId(),
+			ApplicationCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+			Version:                        apiTar.GetItem().GetVersion(),
 		})
 	require.NoError(t, err)
 
@@ -2590,6 +2590,13 @@ func TestAuthorizeSession(t *testing.T) {
 		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
 		Credentials: []*pb.SessionCredential{{
 			CredentialLibrary: &pb.CredentialLibrary{
+				Id:                clsResp.GetItem().GetId(),
+				Name:              clsResp.GetItem().GetName().GetValue(),
+				Description:       clsResp.GetItem().GetDescription().GetValue(),
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.Subtype.String(),
+			},
+			CredentialSource: &pb.CredentialSource{
 				Id:                clsResp.GetItem().GetId(),
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),

@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* targets: Fix panic when using `boundary targets authorize-session`
+  ([issue](https://github.com/hashicorp/boundary/issues/1488),
+  [PR](https://github.com/hashicorp/boundary/pull/1496)).
+
 ## 0.5.1 (2021/08/16)
 
 ### New and Improved
