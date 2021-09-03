@@ -11,9 +11,8 @@ import (
 // plugin system.
 type TestHostPlugin struct{}
 
-// NewTestHostPlugin returns a HostPluginServiceClient for
-// TestHostPlugin.
-func NewTestHostPlugin() proto.HostPluginServiceClient {
+// NewClient returns a HostPluginServiceClient for TestHostPlugin.
+func NewClient() proto.HostPluginServiceClient {
 	return &TestHostPlugin{}
 }
 
