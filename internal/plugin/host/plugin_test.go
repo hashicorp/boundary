@@ -35,8 +35,8 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					IdPrefix:        "prefix",
-					ScopeId:         scope.Global.String(),
+					IdPrefix: "prefix",
+					ScopeId:  scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -48,8 +48,8 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "plugin name",
-					ScopeId:         scope.Global.String(),
+					PluginName: "plugin name",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -62,9 +62,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "idprefixcapitalized",
-					IdPrefix:        "IdPrefixCapitalized",
-					ScopeId:         scope.Global.String(),
+					PluginName: "idprefixcapitalized",
+					IdPrefix:   "IdPrefixCapitalized",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -77,9 +77,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "idprefix space",
-					IdPrefix:        "idprefix space",
-					ScopeId:         scope.Global.String(),
+					PluginName: "idprefix space",
+					IdPrefix:   "idprefix space",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -92,9 +92,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "PluginNameCapitalized",
-					IdPrefix:        "pluginnamecapitalized",
-					ScopeId:         scope.Global.String(),
+					PluginName: "PluginNameCapitalized",
+					IdPrefix:   "pluginnamecapitalized",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -107,9 +107,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "validnooptions",
-					IdPrefix:        "validnooptions",
-					ScopeId:         scope.Global.String(),
+					PluginName: "validnooptions",
+					IdPrefix:   "validnooptions",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 		},
@@ -124,10 +124,10 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "validwithdescription",
-					IdPrefix:        "validwithdescription",
-					ScopeId:         scope.Global.String(),
-					Description:     "description",
+					PluginName:  "validwithdescription",
+					IdPrefix:    "validwithdescription",
+					ScopeId:     scope.Global.String(),
+					Description: "description",
 				},
 			},
 		},
@@ -143,11 +143,11 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "validpluginnamenameoption",
-					IdPrefix:        "validpluginnamenameoption",
-					ScopeId:         scope.Global.String(),
-					Name:            "valid-pluginName-name-option",
-					Description:     "description",
+					PluginName:  "validpluginnamenameoption",
+					IdPrefix:    "validpluginnamenameoption",
+					ScopeId:     scope.Global.String(),
+					Name:        "valid-pluginName-name-option",
+					Description: "description",
 				},
 			},
 		},
@@ -160,9 +160,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "validnooptions",
-					IdPrefix:        "duplicatepluginname",
-					ScopeId:         scope.Global.String(),
+					PluginName: "validnooptions",
+					IdPrefix:   "duplicatepluginname",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,
@@ -175,9 +175,9 @@ func TestPlugin_Create(t *testing.T) {
 			},
 			want: &Plugin{
 				Plugin: &store.Plugin{
-					PluginName:      "duplicateidprefix",
-					IdPrefix:        "validnooptions",
-					ScopeId:         scope.Global.String(),
+					PluginName: "duplicateidprefix",
+					IdPrefix:   "validnooptions",
+					ScopeId:    scope.Global.String(),
 				},
 			},
 			wantErr: true,

@@ -18,11 +18,11 @@ func NewPlugin(pluginName, idPrefix string, opt ...Option) *Plugin {
 	opts := getOpts(opt...)
 	p := &Plugin{
 		Plugin: &store.Plugin{
-			PluginName:      pluginName,
-			IdPrefix:        idPrefix,
-			ScopeId:         scope.Global.String(),
-			Name:            opts.withName,
-			Description:     opts.withDescription,
+			PluginName:  pluginName,
+			IdPrefix:    idPrefix,
+			ScopeId:     scope.Global.String(),
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
 	return p

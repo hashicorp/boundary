@@ -7038,7 +7038,6 @@ alter table wh_host_dimension
   │version           │
   │plugin_name       │
   │id_prefix         │
-  │semantic_version  │
   └──────────────────┘
 */
   create table plugin_host (
