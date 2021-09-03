@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.6.0 (2021/09/03)
+
+
 ### New and Improved
 
 * ui: Reflect user authorized actions in the UI:  users now see only actionable
