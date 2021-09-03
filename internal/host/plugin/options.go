@@ -24,6 +24,7 @@ func getDefaultOptions() options {
 	return options{
 		withDescription: "",
 		withName:        "",
+		withAttributes:  make(map[string]interface{}),
 	}
 }
 

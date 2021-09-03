@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestPluginVersion_ImmutableFields(t *testing.T) {
+func TestPluginCatalog_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
@@ -23,6 +23,7 @@ func TestPluginVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
+	plg2 := host.TestPlugin(t, conn, "test2", "prefix2")
 	new := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
 
 	tests := []struct {
@@ -57,6 +58,15 @@ func TestPluginVersion_ImmutableFields(t *testing.T) {
 			}(),
 			fieldMask: []string{"ScopeId"},
 		},
+		{
+			name: "plugin id",
+			update: func() *HostCatalog {
+				c := new.clone()
+				c.PluginId = plg2.GetPublicId()
+				return c
+			}(),
+			fieldMask: []string{"PluginId"},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -79,7 +89,7 @@ func TestPluginVersion_ImmutableFields(t *testing.T) {
 	}
 }
 
-func TestPluginExecutable_ImmutableFields(t *testing.T) {
+func TestPluginSet_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)

@@ -36,7 +36,9 @@ func TestHostSet_Create(t *testing.T) {
 			args: args{
 				catalogId: "",
 			},
-			want:    &HostSet{HostSet: &store.HostSet{}},
+			want: &HostSet{HostSet: &store.HostSet{
+				Attributes: []byte("{}"),
+			}},
 			wantErr: true,
 		},
 		{
@@ -46,7 +48,8 @@ func TestHostSet_Create(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: cat.GetPublicId(),
+					CatalogId:  cat.GetPublicId(),
+					Attributes: []byte("{}"),
 				},
 			},
 		},
@@ -60,8 +63,9 @@ func TestHostSet_Create(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: cat.GetPublicId(),
-					Name:      "test-name",
+					CatalogId:  cat.GetPublicId(),
+					Name:       "test-name",
+					Attributes: []byte("{}"),
 				},
 			},
 		},
@@ -75,8 +79,9 @@ func TestHostSet_Create(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: cat.GetPublicId(),
-					Name:      "test-name",
+					CatalogId:  cat.GetPublicId(),
+					Name:       "test-name",
+					Attributes: []byte("{}"),
 				},
 			},
 			wantErr: true,
@@ -91,8 +96,9 @@ func TestHostSet_Create(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: cat2.GetPublicId(),
-					Name:      "test-name",
+					CatalogId:  cat2.GetPublicId(),
+					Name:       "test-name",
+					Attributes: []byte("{}"),
 				},
 			},
 		},
@@ -108,6 +114,22 @@ func TestHostSet_Create(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   cat.GetPublicId(),
 					Description: "test-description",
+					Attributes:  []byte("{}"),
+				},
+			},
+		},
+		{
+			name: "valid-with-attributes",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts: []Option{
+					WithAttributes(map[string]interface{}{"foo": "bar"}),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:  cat.GetPublicId(),
+					Attributes: []byte(`{"foo":"bar"}`),
 				},
 			},
 		},

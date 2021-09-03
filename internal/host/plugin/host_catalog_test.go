@@ -43,7 +43,8 @@ func TestHostCatalog_Create(t *testing.T) {
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					PluginId: plg.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					Attributes: []byte("{}"),
 				},
 			},
 			wantCreateErr: true,
@@ -56,7 +57,8 @@ func TestHostCatalog_Create(t *testing.T) {
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
+					ScopeId:    prj.GetPublicId(),
+					Attributes: []byte("{}"),
 				},
 			},
 			wantCreateErr: true,
@@ -69,8 +71,9 @@ func TestHostCatalog_Create(t *testing.T) {
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					PluginId: plg.GetPublicId(),
-					ScopeId:  prj.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					ScopeId:    prj.GetPublicId(),
+					Attributes: []byte("{}"),
 				},
 			},
 		},
@@ -85,9 +88,10 @@ func TestHostCatalog_Create(t *testing.T) {
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					PluginId: plg.GetPublicId(),
-					ScopeId:  prj.GetPublicId(),
-					Name:     "test-name",
+					PluginId:   plg.GetPublicId(),
+					ScopeId:    prj.GetPublicId(),
+					Name:       "test-name",
+					Attributes: []byte("{}"),
 				},
 			},
 		},
@@ -105,6 +109,7 @@ func TestHostCatalog_Create(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					ScopeId:     prj.GetPublicId(),
 					Description: "test-description",
+					Attributes:  []byte("{}"),
 				},
 			},
 		},
@@ -257,7 +262,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-scope", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "delete-scope", "delete-scope")
+		plg := host.TestPlugin(t, conn, "deletescope", "deletescope")
 		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
@@ -271,7 +276,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "delete-plugin", "delete-plugin")
+		plg := host.TestPlugin(t, conn, "deleteplugin", "deleteplugin")
 		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)

@@ -21,6 +21,8 @@ begin;
   │description       │
   │version           │
   │plugin_name       │
+  │id_prefix         │
+  │semantic_version  │
   └──────────────────┘
 */
   create table plugin_host (
@@ -37,6 +39,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
+    semantic_version text not null
+      constraint plugin_semantic_version_must_be_properly_formatted
+        -- see https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        check(semantic_version ~ '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'),
     plugin_name text not null
       constraint plugin_name_must_be_not_empty
         check(length(trim(plugin_name)) > 0)
@@ -47,7 +53,7 @@ begin;
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
         check(length(trim(id_prefix)) > 0)
-      constraint plugin_id_must_fit_format
+      constraint plugin_id_prefix_must_fit_format
         check (id_prefix ~ '^[a-z0-9]*$')
       constraint plugin_id_prefix_must_be_unique
         unique,

@@ -45,7 +45,7 @@ begin;
         on delete cascade
         on update cascade,
     plugin_id wt_plugin_id not null
-      constraint host_plugin_fkey
+      constraint plugin_host_fkey
         references plugin_host (public_id)
         on delete cascade
         on update cascade,
@@ -54,7 +54,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea,
+    attributes bytea not null,
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
       references host_catalog (scope_id, public_id)
@@ -74,7 +74,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on host_plugin_catalog
-    for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+    for each row execute procedure immutable_columns('public_id', 'scope_id', 'plugin_id', 'create_time');
 
   create trigger insert_host_catalog_subtype before insert on host_plugin_catalog
     for each row execute procedure insert_host_catalog_subtype();
@@ -124,7 +124,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea,
+    attributes bytea not null,
     constraint host_plugin_set_name_must_be_unique_in_catalog
     unique(catalog_id, name),
     constraint host_set_fkey
