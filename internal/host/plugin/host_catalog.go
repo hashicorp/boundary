@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,13 +20,13 @@ type HostCatalog struct {
 // NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
 // and pluginId. Name and description are the only valid options. All other
 // options are ignored.
-func NewHostCatalog(ctx context.Context, pluginId, scopeId string, opt ...Option) (*HostCatalog, error) {
+func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
 	opts := getOpts(opt...)
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			PluginId:    pluginId,
 			ScopeId:     scopeId,
+			PluginId:    pluginId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
 		},
@@ -39,6 +40,12 @@ func NewHostCatalog(ctx context.Context, pluginId, scopeId string, opt ...Option
 		hc.Attributes = attrs
 	}
 	return hc, nil
+}
+
+func allocHostCatalog() *HostCatalog {
+	return &HostCatalog{
+		HostCatalog: &store.HostCatalog{},
+	}
 }
 
 func (c *HostCatalog) clone() *HostCatalog {
@@ -60,4 +67,16 @@ func (c *HostCatalog) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (c *HostCatalog) SetTableName(n string) {
 	c.tableName = n
+}
+
+func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{s.PublicId},
+		"resource-type":      []string{"plugin-host-catalog"},
+		"op-type":            []string{op.String()},
+	}
+	if s.ScopeId != "" {
+		metadata["scope-id"] = []string{s.ScopeId}
+	}
+	return metadata
 }

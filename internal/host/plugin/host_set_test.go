@@ -17,8 +17,8 @@ func TestHostSet_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
-	cat := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
-	cat2 := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	type args struct {
 		catalogId string
@@ -145,7 +145,7 @@ func TestHostSet_Create(t *testing.T) {
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostSetId()
+			id, err := newHostSetId(plg.GetIdPrefix())
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id

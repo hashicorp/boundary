@@ -140,14 +140,14 @@ func TestHostCatalog_Create(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewHostCatalog(context.Background(), tt.args.pluginId, tt.args.scopeId, tt.args.opts...)
+			got, err := NewHostCatalog(context.Background(), tt.args.scopeId, tt.args.pluginId, tt.args.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, got)
 
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostCatalogId()
+			id, err := newHostCatalogId(plg.GetIdPrefix())
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id
@@ -183,26 +183,26 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 
 	got, err := NewHostCatalog(context.Background(), plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	w.Create(ctx, got)
 
-	// Can't create another resource with the same pluginName in the same scope
-	got.PublicId, err = newHostCatalogId()
+	// Can't create another resource with the same name in the same scope
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can't create another resource with same pluginName in same scope even for different plugin
+	// Can't create another resource with same name in same scope even for different plugin
 	got, err = NewHostCatalog(context.Background(), plg2.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg2.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can create another resource with same pluginName in different scope even for same plugin
-	got, err = NewHostCatalog(context.Background(), plg.GetPublicId(), prj2.GetPublicId(), WithName("duplicate"))
+	// Can create another resource with same name in different scope even for same plugin
+	got, err = NewHostCatalog(context.Background(), prj2.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId()
+	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.NoError(t, w.Create(ctx, got))
 }
@@ -212,8 +212,8 @@ func TestHostCatalog_Delete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
-	cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
-	ignoredCat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+	ignoredCat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	_ = ignoredCat
 	tests := []struct {
 		name        string
@@ -263,7 +263,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	t.Run("delete-scope", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := host.TestPlugin(t, conn, "deletescope", "deletescope")
-		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
 		require.NoError(t, err)
@@ -277,7 +277,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := host.TestPlugin(t, conn, "deleteplugin", "deleteplugin")
-		cat := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)
 		require.NoError(t, err)
