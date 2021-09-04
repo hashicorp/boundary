@@ -137,82 +137,6 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	<-jobDone
 }
 
-func TestSchedulerWaitOnRunningJobs(t *testing.T) {
-	// do not use t.Parallel() since it relies on the sys eventer
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	iam.TestRepo(t, conn, wrapper)
-	event.TestEnableEventing(t, true)
-	testConfig := event.DefaultEventerConfig()
-	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-	})
-	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
-	require.NoError(err)
-
-	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
-
-	jobReady := make(chan struct{})
-	finishJob := make(chan struct{})
-	fn := func(ctx context.Context) error {
-		jobReady <- struct{}{}
-		<-finishJob
-		return nil
-	}
-
-	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err = sched.RegisterJob(context.Background(), tj)
-	require.NoError(err)
-
-	baseCtx, baseCnl := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	err = sched.Start(baseCtx, &wg)
-	require.NoError(err)
-
-	waiting := make(chan struct{})
-	go func() {
-		defer close(waiting)
-		wg.Wait()
-	}()
-
-	// Wait for scheduler to run job
-	<-jobReady
-
-	// Verify waitGroup is still waiting
-	select {
-	case <-waiting:
-		t.Fatal("expected waitgroup to be waiting")
-	default:
-	}
-
-	// Cancel base context
-	baseCnl()
-
-	// Sleep to propagate context cancel
-	time.Sleep(250 * time.Millisecond)
-
-	// Verify waitGroup is still waiting
-	select {
-	case <-waiting:
-		t.Fatal("expected waitgroup to be waiting")
-	default:
-	}
-
-	finishJob <- struct{}{}
-
-	// Sleep to ensure job finish is registered
-	time.Sleep(250 * time.Millisecond)
-
-	// Now that job has finished, verify waitGroup is no longer waiting
-	select {
-	case <-waiting:
-	default:
-		t.Fatal("expected waitgroup to no longer be waiting")
-	}
-}
-
 func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
@@ -329,7 +253,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerJobProgress", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
@@ -439,7 +363,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerMonitorLoop", event.WithEventerConfig(testConfig))
 	require.NoError(err)
 
 	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
