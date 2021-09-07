@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
