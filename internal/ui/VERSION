@@ -1,4 +1,4 @@
-c04c8f4f0a057d4f5734c8b9409f37fb1c9981db Merge pull request #683 from hashicorp/enable-credentials-brokering-feature
+28ebc931791a7b0ae79e543c05addc950fc9a944 Merge pull request #741 from hashicorp/chore-enable-capabilities
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
