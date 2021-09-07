@@ -52,7 +52,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", c.PluginId)))
 	}
 
-	id, err := newHostCatalogId(plg.GetIdPrefix())
+	id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

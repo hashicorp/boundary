@@ -19,6 +19,7 @@ import (
 func TestHostCatalog_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	ctx := context.Background()
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 
@@ -147,7 +148,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostCatalogId(plg.GetIdPrefix())
+			id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id
@@ -183,26 +184,26 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 
 	got, err := NewHostCatalog(context.Background(), plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
+	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 	w.Create(ctx, got)
 
 	// Can't create another resource with the same name in the same scope
-	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
+	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
 	// Can't create another resource with same name in same scope even for different plugin
 	got, err = NewHostCatalog(context.Background(), plg2.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId(plg2.GetIdPrefix())
+	got.PublicId, err = newHostCatalogId(ctx, plg2.GetIdPrefix())
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
 	// Can create another resource with same name in different scope even for same plugin
 	got, err = NewHostCatalog(context.Background(), prj2.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
-	got.PublicId, err = newHostCatalogId(plg.GetIdPrefix())
+	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 	assert.NoError(t, w.Create(ctx, got))
 }

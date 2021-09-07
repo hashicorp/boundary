@@ -238,13 +238,14 @@ func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {
 }
 
 func TestRepository_LookupCatalog(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	badId, err := newHostCatalogId(plg.GetIdPrefix())
+	badId, err := newHostCatalogId(ctx, plg.GetIdPrefix())
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
@@ -281,7 +282,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.LookupCatalog(context.Background(), tt.id)
+			got, err := repo.LookupCatalog(ctx, tt.id)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return

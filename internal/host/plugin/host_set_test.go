@@ -145,7 +145,7 @@ func TestHostSet_Create(t *testing.T) {
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostSetId(plg.GetIdPrefix())
+			id, err := newHostSetId(ctx, plg.GetIdPrefix())
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id

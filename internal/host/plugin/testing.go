@@ -27,7 +27,7 @@ func TestCatalog(t *testing.T, conn *gorm.DB, scopeId, pluginId string, opt ...O
 	plg.PublicId = pluginId
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
-	id, err := newHostCatalogId(plg.GetIdPrefix())
+	id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, id)
 	cat.PublicId = id
@@ -57,7 +57,7 @@ func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *Host
 	plg.PublicId = cg.GetPluginId()
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
-	id, err := newHostSetId(plg.GetIdPrefix())
+	id, err := newHostSetId(ctx, plg.GetIdPrefix())
 	assert.NoError(err)
 	assert.NotEmpty(id)
 	set.PublicId = id
