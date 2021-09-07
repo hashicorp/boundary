@@ -31,6 +31,7 @@
     "classnames": "2.2.6",
     "next": "10.2.2",
     "next-mdx-remote": "3.0.1",
+    "next-remote-watch": "1.0.0",
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-intersection-observer": "8.31.0",
@@ -62,7 +63,7 @@
     "generate:readme": "next-hashicorp markdown-blocks README.md",
     "linkcheck": "linkcheck boundary.io",
     "lint": "next-hashicorp lint",
-    "start": "next dev",
+    "start": "next-remote-watch './content/**/*.mdx'",
     "static": "npm run build && npm run export"
   }
 }
