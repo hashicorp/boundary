@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 )
 
+// HostCatalogSecret contains the encrypted secret for a host catalog.
+// It is owned by a HostCatalog.
 type HostCatalogSecret struct {
 	*store.HostCatalogSecret
 	tableName string `gorm:"-"`

@@ -1,3 +1,6 @@
+// Package plugin provides a plugin host catalog, and plugin host set resource
+// which are used to interact with a host plugin as well as a repository to
+// perform CRUDL and custom actions on these resources.
 package plugin
 
 import (
