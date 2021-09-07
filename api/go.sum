@@ -194,8 +194,8 @@ github.com/hashicorp/go-hclog v0.16.2 h1:K4ev2ib4LdQETX5cSZBG0DVLk1jwGqSPXBjdah3
 github.com/hashicorp/go-hclog v0.16.2/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
-github.com/hashicorp/go-kms-wrapping v0.6.3 h1:N5an2PAZNBp3MpFv6Rca8ol9qNZyO9v9sAkXgPYN8UU=
-github.com/hashicorp/go-kms-wrapping v0.6.3/go.mod h1:1DTKimjuT1g8KaS8rwYxF0kkjaFMXKtJif9KXxsrr+s=
+github.com/hashicorp/go-kms-wrapping v0.6.5 h1:iKcwiqpm2dvkMLymEyJQpbazwR70l7XINUPFduLdbAs=
+github.com/hashicorp/go-kms-wrapping v0.6.5/go.mod h1:9aLqFi2fqK1WMCyTe9bVjB0X6XxCxD+oINL1ovxpgJE=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.0/go.mod h1:spPvp8C1qA32ftKqdAHm4hHTbPw+vmowP0z+KUhOZdA=
@@ -209,7 +209,8 @@ github.com/hashicorp/go-retryablehttp v0.6.8/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER
 github.com/hashicorp/go-rootcerts v1.0.1/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR319Vf4pU3K5EGc8=
 github.com/hashicorp/go-rootcerts v1.0.2 h1:jzhAVGtqPKbwpyCPELlgNWhE1znq+qwJtW5Oi2viEzc=
 github.com/hashicorp/go-rootcerts v1.0.2/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR319Vf4pU3K5EGc8=
-github.com/hashicorp/go-secure-stdlib/configutil v0.1.1/go.mod h1:5CQ5+MqV+qf46nta8piifri5TdcZ0sE/PCz9vgzeh0U=
+github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2/go.mod h1:QRJZ7siKie+SZJB9jLbfKrs0Gd0yPWMtbneg0iU1PrY=
+github.com/hashicorp/go-secure-stdlib/configutil v0.1.2/go.mod h1:EN1DJMjv9y5e/uRAuP2WPibAox5KHEiq2BjZl00aNPQ=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1/go.mod h1:irE9ILwhE8VooWdhHhBy0qXzOMRlHKoWoMlr31mAFCE=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1 h1:78ki3QBevHwYrVxnyVeaEz+7WtifHhauYF23es/0KlI=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1/go.mod h1:QmrqtbKuxxSWTN3ETMPuB+VtEiBJ/A9XhoYGv8E1uD8=

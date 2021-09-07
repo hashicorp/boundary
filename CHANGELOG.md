@@ -4,8 +4,25 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.6.0 (2021/09/03)
+
+
+### New and Improved
+
+* ui: Reflect user authorized actions in the UI:  users now see only actionable
+  items for which they have permissions granted.
+* ui: Icons refreshed for a friendlier look and feel.
+
 ### Bug Fixes
 
+* controller: Fix issue with recursive listing across services when using the
+  unauthenticated user (`u_anon`) with no token and the list was started in a
+  scope where the user does not have permission
+  ([PR](https://github.com/hashicorp/boundary/pull/1478))
+* grants: Fix grant format `type=<type>;output_fields=<fields>` with no action
+  specified. In some code paths this format would trigger an error when
+  validating even though it is correctly handled within the ACL code.
+  ([PR](https://github.com/hashicorp/boundary/pull/1474))
 * targets: Fix panic when using `boundary targets authorize-session`
   ([issue](https://github.com/hashicorp/boundary/issues/1488),
   [PR](https://github.com/hashicorp/boundary/pull/1496)).
@@ -85,17 +102,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [cloudevents](https://github.com/cloudevents/spec/blob/v1.0.1/spec.md) and we
   support both a `cloudevents-json` format and custom Boundary
   `cloudevents-text` format.   
-  
-  **Notes**: 
+
+  **Notes**:
   * There are still a few lingering hclog bits within Boundary. If you wish to
     only output json from Boundary logging/events then you should specify both
     `"-log-format json"` and `"-event-format cloudevents-json"` when starting
-    Boundary. 
+    Boundary.
   * Filtering events: hclog log levels have been replaced by optional sets
     of allow and deny event
     [filters](https://www.boundaryproject.io/docs/concepts/filtering) which are
     specified via configuration, or in the case of "boundary dev" there are new
-    new cmd flags. 
+    new cmd flags.
   * Observation events are MVP and contain a minimal set of observations about a
     request. Observations are aggregated for each request, so only one
     observation event will be emitted per request. We anticipate that a rich set
@@ -107,7 +124,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     redacting/encrypting that data.   
 
 
-  PRs: 
+  PRs:
     [hclog json,text formats](https://github.com/hashicorp/boundary/pull/1440),
     [log adapters](https://github.com/hashicorp/boundary/pull/1434),
     [unneeded log deps](https://github.com/hashicorp/boundary/pull/1433),
@@ -579,7 +596,7 @@ for more details.
 * targets: If a worker filter references a key that doesn't exist, treat it as a
   non-match rather than an error
   ([PR](https://github.com/hashicorp/boundary/pull/900))
-  
+
 ## 0.1.5 (2021/01/29)
 
 *NOTE*: This version requires a database migration via the new `boundary

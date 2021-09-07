@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package plugin.v1;
 
-option go_package = "github.com/hashicorp/boundary/plugin/proto;proto";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
 
 import "google/protobuf/struct.proto";
 

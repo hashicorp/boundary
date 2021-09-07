@@ -371,9 +371,10 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				// id=*;type=<something>;actions=*
 				switch len(grant.actions) {
 				case 0:
-					// A total lack of actions is already caught elsewhere but
-					// this is here for completeness
-					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions")
+					// It's okay to have no actions if only output fields are being defined
+					if len(grant.OutputFields) == 0 {
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
+					}
 				case 1:
 					if !grant.actions[action.Create] &&
 						!grant.actions[action.List] {
