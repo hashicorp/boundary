@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	"google.golang.org/protobuf/proto"
 )
 
 // HostCatalogSecret contains the encrypted secret for a host catalog.
@@ -19,7 +22,7 @@ type HostCatalogSecret struct {
 
 // newHostCatalogSecret creates an in memory host catalog secret.
 // All options are ignored.
-func newHostCatalogSecret(ctx context.Context, catalogId string, attributes map[string]interface{}, _ ...Option) (*HostCatalogSecret, error) {
+func newHostCatalogSecret(ctx context.Context, catalogId string, secret map[string]interface{}, _ ...Option) (*HostCatalogSecret, error) {
 	const op = "plugin.newHostCatlogSecret"
 	hcs := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
@@ -27,14 +30,27 @@ func newHostCatalogSecret(ctx context.Context, catalogId string, attributes map[
 		},
 	}
 
-	if attributes != nil {
-		attrs, err := json.Marshal(attributes)
+	if secret != nil {
+		attrs, err := json.Marshal(secret)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 		}
 		hcs.Secret = attrs
 	}
 	return hcs, nil
+}
+
+func allocHostCatalogSecret() *HostCatalogSecret {
+	return &HostCatalogSecret{
+		HostCatalogSecret: &store.HostCatalogSecret{},
+	}
+}
+
+func (c *HostCatalogSecret) clone() *HostCatalogSecret {
+	cp := proto.Clone(c.HostCatalogSecret)
+	return &HostCatalogSecret{
+		HostCatalogSecret: cp.(*store.HostCatalogSecret),
+	}
 }
 
 // TableName returns the table name for the host catalog.
@@ -89,4 +105,20 @@ func (c *HostCatalogSecret) deleteQuery() (query string, queryValues []interface
 		c.CatalogId,
 	}
 	return
+}
+
+func (c *HostCatalogSecret) oplogMessage(opType db.OpType) *oplog.Message {
+	msg := oplog.Message{
+		Message:  c.clone(),
+		TypeName: c.TableName(),
+	}
+	switch opType {
+	case db.CreateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case db.UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+	case db.DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	}
+	return &msg
 }

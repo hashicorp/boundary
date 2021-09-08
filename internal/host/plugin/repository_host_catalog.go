@@ -62,8 +62,20 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+	dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+	}
 
-	metadata := c.oplog(oplog.OpType_OP_TYPE_CREATE)
+	var hcSecret *HostCatalogSecret
+	if c.secrets != nil {
+		// TODO: Create the secret using the returned value from the call to the plugin.
+		hcSecret, err = newHostCatalogSecret(ctx, id, c.secrets)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		hcSecret.encrypt(ctx, dbWrapper)
+	}
 
 	var newHostCatalog *HostCatalog
 	_, err = r.writer.DoTx(
@@ -71,14 +83,35 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			newHostCatalog = c.clone()
-			err := w.Create(
-				ctx,
-				newHostCatalog,
-				db.WithOplog(oplogWrapper, metadata),
-			)
+			msgs := make([]*oplog.Message, 0, 3)
+			ticket, err := w.GetTicket(c)
 			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+
+			newHostCatalog = c.clone()
+			var cOplogMsg oplog.Message
+			if err := w.Create(ctx, newHostCatalog, db.NewOplogMsg(&cOplogMsg)); err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+			msgs = append(msgs, &cOplogMsg)
+
+			if hcSecret != nil {
+				newSecret := hcSecret.clone()
+				q, v := newSecret.insertQuery()
+				rows, err := w.Exec(ctx, q, v)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if rows > 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been created")
+				}
+				msgs = append(msgs, newSecret.oplogMessage(db.CreateOp))
+			}
+
+			metadata := c.oplog(oplog.OpType_OP_TYPE_CREATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
 		},

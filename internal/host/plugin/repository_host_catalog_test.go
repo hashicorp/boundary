@@ -4,18 +4,21 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRepository_CreateCatalog(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -23,11 +26,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
 
 	tests := []struct {
-		name      string
-		in        *HostCatalog
-		opts      []Option
-		want      *HostCatalog
-		wantIsErr errors.Code
+		name       string
+		in         *HostCatalog
+		opts       []Option
+		want       *HostCatalog
+		wantSecret []byte
+		wantIsErr  errors.Code
 	}{
 		{
 			name:      "nil-catalog",
@@ -134,17 +138,42 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-secret",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte("{}"),
+				},
+				secrets: map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte("{}"),
+				},
+			},
+			wantSecret: []byte(`{"k1":"v1","k2":2,"k3":null}`),
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			kmsCache := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
+			got, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -158,6 +187,24 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+			cSecret := allocHostCatalogSecret()
+			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", got.GetPublicId())
+			if tt.wantSecret == nil {
+				require.Error(t, err)
+				require.True(t, errors.IsNotFoundError(err))
+				return
+			}
+			require.NoError(t, err)
+			require.Empty(t, cSecret.Secret)
+			require.NotEmpty(t, cSecret.CtSecret)
+
+			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
+			require.NoError(t, err)
+			cSecret.decrypt(ctx, dbWrapper)
+			assert.Equal(string(tt.wantSecret), string(cSecret.Secret))
 		})
 	}
 

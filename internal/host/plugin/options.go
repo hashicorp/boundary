@@ -17,7 +17,8 @@ type options struct {
 	withName        string
 	withDescription string
 	withLimit       int
-	withAttributes  map[string]interface{}
+	withAttributes map[string]interface{}
+	withSecrets    map[string]interface{}
 }
 
 func getDefaultOptions() options {
@@ -46,6 +47,13 @@ func WithName(name string) Option {
 func WithAttributes(attrs map[string]interface{}) Option {
 	return func(o *options) {
 		o.withAttributes = attrs
+	}
+}
+
+// WithSecrets provides an optional secrets field.
+func WithSecrets(secrets map[string]interface{}) Option {
+	return func(o *options) {
+		o.withSecrets = secrets
 	}
 }
 
