@@ -58,6 +58,8 @@ message GetAuthTokenResponse {
 
 message ListAuthTokensRequest {
   string scope_id = 1 [json_name="scope_id"];
+  bool recursive = 20 [json_name="recursive"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListAuthTokensResponse {

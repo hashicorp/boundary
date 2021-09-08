@@ -151,7 +151,6 @@ func Test_BasicOplog(t *testing.T) {
 		require.NoError(err)
 		assert.NotEmpty(newLogEntry.Id)
 	})
-
 }
 
 // Test_NewEntry provides some basic unit tests for NewEntry
@@ -208,7 +207,7 @@ func Test_NewEntry(t *testing.T) {
 			ticketer,
 		)
 		require.Error(err)
-		assert.Equal(err.Error(), "error creating entry: entry aggregate name is not set")
+		assert.Equal("oplog.NewEntry: oplog.(Entry).validate: missing entry aggregate name: parameter violation: error #100", err.Error())
 	})
 	t.Run("bad cipherer", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -226,7 +225,7 @@ func Test_NewEntry(t *testing.T) {
 			ticketer,
 		)
 		require.Error(err)
-		assert.Equal(err.Error(), "error creating entry: entry Cipherer is nil")
+		assert.Equal("oplog.NewEntry: oplog.(Entry).validate: nil cipherer: parameter violation: error #100", err.Error())
 	})
 	t.Run("bad ticket", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -242,7 +241,7 @@ func Test_NewEntry(t *testing.T) {
 			nil,
 		)
 		require.Error(err)
-		assert.Equal(err.Error(), "error creating entry: entry Ticketer is nil")
+		assert.Equal("oplog.NewEntry: oplog.(Entry).validate: nil ticketer: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -307,7 +306,7 @@ func Test_UnmarshalData(t *testing.T) {
 		entry.Data = queue.Bytes()
 		_, err = entry.UnmarshalData(types)
 		require.Error(err)
-		assert.Equal(err.Error(), "no Data to unmarshal")
+		assert.Equal("oplog.(Entry).UnmarshalData: missing data: parameter violation: error #100", err.Error())
 	})
 
 	t.Run("nil types", func(t *testing.T) {
@@ -332,7 +331,7 @@ func Test_UnmarshalData(t *testing.T) {
 		require.NoError(err)
 		_, err = entry.UnmarshalData(nil)
 		require.Error(err)
-		assert.Equal(err.Error(), "TypeCatalog is nil")
+		assert.Equal("oplog.(Entry).UnmarshalData: nil type catalog: parameter violation: error #100", err.Error())
 	})
 
 	t.Run("missing type", func(t *testing.T) {
@@ -360,7 +359,7 @@ func Test_UnmarshalData(t *testing.T) {
 		require.NoError(err)
 		_, err = entry.UnmarshalData(types)
 		require.Error(err)
-		assert.Equal(err.Error(), "error removing item from queue: error getting the TypeName for Remove: error typeName is not found for Get")
+		assert.Equal("oplog.(Entry).UnmarshalData: error removing item from queue: oplog.(Queue).Remove: error getting the TypeName: user: oplog.(TypeCatalog).Get: type name not found: integrity violation: error #105", err.Error())
 	})
 }
 
@@ -519,12 +518,11 @@ func Test_Replay(t *testing.T) {
 
 		var foundUser2 oplog_test.TestUser
 		err = tx2.Where("id = ?", userCreate2.Id).First(&foundUser2).Error
-		assert.Equal(err, gorm.ErrRecordNotFound)
+		assert.Equal(gorm.ErrRecordNotFound, err, err.Error())
 
 		var foundReplayedUser2 oplog_test.TestUser
 		err = tx2.Where("id = ?", userCreate2.Id).First(&foundReplayedUser2).Error
-		assert.Equal(err, gorm.ErrRecordNotFound)
-
+		assert.Equal(gorm.ErrRecordNotFound, err, err.Error())
 	})
 }
 
@@ -599,7 +597,7 @@ func Test_WriteEntryWith(t *testing.T) {
 			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		require.Error(err)
-		assert.Equal(err.Error(), "bad writer")
+		assert.Equal("oplog.(Entry).WriteEntryWith: nil writer: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil ticket", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -618,7 +616,7 @@ func Test_WriteEntryWith(t *testing.T) {
 			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		require.Error(err)
-		assert.Equal(err.Error(), "bad ticket")
+		assert.Equal("oplog.(Entry).WriteEntryWith: nil ticket: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil ticket", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -635,7 +633,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		require.NoError(err)
 		err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket, nil)
 		require.Error(err)
-		assert.Equal(err.Error(), "bad message")
+		assert.Equal("oplog.(Entry).WriteEntryWith: nil message: parameter violation: error #100", err.Error())
 	})
 }
 

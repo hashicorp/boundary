@@ -1,7 +1,7 @@
 package scope
 
 // Type defines the possible types for Scopes
-type Type uint32
+type Type uint
 
 const (
 	Unknown Type = 0

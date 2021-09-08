@@ -1,8 +1,6 @@
 package session
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -17,20 +15,21 @@ type ConnectWith struct {
 }
 
 func (c ConnectWith) validate() error {
+	const op = "session.(ConnectWith).validate"
 	if c.ConnectionId == "" {
-		return fmt.Errorf("missing session id: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return fmt.Errorf("missing client tcp address: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client tcp address")
 	}
 	if c.ClientTcpPort == 0 {
-		return fmt.Errorf("missing client ctp port: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client ctp port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return fmt.Errorf("missing endpoint tcp address: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint tcp address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return fmt.Errorf("missing endpoint ctp port: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint ctp port")
 	}
 	return nil
 }

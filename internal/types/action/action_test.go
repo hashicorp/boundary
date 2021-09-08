@@ -75,11 +75,144 @@ func TestAction(t *testing.T) {
 			action: Deauthenticate,
 			want:   "deauthenticate",
 		},
+		{
+			action: ReadSelf,
+			want:   "read:self",
+		},
+		{
+			action: CancelSelf,
+			want:   "cancel:self",
+		},
+		{
+			action: ChangeState,
+			want:   "change-state",
+		},
+		{
+			action: DeleteSelf,
+			want:   "delete:self",
+		},
+		{
+			action: NoOp,
+			want:   "no-op",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
 			assert.Equalf(t, tt.want, tt.action.String(), "unexpected action string for %s", tt.want)
 			assert.Equalf(t, tt.action, Map[tt.want], "unexpected action from map for %s", tt.want)
+		})
+	}
+}
+
+func TestActionStrings(t *testing.T) {
+	tests := []struct {
+		name    string
+		actions ActionSet
+		want    []string
+	}{
+		{
+			name:    "basic test",
+			actions: ActionSet{Read, AuthorizeSession},
+			want:    []string{"read", "authorize-session"},
+		},
+		{
+			name:    "reverse test to check ordering",
+			actions: ActionSet{AuthorizeSession, Read},
+			want:    []string{"authorize-session", "read"},
+		},
+		{
+			name:    "another test",
+			actions: ActionSet{Delete, AddGrants},
+			want:    []string{"delete", "add-grants"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.actions.Strings(), tt.want)
+		})
+	}
+}
+
+func TestHasAction(t *testing.T) {
+	tests := []struct {
+		name    string
+		actions ActionSet
+		action  Type
+		want    bool
+	}{
+		{
+			name:    "has 1",
+			actions: ActionSet{Read, AuthorizeSession},
+			action:  Read,
+			want:    true,
+		},
+		{
+			name:    "has 2",
+			actions: ActionSet{Read, AuthorizeSession},
+			action:  AuthorizeSession,
+			want:    true,
+		},
+		{
+			name:    "empty",
+			actions: ActionSet{},
+			action:  AuthorizeSession,
+			want:    false,
+		},
+		{
+			name:    "does not have 1",
+			actions: ActionSet{Read, AuthorizeSession},
+			action:  ReadSelf,
+			want:    false,
+		},
+		{
+			name:    "does not have 2",
+			actions: ActionSet{Read, AuthorizeSession},
+			action:  Delete,
+			want:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.actions.HasAction(tt.action))
+		})
+	}
+}
+
+func TestOnlySelf(t *testing.T) {
+	tests := []struct {
+		name    string
+		actions ActionSet
+		want    bool
+	}{
+		{
+			name:    "has only self 1",
+			actions: ActionSet{ReadSelf, CancelSelf},
+			want:    true,
+		},
+		{
+			name:    "has only self 2",
+			actions: ActionSet{ReadSelf},
+			want:    true,
+		},
+		{
+			name:    "empty is false",
+			actions: ActionSet{},
+			want:    false,
+		},
+		{
+			name:    "does not have only self 1",
+			actions: ActionSet{Read, AuthorizeSession},
+			want:    false,
+		},
+		{
+			name:    "does not have only self 2",
+			actions: ActionSet{ReadSelf, AuthorizeSession},
+			want:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.actions.OnlySelf())
 		})
 	}
 }

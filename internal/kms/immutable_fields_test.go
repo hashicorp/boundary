@@ -35,7 +35,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.RootKeyVersion
 		fieldMask []string
@@ -105,7 +105,6 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKeyVersion), after.(*kms.RootKeyVersion)))
-
 		})
 	}
 }
@@ -122,7 +121,7 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
 	new := kms.TestRootKey(t, conn, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.RootKey
 		fieldMask []string
@@ -172,7 +171,6 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.RootKey), after.(*kms.RootKey)))
-
 		})
 	}
 }
@@ -191,7 +189,7 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestDatabaseKey(t, conn, rk.PrivateId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.DatabaseKey
 		fieldMask []string
@@ -241,7 +239,6 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.DatabaseKey), after.(*kms.DatabaseKey)))
-
 		})
 	}
 }
@@ -261,7 +258,7 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 	dk := kms.TestDatabaseKey(t, conn, rk.PrivateId)
 	new := kms.TestDatabaseKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("database key"))
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *kms.DatabaseKeyVersion
 		fieldMask []string
@@ -340,7 +337,104 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*kms.DatabaseKeyVersion), after.(*kms.DatabaseKeyVersion)))
+		})
+	}
+}
 
+func TestOidcKeyVersion_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	dk := kms.TestOidcKey(t, conn, rk.PrivateId)
+	new := kms.TestOidcKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("oidc key"))
+
+	tests := []struct {
+		name      string
+		update    *kms.OidcKeyVersion
+		fieldMask []string
+	}{
+		{
+			name: "private_id",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.PrivateId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"PrivateId"},
+		},
+		{
+			name: "create time",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.CreateTime = &ts
+				return k
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "oidc_key_id",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.OidcKeyId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"RootKeyId"},
+		},
+		{
+			name: "root_key_version_id",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.RootKeyVersionId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"RootKeyId"},
+		},
+		{
+			name: "version",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.Version = uint32(22)
+				return k
+			}(),
+			fieldMask: []string{"Version"},
+		},
+		{
+			name: "key",
+			update: func() *kms.OidcKeyVersion {
+				k := new.Clone().(*kms.OidcKeyVersion)
+				k.Key = []byte("updated key")
+				return k
+			}(),
+			fieldMask: []string{"CtKey"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			err = tt.update.Encrypt(context.Background(), wrapper)
+			require.NoError(err)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.True(proto.Equal(orig.(*kms.OidcKeyVersion), after.(*kms.OidcKeyVersion)))
 		})
 	}
 }

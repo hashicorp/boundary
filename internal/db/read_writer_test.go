@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 )
 
@@ -34,7 +34,8 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 		StoreTestUser: &db_test.StoreTestUser{
 			PublicId: testId(t),
 			Name:     "default",
-		}}
+		},
+	}
 	require.NoError(t, rw.Create(context.Background(), tu))
 
 	updatedTu := tu.Clone().(*db_test.TestUser)
@@ -49,7 +50,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 
 func TestDb_Update(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
-	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
@@ -586,9 +587,11 @@ type testUserWithVet struct {
 func (u *testUserWithVet) GetPublicId() string {
 	return u.PublicId
 }
+
 func (u *testUserWithVet) TableName() string {
 	return "db_test_user"
 }
+
 func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error {
 	if u.PublicId == "" {
 		return stderrors.New("public id is empty string for user write")
@@ -620,7 +623,7 @@ func TestDb_Create(t *testing.T) {
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
-		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id
@@ -923,6 +926,16 @@ func TestDb_SearchWhere(t *testing.T) {
 			wantNameOrder: true,
 		},
 		{
+			name:      "no-where",
+			db:        Db{underlying: db},
+			createCnt: 10,
+			args: args{
+				opt: []Option{WithLimit(10)},
+			},
+			wantCnt: 10,
+			wantErr: false,
+		},
+		{
 			name:      "custom-limit",
 			db:        Db{underlying: db},
 			createCnt: 10,
@@ -944,6 +957,27 @@ func TestDb_SearchWhere(t *testing.T) {
 			},
 			wantCnt: 1,
 			wantErr: false,
+		},
+		{
+			name:      "no args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: fmt.Sprintf("public_id = '%v'", knownUser.PublicId),
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 1,
+			wantErr: false,
+		},
+		{
+			name:      "no where, but with args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				arg: []interface{}{knownUser.PublicId},
+				opt: []Option{WithLimit(3)},
+			},
+			wantErr: true,
 		},
 		{
 			name:      "not-found",
@@ -1029,8 +1063,10 @@ func TestDb_Exec(t *testing.T) {
 		require.Equal(1, rowsAffected)
 	})
 }
+
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	db, _ := TestSetup(t, "postgres")
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -1040,7 +1076,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1056,7 +1092,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1072,7 +1108,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1088,7 +1124,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
-					return oplog.ErrTicketAlreadyRedeemed
+					return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1120,13 +1156,16 @@ func TestDb_DoTx(t *testing.T) {
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return stderrors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
-		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
+		assert.False(errors.Match(errors.T(errors.TicketAlreadyRedeemed), err))
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
+			attempts += 1
+			return errors.E(ctx, errors.WithCode(errors.TicketAlreadyRedeemed))
+		})
 		require.Error(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal("db.DoTx: Too many retries: 3 of 3: db transaction issue: error #1103", err.Error())
@@ -1325,9 +1364,7 @@ func TestDb_Delete(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "received unexpected error: %v", err)
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "received unexpected error: %v", err)
 				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
 				assert.Error(err)
 				return
@@ -1656,9 +1693,7 @@ func TestDb_CreateItems(t *testing.T) {
 			err := rw.CreateItems(context.Background(), tt.args.createItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1853,9 +1888,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			rowsDeleted, err := rw.DeleteItems(context.Background(), tt.args.deleteItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1901,6 +1934,7 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 	}
 	return u
 }
+
 func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_test.TestCar {
 	t.Helper()
 	require := require.New(t)
@@ -2103,9 +2137,7 @@ func TestDb_GetTicket(t *testing.T) {
 			got, err := rw.GetTicket(tt.aggregateType)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -2247,9 +2279,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			err := rw.WriteOplogEntryWith(context.Background(), tt.args.wrapper, tt.args.ticket, tt.args.metadata, tt.args.msgs, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -2274,11 +2304,11 @@ func TestClear_InputTypes(t *testing.T) {
 		d int
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
-		err  error
+		err  errors.Code
 	}{
 		{
 			name: "nil",
@@ -2287,7 +2317,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "string",
@@ -2296,7 +2326,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-nil-struct",
@@ -2305,7 +2335,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-string",
@@ -2314,7 +2344,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "not-pointer",
@@ -2325,7 +2355,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "map",
@@ -2337,7 +2367,7 @@ func TestClear_InputTypes(t *testing.T) {
 				f: []string{"field"},
 				d: 1,
 			},
-			err: errors.ErrInvalidParameter,
+			err: errors.InvalidParameter,
 		},
 		{
 			name: "pointer-to-struct",
@@ -2359,8 +2389,8 @@ func TestClear_InputTypes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			input := tt.args.v
 			err := Clear(input, tt.args.f, tt.args.d)
-			if tt.err != nil {
-				assert.Error(err)
+			if tt.err != 0 {
+				assert.True(errors.Match(errors.T(tt.err), err))
 				return
 			}
 			require.NoError(err)
@@ -2430,7 +2460,7 @@ func TestClear_Structs(t *testing.T) {
 		f []string
 		d int
 	}
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
@@ -2676,7 +2706,7 @@ func TestClear_SetFieldsToNil(t *testing.T) {
 		v interface{}
 		f []string
 	}
-	var tests = []struct {
+	tests := []struct {
 		name string
 		args args
 		want interface{}
@@ -2839,9 +2869,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			got, err := rw.oplogMsgsForItems(context.Background(), tt.args.opType, tt.args.opts, tt.args.items)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsErr != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)

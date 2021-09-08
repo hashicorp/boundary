@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -34,11 +35,12 @@ func TestRepository_New(t *testing.T) {
 		opts []Option
 	}
 
-	var tests = []struct {
-		name      string
-		args      args
-		want      *Repository
-		wantIsErr error
+	tests := []struct {
+		name       string
+		args       args
+		want       *Repository
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "valid default limit",
@@ -122,8 +124,9 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "authtoken.NewRepository: nil db reader: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -132,8 +135,9 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "authtoken.NewRepository: nil db writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-kms",
@@ -142,8 +146,9 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "authtoken.NewRepository: nil kms: parameter violation: error #100",
 		},
 		{
 			name: "all-nils",
@@ -152,8 +157,9 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "authtoken.NewRepository: nil db reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -161,9 +167,9 @@ func TestRepository_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			assert.NoError(err)
@@ -182,20 +188,21 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
-	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
-
-	iamRepo, err := iam.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
-	require.NoError(t, err)
+	aAcct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
+	iam.TestSetPrimaryAuthMethod(t, repo, org1, am.PublicId)
+	u1 := iam.TestUser(t, repo, org1.PublicId, iam.WithAccountIds(aAcct.PublicId))
 
 	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, repo, org2.GetPublicId())
 
-	var tests = []struct {
+	testId, err := NewAuthTokenId()
+	require.NoError(t, err)
+
+	tests := []struct {
 		name       string
 		iamUser    *iam.User
 		authAcctId string
+		opt        []Option
 		want       *AuthToken
 		wantErr    bool
 	}{
@@ -206,6 +213,19 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
 					AuthAccountId: aAcct.GetPublicId(),
+				},
+			},
+		},
+		{
+			name:       "WithPublicId-WithStatus",
+			iamUser:    u1,
+			authAcctId: aAcct.GetPublicId(),
+			opt:        []Option{WithPublicId(testId), WithStatus(PendingStatus)},
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
+					AuthAccountId: aAcct.GetPublicId(),
+					PublicId:      testId,
+					Status:        string(PendingStatus),
 				},
 			},
 		},
@@ -245,7 +265,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId, tt.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -257,6 +277,15 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
+
+			opts := getOpts(tt.opt...)
+			if opts.withPublicId != "" {
+				assert.Equal(opts.withPublicId, got.PublicId)
+			}
+			if opts.withStatus != "" {
+				assert.Equal(string(opts.withStatus), got.Status)
+			}
+
 			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
 			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
@@ -275,15 +304,16 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at.CtToken = nil
 	at.KeyId = ""
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
-	var tests = []struct {
-		name    string
-		id      string
-		want    *AuthToken
-		wantErr error
+	tests := []struct {
+		name       string
+		id         string
+		want       *AuthToken
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "found",
@@ -296,10 +326,11 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			want: nil,
 		},
 		{
-			name:    "bad-public-id",
-			id:      "",
-			want:    nil,
-			wantErr: errors.ErrInvalidParameter,
+			name:       "bad-public-id",
+			id:         "",
+			want:       nil,
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "authtoken.(Repository).LookupAuthToken: missing public id: parameter violation: error #102",
 		},
 	}
 
@@ -312,8 +343,9 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			require.NotNil(repo)
 
 			got, err := repo.LookupAuthToken(context.Background(), tt.id)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			assert.NoError(err)
@@ -362,7 +394,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -370,12 +402,13 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, badToken)
 
-	var tests = []struct {
-		name    string
-		id      string
-		token   string
-		want    *AuthToken
-		wantErr error
+	tests := []struct {
+		name       string
+		id         string
+		token      string
+		want       *AuthToken
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name:  "exists",
@@ -386,22 +419,23 @@ func TestRepository_ValidateToken(t *testing.T) {
 		{
 			name:  "doesnt-exist",
 			id:    badId,
-			token: badToken,
+			token: badToken.Token,
 			want:  nil,
 		},
 		{
-			name:    "empty-token",
-			id:      at.GetPublicId(),
-			token:   "",
-			want:    nil,
-			wantErr: errors.ErrInvalidParameter,
+			name:       "empty-token",
+			id:         at.GetPublicId(),
+			token:      "",
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "authtoken.(Repository).ValidateToken: missing token: parameter violation: error #100",
 		},
 		{
-			name:    "mismatched-token",
-			id:      at.GetPublicId(),
-			token:   badToken,
-			want:    nil,
-			wantErr: nil,
+			name:      "mismatched-token",
+			id:        at.GetPublicId(),
+			token:     badToken.Token,
+			want:      nil,
+			wantIsErr: errors.Unknown,
 		},
 	}
 	for _, tt := range tests {
@@ -410,8 +444,9 @@ func TestRepository_ValidateToken(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
 
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			assert.NoError(err)
@@ -475,7 +510,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, iamUser)
 
-	var tests = []struct {
+	tests := []struct {
 		name               string
 		staleDuration      time.Duration
 		expirationDuration time.Duration
@@ -539,15 +574,16 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
-	var tests = []struct {
-		name    string
-		id      string
-		want    int
-		wantErr error
+	tests := []struct {
+		name       string
+		id         string
+		want       int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "found",
@@ -560,10 +596,11 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:    "empty-public-id",
-			id:      "",
-			want:    0,
-			wantErr: errors.ErrInvalidParameter,
+			name:       "empty-public-id",
+			id:         "",
+			want:       0,
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "authtoken.(Repository).DeleteAuthToken: missing public id: parameter violation: error #102",
 		},
 	}
 
@@ -576,8 +613,9 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			require.NotNil(repo)
 
 			got, err := repo.DeleteAuthToken(context.Background(), tt.id)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			assert.NoError(err)
@@ -609,11 +647,10 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 
 	emptyOrg, _ := iam.TestScopes(t, repo)
 
-	var tests = []struct {
-		name    string
-		orgId   string
-		want    []*AuthToken
-		wantErr error
+	tests := []struct {
+		name  string
+		orgId string
+		want  []*AuthToken
 	}{
 		{
 			name:  "populated",
@@ -626,10 +663,9 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			want:  []*AuthToken{},
 		},
 		{
-			name:    "empty-org-id",
-			orgId:   "",
-			want:    nil,
-			wantErr: errors.ErrInvalidParameter,
+			name:  "empty-org-id",
+			orgId: "",
+			want:  []*AuthToken{},
 		},
 	}
 
@@ -640,16 +676,195 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-
-			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-				return
-			}
+			got, err := repo.ListAuthTokens(context.Background(), []string{tt.orgId})
 			assert.NoError(err)
 			sort.Slice(tt.want, func(i, j int) bool { return tt.want[i].PublicId < tt.want[j].PublicId })
 			sort.Slice(got, func(i, j int) bool { return got[i].PublicId < got[j].PublicId })
 			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()), "row count")
+		})
+	}
+}
+
+func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestAuthToken(t, conn, kms, "global")
+		total++
+		TestAuthToken(t, conn, kms, org.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListAuthTokens(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
+}
+
+func Test_IssuePendingToken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+
+	tests := []struct {
+		name            string
+		tokenRequestId  string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing token request id",
+		},
+		{
+			name: "not-found",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "pending auth token",
+		},
+		{
+			name: "success",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithStatus(PendingStatus), WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			tk, err := repo.IssueAuthToken(ctx, tt.tokenRequestId)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(tk)
+			accessTime, err := ptypes.Timestamp(tk.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
+		})
+	}
+}
+
+func Test_CloseExpiredPendingTokens(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	createWith := func(cnt int, expIn time.Duration, status Status) {
+		authMethods := password.TestAuthMethods(t, conn, org.PublicId, 1)
+		authMethodId := authMethods[0].PublicId
+
+		accts := password.TestMultipleAccounts(t, conn, authMethodId, cnt)
+		for i := 0; i < cnt; i++ {
+			at := allocAuthToken()
+			id, err := NewAuthTokenId()
+			require.NoError(t, err)
+			at.PublicId = id
+			exp, err := ptypes.TimestampProto(time.Now().Add(expIn).Truncate(time.Second))
+			require.NoError(t, err)
+			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
+			at.Status = string(status)
+			at.AuthAccountId = accts[i].PublicId
+			at.KeyId = databaseWrapper.KeyID()
+			at.CtToken = []byte(id)
+			err = rw.Create(ctx, at)
+			require.NoError(t, err)
+		}
+	}
+	tests := []struct {
+		name            string
+		setup           func()
+		wantCnt         int
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name: "nada-todo",
+		},
+		{
+			name: "close-2",
+			setup: func() {
+				createWith(2, -10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+				createWith(1, 10*time.Second, PendingStatus)
+			},
+			wantCnt: 2,
+		},
+		{
+			name: "close-zero",
+			setup: func() {
+				createWith(2, 10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+			},
+			wantCnt: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// start with no tokens in the db.
+			_, err := rw.Exec(ctx, "delete from auth_token", nil)
+			require.NoError(err)
+			_, err = rw.Exec(ctx, "delete from auth_account", nil)
+			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
+			tokensClosed, err := repo.CloseExpiredPendingTokens(ctx)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Equal(0, tokensClosed)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %s", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, tokensClosed)
 		})
 	}
 }

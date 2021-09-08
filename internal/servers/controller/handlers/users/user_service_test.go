@@ -4,32 +4,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"}
+
+func createDefaultUserAndRepo(t *testing.T, withAccts bool) (*iam.User, []string, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -39,24 +44,63 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 	}
 	o, _ := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, repo, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return u, repoFn
+
+	switch withAccts {
+	case false:
+		return u, nil, repoFn
+	default:
+		require := require.New(t)
+		ctx := context.Background()
+		kmsCache := kms.TestKms(t, conn, wrap)
+		databaseWrap, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(err)
+		primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, o.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice-eve-smith.com")[0]),
+			oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost:9200")[0]),
+			oidc.WithSigningAlgs(oidc.RS256),
+		)
+		iam.TestSetPrimaryAuthMethod(t, repo, o, primaryAm.PublicId)
+
+		oidcAcct := oidc.TestAccount(t, conn, primaryAm, "alice", oidc.WithFullName("Alice Eve Smith"), oidc.WithEmail("alice@smith.com"))
+
+		secondaryAm := password.TestAuthMethods(t, conn, o.PublicId, 1)
+		require.Len(secondaryAm, 1)
+		pwAcct := password.TestAccount(t, conn, secondaryAm[0].PublicId, "alice")
+
+		added, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
+		require.NoError(err)
+		require.Len(added, 2)
+
+		// reload the user with their accounts
+		u, accts, err := repo.LookupUser(ctx, u.PublicId)
+		require.NoError(err)
+		return u, accts, repoFn
+	}
 }
 
 func TestGet(t *testing.T) {
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, uAccts, repoFn := createDefaultUserAndRepo(t, true)
+
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
 	}
 
 	wantU := &pb.User{
-		Id:          u.GetPublicId(),
-		ScopeId:     u.GetScopeId(),
-		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
-		Name:        &wrapperspb.StringValue{Value: u.GetName()},
-		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
-		CreatedTime: u.CreateTime.GetTimestamp(),
-		UpdatedTime: u.UpdateTime.GetTimestamp(),
-		Version:     1,
+		Id:                u.GetPublicId(),
+		ScopeId:           u.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Name:              &wrapperspb.StringValue{Value: u.GetName()},
+		Description:       &wrapperspb.StringValue{Value: u.GetDescription()},
+		CreatedTime:       u.CreateTime.GetTimestamp(),
+		UpdatedTime:       u.UpdateTime.GetTimestamp(),
+		Version:           u.Version,
+		AuthorizedActions: testAuthorizedActions,
+		LoginName:         u.LoginName,
+		FullName:          u.GetFullName(),
+		Email:             u.GetEmail(),
+		PrimaryAccountId:  u.GetPrimaryAccountId(),
+		AccountIds:        uAccts,
+		Accounts:          []*pb.Account{{Id: uAccts[0], ScopeId: u.ScopeId}, {Id: uAccts[1], ScopeId: u.ScopeId}},
 	}
 
 	cases := []struct {
@@ -98,7 +142,7 @@ func TestGet(t *testing.T) {
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			got, gErr := s.GetUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -121,22 +165,72 @@ func TestList(t *testing.T) {
 	oNoUsers, _ := iam.TestScopes(t, repo)
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrap, err := kmsCache.GetWrapper(context.Background(), oWithUsers.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, oWithUsers.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice-eve-smith.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost:9200")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+	)
+	iam.TestSetPrimaryAuthMethod(t, repo, oWithUsers, primaryAm.PublicId)
+
+	secondaryAm := password.TestAuthMethods(t, conn, oWithUsers.PublicId, 1)
+	require.Len(t, secondaryAm, 1)
+
+	s, err := users.NewService(repoFn)
+	require.NoError(t, err)
+
 	var wantUsers []*pb.User
+
+	// Populate expected values for recursive test
+	var totalUsers []*pb.User
+	ctx := auth.DisabledAuthTestContext(repoFn, "global")
+	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_anon"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, anon.GetItem())
+	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_auth"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, authUser.GetItem())
+	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_recovery"})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, recovery.GetItem())
+
+	// Add new users
 	for i := 0; i < 10; i++ {
 		newU, err := iam.NewUser(oWithUsers.GetPublicId())
 		require.NoError(t, err)
 		u, err := repo.CreateUser(context.Background(), newU)
 		require.NoError(t, err)
+		oidcAcct := oidc.TestAccount(t, conn, primaryAm, fmt.Sprintf("alice+%d", i), oidc.WithFullName("Alice Eve Smith"), oidc.WithEmail("alice@smith.com"))
+		pwAcct := password.TestAccount(t, conn, secondaryAm[0].PublicId, fmt.Sprintf("alice+%d", i))
+
+		added, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
+		require.NoError(t, err)
+		require.Len(t, added, 2)
+
+		u, _, err = repo.LookupUser(ctx, u.PublicId)
+		require.NoError(t, err)
 		wantUsers = append(wantUsers, &pb.User{
-			Id:          u.GetPublicId(),
-			ScopeId:     u.GetScopeId(),
-			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-			CreatedTime: u.GetCreateTime().GetTimestamp(),
-			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
-			Version:     1,
+			Id:                u.GetPublicId(),
+			ScopeId:           u.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			CreatedTime:       u.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
+			Version:           2,
+			AuthorizedActions: testAuthorizedActions,
+			LoginName:         oidcAcct.GetSubject(),
+			FullName:          oidcAcct.GetFullName(),
+			Email:             oidcAcct.GetEmail(),
+			PrimaryAccountId:  oidcAcct.GetPublicId(),
 		})
 	}
 
+	// Populate these users into the total
+	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId(), auth.WithUserId("u_auth"))
+	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
+	require.NoError(t, err)
+	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
 	cases := []struct {
 		name string
 		req  *pbs.ListUsersRequest
@@ -153,27 +247,87 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
 			res:  &pbs.ListUsersResponse{},
 		},
+		{
+			name: "List Recursively in Org",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
+		},
+		{
+			name: "List Recursively in Global",
+			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true},
+			res:  &pbs.ListUsersResponse{Items: totalUsers},
+		},
+		{
+			name: "Filter Many Users",
+			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithUsers.GetPublicId())},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
+		},
+		{
+			name: "Filter To No Users",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Filter: `"/item/id"=="doesntmatch"`},
+			res:  &pbs.ListUsersResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			// Test with non-anon user
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			gotUsers := sortableUsers{
+				users: got.GetItems(),
+			}
+			resUsers := sortableUsers{
+				users: tc.res.GetItems(),
+			}
+			if got != nil {
+				sort.Sort(gotUsers)
+				got.Items = gotUsers.users
+			}
+			if tc.res != nil {
+				sort.Sort(resUsers)
+				tc.res.Items = resUsers.users
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			// Test with anon user
+
+			got, gErr = s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Empty(item.Version)
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Nil(item.Accounts)
+				require.Nil(item.AccountIds)
+			}
 		})
 	}
 }
 
-func TestDelete(t *testing.T) {
-	u, repo := createDefaultUserAndRepo(t)
+type sortableUsers struct {
+	users []*pb.User
+}
 
-	s, err := users.NewService(repo)
+func (s sortableUsers) Len() int           { return len(s.users) }
+func (s sortableUsers) Less(i, j int) bool { return s.users[i].GetId() < s.users[j].GetId() }
+func (s sortableUsers) Swap(i, j int)      { s.users[i], s.users[j] = s.users[j], s.users[i] }
+
+func TestDelete(t *testing.T) {
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
+
+	s, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -206,7 +360,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), tc.req)
+			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -218,14 +372,14 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
-	s, err := users.NewService(repo)
+	s, err := users.NewService(repoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId()))
+	ctx := auth.DisabledAuthTestContext(repoFn, u.GetScopeId())
 	_, gErr := s.DeleteUser(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteUser(ctx, req)
@@ -234,9 +388,8 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultUser, repo := createDefaultUserAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultUser, _, repoFn := createDefaultUserAndRepo(t, false)
+	defaultCreated := defaultUser.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
 		name string
@@ -254,11 +407,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateUserResponse{
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
-					ScopeId:     defaultUser.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           defaultUser.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -272,11 +426,12 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateUserResponse{
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
-					ScopeId:     scope.Global.String(),
-					Scope:       &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					ScopeId:           scope.Global.String(),
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Version:           1,
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -293,7 +448,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId:     defaultUser.GetScopeId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -302,7 +457,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId:     defaultUser.GetScopeId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -311,10 +466,10 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(repo)
+			s, err := users.NewService(repoFn)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -322,10 +477,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a user created after the test setup's default user
 				assert.True(gotCreateTime.After(defaultCreated), "New user should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.After(defaultCreated), "New user should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
@@ -341,12 +494,11 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
 	tested, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
-	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	created := u.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateUserRequest{
 		Id: u.GetPublicId(),
 	}
@@ -381,12 +533,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -403,12 +556,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -456,11 +610,12 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -477,12 +632,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "updated"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -499,12 +655,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
-					Id:          u.GetPublicId(),
-					ScopeId:     u.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					Id:                u.GetPublicId(),
+					ScopeId:           u.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "notignored"},
+					CreatedTime:       u.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -533,7 +690,8 @@ func TestUpdate(t *testing.T) {
 					Id:          iam.UserPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
-				}},
+				},
+			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -544,7 +702,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.User{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -557,7 +715,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.User{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -574,14 +732,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test with bad version (too high, too low)
 			req.Item.Version = version + 2
-			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			require.Error(gErr)
 			req.Item.Version = version - 1
-			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			require.Error(gErr)
 			req.Item.Version = version
 
-			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				require.True(errors.Is(gErr, tc.err), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -591,8 +749,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateUser response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a user updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated user should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
@@ -609,6 +766,7 @@ func TestUpdate(t *testing.T) {
 func TestAddAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -617,8 +775,24 @@ func TestAddAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
+	}
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	addCases := []struct {
 		name           string
@@ -632,6 +806,12 @@ func TestAddAccount(t *testing.T) {
 			setup:          func(u *iam.User) {},
 			addAccounts:    []string{accts[1].GetPublicId()},
 			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name:           "Add oidc account on empty user",
+			setup:          func(u *iam.User) {},
+			addAccounts:    []string{oidcAcct.GetPublicId()},
+			resultAccounts: []string{oidcAcct.GetPublicId()},
 		},
 		{
 			name: "Add account on populated user",
@@ -658,7 +838,7 @@ func TestAddAccount(t *testing.T) {
 		{
 			name: "Add empty on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -681,7 +861,7 @@ func TestAddAccount(t *testing.T) {
 				AccountIds: tc.addAccounts,
 			}
 
-			got, err := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.AddUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -719,7 +899,7 @@ func TestAddAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -731,6 +911,7 @@ func TestAddAccount(t *testing.T) {
 func TestSetAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -739,8 +920,24 @@ func TestSetAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
+	}
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	setCases := []struct {
 		name           string
@@ -756,9 +953,15 @@ func TestSetAccount(t *testing.T) {
 			resultAccounts: []string{accts[1].GetPublicId()},
 		},
 		{
+			name:           "Set oidc account on empty user",
+			setup:          func(u *iam.User) {},
+			setAccounts:    []string{oidcAcct.GetPublicId()},
+			resultAccounts: []string{oidcAcct.GetPublicId()},
+		},
+		{
 			name: "Set account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -769,7 +972,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set duplicate account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -780,7 +983,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set empty on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -794,7 +997,8 @@ func TestSetAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 
 			tc.setup(usr)
@@ -804,7 +1008,7 @@ func TestSetAccount(t *testing.T) {
 				AccountIds: tc.setAccounts,
 			}
 
-			got, err := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.SetUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -842,7 +1046,7 @@ func TestSetAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.SetUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -854,6 +1058,7 @@ func TestSetAccount(t *testing.T) {
 func TestRemoveAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -862,8 +1067,24 @@ func TestRemoveAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
+	}
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	addCases := []struct {
 		name           string
@@ -887,6 +1108,17 @@ func TestRemoveAccount(t *testing.T) {
 				u.Version = u.Version + 1
 			},
 			removeAccounts: []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 oidc account of 2 accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), oidcAcct.GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{oidcAcct.GetPublicId()},
 			resultAccounts: []string{accts[0].GetPublicId()},
 		},
 		{
@@ -927,7 +1159,8 @@ func TestRemoveAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 			tc.setup(usr)
 			req := &pbs.RemoveUserAccountsRequest{
@@ -936,7 +1169,7 @@ func TestRemoveAccount(t *testing.T) {
 				AccountIds: tc.removeAccounts,
 			}
 
-			got, err := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.RemoveUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -975,7 +1208,7 @@ func TestRemoveAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.RemoveUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

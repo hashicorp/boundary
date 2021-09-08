@@ -24,11 +24,12 @@ func TestRepository_New(t *testing.T) {
 		opts []Option
 	}
 
-	var tests = []struct {
-		name      string
-		args      args
-		want      *Repository
-		wantIsErr error
+	tests := []struct {
+		name       string
+		args       args
+		want       *Repository
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "valid",
@@ -66,8 +67,9 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.NewRepository: missing db.Reader: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -76,8 +78,9 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.NewRepository: missing db.Writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-wrapper",
@@ -86,8 +89,9 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.NewRepository: missing kms: parameter violation: error #100",
 		},
 		{
 			name: "all-nils",
@@ -96,8 +100,9 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.NewRepository: missing db.Reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -105,9 +110,9 @@ func TestRepository_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			assert.NoError(err)

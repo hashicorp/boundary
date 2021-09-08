@@ -1,29 +1,40 @@
 package password
 
 import (
-	"fmt"
-
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+func init() {
+	if err := auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+		panic(err)
+	}
+}
 
 // PublicId prefixes for the resources in the password package.
 const (
 	AuthMethodPrefix = "ampw"
-	AccountPrefix    = "apw"
+
+	Subtype = subtypes.Subtype("password")
 )
 
 func newAuthMethodId() (string, error) {
+	const op = "password.newAuthMethodId"
 	id, err := db.NewPublicId(AuthMethodPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password auth method id: %w", err)
+		return "", errors.WrapDeprecated(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 func newAccountId() (string, error) {
-	id, err := db.NewPublicId(AccountPrefix)
+	const op = "password.newAccountId"
+	id, err := db.NewPublicId(intglobals.NewPasswordAccountPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password account id: %w", err)
+		return "", errors.WrapDeprecated(err, op)
 	}
-	return id, err
+	return id, nil
 }

@@ -23,7 +23,7 @@ type Host struct {
 // ignored.
 func NewHost(catalogId string, opt ...Option) (*Host, error) {
 	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, "static.NewHost", "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHost", "no catalog id")
 	}
 
 	opts := getOpts(opt...)

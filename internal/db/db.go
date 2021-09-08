@@ -1,24 +1,30 @@
 package db
 
 import (
-	"errors"
+	"context"
+	stderrors "errors"
 	"fmt"
-	"os"
+	"math"
+	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/docker"
-	berrors "github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var (
-	StartDbInDocker = docker.StartDbInDocker
+	NegativeInfinityTS = time.Date(math.MinInt32, time.January, 1, 0, 0, 0, 0, time.UTC)
+	PositiveInfinityTS = time.Date(math.MaxInt32, time.December, 31, 23, 59, 59, 1e9-1, time.UTC)
 )
+
+func init() {
+	pq.EnableInfinityTs(NegativeInfinityTS, PositiveInfinityTS)
+}
+
+var StartDbInDocker = docker.StartDbInDocker
 
 type DbType int
 
@@ -38,7 +44,7 @@ func StringToDbType(dialect string) (DbType, error) {
 	case "postgres":
 		return Postgres, nil
 	default:
-		return UnknownDB, fmt.Errorf("delete: password account: scope id empty: %w", berrors.ErrInvalidParameter)
+		return UnknownDB, fmt.Errorf("%s is an unknown dialect", dialect)
 	}
 }
 
@@ -61,64 +67,21 @@ func Open(dbType DbType, connectionUrl string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// Migrate a database schema
-func Migrate(connectionUrl string, migrationsDirectory string) error {
-	if connectionUrl == "" {
-		return errors.New("connection url is unset")
-	}
-	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
-		return errors.New("error migrations directory does not exist")
-	}
-	// run migrations
-	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsDirectory), connectionUrl)
-	if err != nil {
-		return fmt.Errorf("unable to create migrations: %w", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("unable to run migrations: %w", err)
-	}
-	return nil
-}
-
-// InitStore will execute the migrations needed to initialize the store. It
-// returns true if migrations actually ran; false if we were already current.
-func InitStore(dialect string, cleanup func() error, url string) (bool, error) {
-	var mErr *multierror.Error
-	// run migrations
-	source, err := migrations.NewMigrationSource(dialect)
-	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
+func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
+	const op = "db.GetGormLogFormatter"
+	ctx := context.TODO()
+	return func(values ...interface{}) (messages []interface{}) {
+		if len(values) > 2 && values[0].(string) == "log" {
+			switch values[2].(type) {
+			case *pq.Error:
+				if log.IsTrace() {
+					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo("error", values[2], "location", values[1]))
+				}
 			}
+			return nil
 		}
-		return false, mErr.ErrorOrNil()
+		return nil
 	}
-	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
-	if err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("error creating migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
-
-	}
-	if err := m.Up(); err != nil {
-		if err == migrate.ErrNoChange {
-			return false, nil
-		}
-		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
-		if cleanup != nil {
-			if err := cleanup(); err != nil {
-				mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
-			}
-		}
-		return false, mErr.ErrorOrNil()
-	}
-	return true, mErr.ErrorOrNil()
 }
 
 type gormLogger struct {

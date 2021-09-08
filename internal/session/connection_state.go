@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -20,9 +19,10 @@ const (
 type ConnectionStatus string
 
 const (
-	StatusAuthorized ConnectionStatus = "authorized"
-	StatusConnected  ConnectionStatus = "connected"
-	StatusClosed     ConnectionStatus = "closed"
+	StatusAuthorized  ConnectionStatus = "authorized"
+	StatusConnected   ConnectionStatus = "connected"
+	StatusClosed      ConnectionStatus = "closed"
+	StatusUnspecified ConnectionStatus = "unspecified" // Utility state not valid in the DB
 )
 
 // String representation of the state's status
@@ -43,6 +43,20 @@ func (s ConnectionStatus) ProtoVal() workerpbs.CONNECTIONSTATUS {
 	return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED
 }
 
+// ConnectionStatusFromProtoVal is the reverse of
+// ConnectionStatus.ProtoVal.
+func ConnectionStatusFromProtoVal(s workerpbs.CONNECTIONSTATUS) ConnectionStatus {
+	switch s {
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED:
+		return StatusAuthorized
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+		return StatusConnected
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED:
+		return StatusClosed
+	}
+	return StatusUnspecified
+}
+
 // ConnectionState of the state of the connection
 type ConnectionState struct {
 	// ConnectionId is used to access the state via an API
@@ -59,18 +73,21 @@ type ConnectionState struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*ConnectionState)(nil)
-var _ db.VetForWriter = (*ConnectionState)(nil)
+var (
+	_ Cloneable       = (*ConnectionState)(nil)
+	_ db.VetForWriter = (*ConnectionState)(nil)
+)
 
 // NewConnectionState creates a new in memory connection state.  No options
 // are currently supported.
-func NewConnectionState(connectionId string, state ConnectionStatus, opt ...Option) (*ConnectionState, error) {
+func NewConnectionState(connectionId string, state ConnectionStatus, _ ...Option) (*ConnectionState, error) {
+	const op = "session.NewConnectionState"
 	s := ConnectionState{
 		ConnectionId: connectionId,
 		Status:       state,
 	}
-	if err := s.validate("new connection state:"); err != nil {
-		return nil, err
+	if err := s.validate(); err != nil {
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -116,9 +133,10 @@ func (s *ConnectionState) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the state
 // before it's written.
-func (s *ConnectionState) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if err := s.validate("connection state vet for write:"); err != nil {
-		return err
+func (s *ConnectionState) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+	const op = "session.(ConnectionState).VetForWrite"
+	if err := s.validate(); err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -139,21 +157,22 @@ func (s *ConnectionState) SetTableName(n string) {
 }
 
 // validate checks the session state
-func (s *ConnectionState) validate(errorPrefix string) error {
+func (s *ConnectionState) validate() error {
+	const op = "session.(ConnectionState).validate"
 	if s.Status == "" {
-		return fmt.Errorf("%s missing status: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
 	}
 	if s.ConnectionId == "" {
-		return fmt.Errorf("%s missing connection id: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing connection id")
 	}
 	if s.StartTime != nil {
-		return fmt.Errorf("%s start time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return fmt.Errorf("%s end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return fmt.Errorf("%s previous end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

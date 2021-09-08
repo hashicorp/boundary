@@ -41,7 +41,7 @@ func HelpMap(resType string) map[string]func() string {
 	}
 	return map[string]func() string{
 		"base": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s [sub command] [options] [args]",
 				"",
 				"  This command allows operations on Boundary {{type}} resources. Example:",
@@ -55,7 +55,7 @@ func HelpMap(resType string) map[string]func() string {
 		},
 
 		"create": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s create [options] [args]",
 				"",
 				"  Create {{articletype}}. Example:",
@@ -67,7 +67,7 @@ func HelpMap(resType string) map[string]func() string {
 		},
 
 		"update": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s update [options] [args]",
 				"",
 				"  Update {{articletype}} given its ID. Example:",
@@ -79,7 +79,7 @@ func HelpMap(resType string) map[string]func() string {
 		},
 
 		"read": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s read [options] [args]",
 				"",
 				"  Read {{articletype}} given its ID. Example:",
@@ -91,7 +91,7 @@ func HelpMap(resType string) map[string]func() string {
 		},
 
 		"delete": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s delete [options] [args]",
 				"",
 				"  Delete {{articletype}} given its ID. Example:",
@@ -103,7 +103,7 @@ func HelpMap(resType string) map[string]func() string {
 		},
 
 		"list": func() string {
-			return base.WrapForHelpText(subType([]string{
+			return base.WrapForHelpText(subtype([]string{
 				"Usage: boundary {{hyphentype}}s list [options] [args]",
 				"",
 				"  List {{type}}s within an enclosing scope or resource. Example:",
@@ -116,7 +116,7 @@ func HelpMap(resType string) map[string]func() string {
 	}
 }
 
-func subType(in []string, resType string, prefixMap map[string]string) []string {
+func subtype(in []string, resType string, prefixMap map[string]string) []string {
 	hyphenType := strings.ReplaceAll(resType, " ", "-")
 	articleType := resType
 	switch resType[0] {

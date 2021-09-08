@@ -28,28 +28,32 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iamRepo)
 
-	var tests = []struct {
-		name      string
-		in        *AuthMethod
-		opts      []Option
-		want      *AuthMethod
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         *AuthMethod
+		opts       []Option
+		want       *AuthMethod
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "nil-AuthMethod",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-AuthMethod",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing AuthMethod: parameter violation: error #100",
 		},
 		{
-			name:      "nil-embedded-AuthMethod",
-			in:        &AuthMethod{},
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-embedded-AuthMethod",
+			in:         &AuthMethod{},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing embedded AuthMethod: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-scope-id",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing scope id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
@@ -59,7 +63,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					PublicId: "hcst_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: public id not empty: parameter violation: error #100",
 		},
 		{
 			name: "valid-no-options",
@@ -114,7 +119,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			opts: []Option{
 				WithConfiguration(&Argon2Configuration{}),
 			},
-			wantIsErr: ErrInvalidConfiguration,
+			wantIsErr:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: password.(Argon2Configuration).validate: missing embedded config: password violation: error #202",
 		},
 		{
 			name: "invalid-with-config-unknown-config-type",
@@ -126,7 +132,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			opts: []Option{
 				WithConfiguration(tconf(0)),
 			},
-			wantIsErr: ErrUnsupportedConfiguration,
+			wantIsErr:  errors.PasswordUnsupportedConfiguration,
+			wantErrMsg: "password.(Repository).CreateAuthMethod: unknown configuration: password violation: error #201",
 		},
 	}
 
@@ -138,9 +145,9 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAuthMethod(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -153,6 +160,14 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			assert.Equal(got.CreateTime, got.UpdateTime)
 		})
 	}
+}
+
+func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -178,7 +193,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAuthMethod(context.Background(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 	})
 
@@ -194,7 +209,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				Name: "test-name-repo",
 			},
 		}
-		in2 := in.clone()
+		in2 := in.Clone()
 
 		in.ScopeId = org1.GetPublicId()
 		got, err := repo.CreateAuthMethod(context.Background(), in)
@@ -217,6 +232,14 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
+}
+
+func TestRepository_CreateAuthMethod_PublicId(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	t.Run("valid-with-publicid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -251,7 +274,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId("invalid_idwithabadprefix"))
 		assert.Error(err)
 		assert.Nil(got)
-		assert.True(errors.Is(err, errors.ErrInvalidPublicId))
+		assert.Truef(errors.Match(errors.T(errors.InvalidPublicId), err), "Unexpected error %s", err)
 	})
 }
 
@@ -266,15 +289,17 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 
 	amId, err := newAuthMethodId()
 	require.NoError(t, err)
-	var tests = []struct {
-		name      string
-		in        string
-		want      *AuthMethod
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         string
+		want       *AuthMethod
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "password.(Repository).LookupAuthMethod: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing auth method id",
@@ -295,9 +320,9 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAuthMethod(context.Background(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -317,15 +342,17 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 
 	newAuthMethodId, err := newAuthMethodId()
 	require.NoError(t, err)
-	var tests = []struct {
-		name      string
-		in        string
-		want      int
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         string
+		want       int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "password.(Repository).DeleteAuthMethod: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing auth method id",
@@ -347,9 +374,9 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAuthMethod(context.Background(), o.GetPublicId(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Zero(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -368,25 +395,27 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
 
-	var tests = []struct {
-		name      string
-		in        string
-		opts      []Option
-		want      []*AuthMethod
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         []string
+		opts       []Option
+		want       []*AuthMethod
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no scope id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no scope id",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).ListAuthMethods: missing scope id: parameter violation: error #100",
 		},
 		{
 			name: "Scope with no auth methods",
-			in:   noAuthMethodOrg.GetPublicId(),
-			want: []*AuthMethod{},
+			in:   []string{noAuthMethodOrg.GetPublicId()},
+			want: nil,
 		},
 		{
 			name: "With populated scope id",
-			in:   o.GetPublicId(),
+			in:   []string{o.GetPublicId()},
 			want: authMethods,
 		},
 	}
@@ -399,14 +428,52 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
 			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
 		})
+	}
+}
+
+func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	var total int
+	const numPerScope = 10
+	TestAuthMethods(t, conn, "global", numPerScope)
+	total += numPerScope
+	scopeIds := []string{"global"}
+	for i := 0; i < 10; i++ {
+		o := iam.TestOrg(t, iamRepo)
+		scopeIds = append(scopeIds, o.GetPublicId())
+		ams := TestAuthMethods(t, conn, o.GetPublicId(), numPerScope)
+		iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, ams[0].PublicId)
+		total += numPerScope
+	}
+	got, err := repo.ListAuthMethods(context.Background(), scopeIds, WithOrderByCreateTime(true))
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
+	found := map[string]struct{}{}
+	for _, am := range got {
+		switch {
+		case am.Clone().ScopeId == "global":
+			assert.Equalf(t, false, am.IsPrimaryAuthMethod, "expected the the global auth method to not be primary")
+		default:
+			if _, ok := found[am.ScopeId]; !ok {
+				found[am.ScopeId] = struct{}{}
+				assert.Equalf(t, true, am.IsPrimaryAuthMethod, "expected the first auth method created for the scope %s to be primary", am.ScopeId)
+			}
+		}
 	}
 }
 
@@ -419,20 +486,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethodCount := 10
 	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
+	primaryAuthMethod := ams[0]
+	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, primaryAuthMethod.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		repoOpts []Option
 		listOpts []Option
 		wantLen  int
 	}{
 		{
-			name:    "With no limits",
-			wantLen: authMethodCount,
+			name:     "With no limits",
+			wantLen:  authMethodCount,
+			listOpts: []Option{WithOrderByCreateTime(true)},
 		},
 		{
 			name:     "With repo limit",
 			repoOpts: []Option{WithLimit(3)},
+			listOpts: []Option{WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
@@ -442,24 +513,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []Option{WithLimit(3), WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []Option{WithLimit(-1), WithOrderByCreateTime(true)},
 			wantLen:  authMethodCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
 			wantLen:  2,
 		},
 	}
@@ -471,9 +542,12 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAuthMethods(context.Background(), ams[0].GetScopeId(), tt.listOpts...)
+			got, err := repo.ListAuthMethods(context.Background(), []string{ams[0].GetScopeId()}, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			if tt.wantLen > 0 {
+				assert.Equal(true, got[0].IsPrimaryAuthMethod)
+			}
 		})
 	}
 }

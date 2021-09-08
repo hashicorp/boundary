@@ -5,6 +5,7 @@ package docker
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ory/dockertest/v3"
@@ -14,7 +15,7 @@ func init() {
 	StartDbInDocker = startDbInDockerSupported
 }
 
-func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, container string, err error) {
+func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() error, retURL, container string, err error) {
 	// TODO: Debug what part of this method is actually causing race condition issues with our test and fix.
 	mx.Lock()
 	defer mx.Unlock()
@@ -24,14 +25,36 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	}
 
 	var resource *dockertest.Resource
-	var url string
+	var url, tag, repository string
+
+	opts := GetOpts(opt...)
+	if opts.withContainerImage != "" {
+		repository, tag, err = splitImage(opts)
+		if err != nil {
+			return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+		}
+	}
+
 	switch dialect {
 	case "postgres":
-		resource, err = pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
-		url = "postgres://postgres:password@localhost:%s?sslmode=disable"
-		if err == nil {
-			url = fmt.Sprintf("postgres://postgres:password@%s?sslmode=disable", resource.GetHostPort("5432/tcp"))
+		switch {
+		case os.Getenv("BOUNDARY_TESTING_PG_URL") != "":
+			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
+			return func() error { return nil }, url, "", nil
+		case repository != "":
+			resource, err = pool.Run(repository, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
+			if err == nil {
+				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+			}
+		default:
+			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
+			if err == nil {
+				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+			}
 		}
+
 	default:
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
@@ -55,7 +78,7 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 		defer db.Close()
 		return nil
 	}); err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
+		return cleanup, "", "", fmt.Errorf("could not ping postgres on startup: %w", err)
 	}
 
 	return cleanup, url, resource.Container.Name, nil
@@ -73,5 +96,28 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 	if strings.Contains(err.Error(), "No such container") {
 		return nil
 	}
-	return fmt.Errorf("Failed to cleanup local container: %s", err)
+	return fmt.Errorf("failed to cleanup local container: %s", err)
+}
+
+// splitImage takes the WithDatabaseImage option and separates
+// it into repo + tag. If a tag is not found, it sets the tag to latest
+func splitImage(opts Options) (string, string, error) {
+	separated := strings.Split(opts.withContainerImage, ":")
+	separatedlen := len(separated)
+
+	switch separatedlen {
+	case 1:
+		if separated[0] == "postgres" {
+			return separated[0], "11", nil
+		}
+		return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
+			" no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
+
+	case 2:
+		return separated[0], separated[1], nil
+
+	default:
+		return "", "", fmt.Errorf("valid reference format is repo:tag, got: %s", opts.withContainerImage)
+
+	}
 }

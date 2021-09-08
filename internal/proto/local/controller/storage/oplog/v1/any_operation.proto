@@ -27,7 +27,7 @@ message AnyOperation {
   // type_name defines type of operation.
   string type_name = 1;
 
-  // value are the bytes of a marshalled proto buff.
+  // value are the bytes of a marshaled proto buff.
   bytes value = 2;
 
   // operation_type defines the type of database operation.

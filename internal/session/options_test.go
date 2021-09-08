@@ -2,12 +2,11 @@ package session
 
 import (
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -33,16 +32,16 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithScopeId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithScopeId("o_1234"))
+		opts := getOpts(WithScopeIds([]string{"o_1234"}))
 		testOpts := getDefaultOptions()
-		testOpts.withScopeId = "o_1234"
+		testOpts.withScopeIds = []string{"o_1234"}
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithOrder", func(t *testing.T) {
+	t.Run("WithOrderByCreateTime", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithOrder("create_time asc"))
+		opts := getOpts(WithOrderByCreateTime(db.AscendingOrderBy))
 		testOpts := getDefaultOptions()
-		testOpts.withOrder = "create_time asc"
+		testOpts.withOrderByCreateTime = db.AscendingOrderBy
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithUserId", func(t *testing.T) {
@@ -53,9 +52,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithExpirationTime", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		now, err := ptypes.TimestampProto(time.Now())
-		require.NoError(err)
+		assert := assert.New(t)
+		now := timestamppb.Now()
 		opts := getOpts(WithExpirationTime(&timestamp.Timestamp{Timestamp: now}))
 		testOpts := getDefaultOptions()
 		testOpts.withExpirationTime = &timestamp.Timestamp{Timestamp: now}
@@ -75,6 +73,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithSessionIds("s_1", "s_2", "s_3"))
 		testOpts := getDefaultOptions()
 		testOpts.withSessionIds = []string{"s_1", "s_2", "s_3"}
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithServerId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithServerId("worker1"))
+		testOpts := getDefaultOptions()
+		testOpts.withServerId = "worker1"
 		assert.Equal(opts, testOpts)
 	})
 }

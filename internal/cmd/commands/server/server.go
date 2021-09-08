@@ -1,35 +1,49 @@
 package server
 
 import (
+	"context"
+	stderrors "errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
 )
 
-var _ cli.Command = (*Command)(nil)
-var _ cli.CommandAutocomplete = (*Command)(nil)
+var (
+	_ cli.Command             = (*Command)(nil)
+	_ cli.CommandAutocomplete = (*Command)(nil)
+)
 
 type Command struct {
 	*base.Server
 
-	ExtShutdownCh chan struct{}
-	SighupCh      chan struct{}
-	ReloadedCh    chan struct{}
-	SigUSR2Ch     chan struct{}
+	SighupCh  chan struct{}
+	SigUSR2Ch chan struct{}
 
 	Config     *config.Config
 	controller *controller.Controller
@@ -42,6 +56,10 @@ type Command struct {
 	flagLogLevel    string
 	flagLogFormat   string
 	flagCombineLogs bool
+
+	reloadedCh   chan struct{}  // for tests
+	startedCh    chan struct{}  // for tests
+	presetConfig *atomic.String // for tests
 }
 
 func (c *Command) Synopsis() string {
@@ -115,6 +133,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -131,29 +150,49 @@ func (c *Command) Run(args []string) int {
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	base.StartMemProfiler(c.Logger)
+	var serverNames []string
+	if c.Config.Controller != nil {
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		serverNames = append(serverNames, c.Config.Controller.Name)
+	}
+	if c.Config.Worker != nil {
+		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		serverNames = append(serverNames, c.Config.Worker.Name)
+	}
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
+	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
+
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
+
+	base.StartMemProfiler(ctx)
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	if c.Config.Controller != nil {
 		if c.RootKms == nil {
 			c.UI.Error("Root KMS not found after parsing KMS blocks")
-			return 1
+			return base.CommandUserError
 		}
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.Config.DefaultMaxRequestDuration != 0 {
@@ -180,7 +219,7 @@ func (c *Command) Run(args []string) int {
 		switch len(lnConfig.Purpose) {
 		case 0:
 			c.UI.Error("Listener specified without a purpose")
-			return 1
+			return base.CommandUserError
 
 		case 1:
 			purpose := lnConfig.Purpose[0]
@@ -189,42 +228,70 @@ func (c *Command) Run(args []string) int {
 				clusterAddr = lnConfig.Address
 				if clusterAddr == "" {
 					clusterAddr = "127.0.0.1:9201"
+					lnConfig.Address = clusterAddr
 				}
 			case "api":
 				foundApi = true
 			case "proxy":
 				foundProxy = true
+				if lnConfig.Address == "" {
+					lnConfig.Address = "127.0.0.1:9202"
+				}
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
-				return 1
+				return base.CommandUserError
 			}
 
 		default:
 			c.UI.Error("Specifying a listener with more than one purpose is not supported")
-			return 1
+			return base.CommandUserError
 		}
 	}
 	if c.Config.Controller != nil {
 		if !foundApi {
 			c.UI.Error(`Config activates controller but no listener with "api" purpose found`)
-			return 1
+			return base.CommandUserError
 		}
 		if clusterAddr == "" {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
-			return 1
+			return base.CommandUserError
 		}
+		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
+		c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+		c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
 	}
+
 	if c.Config.Worker != nil {
 		if !foundProxy {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
-			return 1
+			return base.CommandUserError
 		}
+
+		if c.Config.Worker != nil {
+			if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
+				c.UI.Error(err.Error())
+				return base.CommandUserError
+			}
+			c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+			c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
+		}
+
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
 			case 0:
+				if c.Config.Controller.PublicClusterAddr != "" {
+					clusterAddr = c.Config.Controller.PublicClusterAddr
+				}
 				c.Config.Worker.Controllers = []string{clusterAddr}
 			case 1:
 				if c.Config.Worker.Controllers[0] == clusterAddr {
+					break
+				}
+				if c.Config.Controller.PublicClusterAddr != "" &&
+					c.Config.Worker.Controllers[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
@@ -243,7 +310,7 @@ func (c *Command) Run(args []string) int {
 				fallthrough
 			default:
 				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
-				return 1
+				return base.CommandUserError
 			}
 		}
 		for _, controller := range c.Config.Worker.Controllers {
@@ -253,7 +320,7 @@ func (c *Command) Run(args []string) int {
 					host = controller
 				} else {
 					c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
-					return 1
+					return base.CommandUserError
 				}
 			}
 			ip := net.ParseIP(host)
@@ -264,29 +331,19 @@ func (c *Command) Run(args []string) int {
 					errMsg = "an unspecified"
 				case ip.IsMulticast():
 					errMsg = "a multicast"
-				case ip.IsGlobalUnicast():
-					errMsg = "a global unicast"
 				}
 				if errMsg != "" {
 					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
-					return 1
+					return base.CommandUserError
 				}
 			}
 		}
 	}
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	if c.Config.Worker != nil {
-		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-		c.InfoKeys = append(c.InfoKeys, "public addr")
-		c.Info["public addr"] = c.Config.Worker.PublicAddr
-	}
 	if c.Config.Controller != nil {
 		for _, ln := range c.Config.Listeners {
 			for _, purpose := range ln.Purpose {
@@ -299,47 +356,91 @@ func (c *Command) Run(args []string) int {
 						host = ln.Address
 					} else {
 						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-						return 1
+						return base.CommandUserError
 					}
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {
 					if ip.IsUnspecified() && c.Config.Controller.PublicClusterAddr == "" {
 						c.UI.Error(fmt.Sprintf("When %q listener has an unspecified address, %q must be set", "cluster", "public_cluster_addr"))
-						return 1
+						return base.CommandUserError
 					}
 				}
 			}
 		}
-
-		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-		c.InfoKeys = append(c.InfoKeys, "public cluster addr")
-		c.Info["public cluster addr"] = c.Config.Controller.PublicClusterAddr
 	}
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller != nil {
 		if c.Config.Controller.Database == nil || c.Config.Controller.Database.Url == "" {
 			c.UI.Error(`"url" not specified in "controller.database" config block"`)
-			return 1
+			return base.CommandUserError
 		}
-		dbaseUrl, err := config.ParseAddress(c.Config.Controller.Database.Url)
-		if err != nil && err != config.ErrNotAUrl {
+		var err error
+		c.DatabaseUrl, err = parseutil.ParsePath(c.Config.Controller.Database.Url)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-			return 1
+			return base.CommandUserError
 		}
-		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
+		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
-			return 1
+			return base.CommandCliError
+		}
+
+		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
+			return base.CommandCliError
+		}
+		// This is an advisory locks on the DB which is released when the db session ends.
+		if err := sMan.SharedLock(c.Context); err != nil {
+			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
+			return base.CommandCliError
+		}
+		defer func() {
+			// The base context has already been canceled so we shouldn't use it here.
+			// 1 second is chosen so the shutdown is still responsive and this is a mostly
+			// non critical step since the lock should be released when the session with the
+			// database is closed.
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err := sMan.SharedUnlock(ctx); err != nil {
+				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+			}
+		}()
+		ckState, err := sMan.CurrentState(c.Context)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
+			return base.CommandCliError
+		}
+		if !ckState.InitializationStarted {
+			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
+			return base.CommandCliError
+		}
+		if ckState.Dirty {
+			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
+			return base.CommandCliError
+		}
+		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
+			return base.CommandCliError
+		}
+		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
+			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
+				"than this binary expects. Please use a newer version of the boundary "+
+				"binary.", ckState.DatabaseSchemaVersion)))
+			return base.CommandCliError
+		}
+		if err := c.verifyKmsSetup(); err != nil {
+			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
+			return base.CommandCliError
 		}
 	}
 
@@ -353,20 +454,27 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	if c.Config.Controller != nil {
-		if err := c.StartController(); err != nil {
+		if err := c.StartController(ctx); err != nil {
 			c.UI.Error(err.Error())
-			return 1
+			return base.CommandCliError
 		}
 	}
 
 	if c.Config.Worker != nil {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
-			if err := c.controller.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+			if c.controller != nil {
+				if err := c.controller.Shutdown(false); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
 			}
-			return 1
+			return base.CommandCliError
 		}
+	}
+
+	// Inform any tests that the server is ready
+	if c.startedCh != nil {
+		close(c.startedCh)
 	}
 
 	return c.WaitForInterrupt()
@@ -379,61 +487,69 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	wrapperPath := c.flagConfig
-	if c.flagConfigKms != "" {
-		wrapperPath = c.flagConfigKms
-	}
-	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
-	if err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	if wrapper != nil {
-		c.configWrapper = wrapper
-		if err := wrapper.Init(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return 1
-		}
-	}
-
-	if len(c.flagConfig) == 0 {
+	if len(c.flagConfig) == 0 && c.presetConfig == nil {
 		c.UI.Error("Must specify a config file using -config")
-		return 1
+		return base.CommandUserError
 	}
 
-	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
+	switch {
+	case c.presetConfig != nil:
+		c.Config, err = config.Parse(c.presetConfig.Load())
+
+	default:
+		wrapperPath := c.flagConfig
+		if c.flagConfigKms != "" {
+			wrapperPath = c.flagConfigKms
+		}
+		var configWrapper wrapping.Wrapper
+		if wrapperPath != "" {
+			configWrapper, err = wrapper.GetWrapperFromPath(wrapperPath, "config")
+			if err != nil {
+				c.UI.Error(err.Error())
+				return base.CommandUserError
+			}
+			if configWrapper != nil {
+				c.configWrapper = configWrapper
+				if err := configWrapper.Init(c.Context); err != nil {
+					c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
+					return base.CommandCliError
+				}
+			}
+		}
+		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+	}
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller == nil && c.Config.Worker == nil {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
-		return 1
+		return base.CommandUserError
 	}
 	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
 		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return 1
+		return base.CommandUserError
 	}
 	if c.Config.Worker != nil && c.Config.Worker.Name == "" {
 		c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
-		return 1
+		return base.CommandUserError
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
-func (c *Command) StartController() error {
+func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
 	var err error
-	c.controller, err = controller.New(conf)
+	c.controller, err = controller.New(ctx, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing controller: %w", err)
 	}
@@ -475,25 +591,38 @@ func (c *Command) StartWorker() error {
 }
 
 func (c *Command) WaitForInterrupt() int {
+	const op = "server.(Command).WaitForInterrupt"
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	shutdownCh := c.ShutdownCh
-	if c.ExtShutdownCh != nil {
-		shutdownCh = c.ExtShutdownCh
-	}
-
 	for !shutdownTriggered {
 		select {
-		case <-shutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered")
+		case <-c.ShutdownCh:
+			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
 
+			// Add a force-shutdown goroutine to consume another interrupt
+			abortForceShutdownCh := make(chan struct{})
+			defer close(abortForceShutdownCh)
+			go func() {
+				shutdownCh := make(chan os.Signal, 4)
+				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+				select {
+				case <-shutdownCh:
+					c.UI.Error("Second interrupt received, forcing shutdown")
+					os.Exit(base.CommandUserError)
+				case <-abortForceShutdownCh:
+					// No-op, we just use this to shut down the goroutine
+				}
+			}()
+
+			// Do worker shutdown
 			if c.Config.Worker != nil {
 				if err := c.worker.Shutdown(false); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
 
+			// Do controller shutdown
 			if c.Config.Controller != nil {
 				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
@@ -503,26 +632,30 @@ func (c *Command) WaitForInterrupt() int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Boundary controller reload triggered")
+			c.UI.Output("==> Boundary server reload triggered")
 
 			// Check for new log level
 			var level hclog.Level
 			var err error
 			var newConf *config.Config
 
-			if c.flagConfig == "" {
+			if c.flagConfig == "" && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
+			if c.presetConfig != nil {
+				newConf, err = config.Parse(c.presetConfig.Load())
+			} else {
+				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
+			}
 			if err != nil {
-				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
+				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
 				goto RUNRELOADFUNCS
 			}
 
 			// Ensure at least one config was found.
 			if newConf == nil {
-				c.Logger.Error("no config found at reload time")
+				event.WriteError(context.TODO(), op, stderrors.New("no config found at reload time"))
 				goto RUNRELOADFUNCS
 			}
 
@@ -540,52 +673,73 @@ func (c *Command) WaitForInterrupt() int {
 				case "err", "error":
 					level = hclog.Error
 				default:
-					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
+					event.WriteError(context.TODO(), op, stderrors.New("unknown log level found on reload"), event.WithInfo("level", newConf.LogLevel))
 					goto RUNRELOADFUNCS
 				}
 				c.Logger.SetLevel(level)
 			}
 
 		RUNRELOADFUNCS:
-			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Errorf("Error(s) were encountered during controller reload: %w", err).Error())
+			if err := c.Reload(newConf); err != nil {
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
-func (c *Command) Reload() error {
+func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
 	var reloadErrors *multierror.Error
 
-	for k, relFuncs := range c.ReloadFuncs {
-		switch {
-		case strings.HasPrefix(k, "listener|"):
-			for _, relFunc := range relFuncs {
-				if relFunc != nil {
-					if err := relFunc(); err != nil {
-						reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
-					}
-				}
+	for _, relFunc := range c.ReloadFuncs["listeners"] {
+		if relFunc != nil {
+			if err := relFunc(); err != nil {
+				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
+	if newConf != nil && c.worker != nil {
+		c.worker.ParseAndStoreTags(newConf.Worker.Tags)
+	}
+
 	// Send a message that we reloaded. This prevents "guessing" sleep times
 	// in tests.
-	select {
-	case c.ReloadedCh <- struct{}{}:
-	default:
+	if c.reloadedCh != nil {
+		select {
+		case c.reloadedCh <- struct{}{}:
+		default:
+		}
 	}
 
 	return reloadErrors.ErrorOrNil()
+}
+
+func (c *Command) verifyKmsSetup() error {
+	const op = "server.(Command).verifyKmsExists"
+	rw := db.New(c.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	rks, err := kmsRepo.ListRootKeys(c.Context, kms.WithLimit(1))
+	if err != nil {
+		return err
+	}
+	for _, rk := range rks {
+		if rk.GetScopeId() == scope.Global.String() {
+			return nil
+		}
+	}
+	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

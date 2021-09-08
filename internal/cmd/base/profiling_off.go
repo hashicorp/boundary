@@ -2,7 +2,7 @@
 
 package base
 
-import "github.com/hashicorp/go-hclog"
+import "context"
 
-func StartMemProfiler(_ hclog.Logger) {
+func StartMemProfiler(_ context.Context) {
 }

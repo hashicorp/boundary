@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: CLI
-sidebar_title: CLI
 description: |-
   Boundary's CLI behavior
 ---
@@ -9,7 +8,7 @@ description: |-
 # CLI
 
 Boundary's CLI has predictable behavior throughout its various commands. This
-page details the common patterns in used in order to help users make better use
+page details the common patterns used in order to help users make better use
 of the CLI.
 
 ## Completion
@@ -46,9 +45,9 @@ On Windows, the Windows credential store (`wincred`) is used.
 
 Available keyring types:
 
-* `wincred` (default)
-* `pass`
-* `none`
+- `wincred` (default)
+- `pass`
+- `none`
 
 ### macOS
 
@@ -57,9 +56,9 @@ to keep the Boundary binary statically linked, which we prefer.)
 
 Available keyring types:
 
-* `keychain` (default)
-* `pass`
-* `none`
+- `keychain` (default)
+- `pass`
+- `none`
 
 ### Other platforms
 
@@ -70,21 +69,20 @@ available (via `gnome-keyring`, `kwallet`, or others) it can be used.
 
 Available keyring types:
 
-* `pass` (default)
-* `secret-service`
-* `none`
+- `pass` (default)
+- `secret-service`
+- `none`
 
 ## Mapping to Collections and Sub-Types
 
 Generally speaking, Boundary's CLI commands map to the collections they operate
-on. For instance, when operating on roles, the command will be `boundary roles
-...`.
+on. For instance, when operating on roles, the command will be `boundary roles ...`.
 
 As a result, the patterns for reading, deleting, and listing are predictable:
 
-* `boundary <collection> read`
-* `boundary <collection> delete`
-* `boundary <collection> list`
+- `boundary <collection> read`
+- `boundary <collection> delete`
+- `boundary <collection> list`
 
 `read` and `delete` will always operate on a particular resource identifier, so
 will always take in an `-id` parameter. `list` operates on collections so will
@@ -97,15 +95,15 @@ operated on through an implementation. As an example, a role is not an abstract
 type, and does not have various implementations of it. As a result, a role can
 be operated on directly:
 
-* `boundary roles create`
-* `boundary roles update`.
+- `boundary roles create`
+- `boundary roles update`.
 
 However, a target can be one of many types of targets, and a concrete
 implementation of a target is a `tcp` type of target. Therefore an extra
 parameter is required when creating or updating a target:
 
-* `boundary targets tcp create`
-* `boundary targets tcp update`
+- `boundary targets tcp create`
+- `boundary targets tcp update`
 
 This allows the CLI to perform proper presentation and validation of parameters
 and functions for the given type.
@@ -127,12 +125,12 @@ definition, but are otherwise order independent.
 
 For instance, the following are equivalent:
 
-* `boundary roles create -scope-id global -name foo`
-* `boundary roles create -name foo -scope-id global`
+- `boundary roles create -scope-id global -name foo`
+- `boundary roles create -name foo -scope-id global`
 
 But the following results in an error:
 
-* `boundary roles -name foo -scope-id global create`
+- `boundary roles -name foo -scope-id global create`
 
 This applies to `-h` as well!
 
@@ -163,20 +161,20 @@ connection options, which control TLS and other settings for the connection.
 Every command that results in an API call contains a set of flags that control
 client options. Some notable options:
 
-* `output-curl-string`: This will format the command that would have been run as
-a string using `curl` that can be used directly on the command line. This is a
-great way to discover how CLI functions map to API calls.
+- `output-curl-string`: This will format the command that would have been run as
+  a string using `curl` that can be used directly on the command line. This is a
+  great way to discover how CLI functions map to API calls.
 
-* `token-name`: When the CLI authenticates, it stores the token in the
-platform-specific OS credential store. By using the `token-name` parameter, more
-than one token can be stored at a time. Specifying this parameter at
-authentication time uses the given name as part of the key for storage;
-specifying it for any other command will cause the corresponding token to be
-used for that call.
+- `token-name`: When the CLI authenticates, it stores the token in the
+  platform-specific OS credential store. By using the `token-name` parameter, more
+  than one token can be stored at a time. Specifying this parameter at
+  authentication time uses the given name as part of the key for storage;
+  specifying it for any other command will cause the corresponding token to be
+  used for that call.
 
-* `recovery-config`: This is used to specify a configuration file that contains
-the information necessary to access a KMS configured to be used for the recovery
-workflow within a Boundary controller.
+- `recovery-config`: This is used to specify a configuration file that contains
+  the information necessary to access a KMS configured to be used for the recovery
+  workflow within a Boundary controller.
 
 ### Output Options
 

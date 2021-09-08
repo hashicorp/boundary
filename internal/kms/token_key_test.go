@@ -2,7 +2,6 @@ package kms_test
 
 import (
 	"context"
-
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -34,7 +33,7 @@ func TestTokenKey_Create(t *testing.T) {
 		args          args
 		want          *kms.TokenKey
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -42,7 +41,7 @@ func TestTokenKey_Create(t *testing.T) {
 			name:      "empty-rootKeyId",
 			args:      args{},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid",
@@ -64,7 +63,7 @@ func TestTokenKey_Create(t *testing.T) {
 			got, err := kms.NewTokenKey(tt.args.rootKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

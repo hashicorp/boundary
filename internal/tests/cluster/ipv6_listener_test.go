@@ -17,9 +17,6 @@ import (
 
 func TestIPv6Listener(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	user := "user"
-	password := "passpass"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -38,11 +35,8 @@ func TestIPv6Listener(t *testing.T) {
 	}
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:              conf,
-		DefaultAuthMethodId: amId,
-		DefaultLoginName:    user,
-		DefaultPassword:     password,
-		Logger:              logger.Named("c1"),
+		Config: conf,
+		Logger: logger.Named("c1"),
 	})
 	defer c1.Shutdown()
 

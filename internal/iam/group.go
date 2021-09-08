@@ -23,16 +23,18 @@ type Group struct {
 }
 
 // ensure that Group implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
-var _ Resource = (*Group)(nil)
-var _ Cloneable = (*Group)(nil)
-var _ db.VetForWriter = (*Group)(nil)
+var (
+	_ Resource        = (*Group)(nil)
+	_ Cloneable       = (*Group)(nil)
+	_ db.VetForWriter = (*Group)(nil)
+)
 
 // NewGroup creates a new in memory group with a scope (project/org)
 // and allowed options include: withDescripion, WithName.
 func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	const op = "iam.NewGroup"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	g := &Group{
@@ -64,10 +66,10 @@ func allocGroup() Group {
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(Group).VetForWrite"
 	if g.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

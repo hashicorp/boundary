@@ -7,12 +7,15 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const global = "global"
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -24,13 +27,18 @@ func TestCustom(t *testing.T) {
 	client.SetToken(token.Token)
 	uClient := users.NewClient(client)
 	aClient := accounts.NewClient(client)
+	amClient := authmethods.NewClient(client)
 
-	usr1, err := uClient.Create(tc.Context(), "global")
+	userAm, err := amClient.Create(tc.Context(), "password", global,
+		authmethods.WithName("bar"))
+	require.NoError(err)
+
+	usr1, err := uClient.Create(tc.Context(), global)
 	require.NoError(err)
 
 	acct1, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname"))
 	require.NoError(err)
-	acct2, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname2"))
+	acct2, err := aClient.Create(tc.Context(), userAm.Item.Id, accounts.WithPasswordAccountLoginName("accountname2"))
 	require.NoError(err)
 
 	addResult, err := uClient.AddAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
@@ -90,6 +98,13 @@ func TestList(t *testing.T) {
 	ul, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = userClient.List(tc.Context(), org.GetPublicId(),
+		users.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableSlice(in []*users.User) []users.User {
@@ -148,7 +163,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
@@ -171,7 +186,7 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Create another resource with the same name.
 	_, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
@@ -183,17 +198,17 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = userClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	_, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }

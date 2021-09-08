@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -21,9 +20,10 @@ type TokenKey struct {
 
 // NewTokenKey creates a new in memory key.  No options
 // are currently supported.
-func NewTokenKey(rootKeyId string, opt ...Option) (*TokenKey, error) {
+func NewTokenKey(rootKeyId string, _ ...Option) (*TokenKey, error) {
+	const op = "kms.NewTokenKey"
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	c := &TokenKey{
 		TokenKey: &store.TokenKey{
@@ -50,13 +50,14 @@ func (k *TokenKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *TokenKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (k *TokenKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "kms.(TokenKey).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("token key vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return fmt.Errorf("token key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	}
 	return nil

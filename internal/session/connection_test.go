@@ -30,7 +30,7 @@ func TestConnection_Create(t *testing.T) {
 		args          args
 		want          *Connection
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -61,7 +61,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-client-address",
@@ -72,7 +72,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-client-port",
@@ -83,7 +83,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-endpoint-address",
@@ -94,7 +94,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpPort:  2222,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-endpoint-port",
@@ -105,7 +105,7 @@ func TestConnection_Create(t *testing.T) {
 				endpointTcpAddress: "127.0.0.1",
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -120,7 +120,7 @@ func TestConnection_Create(t *testing.T) {
 			)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

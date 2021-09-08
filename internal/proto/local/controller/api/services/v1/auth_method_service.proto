@@ -14,7 +14,7 @@ import "controller/api/resources/authtokens/v1/authtoken.proto";
 service AuthMethodService {
   // GetAuthMethod returns a stored Auth Method if present.  The provided request
   // must include the Auth Method id. If missing, malformed or referencing a
-   // non existing resource an error is returned.
+  // non existing resource an error is returned.
   rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
     option (google.api.http) = {
       get: "/v1/auth-methods/{id}"
@@ -83,16 +83,42 @@ service AuthMethodService {
     };
   }
 
-   // Authenticate validates credentials provided and returns an Auth Token.
-   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
+  // ChangeState changes the state of an Auth Method from Boundary.
+  rpc ChangeState(ChangeStateRequest) returns (ChangeStateResponse) {
     option (google.api.http) = {
-      post: "/v1/auth-methods/{auth_method_id}:authenticate"
+      post: "/v1/auth-methods/{id}:change-state"
       body: "*"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Changes the state of an OIDC AuthMethod"
+    };
+  }
+
+  // Authenticate validates credentials provided and returns an Auth Token.
+  // Deprecated: use AuthenticateLogin instead.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth-methods/{auth_method_id}:authenticate"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Authenticate a user to an scope and retrieve an authentication token."
     };
+  }
+
+  // AuthenticateLogin validates credentials provided for a single-step login
+  // action and returns an auth token.
+  rpc AuthenticateLogin(AuthenticateLoginRequest) returns (AuthenticateLoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth-methods/{auth_method_id}:authenticate:login"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deprecated: Use Authenticate instead"
+    };
+    option deprecated = true;
   }
 }
 
@@ -105,7 +131,9 @@ message GetAuthMethodResponse {
 }
 
 message ListAuthMethodsRequest {
-  string scope_id = 1 [json_name="scope_id"];
+  string scope_id = 1 [json_name = "scope_id"];
+  bool recursive = 20 [json_name = "recursive"];
+  string filter = 30 [json_name = "filter"];
 }
 
 message ListAuthMethodsResponse {
@@ -124,7 +152,7 @@ message CreateAuthMethodResponse {
 message UpdateAuthMethodRequest {
   string id = 1;
   resources.authmethods.v1.AuthMethod item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateAuthMethodResponse {
@@ -137,22 +165,89 @@ message DeleteAuthMethodRequest {
 
 message DeleteAuthMethodResponse {}
 
-// The layout of the struct for "credentials" field in AuthenticateRequest.  This message isn't directly referenced anywhere but is used here to define the expected field names and types.
-message PasswordCredentials {
-  string login_name = 1 [json_name="login_name"];
+// Attributes specific to changing the state of an oidc auth method.
+message OidcChangeStateAttributes {
+  // state must be `inactive`, `active-private`, or `active-public`
+  string state = 1;
+  // This flag is only useful for an oidc auth method.  It should not be used
+  // unless the oidc provider's config is incorrectly set and is stopping the
+  // activation of this auth method.
+  bool disable_discovered_config_validation = 2 [json_name = "disable_discovered_config_validation"];
+}
+
+message ChangeStateRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+
+  // The attributes specific to this auth method's state.
+  google.protobuf.Struct attributes = 4;
+}
+
+message ChangeStateResponse {
+  resources.authmethods.v1.AuthMethod item = 1;
+}
+
+// The layout of the struct for "attributes" field in AuthenticateRequest for a password type. This message isn't directly referenced anywhere but is used here to define the expected field names and
+// types.
+message PasswordLoginAttributes {
+  string login_name = 1 [json_name = "login_name"];
   string password = 2;
+}
+
+// The layout of the struct for "attributes" field in AuthenticateRequest for a oidc type's start command. This message isn't directly referenced anywhere but is used here to define the expected field
+// names and types.
+message OidcStartAttributes {
+  // An object which will be marshaled as JSON and roundtripped in the token command call.
+  google.protobuf.Struct roundtrip_payload = 1 [json_name = "roundtrip_payload"];
+  // Cached marshaled payload. This is not ingressed from the client; anything found will be thrown out.
+  string cached_roundtrip_payload = 2;
+}
+
+// The layout of the struct for "attributes" field in AuthenticateRequest for a
+// oidc type's token command. This message isn't directly referenced anywhere
+// but is used here to define the expected field names and types.
+message OidcTokenAttributes {
+  // The token id for the request.  This is the token id that was returned from
+  // the oidc type's start command
+  string token_id = 1;
 }
 
 message AuthenticateRequest {
   // The ID of the Auth Method in the system that should be used for authentication.
-  string auth_method_id = 1 [json_name="auth_method_id"];
-  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser.
-  string token_type = 2 [json_name="token_type"];
+  string auth_method_id = 1 [json_name = "auth_method_id"];
+  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
+  // to keep it safe from rogue JS in the browser.
+  string token_type = 2 [json_name = "token_type"];
+  // Deprecated; use "attributes" instead.
+  google.protobuf.Struct credentials = 3 [json_name = "credentials", deprecated = true];
+  // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
+  google.protobuf.Struct attributes = 4 [json_name = "attributes"];
+  // The command to perform.
+  string command = 5 [json_name = "command"];
+}
+
+message AuthenticateResponse {
+  reserved 1, 2;  // Old item and token_type
+  reserved "item", "token_type";
+  // Valid keys and values depend on the type of Auth Method as well as the command.
+  google.protobuf.Struct attributes = 4 [json_name = "attributes"];
+  // The command that was performed.
+  string command = 5 [json_name = "command"];
+}
+
+message AuthenticateLoginRequest {
+  // The ID of the Auth Method in the system that should be used for authentication.
+  string auth_method_id = 1 [json_name = "auth_method_id"];
+  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
+  // to keep it safe from rogue JS in the browser.
+  string token_type = 2 [json_name = "token_type"];
   // Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method.
   google.protobuf.Struct credentials = 3;
 }
 
-message AuthenticateResponse {
+message AuthenticateLoginResponse {
   resources.authtokens.v1.AuthToken item = 1;
-  string token_type = 2 [json_name="token_type"];
+  string token_type = 2 [json_name = "token_type"];
 }

@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Manage Users and Groups
-sidebar_title: Manage Users and Groups
 description: How to manage Boundary users and groups
 ---
 
@@ -36,7 +35,7 @@ steps below.)
 successful authentication against an account, if there is no user already linked
 with that account, a user will be automatically created. This may be a nice
 time-saver, but in other situations (such as when you want Terraform to fully
-describe the Boundary resoruces) this may be undesirable, so the steps below
+describe the Boundary resources) this may be undesirable, so the steps below
 walk you through manually making these resources and linking them. A future
 Boundary update will allow turning off auto-vivification on a per-auth-method
 basis.
@@ -123,7 +122,7 @@ Account information:
   Auth Method ID:      ampw_PbE6nNT72a
   Created Time:        Tue, 29 Sep 2020 08:35:02 PDT
   Description:         My password account
-  ID:                  apw_BOn3EcqQfe
+  ID:                  acctpw_BOn3EcqQfe
   Name:                my_account
   Type:                password
   Updated Time:        Tue, 29 Sep 2020 08:35:02 PDT
@@ -205,7 +204,7 @@ User information:
 Then associate the user with the account previously created:
 
 ```bash
-$ boundary users set-accounts -id u_yXhZpt5PX3 -account apw_BOn3EcqQfe
+$ boundary users set-accounts -id u_yXhZpt5PX3 -account acctpw_BOn3EcqQfe
 
 User information:
   Created Time:        Tue, 29 Sep 2020 08:43:43 PDT
@@ -222,7 +221,7 @@ User information:
     Type:              org
 
   Accounts:
-    ID:                apw_BOn3EcqQfe
+    ID:                acctpw_BOn3EcqQfe
     Scope ID:          o_1234567890
 ```
 

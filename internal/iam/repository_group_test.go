@@ -430,9 +430,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			}
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(groupAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -634,7 +632,7 @@ func TestRepository_ListGroups(t *testing.T) {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListGroups(context.Background(), tt.args.withScopeId, tt.args.opt...)
+			got, err := repo.ListGroups(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -643,6 +641,31 @@ func TestRepository_ListGroups(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+
+	require.NoError(t, conn.Where("1=1").Delete(allocGroup()).Error)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestGroup(t, conn, "global")
+		total++
+		TestGroup(t, conn, org.GetPublicId())
+		total++
+		TestGroup(t, conn, proj.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListGroups(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_ListMembers(t *testing.T) {
@@ -732,7 +755,6 @@ func TestRepository_ListMembers(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		require.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
-
 	})
 }
 
@@ -857,7 +879,6 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 				assert.NotEmpty(gotMembers[m.MemberId])
 				assert.Equal(gotMembers[m.MemberId].GetGroupId(), m.GroupId)
 			}
-
 		})
 	}
 }
@@ -983,9 +1004,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != 0 {
-					assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(errors.RecordNotFound), err))

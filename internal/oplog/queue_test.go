@@ -104,7 +104,7 @@ func Test_Queue(t *testing.T) {
 		queue := Queue{}
 		_, _, _, _, err = queue.Remove()
 		require.Error(err)
-		assert.Equal(err.Error(), "remove Catalog is nil")
+		assert.Equal("oplog.(Queue).Remove: nil catalog: parameter violation: error #100", err.Error())
 	})
 	t.Run("not replayable", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -115,13 +115,13 @@ func Test_Queue(t *testing.T) {
 		}
 		err = queue.Add(u, "user", OpType_OP_TYPE_CREATE)
 		require.Error(err)
-		assert.Equal(err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
+		assert.Equal("oplog.(Queue).Add: *oplog_test.TestNonReplayableUser is not a replayable message: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil message", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		err = queue.Add(nil, "user", OpType_OP_TYPE_CREATE)
 		require.Error(err)
-		assert.Equal(err.Error(), "error <nil> is not a ReplayableMessage")
+		assert.Equal("oplog.(Queue).Add: <nil> is not a replayable message: parameter violation: error #100", err.Error())
 	})
 	t.Run("missing both field mask and null paths for update", func(t *testing.T) {
 		require.Error(t, queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE))

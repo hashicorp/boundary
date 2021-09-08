@@ -1,7 +1,6 @@
 package password
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -24,13 +23,14 @@ type Repository struct {
 // routines to access it.  WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+	const op = "password.NewRepository"
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, fmt.Errorf("kms: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)

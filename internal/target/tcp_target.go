@@ -2,7 +2,6 @@ package target
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -20,16 +19,19 @@ type TcpTarget struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Target = (*TcpTarget)(nil)
-var _ db.VetForWriter = (*TcpTarget)(nil)
-var _ oplog.ReplayableMessage = (*TcpTarget)(nil)
+var (
+	_ Target                  = (*TcpTarget)(nil)
+	_ db.VetForWriter         = (*TcpTarget)(nil)
+	_ oplog.ReplayableMessage = (*TcpTarget)(nil)
+)
 
 // NewTcpTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
 func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
+	const op = "target.NewTcpTarget"
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, fmt.Errorf("new tcp target: missing scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	t := &TcpTarget{
 		TcpTarget: &store.TcpTarget{
@@ -39,6 +41,7 @@ func NewTcpTarget(scopeId string, opt ...Option) (*TcpTarget, error) {
 			DefaultPort:            opts.withDefaultPort,
 			SessionConnectionLimit: opts.withSessionConnectionLimit,
 			SessionMaxSeconds:      opts.withSessionMaxSeconds,
+			WorkerFilter:           opts.withWorkerFilter,
 		},
 	}
 	return t, nil
@@ -61,16 +64,17 @@ func (t *TcpTarget) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the tcp target
 // before it's written.
-func (t *TcpTarget) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (t *TcpTarget) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "target.(TcpTarget).VetForWrite"
 	if t.PublicId == "" {
-		return fmt.Errorf("tcp target vet for write: missing public id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.CreateOp {
 		if t.ScopeId == "" {
-			return fmt.Errorf("tcp target vet for write: missing scope id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 		}
 		if t.Name == "" {
-			return fmt.Errorf("tcp target vet for write: missing name id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing name")
 		}
 	}
 	return nil

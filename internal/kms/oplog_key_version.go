@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,15 +22,16 @@ type OplogKeyVersion struct {
 
 // OplogKeyVersion creates a new in memory key version. No options are
 // currently supported.
-func NewOplogKeyVersion(oplogKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*OplogKeyVersion, error) {
+func NewOplogKeyVersion(oplogKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*OplogKeyVersion, error) {
+	const op = "kms.NewOplogKeyVersion"
 	if oplogKeyId == "" {
-		return nil, fmt.Errorf("new oplog key version: missing oplog key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new oplog key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new oplog key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &OplogKeyVersion{
@@ -61,19 +61,20 @@ func (k *OplogKeyVersion) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // version before it's written.
-func (k *OplogKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (k *OplogKeyVersion) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "kms.(OplogKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("oplog key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return fmt.Errorf("oplog key version vet for write: missing key: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.OplogKeyId == "" {
-			return fmt.Errorf("oplog key version vet for write: missing oplog key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing oplog key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("oplog key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil
@@ -96,20 +97,22 @@ func (k *OplogKeyVersion) SetTableName(n string) {
 
 // Encrypt will encrypt the key version's key
 func (k *OplogKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(OplogKeyVersion).Encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OplogKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.OplogKeyVersion, nil); err != nil {
-		return fmt.Errorf("error encrypting kms oplog key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
 
 // Decrypt will decrypt the key version's key
 func (k *OplogKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(OplogKeyVersion).Decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OplogKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.OplogKeyVersion, nil); err != nil {
-		return fmt.Errorf("error decrypting kms oplog key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

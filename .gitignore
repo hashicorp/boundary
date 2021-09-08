@@ -118,8 +118,8 @@ Sessionx.vim
 main
 /pkg/
 /bin/
-internal/ui/assets.go
 update-ui-assets*
+/plugins/kms/assets/
 
 # Test config file
 test*.hcl

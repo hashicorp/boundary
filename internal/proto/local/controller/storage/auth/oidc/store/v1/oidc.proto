@@ -1,0 +1,311 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the password package.
+package controller.storage.auth.oidc.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+
+// AuthMethod represents an OIDC auth method.
+message AuthMethod {
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is optional. If set, it must be unique within scope_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+
+  // The scope_id of the owning scope. Must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 60;
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 70;
+
+  // is_primary_auth_method is a read-only output field which indicates if the
+  // auth method is set as the scope's primary auth method.
+  // @inject_tag: `gorm:"-"`
+  bool is_primary_auth_method = 75;
+
+  // operational_state is the current state of the auth_oidc_method (inactive,
+  // active-private, or active-public).
+  // @inject_tag: `gorm:"column:state;not_null"`
+  string operational_state = 80;
+
+  // disable_discovered_config_validation is a flag that when set to true
+  // indicates the AuthMethod config was not validated against the IdP's
+  // discovery info document when it was updated or its operational_state was
+  // changed.
+  // @inject_tag: `gorm:"not_null"`
+  bool disable_discovered_config_validation = 89;
+
+  // issuer is the OIDC Discovery URL without any .well-known component
+  // @inject_tag: `gorm:"default:null"`
+  string issuer = 90 [(custom_options.v1.mask_mapping) = { this: "Issuer" that: "attributes.issuer" }];
+
+  // client_id is the OIDC client identifier
+  // @inject_tag: `gorm:"not_null"`
+  string client_id = 100 [(custom_options.v1.mask_mapping) = { this: "ClientId" that: "attributes.client_id" }];
+
+  // ct_client_secret is the encrypted OIDC client secret which is stored in the db.
+  // @inject_tag: `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
+  bytes ct_client_secret = 110;
+
+  // client_secret is the unencrypted OIDC client secret which is not stored in the database.
+  // @inject_tag: `gorm:"-" wrapping:"pt,client_secret"`
+  string client_secret = 120 [(custom_options.v1.mask_mapping) = { this: "ClientSecret" that: "attributes.client_secret" }];
+
+  // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
+  // is returned from the API for read.  It is recalculated everytime the raw
+  // client_secret is updated.
+  // @inject_tag: `gorm:"not_null"`
+  string client_secret_hmac = 130;
+
+  // key_id is the key ID that was used for the encryption operation. It can be
+  // used to identify a specific version of the key needed to decrypt the value,
+  // which is useful for caching purposes.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 140;
+
+  // max_age is the allowed elapsed time in seconds since the last time the user
+  // was actively authenticated by the OIDC provider. -1 indicates the user
+  // should be re-authenticated immediately and would represent the zero value
+  // for max age based on the oidc spec.
+  // @inject_tag: `gorm:"default:null"`
+  int32 max_age = 150 [(custom_options.v1.mask_mapping) = { this: "MaxAge" that: "attributes.max_age" }];
+
+  // api_url is the URLs prefix at which the boundary api is reachable. This value
+  // is used by the auth method in the different steps of the auth flow.
+  // @inject_tag: `gorm:"default:null"`
+  string api_url = 160 [(custom_options.v1.mask_mapping) = { this: "ApiUrl" that: "attributes.api_url_prefix" }];
+
+  // signing_algs are the signing algorithms allowed for an oidc auth method.
+  // These are Value Objects that will be stored as SigningAlg messages, and are
+  // operated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string signing_algs = 170 [(custom_options.v1.mask_mapping) = { this: "SigningAlgs" that: "attributes.signing_algorithms" }];
+
+  // aud_claims are the audience claims for a specific oidc auth method. These
+  // are Value Objects that will be stored as AudClaim messages, and are
+  // operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = { this: "AudClaims" that: "attributes.allowed_audiences" }];
+
+  // certificates are optional PEM encoded x509 certificates that can be
+  // used as trust anchors when connecting to an OIDC provider. These are Value
+  // Objects that will be stored as Certificate messages, and are operatated on
+  // as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.idp_ca_certs" }];
+
+  // claims_scopes are the optional claims scopes a specific oidc auth method.
+  // These are Value Objects that will be stored as ClaimsScope messages, and
+  // are operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScopes" that: "attributes.claims_scopes" }];
+
+  // account_claim_maps are optional claim maps from custom claims to the
+  // standard claims of sub, name and email.  These maps are represented as
+  // key=value where the key equals the from_claim and the value equals the
+  // to_claim.  For example "oid=sub".
+  // @inject_tag: `gorm:"-"`
+  repeated string account_claim_maps = 210 [(custom_options.v1.mask_mapping) = { this: "AccountClaimMaps" that: "attributes.account_claim_maps" }];
+}
+
+// Account represents an OIDC account
+// the scope_id column is not included here as it is used only to ensure
+// data integrity in the database between iam users and auth methods.
+message Account {
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is optional. If set, it must be unique within scope_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 60;
+
+  // auth_method_id is the fk to the account's auth method.
+  // @inject_tag: `gorm:"not_null"`
+  string auth_method_id = 70;
+
+  // issuer is a case sensitive URL that maps to the OIDC iss claim
+  // @inject_tag: `gorm:"not_null"`
+  string issuer = 80;
+
+  // subject is a case sensitive string that maps to the OIDC sub claim.
+  // @inject_tag: `gorm:"not_null"`
+  string subject = 90;
+
+  // full_name is a string that maps to the OIDC name claim
+  // @inject_tag: `gorm:"default:null"`
+  string full_name = 100;
+
+  // email is a string that maps to the OIDC email claim.
+  // @inject_tag: `gorm:"default:null"`
+  string email = 110;
+
+  // token_claims are the marshaled claims from the token.
+  // @inject_tag: `gorm:"default:null"`
+  string token_claims = 120;
+
+  // userinfo_claims are the marshaled claims from userinfo.
+  // @inject_tag: `gorm:"default:null"`
+  string userinfo_claims = 130;
+}
+
+// SigningAlg entries are the signing algorithms allowed for an oidc auth method.
+message SigningAlg {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // alg is an enum from the auth_oidc_signing_alg_enm table
+  // @inject_tag: `gorm:"primary_key;column:signing_alg_name"`
+  string alg = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+// AudClaim entries are the audience claims for a specific oidc auth method.
+message AudClaim {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // aud is an allowed audience claim for id_tokens
+  // @inject_tag: `gorm:"primary_key;column:aud_claim""`
+  string aud = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+// Certificate entries are optional PEM encoded x509 certificates that can be
+// used as trust anchors when connecting to an OIDC provider.
+message Certificate {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // certificate is a PEM encoded x509
+  // @inject_tag: `gorm:"column:certificate;primary_key"`
+  string cert = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+// ClaimsScope entries are optional OIDC scope values that are used to request
+// claims, in addition to the default scope of "openid".
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+message ClaimsScope {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // scope is an OIDC scope
+  // @inject_tag: `gorm:"column:scope;primary_key"`
+  string scope = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+// AccountClaimMap entries are optional from/to account claim maps.
+message AccountClaimMap {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // from_claim is the claim from the id_token that you need to map to a
+  // standard account claim.
+  // @inject_tag: `gorm:"not_null"`
+  string from_claim = 20;
+
+  // to_claim is the standard account claim to map the from_claim to.  Valid
+  // values are: sub, name, email
+  // @inject_tag: `gorm:"column:to_claim;primary_key"`
+  string to_claim = 30;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
+}
+
+// ManagedGroup entries provide an OIDC auth method implementation of managed
+// groups.
+message ManagedGroup {
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is optional. If set, it must be unique within auth_method_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 60;
+
+  // auth_method_id is the fk to the account's auth method.
+  // @inject_tag: `gorm:"not_null"`
+  string auth_method_id = 70;
+
+  // filter is a go-bexpr filter
+  // @inject_tag: `gorm:"not_null"`
+  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "attributes.filter" }];
+}
+
+// ManagedGroupMemberAccount contains a mapping between a managed group and a
+// member account.
+message ManagedGroupMemberAccount {
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // managed_group_id is the fk to the oidc managed group public id
+  // @inject_tag: `gorm:"primary_key"`
+  string managed_group_id = 20;
+
+  // member_id is the fk to the oidc account public id
+  // @inject_tag: `gorm:"primary_key"`
+  string member_id = 30;
+}

@@ -8,18 +8,23 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
+	desktopCorsOrigin = "serve://boundary"
+
 	devConfig = `
 disable_mlock = true
 
@@ -77,6 +82,9 @@ worker {
 	name = "dev-worker"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1"]
+	tags {
+		type = ["dev", "local"]
+	}
 }
 `
 )
@@ -94,6 +102,9 @@ type Config struct {
 	DevControllerKey     string `hcl:"-"`
 	DevWorkerAuthKey     string `hcl:"-"`
 	DevRecoveryKey       string `hcl:"-"`
+
+	// Eventing configuration for the controller
+	Eventing *event.EventerConfig `hcl:"events"`
 }
 
 type Controller struct {
@@ -110,6 +121,23 @@ type Controller struct {
 	// denoted by time.Duration
 	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// controller will wait before marking connections from a disconnected worker
+	// as invalid.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
+}
+
+func (c *Controller) InitNameIfEmpty() (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("controller config is empty")
+	}
+	if err := initNameIfEmpty(&c.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating controller name: %w", err)
+	}
+	return c.Name, nil
 }
 
 type Worker struct {
@@ -117,11 +145,45 @@ type Worker struct {
 	Description string   `hcl:"description"`
 	Controllers []string `hcl:"controllers"`
 	PublicAddr  string   `hcl:"public_addr"`
+
+	// We use a raw interface for parsing so that people can use JSON-like
+	// syntax that maps directly to the filter input or possibly more familiar
+	// key=value syntax. This is trued up in the Parse function below.
+	TagsRaw interface{}         `hcl:"tags"`
+	Tags    map[string][]string `hcl:"-"`
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// worker will wait before disconnecting connections if it cannot make a
+	// status report to a controller.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
+}
+
+func (w *Worker) InitNameIfEmpty() (string, error) {
+	if w == nil {
+		return "", fmt.Errorf("worker config is empty")
+	}
+	if err := initNameIfEmpty(&w.Name); err != nil {
+		return "", fmt.Errorf("error auto-generating worker name: %w", err)
+	}
+	return w.Name, nil
+}
+
+func initNameIfEmpty(name *string) error {
+	if *name == "" {
+		var err error
+		if *name, err = base62.Random(10); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type Database struct {
-	Url          string `hcl:"url"`
-	MigrationUrl string `hcl:"migration_url"`
+	Url                string `hcl:"url"`
+	MigrationUrl       string `hcl:"migration_url"`
+	MaxOpenConnections int    `hcl:"max_open_connections"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
@@ -134,7 +196,7 @@ func DevWorker() (*Config, error) {
 	return parsed, nil
 }
 
-func devKeyGeneration() (string, string, string) {
+func DevKeyGeneration() (string, string, string) {
 	var numBytes int64 = 96
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
@@ -157,7 +219,7 @@ func devKeyGeneration() (string, string, string) {
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := devKeyGeneration()
+	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
 	parsed, err := Parse(hclStr)
@@ -172,7 +234,7 @@ func DevController() (*Config, error) {
 }
 
 func DevCombined() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := devKeyGeneration()
+	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
@@ -216,7 +278,6 @@ func Parse(d string) (*Config, error) {
 		return nil, err
 	}
 
-	// Nothing to do here right now
 	result := New()
 	if err := hcl.DecodeObject(result, obj); err != nil {
 		return nil, err
@@ -224,6 +285,16 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
+		result.Controller.Name, err = parseutil.ParsePath(result.Controller.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing controller name: %w", err)
+		}
+		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
+			return nil, errors.New("Controller name must be all lower-case")
+		}
+		if !strutil.Printable(result.Controller.Name) {
+			return nil, errors.New("Controller name contains non-printable characters")
+		}
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
@@ -241,13 +312,187 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
+	// Parse worker tags
+	if result.Worker != nil {
+		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing worker name: %w", err)
+		}
+		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
+			return nil, errors.New("Worker name must be all lower-case")
+		}
+		if !strutil.Printable(result.Worker.Name) {
+			return nil, errors.New("Worker name contains non-printable characters")
+		}
+		if result.Worker.TagsRaw != nil {
+			switch t := result.Worker.TagsRaw.(type) {
+			// HCL allows multiple labeled blocks with the same name, turning it
+			// into a slice of maps, hence the slice here. This format is the
+			// one that ends up matching the JSON that we use in the expression.
+			case []map[string]interface{}:
+				if err := mapstructure.WeakDecode(t, &result.Worker.Tags); err != nil {
+					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
+				}
+
+			// However for those that are used to other systems, we also accept
+			// key=value pairs
+			case []interface{}:
+				var strs []string
+				if err := mapstructure.WeakDecode(t, &strs); err != nil {
+					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
+				}
+				result.Worker.Tags = make(map[string][]string, len(strs))
+				// Aggregate the values by key. We care about the first equal
+				// sign only, to allow equals to be in values if needed. This
+				// also means we don't support equal signs in keys.
+				for _, str := range strs {
+					splitStr := strings.SplitN(str, "=", 2)
+					switch len(splitStr) {
+					case 1:
+						return nil, fmt.Errorf("Error decoding tag %q from string: must be in key = value format", str)
+					case 2:
+						key := splitStr[0]
+						v := result.Worker.Tags[key]
+						if len(v) == 0 {
+							v = make([]string, 0, 1)
+						}
+						result.Worker.Tags[key] = append(v, splitStr[1])
+					}
+				}
+			}
+		}
+		for k, v := range result.Worker.Tags {
+			if k != strings.ToLower(k) {
+				return nil, fmt.Errorf("Tag key %q is not all lower-case letters", k)
+			}
+			if !strutil.Printable(k) {
+				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
+			}
+			for _, val := range v {
+				if val != strings.ToLower(val) {
+					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
+				}
+				if !strutil.Printable(k) {
+					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+			}
+		}
+	}
+
 	sharedConfig, err := configutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}
 	result.SharedConfig = sharedConfig
 
+	for _, listener := range result.SharedConfig.Listeners {
+		if strutil.StrListContains(listener.Purpose, "api") &&
+			(listener.CorsDisableDefaultAllowedOriginValues == nil || !*listener.CorsDisableDefaultAllowedOriginValues) {
+			switch listener.CorsEnabled {
+			case nil:
+				// If CORS wasn't specified, enable default value of *, which allows
+				// both the admin UI (without the user having to explicitly set an
+				// origin) and the desktop origin
+				listener.CorsEnabled = new(bool)
+				*listener.CorsEnabled = true
+				listener.CorsAllowedOrigins = []string{"*"}
+
+			default:
+				// If not the wildcard and they haven't disabled us auto-adding
+				// origin values, add the desktop client origin
+				if *listener.CorsEnabled &&
+					!strutil.StrListContains(listener.CorsAllowedOrigins, "*") {
+					listener.CorsAllowedOrigins = strutil.AppendIfMissing(listener.CorsAllowedOrigins, desktopCorsOrigin)
+				}
+			}
+		}
+	}
+
+	list, ok := obj.Node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+	}
+
+	eventList := list.Filter("events")
+	switch len(eventList.Items) {
+	case 0:
+		result.Eventing = event.DefaultEventerConfig()
+	case 1:
+		if result.Eventing, err = parseEventing(eventList.Items[0]); err != nil {
+			return nil, fmt.Errorf(`error parsing "events": %w`, err)
+		}
+	default:
+		return nil, fmt.Errorf(`too many "events" nodes (max 1, got %d)`, len(eventList.Items))
+	}
+
 	return result, nil
+}
+
+func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
+	// Decode the outside struct
+	var result event.EventerConfig
+	if err := hcl.DecodeObject(&result, eventObj.Val); err != nil {
+		return nil, fmt.Errorf(`error decoding "events" node: %w`, err)
+	}
+	// Now, find the sinks
+	eventObjType, ok := eventObj.Val.(*ast.ObjectType)
+	if !ok {
+		return nil, fmt.Errorf(`error interpreting "events" node as an object type`)
+	}
+	list := eventObjType.List
+	sinkList := list.Filter("sink")
+	// Go through each sink and decode
+	for i, item := range sinkList.Items {
+		var s event.SinkConfig
+		if err := hcl.DecodeObject(&s, item.Val); err != nil {
+			return nil, fmt.Errorf("error decoding eventer sink entry %d", i)
+		}
+
+		// Fix up type and validate
+		switch {
+		case s.Type != "":
+		case len(item.Keys) == 1:
+			s.Type = event.SinkType(item.Keys[0].Token.Value().(string))
+		default:
+			switch {
+			case s.StderrConfig != nil:
+				// If we haven't found the type any other way, they _must_
+				// specify this block even though there are no config parameters
+				s.Type = event.StderrSink
+			case s.FileConfig != nil:
+				s.Type = event.FileSink
+			default:
+				return nil, fmt.Errorf("sink type could not be determined")
+			}
+		}
+		s.Type = event.SinkType(strings.ToLower(string(s.Type)))
+
+		if s.Type == event.StderrSink && s.StderrConfig == nil {
+			// StderrConfig is optional as it has no values, but ensure it's
+			// always populated if it's the type
+			s.StderrConfig = new(event.StderrSinkTypeConfig)
+		}
+
+		// parse the duration string specified in a file config into a time.Duration
+		if s.FileConfig != nil && s.FileConfig.RotateDurationHCL != "" {
+			var err error
+			s.FileConfig.RotateDuration, err = parseutil.ParseDurationSecond(s.FileConfig.RotateDurationHCL)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse rotation duration %s", s.FileConfig.RotateDurationHCL)
+			}
+		}
+
+		if err := s.Validate(); err != nil {
+			return nil, err
+		}
+
+		// Append to result
+		result.Sinks = append(result.Sinks, &s)
+	}
+	if len(result.Sinks) == 0 {
+		result.Sinks = []*event.SinkConfig{event.DefaultSink()}
+	}
+	return &result, nil
 }
 
 // Sanitized returns a copy of the config with all values that are considered
@@ -270,38 +515,4 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
-}
-
-var ErrNotAUrl = errors.New("not a url")
-
-// ParseAddress parses a URL with schemes file://, env://, or any other.
-// Depending on the scheme it will return specific types of data:
-//
-// * file:// will return a string with the file's contents * env:// will return
-// a string with the env var's contents * anything else will return the string
-// as it was
-//
-// On error, we return the original string along with the error. The caller can
-// switch on ErrNotAUrl to understand whether it was the parsing step that
-// errored or something else. This is useful to attempt to read a non-URL string
-// from some resource, but where the original input may simply be a valid string
-// of that type.
-func ParseAddress(addr string) (string, error) {
-	addr = strings.TrimSpace(addr)
-	parsed, err := url.Parse(addr)
-	if err != nil {
-		return addr, ErrNotAUrl
-	}
-	switch parsed.Scheme {
-	case "file":
-		contents, err := ioutil.ReadFile(strings.TrimPrefix(addr, "file://"))
-		if err != nil {
-			return addr, fmt.Errorf("error reading file at %s: %w", addr, err)
-		}
-		return string(contents), nil
-	case "env":
-		return os.Getenv(strings.TrimPrefix(addr, "env://")), nil
-	}
-
-	return addr, nil
 }

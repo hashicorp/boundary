@@ -39,6 +39,21 @@ func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...
 	return repo
 }
 
+// TestSetPrimaryAuthMethod will set the PrimaryAuthMethodId for a scope.
+func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMethodId string) {
+	t.Helper()
+	require := require.New(t)
+	require.NotEmpty(s)
+	require.NotEmpty(authMethodId)
+	s.PrimaryAuthMethodId = authMethodId
+	_, _, err := repo.UpdateScope(context.Background(), s, s.Version, []string{"PrimaryAuthMethodId"})
+	require.NoError(err)
+
+	updated, err := repo.LookupScope(context.Background(), s.PublicId)
+	require.NoError(err)
+	require.Equalf(authMethodId, updated.PrimaryAuthMethodId, "expected %s to be the primary auth method for scope: %s", authMethodId, updated.PublicId)
+}
+
 // TestScopes creates an org and project suitable for testing.
 func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
 	t.Helper()
@@ -121,7 +136,8 @@ func testPublicId(t *testing.T, prefix string) string {
 	return publicId
 }
 
-// TestUser creates a user suitable for testing.
+// TestUser creates a user suitable for testing.  Supports the options:
+// WithName, WithDescription and WithAccountIds.
 func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *User {
 	t.Helper()
 	require := require.New(t)
@@ -131,6 +147,11 @@ func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *Us
 	user, err = repo.CreateUser(context.Background(), user)
 	require.NoError(err)
 	require.NotEmpty(user.PublicId)
+	opts := getOpts(opt...)
+	if len(opts.withAccountIds) > 0 {
+		_, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, opts.withAccountIds)
+		require.NoError(err)
+	}
 	return user
 }
 
@@ -221,6 +242,18 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 	return r
 }
 
+func TestManagedGroupRole(t *testing.T, conn *gorm.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	r, err := NewManagedGroupRole(roleId, managedGrpId, opt...)
+	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
+	return r
+}
+
 // testAccount is a temporary test function.  TODO - replace with an auth
 // subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId
@@ -236,7 +269,7 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	require.NotEmpty(authMethodId)
 
 	if userId != "" {
-		foundUser := allocUser()
+		foundUser := AllocUser()
 		foundUser.PublicId = userId
 		err := rw.LookupByPublicId(context.Background(), &foundUser)
 		require.NoError(err)

@@ -20,7 +20,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *HostCatalog
 		opts      []Option
@@ -127,7 +127,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateCatalog(context.Background(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -229,7 +229,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		orig      *HostCatalog
 		chgFn     func(*HostCatalog) *HostCatalog
@@ -498,7 +498,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c2 := cats[1]
 		c2.Name = name
 		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
@@ -577,7 +577,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    *HostCatalog
@@ -639,7 +639,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		id      string
 		want    int
@@ -681,4 +681,31 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			assert.Equal(tt.want, got, "row count")
 		})
 	}
+}
+
+func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	assert.NoError(t, err)
+	assert.NotNil(t, repo)
+
+	const numPerScope = 10
+	var projs []string
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		projs = append(projs, prj.GetPublicId())
+		for j := 0; j < numPerScope; j++ {
+			testCatalog(t, conn, prj.PublicId)
+			total++
+		}
+	}
+
+	got, err := repo.ListCatalogs(context.Background(), projs)
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }

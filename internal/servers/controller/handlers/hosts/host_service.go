@@ -6,28 +6,48 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
 	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.NoOp,
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.Create,
+		action.List,
+	}
 )
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.Host{}, &pb.Host{}, &pb.StaticHostAttributes{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Host{}}, handlers.MaskSource{&pb.Host{}, &pb.StaticHostAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -43,8 +63,9 @@ var _ pbs.HostServiceServer = Service{}
 // NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
+	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil static repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -61,14 +82,54 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range hl {
-		item.Scope = authResults.Scope
+	if len(hl) == 0 {
+		return &pbs.ListHostsResponse{}, nil
 	}
-	return &pbs.ListHostsResponse{Items: hl}, nil
+
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
+	finalItems := make([]*pb.Host, 0, len(hl))
+
+	res := perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Host,
+		Pin:     req.GetHostCatalogId(),
+	}
+	for _, item := range hl {
+		res.Id = item.GetPublicId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			continue
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		if filter.Match(item) {
+			finalItems = append(finalItems, item)
+		}
+	}
+	return &pbs.ListHostsResponse{Items: finalItems}, nil
 }
 
 // GetHost implements the interface pbs.HostServiceServer.
 func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.GetHostResponse, error) {
+	const op = "hosts.(Service).GetHost"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -76,16 +137,37 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.getFromRepo(ctx, req.GetId())
+	h, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	return &pbs.GetHostResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetHostResponse{Item: item}, nil
 }
 
 // CreateHost implements the interface pbs.HostServiceServer.
 func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*pbs.CreateHostResponse, error) {
+	const op = "hosts.(Service).CreateHost"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -97,15 +179,36 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	h.Scope = authResults.Scope
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pbs.CreateHostResponse{
-		Item: h,
-		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
+		Item: item,
+		Uri:  fmt.Sprintf("hosts/%s", item.GetId()),
 	}, nil
 }
 
 // UpdateHost implements the interface pbs.HostServiceServer.
 func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*pbs.UpdateHostResponse, error) {
+	const op = "hosts.(Service).UpdateHost"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -113,12 +216,31 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	h, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	return &pbs.UpdateHostResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateHostResponse{Item: item}, nil
 }
 
 // DeleteHost implements the interface pbs.HostServiceServer.
@@ -134,10 +256,10 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostResponse{}, nil
+	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*static.Host, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -149,10 +271,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, nil)
+	return h, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*static.Host, error) {
+	const op = "hosts.(Service).createInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -169,32 +292,25 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for creation: %v.", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for creation"))
 	}
 
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host: %v.", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to create host"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")
 	}
-	return toProto(out, nil)
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*static.Host, error) {
+	const op = "hosts.(Service).updateInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -211,11 +327,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for update: %v.", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -228,35 +340,28 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, fmt.Errorf("unable to update host: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out, nil)
+	return out, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "hosts.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, err
 	}
 	rows, err := repo.DeleteHost(ctx, scopeId, id)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return false, e
-		}
-		return false, fmt.Errorf("unable to delete host: %w", err)
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*static.Host, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -265,15 +370,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	if err != nil {
 		return nil, err
 	}
-	var outHl []*pb.Host
-	for _, h := range hl {
-		p, err := toProto(h, nil)
-		if err != nil {
-			return nil, err
-		}
-		outHl = append(outHl, p)
-	}
-	return outHl, nil
+	return hl, nil
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
@@ -316,29 +413,56 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
-	out := pb.Host{
-		Id:            in.GetPublicId(),
-		HostCatalogId: in.GetCatalogId(),
-		Type:          host.StaticSubtype.String(),
-		CreatedTime:   in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
-		Version:       in.GetVersion(),
+func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building host proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = wrapperspb.String(in.GetDescription())
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Host{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = wrapperspb.String(in.GetName())
+	if outputFields.Has(globals.HostCatalogIdField) {
+		out.HostCatalogId = in.GetCatalogId()
 	}
-	for _, m := range members {
-		out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
+	if outputFields.Has(globals.TypeField) {
+		out.Type = static.Subtype.String()
 	}
-	st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
-	out.Attributes = st
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.HostSetIdsField) {
+		for _, hs := range hostSets {
+			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
+		}
+	}
+	if outputFields.Has(globals.AttributesField) {
+		st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)
+		}
+		out.Attributes = st
+	}
 	return &out, nil
 }
 
@@ -350,25 +474,25 @@ func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
-	return handlers.ValidateGetRequest(static.HostPrefix, req, func() map[string]string {
+	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := host.SubtypeFromId(req.GetId())
-		if ct == host.UnknownSubtype {
+		if ct == subtypes.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	})
+	}, req, static.HostPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Doesn't match the parent resource's type."
 			}
 			attrs := &pb.StaticHostAttributes{}
@@ -395,11 +519,11 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
-	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
-		case host.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != host.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields["type"] = "Cannot modify the resource type."
 
 				attrs := &pb.StaticHostAttributes{}
@@ -419,17 +543,20 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	})
+	}, static.HostPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

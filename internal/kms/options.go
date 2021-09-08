@@ -1,7 +1,7 @@
 package kms
 
 import (
-	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -20,12 +20,11 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit             int
-	withLogger            hclog.Logger
 	withRootWrapper       wrapping.Wrapper
 	withWorkerAuthWrapper wrapping.Wrapper
 	withRecoveryWrapper   wrapping.Wrapper
 	withRepository        *Repository
-	withOrder             string
+	withOrderByVersion    db.OrderBy
 	withKeyId             string
 }
 
@@ -39,13 +38,6 @@ func getDefaultOptions() options {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// WithLogger provides a logger to be used when needed
-func WithLogger(l hclog.Logger) Option {
-	return func(o *options) {
-		o.withLogger = l
 	}
 }
 
@@ -79,10 +71,12 @@ func WithRepository(repo *Repository) Option {
 	}
 }
 
-// WithOrder allows specifying an order for returned values
-func WithOrder(order string) Option {
+// WithOrderByVersion provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByVersion(orderBy db.OrderBy) Option {
+	const col = "version"
 	return func(o *options) {
-		o.withOrder = order
+		o.withOrderByVersion = orderBy
 	}
 }
 

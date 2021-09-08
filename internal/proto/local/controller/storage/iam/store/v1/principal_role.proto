@@ -5,7 +5,6 @@ package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/storage/iam/store/v1/scope.proto";
 
 message UserRole {
   // create_time from the RDBMS
@@ -31,6 +30,20 @@ message GroupRole {
   string role_id = 2;
 
   // principal_id is the public_id of the group (which is the principal)
+  // @inject_tag: gorm:"primary_key"
+  string principal_id = 3;
+}
+
+message ManagedGroupRole {
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 1;
+
+  // role_id is the role of this principal.
+  // @inject_tag: gorm:"primary_key"
+  string role_id = 2;
+
+  // principal_id is the public_id of the managed group (which is the principal)
   // @inject_tag: gorm:"primary_key"
   string principal_id = 3;
 }

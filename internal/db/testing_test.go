@@ -17,7 +17,6 @@ func Test_Utils(t *testing.T) {
 	t.Parallel()
 	_, _ = TestSetup(t, "postgres")
 	t.Run("nothing", func(t *testing.T) {
-
 	})
 }
 

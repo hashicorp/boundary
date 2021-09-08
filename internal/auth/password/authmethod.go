@@ -1,8 +1,6 @@
 package password
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -27,8 +25,9 @@ func allocAuthMethod() AuthMethod {
 // ignored.  MinLoginNameLength and MinPasswordLength are pre-set to the
 // default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
+	const op = "password.NewAuthMethod"
 	if scopeId == "" {
-		return nil, fmt.Errorf("new: password auth method: no scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	opts := getOpts(opt...)
@@ -44,7 +43,8 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	return a, nil
 }
 
-func (a *AuthMethod) clone() *AuthMethod {
+// Clone simply clones the AuthMethod
+func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),
@@ -74,4 +74,20 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["scope-id"] = []string{a.ScopeId}
 	}
 	return metadata
+}
+
+// authMethodView provides a simple way to read an AuthMethod with its
+// IsPrimaryAuthMethod field set.  By definition, it's used only for reading
+// AuthMethods.
+type authMethodView struct {
+	*store.AuthMethod
+	tableName string
+}
+
+// TableName returns the view name.
+func (a *authMethodView) TableName() string {
+	if a.tableName != "" {
+		return a.tableName
+	}
+	return "auth_password_method_with_is_primary"
 }

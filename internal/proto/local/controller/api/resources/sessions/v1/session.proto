@@ -2,14 +2,10 @@ syntax = "proto3";
 
 package controller.api.resources.sessions.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions;sessions";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions;sessions";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
-import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/api/resources/targets/v1/target.proto";
-import "controller/custom_options/v1/options.proto";
 
 message WorkerInfo {
   // The address of the worker.
@@ -52,7 +48,7 @@ message Session {
 
   // Output only. After this time the connection will be expired, e.g. forcefully terminated.
   google.protobuf.Timestamp expiration_time = 100 [json_name = "expiration_time"];
-  
+
   // Output only. The ID of the Auth Token used to authenticate.
   string auth_token_id = 110 [json_name = "auth_token_id"];
 
@@ -85,4 +81,7 @@ message Session {
 
   // Output only. If the session is terminated, this provides a short description as to why.
   string termination_reason = 210 [json_name = "termination_reason"];
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

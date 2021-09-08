@@ -2,7 +2,6 @@
 package accounts
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,30 +13,20 @@ import (
 )
 
 type Account struct {
-	Id           string                 `json:"id,omitempty"`
-	Scope        *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name         string                 `json:"name,omitempty"`
-	Description  string                 `json:"description,omitempty"`
-	CreatedTime  time.Time              `json:"created_time,omitempty"`
-	UpdatedTime  time.Time              `json:"updated_time,omitempty"`
-	Version      uint32                 `json:"version,omitempty"`
-	Type         string                 `json:"type,omitempty"`
-	AuthMethodId string                 `json:"auth_method_id,omitempty"`
-	Attributes   map[string]interface{} `json:"attributes,omitempty"`
+	Id                string                 `json:"id,omitempty"`
+	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name              string                 `json:"name,omitempty"`
+	Description       string                 `json:"description,omitempty"`
+	CreatedTime       time.Time              `json:"created_time,omitempty"`
+	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
+	Version           uint32                 `json:"version,omitempty"`
+	Type              string                 `json:"type,omitempty"`
+	AuthMethodId      string                 `json:"auth_method_id,omitempty"`
+	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	ManagedGroupIds   []string               `json:"managed_group_ids,omitempty"`
+	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n Account) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Account) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Account) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type AccountReadResult struct {
@@ -49,27 +38,26 @@ func (n AccountReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AccountReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n AccountReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n AccountReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type AccountCreateResult = AccountReadResult
-type AccountUpdateResult = AccountReadResult
+type (
+	AccountCreateResult = AccountReadResult
+	AccountUpdateResult = AccountReadResult
+)
 
 type AccountDeleteResult struct {
 	response *api.Response
 }
 
-func (n AccountDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for AccountDeleteResult
+func (n AccountDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n AccountDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AccountDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AccountListResult struct {
@@ -81,12 +69,8 @@ func (n AccountListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AccountListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AccountListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AccountListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -151,9 +135,9 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*AccountReadResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AccountReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -161,7 +145,7 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("accounts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -174,7 +158,7 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -192,9 +176,9 @@ func (c *Client) Read(ctx context.Context, accountId string, opt ...Option) (*Ac
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, accountId string, version uint32, opt ...Option) (*AccountUpdateResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*AccountUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -206,7 +190,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, accountId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -224,7 +208,7 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("accounts/%s", accountId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("accounts/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -255,9 +239,9 @@ func (c *Client) Update(ctx context.Context, accountId string, version uint32, o
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*AccountDeleteResult, error) {
-	if accountId == "" {
-		return nil, fmt.Errorf("empty accountId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AccountDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -265,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, accountId string, opt ...Option) (*
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", accountId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("accounts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

@@ -2,7 +2,6 @@
 package authmethods
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,30 +13,21 @@ import (
 )
 
 type AuthMethod struct {
-	Id          string                 `json:"id,omitempty"`
-	ScopeId     string                 `json:"scope_id,omitempty"`
-	Scope       *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name        string                 `json:"name,omitempty"`
-	Description string                 `json:"description,omitempty"`
-	CreatedTime time.Time              `json:"created_time,omitempty"`
-	UpdatedTime time.Time              `json:"updated_time,omitempty"`
-	Version     uint32                 `json:"version,omitempty"`
-	Type        string                 `json:"type,omitempty"`
-	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+	Id                          string                 `json:"id,omitempty"`
+	ScopeId                     string                 `json:"scope_id,omitempty"`
+	Scope                       *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                        string                 `json:"name,omitempty"`
+	Description                 string                 `json:"description,omitempty"`
+	CreatedTime                 time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                 time.Time              `json:"updated_time,omitempty"`
+	Version                     uint32                 `json:"version,omitempty"`
+	Type                        string                 `json:"type,omitempty"`
+	Attributes                  map[string]interface{} `json:"attributes,omitempty"`
+	IsPrimary                   bool                   `json:"is_primary,omitempty"`
+	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
+	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n AuthMethod) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethod) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n AuthMethod) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type AuthMethodReadResult struct {
@@ -49,27 +39,26 @@ func (n AuthMethodReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AuthMethodReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n AuthMethodReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n AuthMethodReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type AuthMethodCreateResult = AuthMethodReadResult
-type AuthMethodUpdateResult = AuthMethodReadResult
+type (
+	AuthMethodCreateResult = AuthMethodReadResult
+	AuthMethodUpdateResult = AuthMethodReadResult
+)
 
 type AuthMethodDeleteResult struct {
 	response *api.Response
 }
 
-func (n AuthMethodDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for AuthMethodDeleteResult
+func (n AuthMethodDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n AuthMethodDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthMethodDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AuthMethodListResult struct {
@@ -81,12 +70,8 @@ func (n AuthMethodListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AuthMethodListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethodListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthMethodListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -156,9 +141,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethodReadResult, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("empty authMethodId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AuthMethodReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -166,7 +151,7 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-methods/%s", authMethodId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-methods/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -179,7 +164,7 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -197,9 +182,9 @@ func (c *Client) Read(ctx context.Context, authMethodId string, opt ...Option) (
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethodUpdateResult, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("empty authMethodId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*AuthMethodUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -211,7 +196,7 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, authMethodId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -229,7 +214,7 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s", authMethodId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -260,9 +245,9 @@ func (c *Client) Update(ctx context.Context, authMethodId string, version uint32
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethodDeleteResult, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("empty authMethodId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AuthMethodDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -270,7 +255,7 @@ func (c *Client) Delete(ctx context.Context, authMethodId string, opt ...Option)
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-methods/%s", authMethodId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-methods/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

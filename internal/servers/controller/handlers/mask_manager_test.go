@@ -3,13 +3,13 @@ package handlers
 import (
 	"testing"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/protooptions"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMaskManager(t *testing.T) {
-	mm, err := NewMaskManager(&pb.TestProperlyNamedFields{}, &pb.TestBase{})
+	mm, err := NewMaskManager(MaskDestination{&pb.TestProperlyNamedFields{}}, MaskSource{&pb.TestBase{}})
 	require.NoError(t, err)
 	assert.Equal(t, []string(nil), mm.Translate([]string{"doesnt_exist"}))
 	assert.Equal(t, []string{"OtherFirstField"}, mm.Translate([]string{"first_field"}))
@@ -20,7 +20,7 @@ func TestMaskManager(t *testing.T) {
 }
 
 func TestMaskManager_Split(t *testing.T) {
-	mm, err := NewMaskManager(&pb.TestProperlyNamedFields{}, &pb.TestBaseSplit1{}, &pb.TestBaseSplit2{})
+	mm, err := NewMaskManager(MaskDestination{&pb.TestProperlyNamedFields{}}, MaskSource{&pb.TestBaseSplit1{}, &pb.TestBaseSplit2{}})
 	require.NoError(t, err)
 	assert.Equal(t, []string(nil), mm.Translate([]string{"doesnt_exist"}))
 	assert.Equal(t, []string{"OtherFirstField"}, mm.Translate([]string{"first_field"}))
@@ -31,10 +31,10 @@ func TestMaskManager_Split(t *testing.T) {
 }
 
 func TestMaskManager_errors(t *testing.T) {
-	_, err := NewMaskManager(&pb.TestBase{}, &pb.TestManyToOneMappings{})
+	_, err := NewMaskManager(MaskDestination{&pb.TestBase{}}, MaskSource{&pb.TestManyToOneMappings{}})
 	assert.Error(t, err)
-	_, err = NewMaskManager(&pb.TestBase{}, &pb.TestNameDoesntMap{})
+	_, err = NewMaskManager(MaskDestination{&pb.TestBase{}}, MaskSource{&pb.TestNameDoesntMap{}})
 	assert.Error(t, err)
-	_, err = NewMaskManager(&pb.TestBase{}, &pb.TestNotEnoughFields{})
+	_, err = NewMaskManager(MaskDestination{&pb.TestBase{}}, MaskSource{&pb.TestNotEnoughFields{}})
 	assert.Error(t, err)
 }

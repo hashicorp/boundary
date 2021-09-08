@@ -1,5 +1,5 @@
 # Boundary
-![](boundary.png)
+![](boundary.png) [![CircleCI](https://circleci.com/gh/hashicorp/boundary/tree/main.svg?style=svg)](https://circleci.com/gh/hashicorp/boundary/tree/main)
 ----
 
 **Please note**: We take Boundary's security and our users' trust very
@@ -86,7 +86,7 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 ### Build and Start Boundary in Dev Mode
 
 If you have the following requirements met locally:
-- Golang v1.14 or greater
+- Golang v1.16 or greater
 - Docker
 
 You can get up and running with Boundary quickly. Simply run:
@@ -97,10 +97,10 @@ This will build Boundary. (The first time this is run it will fetch and compile
 UI assets; which will take a few extra minutes.) Once complete, run Boundary in
 `dev` mode:
 
-  ```./$GOPATH/bin/boundary dev```
+  ```$GOPATH/bin/boundary dev```
 
-Please note that building the UI requires `go-bindata`; the easiest way to install
-Boundary's dependent tools is to simply run:
+Please note that development may require other tools; to install the set of
+tools at the versions used by the Boundary team, run:
 
   ```make tools```
 
@@ -204,3 +204,8 @@ could be taken in a production context:
 There are many, many more things that Boundary will do in the future in terms of
 integrations, features, and more. We have a long roadmap planned out, so stay
 tuned for information about new features and capabilities!
+
+## Contributing
+
+Thank you for your interest in contributing! Please refer to
+[CONTRIBUTING.md](https://github.com/hashicorp/boundary/blob/main/CONTRIBUTING.md) for guidance.

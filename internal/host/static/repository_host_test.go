@@ -28,7 +28,7 @@ func TestRepository_CreateHost(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *Host
 		opts      []Option
@@ -205,7 +205,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -313,7 +313,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		}
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		orig      *Host
 		chgFn     func(*Host) *Host
@@ -662,7 +662,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		hB.Name = name
 		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, hB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -757,7 +757,7 @@ func TestRepository_LookupHost(t *testing.T) {
 
 	hostId, err := newHostId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      *Host
@@ -810,7 +810,7 @@ func TestRepository_ListHosts(t *testing.T) {
 
 	hosts := TestHosts(t, conn, catalogA.PublicId, 3)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		opts      []Option
@@ -868,7 +868,7 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 	count := 10
 	hosts := TestHosts(t, conn, catalog.PublicId, count)
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		repoOpts []Option
 		listOpts []Option
@@ -939,7 +939,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 
 	newHostId, err := newHostId()
 	require.NoError(t, err)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        string
 		want      int

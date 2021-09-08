@@ -2,7 +2,6 @@
 package sessions
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -32,20 +31,9 @@ type Session struct {
 	WorkerInfo        []*WorkerInfo     `json:"worker_info,omitempty"`
 	Certificate       []byte            `json:"certificate,omitempty"`
 	TerminationReason string            `json:"termination_reason,omitempty"`
+	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n Session) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Session) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Session) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type SessionReadResult struct {
@@ -57,27 +45,26 @@ func (n SessionReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n SessionReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n SessionReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n SessionReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type SessionCreateResult = SessionReadResult
-type SessionUpdateResult = SessionReadResult
+type (
+	SessionCreateResult = SessionReadResult
+	SessionUpdateResult = SessionReadResult
+)
 
 type SessionDeleteResult struct {
 	response *api.Response
 }
 
-func (n SessionDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for SessionDeleteResult
+func (n SessionDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n SessionDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n SessionDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type SessionListResult struct {
@@ -89,12 +76,8 @@ func (n SessionListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n SessionListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n SessionListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n SessionListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -115,9 +98,9 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*SessionReadResult, error) {
-	if sessionId == "" {
-		return nil, fmt.Errorf("empty sessionId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*SessionReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -125,7 +108,7 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", sessionId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -138,7 +121,7 @@ func (c *Client) Read(ctx context.Context, sessionId string, opt ...Option) (*Se
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}

@@ -63,18 +63,20 @@ type GroupMemberUser struct {
 }
 
 // ensure that GroupMember implements the interfaces of: Cloneable, db.VetForWriter
-var _ Cloneable = (*GroupMemberUser)(nil)
-var _ db.VetForWriter = (*GroupMemberUser)(nil)
+var (
+	_ Cloneable       = (*GroupMemberUser)(nil)
+	_ db.VetForWriter = (*GroupMemberUser)(nil)
+)
 
 // NewGroupMemberUser creates a new in memory user member of the group. No
 // options are currently supported.
 func NewGroupMemberUser(groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
 	const op = "iam.NewGroupMemberUser"
 	if groupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if userId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
@@ -102,10 +104,10 @@ func (m *GroupMemberUser) Clone() interface{} {
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GroupMemberUser).VetForWrite"
 	if m.GroupId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing group id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	if m.MemberId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing member id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing member id")
 	}
 	return nil
 }

@@ -56,6 +56,13 @@ func TestList(t *testing.T) {
 			require.NotNil(pl)
 			require.Len(pl.Items, 10)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
+
+			filterItem := pl.Items[3]
+			pl, err = grps.List(tc.Context(), tt.scopeId,
+				groups.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+			require.NoError(err)
+			assert.Len(pl.Items, 1)
+			assert.Equal(filterItem.Id, pl.Items[0].Id)
 		})
 	}
 }
@@ -151,7 +158,7 @@ func TestCrud(t *testing.T) {
 			require.Error(err)
 			apiErr := api.AsServerError(err)
 			require.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 		})
 	}
 }
@@ -193,7 +200,7 @@ func TestErrors(t *testing.T) {
 			require.Error(err)
 			apiErr := api.AsServerError(err)
 			require.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 			// Create another resource with the same name.
 			_, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
@@ -203,19 +210,19 @@ func TestErrors(t *testing.T) {
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			require.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 			_, err = groupClient.Read(tc.Context(), "invalid id")
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			require.NotNil(apiErr)
-			assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 			_, err = groupClient.Update(tc.Context(), g.Item.Id, g.Item.Version)
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			require.NotNil(apiErr)
-			assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 		})
 	}
 }

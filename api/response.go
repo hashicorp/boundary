@@ -22,11 +22,19 @@ func (r *Response) HttpResponse() *http.Response {
 	return r.resp
 }
 
+// StatusCode returns the underlying HTTP status code
+func (r *Response) StatusCode() int {
+	return r.resp.StatusCode
+}
+
 func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")
 	}
 	defer r.resp.Body.Close()
+
+	// Always allocate this buffer. It's okay if the bytes return `nil`.
+	r.Body = new(bytes.Buffer)
 
 	if r.resp.StatusCode == 204 {
 		// Do nothing.

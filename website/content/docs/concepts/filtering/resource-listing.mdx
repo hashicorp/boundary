@@ -1,0 +1,87 @@
+---
+layout: docs
+page_title: Filtering - Resource Listing
+description: |-
+  How to use filter list responses coming back from Boundary.
+---
+
+This page describes how to use filters when listing resources. This can be used
+to reduce the returned set of resources when performing a list operation.
+
+~> This feature is intended to provide a userful service to clients; it does not
+affect the database queries generated for the operation and as such is not
+designed to provide greater efficiency.
+
+# List Filtering
+
+Starting in Boundary 0.1.8, when running a list action, a filter can be
+specified. It uses the standard [filter syntax](/docs/concepts/filtering) used
+elsewhere in Boundary. Unless otherwise specified for a given list endpoint, the
+list of items being returned is looped through and the filter is run on the JSON
+representation of that item. A good way to see what that data looks like is by
+looking at representative JSON output on the command line; for example, the
+following is the output of `boundary targets list -scope-id p_1234567890 -format json` on a dev instance (piped through `jq` for readability):
+
+```json
+[
+  {
+    "id": "ttcp_1234567890",
+    "scope_id": "p_1234567890",
+    "scope": {
+      "id": "p_1234567890",
+      "type": "project",
+      "name": "Generated project scope",
+      "description": "Provides an initial project scope in Boundary",
+      "parent_scope_id": "o_1234567890"
+    },
+    "name": "Generated target",
+    "description": "Provides an initial target in Boundary",
+    "created_time": "2021-02-24T22:19:50.640476Z",
+    "updated_time": "2021-02-24T22:19:50.640476Z",
+    "version": 1,
+    "type": "tcp",
+    "session_max_seconds": 28800,
+    "session_connection_limit": -1,
+    "attributes": {
+      "default_port": 22
+    },
+    "authorized_actions": [
+      "read",
+      "update",
+      "delete",
+      "add-host-sets",
+      "set-host-sets",
+      "remove-host-sets",
+      "authorize-session"
+    ]
+  }
+]
+```
+
+As the filter tests each entry being returned, it places the data under test
+within the filter at `/item`.
+
+On the CLI a filter can be given via `-filter`.
+
+~> Double quotes are part of the filter syntax; when using the CLI, it is likely
+easier to surround the filter with single quotes than to deal with escaping
+double quotes.
+
+When using the HTTP API, it is a `filter` query parameter.
+
+~> Ensure that the query parameter is properly escaped! Most HTTP libraries will
+do this for you. If you're having trouble, try using the `-output-curl-string`
+flag with the Boundary CLI:
+
+```
+$ boundary targets list -scope-id p_1234567890 -format json -filter '"authorize-session" in "/item/authorized_actions"' -output-curl-string
+curl -H "Authorization: Bearer $(boundary config get-token -keyring-type pass -token-name default)" -H "Content-Type: application/json" 'http://127.0.0.1:9200/v1/targets?filter=%22authorize-session%22+in+%22%2Fitem%2Fauthorized_actions%22&scope_id=p_1234567890'
+```
+
+Following are some examples.
+
+- Resources in which the user is allowed to run an "update" action:
+  `"update" in "/item/authorized_actions"`
+
+- Resources matching a name pattern, but only those within an organization
+  scope: `"/item/name" matches "groupa-*" and "/item/scope/type" == "org"`

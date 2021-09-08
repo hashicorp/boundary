@@ -6,12 +6,12 @@ package iam
 const (
 	// whereUserAccount - given an auth account id, return the associated user.
 	whereUserAccount = `	
-	select iam_user.*
-		from iam_user 
+	select iam_user_acct_info.*
+		from iam_user_acct_info 
 	inner join auth_account 
-		on iam_user.public_id = auth_account.iam_user_id
+		on iam_user_acct_info.public_id = auth_account.iam_user_id
 	where 
-		iam_user.scope_id = auth_account.scope_id and
+		iam_user_acct_info.scope_id = auth_account.scope_id and
 		auth_account.public_id = $1`
 
 	// whereValidAuthMethod - determine if an auth method public_id within a scope_id

@@ -56,6 +56,13 @@ func TestList(t *testing.T) {
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
 	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = hClient.List(tc.Context(), hc.Item.Id,
+		hosts.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableHostSlice(in []*hosts.Host) []hosts.Host {
@@ -119,7 +126,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
@@ -147,7 +154,7 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName("foo"), hosts.WithStaticHostAddress("someaddress"))
 	require.Error(err)
@@ -158,11 +165,11 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = hClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }

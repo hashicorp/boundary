@@ -8,14 +8,13 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
-
-	"github.com/hashicorp/go-hclog"
 )
 
-func StartMemProfiler(logger hclog.Logger) {
+func StartMemProfiler(ctx context.Context) {
+	const op = "base.StartMemProfiler"
 	profileDir := filepath.Join(os.TempDir(), "boundaryprof")
-	if err := os.MkdirAll(profileDir, 0700); err != nil {
-		logger.Debug("could not create profile directory", "error", err)
+	if err := os.MkdirAll(profileDir, 0o700); err != nil {
+		event.WriteError(ctx, op, err, "could not create profile directory")
 		return
 	}
 
@@ -24,14 +23,14 @@ func StartMemProfiler(logger hclog.Logger) {
 			filename := filepath.Join(profileDir, time.Now().UTC().Format("20060102_150405")) + ".pprof"
 			f, err := os.Create(filename)
 			if err != nil {
-				logger.Debug("could not create memory profile", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfo("could not create memory profile"))
 			}
 			runtime.GC()
 			if err := pprof.WriteHeapProfile(f); err != nil {
-				logger.Debug("could not write memory profile", "error", err)
+				event.WriteError(ctx, op, err, "could not write memory profile")
 			}
 			f.Close()
-			logger.Debug("wrote memory profile", "filename", filename)
+			event.WriteSysEvent(ctx, op, "wrote memory profile", "filename", filename)
 			time.Sleep(5 * time.Minute)
 		}
 	}()

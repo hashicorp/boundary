@@ -5,6 +5,16 @@
 # Orb 'circleci/slack@3.4.2' resolved to 'circleci/slack@3.4.2'
 version: 2
 jobs:
+  test-sql-13-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=13-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   bundle-releases:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -19,49 +29,49 @@ jobs:
         command: mkdir -p .buildcache && echo "*" > .buildcache/.gitignore
         name: Ignore .buildcache
     - restore_cache:
-        key: package-1127264420b85df6f16884936c63c690dab1b04f-{{checksum ".buildcache/cache-keys/package-1127264420b85df6f16884936c63c690dab1b04f"}}
+        key: package-71fa601616a225899af09c8369ed9fc2d6d998e2-{{checksum ".buildcache/cache-keys/package-71fa601616a225899af09c8369ed9fc2d6d998e2"}}
         name: Restore package cache
     - restore_cache:
-        key: package-a7cd0c08b9d00690bde097b14c2db32550c81f08-{{checksum ".buildcache/cache-keys/package-a7cd0c08b9d00690bde097b14c2db32550c81f08"}}
+        key: package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f-{{checksum ".buildcache/cache-keys/package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f"}}
         name: Restore package cache
     - restore_cache:
-        key: package-731e972814428dd02898e0c2c71278c46bca4d16-{{checksum ".buildcache/cache-keys/package-731e972814428dd02898e0c2c71278c46bca4d16"}}
+        key: package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4-{{checksum ".buildcache/cache-keys/package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4"}}
         name: Restore package cache
     - restore_cache:
-        key: package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989-{{checksum ".buildcache/cache-keys/package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989"}}
+        key: package-c8401fcf82b86f62e39516bc847423296f351dcf-{{checksum ".buildcache/cache-keys/package-c8401fcf82b86f62e39516bc847423296f351dcf"}}
         name: Restore package cache
     - restore_cache:
-        key: package-334d05c2a7807e66fb7641f1b85f9d62c067aeac-{{checksum ".buildcache/cache-keys/package-334d05c2a7807e66fb7641f1b85f9d62c067aeac"}}
+        key: package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb-{{checksum ".buildcache/cache-keys/package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb"}}
         name: Restore package cache
     - restore_cache:
-        key: package-37b45145ed658373504e8a36657746ee6c270e4c-{{checksum ".buildcache/cache-keys/package-37b45145ed658373504e8a36657746ee6c270e4c"}}
+        key: package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525-{{checksum ".buildcache/cache-keys/package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525"}}
         name: Restore package cache
     - restore_cache:
-        key: package-aa7842419a55387e7110911ae8884642353a37d2-{{checksum ".buildcache/cache-keys/package-aa7842419a55387e7110911ae8884642353a37d2"}}
+        key: package-1efe1513c2b57d32392ed4a4601de1699c813457-{{checksum ".buildcache/cache-keys/package-1efe1513c2b57d32392ed4a4601de1699c813457"}}
         name: Restore package cache
     - restore_cache:
-        key: package-6213f76a9f648f6a101d4f12082814232f858397-{{checksum ".buildcache/cache-keys/package-6213f76a9f648f6a101d4f12082814232f858397"}}
+        key: package-384724ac89d695a73abb78aad60acd3c7c2c4270-{{checksum ".buildcache/cache-keys/package-384724ac89d695a73abb78aad60acd3c7c2c4270"}}
         name: Restore package cache
     - restore_cache:
-        key: package-7517fcb853dd38d00a4f595a859bda2362da3638-{{checksum ".buildcache/cache-keys/package-7517fcb853dd38d00a4f595a859bda2362da3638"}}
+        key: package-45fe69b6571284299223e8245f29c40ffd9c43dd-{{checksum ".buildcache/cache-keys/package-45fe69b6571284299223e8245f29c40ffd9c43dd"}}
         name: Restore package cache
     - restore_cache:
-        key: package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0-{{checksum ".buildcache/cache-keys/package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0"}}
+        key: package-e5c674f011608ff0ec51285ea342fe7a95f803e5-{{checksum ".buildcache/cache-keys/package-e5c674f011608ff0ec51285ea342fe7a95f803e5"}}
         name: Restore package cache
     - restore_cache:
-        key: package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d-{{checksum ".buildcache/cache-keys/package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d"}}
+        key: package-291ec533f804015a31ec89443c1100a2ae526856-{{checksum ".buildcache/cache-keys/package-291ec533f804015a31ec89443c1100a2ae526856"}}
         name: Restore package cache
     - restore_cache:
-        key: package-dd519728552ec4cdb7de60be0b921ec6e0b00488-{{checksum ".buildcache/cache-keys/package-dd519728552ec4cdb7de60be0b921ec6e0b00488"}}
+        key: package-d2dbe866712854d51e105c9b8b33ff5e22d1287c-{{checksum ".buildcache/cache-keys/package-d2dbe866712854d51e105c9b8b33ff5e22d1287c"}}
         name: Restore package cache
     - restore_cache:
-        key: package-81a9889cba175c3e37b803deee427a26de83ea45-{{checksum ".buildcache/cache-keys/package-81a9889cba175c3e37b803deee427a26de83ea45"}}
+        key: package-4571f72423cae365aaad07ec1a16fffe7aaa468e-{{checksum ".buildcache/cache-keys/package-4571f72423cae365aaad07ec1a16fffe7aaa468e"}}
         name: Restore package cache
     - restore_cache:
-        key: package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87-{{checksum ".buildcache/cache-keys/package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87"}}
+        key: package-93124fe6bd57406690ddeef8d33ee90d67f3eb04-{{checksum ".buildcache/cache-keys/package-93124fe6bd57406690ddeef8d33ee90d67f3eb04"}}
         name: Restore package cache
     - restore_cache:
-        key: package-28e191cc1f1094ca13f3617ca5d159b659ea8063-{{checksum ".buildcache/cache-keys/package-28e191cc1f1094ca13f3617ca5d159b659ea8063"}}
+        key: package-a60bb9fef193b738fd139723936b23ea38b18d25-{{checksum ".buildcache/cache-keys/package-a60bb9fef193b738fd139723936b23ea38b18d25"}}
         name: Restore package cache
     - run:
         command: make package-meta-all
@@ -73,20 +83,20 @@ jobs:
         command: ls -lahR .buildcache
         name: List Build Cache
     - run:
-        command: cp packages*.lock/pkgs.yml lockfile-4ab42d391be9d56c.yml
+        command: cp packages*.lock/pkgs.yml lockfile-591648cfcfc4fec2.yml
         name: Update Lockfile Name
     - run:
-        command: tar -czf packages-4ab42d391be9d56c.tar.gz .buildcache/packages lockfile-4ab42d391be9d56c.yml
+        command: tar -czf packages-591648cfcfc4fec2.tar.gz .buildcache/packages lockfile-591648cfcfc4fec2.yml
         name: Create Raw Package Tarball
     - run:
-        command: tar -czf meta-4ab42d391be9d56c.tar.gz .buildcache/packages/store/*.json lockfile-4ab42d391be9d56c.yml
+        command: tar -czf meta-591648cfcfc4fec2.tar.gz .buildcache/packages/store/*.json lockfile-591648cfcfc4fec2.yml
         name: Create Metadata Tarball
     - store_artifacts:
-        path: lockfile-4ab42d391be9d56c.yml
+        path: lockfile-591648cfcfc4fec2.yml
     - store_artifacts:
-        path: packages-4ab42d391be9d56c.tar.gz
+        path: packages-591648cfcfc4fec2.tar.gz
     - store_artifacts:
-        path: meta-4ab42d391be9d56c.tar.gz
+        path: meta-591648cfcfc4fec2.tar.gz
     - store_artifacts:
         path: .buildcache/packages
     environment:
@@ -101,21 +111,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 1127264420b85df6f16884936c63c690dab1b04f
+    - PACKAGE_SPEC_ID: 71fa601616a225899af09c8369ed9fc2d6d998e2
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-1127264420b85df6f16884936c63c690dab1b04f-{{checksum ".buildcache/cache-keys/package-1127264420b85df6f16884936c63c690dab1b04f"}}
+        key: package-71fa601616a225899af09c8369ed9fc2d6d998e2-{{checksum ".buildcache/cache-keys/package-71fa601616a225899af09c8369ed9fc2d6d998e2"}}
         name: Restore package cache
     - run:
         command: |2
@@ -131,11 +141,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -161,7 +171,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-1127264420b85df6f16884936c63c690dab1b04f-{{checksum ".buildcache/cache-keys/package-1127264420b85df6f16884936c63c690dab1b04f"}}
+        key: package-71fa601616a225899af09c8369ed9fc2d6d998e2-{{checksum ".buildcache/cache-keys/package-71fa601616a225899af09c8369ed9fc2d6d998e2"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -173,21 +183,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 8e76b88da0717d2512f1bd3afd5853f3e72c9f87
+    - PACKAGE_SPEC_ID: 93124fe6bd57406690ddeef8d33ee90d67f3eb04
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87-{{checksum ".buildcache/cache-keys/package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87"}}
+        key: package-93124fe6bd57406690ddeef8d33ee90d67f3eb04-{{checksum ".buildcache/cache-keys/package-93124fe6bd57406690ddeef8d33ee90d67f3eb04"}}
         name: Restore package cache
     - run:
         command: |2
@@ -203,11 +213,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -233,10 +243,20 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87-{{checksum ".buildcache/cache-keys/package-8e76b88da0717d2512f1bd3afd5853f3e72c9f87"}}
+        key: package-93124fe6bd57406690ddeef8d33ee90d67f3eb04-{{checksum ".buildcache/cache-keys/package-93124fe6bd57406690ddeef8d33ee90d67f3eb04"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-11-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=11-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   build-common-layers:
     machine:
       image: ubuntu-1604:202007-01
@@ -245,21 +265,21 @@ jobs:
     steps:
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Layer Cache: copy-source'
     - run:
-        command: LAYER_SPEC_ID=03-copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5 make -C packages*.lock load-builder-cache
+        command: LAYER_SPEC_ID=03-copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1 make -C packages*.lock load-builder-cache
         name: Load whatever builder cache we have (if any) into the Docker daemon
     - run:
         command: |2-
@@ -275,7 +295,7 @@ jobs:
             echo "    attempts to directly clone private repositories."
           fi
 
-          make -f packages*.lock/layer.mk 00-base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b-image
+          make -f packages*.lock/layer.mk 00-base-ec5342e30fcbfeb5947252a8ea679fb281052d16-image
         name: Build base layer
     - run:
         command: |2-
@@ -291,7 +311,7 @@ jobs:
             echo "    attempts to directly clone private repositories."
           fi
 
-          make -f packages*.lock/layer.mk 01-ui-7106f0993f7f82cce77f88cac3d4aad74561ace1-image
+          make -f packages*.lock/layer.mk 01-ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a-image
         name: Build ui layer
     - run:
         command: |2-
@@ -307,7 +327,7 @@ jobs:
             echo "    attempts to directly clone private repositories."
           fi
 
-          make -f packages*.lock/layer.mk 02-go-modules-377574d7d13eaa0b1b40076910be751039c977dd-image
+          make -f packages*.lock/layer.mk 02-go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3-image
         name: Build go-modules layer
     - run:
         command: |2-
@@ -323,7 +343,7 @@ jobs:
             echo "    attempts to directly clone private repositories."
           fi
 
-          make -f packages*.lock/layer.mk 03-copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5-image
+          make -f packages*.lock/layer.mk 03-copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1-image
         name: Build copy-source layer
     - run:
         command: |2-
@@ -339,13 +359,13 @@ jobs:
             echo "    attempts to directly clone private repositories."
           fi
 
-          make -f packages*.lock/layer.mk 03-copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5-save
+          make -f packages*.lock/layer.mk 03-copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1-save
         name: Build copy-source layer
     - save_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         name: 'Save Layer Cache: copy-source'
         paths:
-        - .buildcache/archives/03-copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5.tar.gz
+        - .buildcache/archives/03-copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1.tar.gz
     environment:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
@@ -358,21 +378,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 6213f76a9f648f6a101d4f12082814232f858397
+    - PACKAGE_SPEC_ID: 384724ac89d695a73abb78aad60acd3c7c2c4270
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-6213f76a9f648f6a101d4f12082814232f858397-{{checksum ".buildcache/cache-keys/package-6213f76a9f648f6a101d4f12082814232f858397"}}
+        key: package-384724ac89d695a73abb78aad60acd3c7c2c4270-{{checksum ".buildcache/cache-keys/package-384724ac89d695a73abb78aad60acd3c7c2c4270"}}
         name: Restore package cache
     - run:
         command: |2
@@ -388,11 +408,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -418,7 +438,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-6213f76a9f648f6a101d4f12082814232f858397-{{checksum ".buildcache/cache-keys/package-6213f76a9f648f6a101d4f12082814232f858397"}}
+        key: package-384724ac89d695a73abb78aad60acd3c7c2c4270-{{checksum ".buildcache/cache-keys/package-384724ac89d695a73abb78aad60acd3c7c2c4270"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -430,21 +450,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: aa7842419a55387e7110911ae8884642353a37d2
+    - PACKAGE_SPEC_ID: 1efe1513c2b57d32392ed4a4601de1699c813457
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-aa7842419a55387e7110911ae8884642353a37d2-{{checksum ".buildcache/cache-keys/package-aa7842419a55387e7110911ae8884642353a37d2"}}
+        key: package-1efe1513c2b57d32392ed4a4601de1699c813457-{{checksum ".buildcache/cache-keys/package-1efe1513c2b57d32392ed4a4601de1699c813457"}}
         name: Restore package cache
     - run:
         command: |2
@@ -460,11 +480,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -490,7 +510,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-aa7842419a55387e7110911ae8884642353a37d2-{{checksum ".buildcache/cache-keys/package-aa7842419a55387e7110911ae8884642353a37d2"}}
+        key: package-1efe1513c2b57d32392ed4a4601de1699c813457-{{checksum ".buildcache/cache-keys/package-1efe1513c2b57d32392ed4a4601de1699c813457"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -513,21 +533,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 334d05c2a7807e66fb7641f1b85f9d62c067aeac
+    - PACKAGE_SPEC_ID: 30ba4053218e6b6a3f39b9d67cc430f9385e70cb
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-334d05c2a7807e66fb7641f1b85f9d62c067aeac-{{checksum ".buildcache/cache-keys/package-334d05c2a7807e66fb7641f1b85f9d62c067aeac"}}
+        key: package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb-{{checksum ".buildcache/cache-keys/package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb"}}
         name: Restore package cache
     - run:
         command: |2
@@ -543,11 +563,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -573,7 +593,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-334d05c2a7807e66fb7641f1b85f9d62c067aeac-{{checksum ".buildcache/cache-keys/package-334d05c2a7807e66fb7641f1b85f9d62c067aeac"}}
+        key: package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb-{{checksum ".buildcache/cache-keys/package-30ba4053218e6b6a3f39b9d67cc430f9385e70cb"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -585,21 +605,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: a7cd0c08b9d00690bde097b14c2db32550c81f08
+    - PACKAGE_SPEC_ID: 97f48b65a2b1d85a686a4799e8aff6926cfbe04f
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-a7cd0c08b9d00690bde097b14c2db32550c81f08-{{checksum ".buildcache/cache-keys/package-a7cd0c08b9d00690bde097b14c2db32550c81f08"}}
+        key: package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f-{{checksum ".buildcache/cache-keys/package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f"}}
         name: Restore package cache
     - run:
         command: |2
@@ -615,11 +635,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -645,7 +665,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-a7cd0c08b9d00690bde097b14c2db32550c81f08-{{checksum ".buildcache/cache-keys/package-a7cd0c08b9d00690bde097b14c2db32550c81f08"}}
+        key: package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f-{{checksum ".buildcache/cache-keys/package-97f48b65a2b1d85a686a4799e8aff6926cfbe04f"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -657,21 +677,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 731e972814428dd02898e0c2c71278c46bca4d16
+    - PACKAGE_SPEC_ID: b6d16e35ea34fa5749ed92c8062e1cea96fd24f4
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-731e972814428dd02898e0c2c71278c46bca4d16-{{checksum ".buildcache/cache-keys/package-731e972814428dd02898e0c2c71278c46bca4d16"}}
+        key: package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4-{{checksum ".buildcache/cache-keys/package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4"}}
         name: Restore package cache
     - run:
         command: |2
@@ -687,11 +707,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -717,7 +737,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-731e972814428dd02898e0c2c71278c46bca4d16-{{checksum ".buildcache/cache-keys/package-731e972814428dd02898e0c2c71278c46bca4d16"}}
+        key: package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4-{{checksum ".buildcache/cache-keys/package-b6d16e35ea34fa5749ed92c8062e1cea96fd24f4"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -729,21 +749,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d
+    - PACKAGE_SPEC_ID: 291ec533f804015a31ec89443c1100a2ae526856
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d-{{checksum ".buildcache/cache-keys/package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d"}}
+        key: package-291ec533f804015a31ec89443c1100a2ae526856-{{checksum ".buildcache/cache-keys/package-291ec533f804015a31ec89443c1100a2ae526856"}}
         name: Restore package cache
     - run:
         command: |2
@@ -759,11 +779,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -789,7 +809,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d-{{checksum ".buildcache/cache-keys/package-b17d3b7ce493b8e5f4053d2204c4d72c8ac27a3d"}}
+        key: package-291ec533f804015a31ec89443c1100a2ae526856-{{checksum ".buildcache/cache-keys/package-291ec533f804015a31ec89443c1100a2ae526856"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -801,21 +821,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 37b45145ed658373504e8a36657746ee6c270e4c
+    - PACKAGE_SPEC_ID: 809c3d22aa07bb5c66dca99d44efdd2bb37f2525
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-37b45145ed658373504e8a36657746ee6c270e4c-{{checksum ".buildcache/cache-keys/package-37b45145ed658373504e8a36657746ee6c270e4c"}}
+        key: package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525-{{checksum ".buildcache/cache-keys/package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525"}}
         name: Restore package cache
     - run:
         command: |2
@@ -831,11 +851,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -861,10 +881,20 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-37b45145ed658373504e8a36657746ee6c270e4c-{{checksum ".buildcache/cache-keys/package-37b45145ed658373504e8a36657746ee6c270e4c"}}
+        key: package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525-{{checksum ".buildcache/cache-keys/package-809c3d22aa07bb5c66dca99d44efdd2bb37f2525"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-12-alpine:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=12-alpine
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
   solaris_amd64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -873,21 +903,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 81a9889cba175c3e37b803deee427a26de83ea45
+    - PACKAGE_SPEC_ID: 4571f72423cae365aaad07ec1a16fffe7aaa468e
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-81a9889cba175c3e37b803deee427a26de83ea45-{{checksum ".buildcache/cache-keys/package-81a9889cba175c3e37b803deee427a26de83ea45"}}
+        key: package-4571f72423cae365aaad07ec1a16fffe7aaa468e-{{checksum ".buildcache/cache-keys/package-4571f72423cae365aaad07ec1a16fffe7aaa468e"}}
         name: Restore package cache
     - run:
         command: |2
@@ -903,11 +933,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -933,7 +963,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-81a9889cba175c3e37b803deee427a26de83ea45-{{checksum ".buildcache/cache-keys/package-81a9889cba175c3e37b803deee427a26de83ea45"}}
+        key: package-4571f72423cae365aaad07ec1a16fffe7aaa468e-{{checksum ".buildcache/cache-keys/package-4571f72423cae365aaad07ec1a16fffe7aaa468e"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -941,14 +971,12 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
-    - add_ssh_keys:
-        fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
     - checkout
     - run:
         command: |
           make test-ci
         name: Run Acceptance Tests
+        no_output_timeout: 15m
     - run:
         command: |
           echo 'export SLACK_BUILD_STATUS="fail"' >> $BASH_ENV
@@ -1085,21 +1113,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 383ad9829835c0d2c2c0ce272e7f9e483dbc79b0
+    - PACKAGE_SPEC_ID: e5c674f011608ff0ec51285ea342fe7a95f803e5
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0-{{checksum ".buildcache/cache-keys/package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0"}}
+        key: package-e5c674f011608ff0ec51285ea342fe7a95f803e5-{{checksum ".buildcache/cache-keys/package-e5c674f011608ff0ec51285ea342fe7a95f803e5"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1115,11 +1143,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -1145,7 +1173,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0-{{checksum ".buildcache/cache-keys/package-383ad9829835c0d2c2c0ce272e7f9e483dbc79b0"}}
+        key: package-e5c674f011608ff0ec51285ea342fe7a95f803e5-{{checksum ".buildcache/cache-keys/package-e5c674f011608ff0ec51285ea342fe7a95f803e5"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1157,21 +1185,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: dd519728552ec4cdb7de60be0b921ec6e0b00488
+    - PACKAGE_SPEC_ID: d2dbe866712854d51e105c9b8b33ff5e22d1287c
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-dd519728552ec4cdb7de60be0b921ec6e0b00488-{{checksum ".buildcache/cache-keys/package-dd519728552ec4cdb7de60be0b921ec6e0b00488"}}
+        key: package-d2dbe866712854d51e105c9b8b33ff5e22d1287c-{{checksum ".buildcache/cache-keys/package-d2dbe866712854d51e105c9b8b33ff5e22d1287c"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1187,11 +1215,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -1217,7 +1245,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-dd519728552ec4cdb7de60be0b921ec6e0b00488-{{checksum ".buildcache/cache-keys/package-dd519728552ec4cdb7de60be0b921ec6e0b00488"}}
+        key: package-d2dbe866712854d51e105c9b8b33ff5e22d1287c-{{checksum ".buildcache/cache-keys/package-d2dbe866712854d51e105c9b8b33ff5e22d1287c"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1229,21 +1257,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 7517fcb853dd38d00a4f595a859bda2362da3638
+    - PACKAGE_SPEC_ID: 45fe69b6571284299223e8245f29c40ffd9c43dd
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-7517fcb853dd38d00a4f595a859bda2362da3638-{{checksum ".buildcache/cache-keys/package-7517fcb853dd38d00a4f595a859bda2362da3638"}}
+        key: package-45fe69b6571284299223e8245f29c40ffd9c43dd-{{checksum ".buildcache/cache-keys/package-45fe69b6571284299223e8245f29c40ffd9c43dd"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1259,11 +1287,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -1289,7 +1317,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-7517fcb853dd38d00a4f595a859bda2362da3638-{{checksum ".buildcache/cache-keys/package-7517fcb853dd38d00a4f595a859bda2362da3638"}}
+        key: package-45fe69b6571284299223e8245f29c40ffd9c43dd-{{checksum ".buildcache/cache-keys/package-45fe69b6571284299223e8245f29c40ffd9c43dd"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1301,21 +1329,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 0371c7a0cdf24497d4e731d8b23a0cae41f7d989
+    - PACKAGE_SPEC_ID: c8401fcf82b86f62e39516bc847423296f351dcf
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989-{{checksum ".buildcache/cache-keys/package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989"}}
+        key: package-c8401fcf82b86f62e39516bc847423296f351dcf-{{checksum ".buildcache/cache-keys/package-c8401fcf82b86f62e39516bc847423296f351dcf"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1331,11 +1359,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -1361,7 +1389,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989-{{checksum ".buildcache/cache-keys/package-0371c7a0cdf24497d4e731d8b23a0cae41f7d989"}}
+        key: package-c8401fcf82b86f62e39516bc847423296f351dcf-{{checksum ".buildcache/cache-keys/package-c8401fcf82b86f62e39516bc847423296f351dcf"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1373,21 +1401,21 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 28e191cc1f1094ca13f3617ca5d159b659ea8063
+    - PACKAGE_SPEC_ID: a60bb9fef193b738fd139723936b23ea38b18d25
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
         version: 19.03.12
     - add_ssh_keys:
         fingerprints:
-        - c6:96:98:82:dc:04:6c:39:dd:ac:83:05:e3:15:1c:98
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
     - checkout:
         path: .
     - run:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-28e191cc1f1094ca13f3617ca5d159b659ea8063-{{checksum ".buildcache/cache-keys/package-28e191cc1f1094ca13f3617ca5d159b659ea8063"}}
+        key: package-a60bb9fef193b738fd139723936b23ea38b18d25-{{checksum ".buildcache/cache-keys/package-a60bb9fef193b738fd139723936b23ea38b18d25"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1403,11 +1431,11 @@ jobs:
         command: make -C packages*.lock write-builder-cache-keys
         name: Write builder layer cache keys
     - restore_cache:
-        key: copy-source_a60d_{{checksum ".buildcache/cache-keys/copy-source-a60d61d8d34dba4e2c360254348f1c0130c194c5"}}
+        key: copy-source_869b_{{checksum ".buildcache/cache-keys/copy-source-869b67a2513a6ba3e9d2991876cfaed368594ba1"}}
         keys:
-        - go-modules_3775_{{checksum ".buildcache/cache-keys/go-modules-377574d7d13eaa0b1b40076910be751039c977dd"}}
-        - ui_7106_{{checksum ".buildcache/cache-keys/ui-7106f0993f7f82cce77f88cac3d4aad74561ace1"}}
-        - base_7958_{{checksum ".buildcache/cache-keys/base-7958f46eaafb50c5d467b2bd9833f1dc9a2dd01b"}}
+        - go-modules_daae_{{checksum ".buildcache/cache-keys/go-modules-daaedd9766787e3ce8f199fada1cb849024e6ca3"}}
+        - ui_8f7b_{{checksum ".buildcache/cache-keys/ui-8f7be629bbc1c7ec7af40fb527b15c30d590b13a"}}
+        - base_ec53_{{checksum ".buildcache/cache-keys/base-ec5342e30fcbfeb5947252a8ea679fb281052d16"}}
         name: 'Restore Builder Image Cache: copy-source'
     - run:
         command: make -C packages*.lock load-builder-cache
@@ -1433,12 +1461,22 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-28e191cc1f1094ca13f3617ca5d159b659ea8063-{{checksum ".buildcache/cache-keys/package-28e191cc1f1094ca13f3617ca5d159b659ea8063"}}
+        key: package-a60bb9fef193b738fd139723936b23ea38b18d25-{{checksum ".buildcache/cache-keys/package-a60bb9fef193b738fd139723936b23ea38b18d25"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sql-latest:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
+        name: Run SQL PgTap Tests
+    working_directory: ~/boundary
 workflows:
-  build-4ab42d391be9d56c:
+  build-591648cfcfc4fec2:
     jobs:
     - build-common-layers
     - darwin_amd64_package:
@@ -1506,6 +1544,10 @@ workflows:
   default:
     jobs:
     - build
+    - test-sql-latest
+    - test-sql-11-alpine
+    - test-sql-12-alpine
+    - test-sql-13-alpine
     - algolia-index:
         filters:
           branches:

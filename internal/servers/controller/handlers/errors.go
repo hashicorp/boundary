@@ -11,7 +11,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
-	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -53,7 +53,8 @@ func ApiErrorWithCode(c codes.Code) error {
 		status: int32(runtime.HTTPStatusFromCode(c)),
 		inner: &pb.Error{
 			Kind: c.String(),
-		}}
+		},
+	}
 }
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
@@ -63,7 +64,8 @@ func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...interface{}) e
 		inner: &pb.Error{
 			Kind:    c.String(),
 			Message: fmt.Sprintf(msg, args...),
-		}}
+		},
+	}
 }
 
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
@@ -73,42 +75,52 @@ func NotFoundError() error {
 		inner: &pb.Error{
 			Kind:    codes.NotFound.String(),
 			Message: "Resource not found.",
-		}}
+		},
+	}
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
-func NotFoundErrorf(msg string, a ...interface{}) error {
+func NotFoundErrorf(msg string, a ...interface{}) *apiError {
 	return &apiError{
 		status: http.StatusNotFound,
 		inner: &pb.Error{
 			Kind:    codes.NotFound.String(),
 			Message: fmt.Sprintf(msg, a...),
-		}}
+		},
+	}
+}
+
+var unauthorizedError = &apiError{
+	status: http.StatusForbidden,
+	inner: &pb.Error{
+		Kind:    codes.PermissionDenied.String(),
+		Message: "Forbidden.",
+	},
 }
 
 func ForbiddenError() error {
-	return &apiError{
-		status: http.StatusForbidden,
-		inner: &pb.Error{
-			Kind:    codes.PermissionDenied.String(),
-			Message: "Forbidden.",
-		}}
+	return unauthorizedError
+}
+
+var unauthenticatedError = &apiError{
+	status: http.StatusUnauthorized,
+	inner: &pb.Error{
+		Kind:    codes.Unauthenticated.String(),
+		Message: "Unauthenticated, or invalid token.",
+	},
 }
 
 func UnauthenticatedError() error {
-	return &apiError{
-		status: http.StatusUnauthorized,
-		inner: &pb.Error{
-			Kind:    codes.Unauthenticated.String(),
-			Message: "Unauthenticated, or invalid token.",
-		}}
+	return unauthenticatedError
 }
 
-func InvalidArgumentErrorf(msg string, fields map[string]string) error {
+func InvalidArgumentErrorf(msg string, fields map[string]string) *apiError {
+	const op = "handlers.InvalidArgumentErrorf"
+	ctx := context.TODO()
 	err := ApiErrorWithCodeAndMessage(codes.InvalidArgument, msg)
 	var apiErr *apiError
 	if !errors.As(err, &apiErr) {
-		hclog.L().Error("Unable to build invalid argument api error.", "original error", err)
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid argument api error."))
 	}
 
 	if len(fields) > 0 {
@@ -124,7 +136,7 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 }
 
 // Converts a known errors into an error that can presented to an end user over the API.
-func backendErrorToApiError(inErr error) error {
+func backendErrorToApiError(inErr error) *apiError {
 	stErr := status.Convert(inErr)
 
 	switch {
@@ -136,7 +148,8 @@ func backendErrorToApiError(inErr error) error {
 			inner: &pb.Error{
 				Kind:    codes.NotFound.String(),
 				Message: http.StatusText(http.StatusNotFound),
-			}}
+			},
+		}
 	case status.Code(inErr) == codes.Unimplemented:
 		// Instead of returning a 501 we always want to return a 405 when a method isn't implemented.
 		return &apiError{
@@ -144,26 +157,35 @@ func backendErrorToApiError(inErr error) error {
 			inner: &pb.Error{
 				Kind:    codes.Unimplemented.String(),
 				Message: stErr.Message(),
-			}}
-	case errors.Is(inErr, errors.ErrRecordNotFound), errors.Match(errors.T(errors.RecordNotFound), inErr):
+			},
+		}
+	case errors.Match(errors.T(errors.RecordNotFound), inErr):
 		return NotFoundErrorf(genericNotFoundMsg)
-	case errors.Is(inErr, errors.ErrInvalidFieldMask), errors.Is(inErr, errors.ErrEmptyFieldMask),
-		errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
+	case errors.Match(errors.T(errors.AccountAlreadyAssociated), inErr):
+		return InvalidArgumentErrorf(inErr.Error(), nil)
+	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
-	case errors.IsUniqueError(inErr), errors.Is(inErr, errors.ErrNotUnique):
+	case errors.IsUniqueError(inErr):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
 
-	// We haven't been able to identify what this backend error is, return it as an internal error
+	var statusCode int32 = http.StatusInternalServerError
+	var domainErr *errors.Err
+	if errors.As(inErr, &domainErr) && domainErr.Code >= 400 && domainErr.Code <= 599 {
+		// Domain error codes 400-599 align with http client and server error codes, use the domain error code instead of 500
+		statusCode = int32(domainErr.Code)
+	}
+
 	// TODO: Don't return potentially sensitive information (like which user id an account
 	//  is already associated with when attempting to re-associate it).
 	return &apiError{
-		status: http.StatusInternalServerError,
+		status: statusCode,
 		inner:  &pb.Error{Kind: codes.Internal.String(), Message: inErr.Error()},
 	}
 }
 
-func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
+func ErrorHandler() runtime.ErrorHandlerFunc {
+	const op = "handlers.ErrorHandler"
 	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, mar runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
 		// API specified error, otherwise we need to translate repo/db errors.
@@ -171,20 +193,20 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		isApiErr := errors.As(inErr, &apiErr)
 		if !isApiErr {
 			if err := backendErrorToApiError(inErr); err != nil && !errors.As(err, &apiErr) {
-				logger.Error("failed to cast error to api error", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("failed to cast error to api error"))
 			}
 		}
 
 		if apiErr.status == http.StatusInternalServerError {
-			logger.Error("internal error returned", "error", inErr)
+			event.WriteError(ctx, op, inErr, event.WithInfoMsg("internal error returned"))
 		}
 
 		buf, merr := mar.Marshal(apiErr.inner)
 		if merr != nil {
-			logger.Error("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr.inner), "error", merr)
+			event.WriteError(ctx, op, merr, event.WithInfoMsg("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr.inner)))
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
-				logger.Error("failed to write response", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("failed to write response"))
 			}
 			return
 		}
@@ -192,8 +214,12 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 		w.Header().Set("Content-Type", mar.ContentType(apiErr.inner))
 		w.WriteHeader(int(apiErr.status))
 		if _, err := w.Write(buf); err != nil {
-			logger.Error("failed to send response chunk", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfoMsg("failed to send response chunk"))
 			return
 		}
 	}
+}
+
+func ToApiError(e error) *pb.Error {
+	return backendErrorToApiError(e).inner
 }

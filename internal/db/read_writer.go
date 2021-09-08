@@ -24,6 +24,21 @@ const (
 	DefaultLimit = 10000
 )
 
+// OrderBy defines an enum type for declaring a column's order by criteria.
+type OrderBy int
+
+const (
+	// UnknownOrderBy would designate an unknown ordering of the column, which
+	// is the standard ordering for any select without an order by clause.
+	UnknownOrderBy = iota
+
+	// AscendingOrderBy would designate ordering the column in ascending order.
+	AscendingOrderBy
+
+	// DescendingOrderBy would designate ordering the column in decending order.
+	DescendingOrderBy
+)
+
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupById will lookup a resource by its primary key id, which must be
@@ -105,6 +120,13 @@ type Writer interface {
 	// supported.
 	Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error)
 
+	// Query will run the raw query and return the *sql.Rows results. Query will
+	// operate within the context of any ongoing transaction for the db.Writer.  The
+	// caller must close the returned *sql.Rows. Query can/should be used in
+	// combination with ScanRows.  Query is included in the Writer interface
+	// so callers can execute updates and inserts with returning values.
+	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
 	GetTicket(i interface{}) (*store.Ticket, error)
@@ -119,6 +141,9 @@ type Writer interface {
 		msgs []*oplog.Message,
 		opt ...Option,
 	) error
+
+	// ScanRows will scan sql rows into the interface provided
+	ScanRows(rows *sql.Rows, result interface{}) error
 }
 
 const (
@@ -169,8 +194,10 @@ type Db struct {
 }
 
 // ensure that Db implements the interfaces of: Reader and Writer
-var _ Reader = (*Db)(nil)
-var _ Writer = (*Db)(nil)
+var (
+	_ Reader = (*Db)(nil)
+	_ Writer = (*Db)(nil)
+)
 
 func New(underlying *gorm.DB) *Db {
 	return &Db{underlying: underlying}
@@ -179,14 +206,14 @@ func New(underlying *gorm.DB) *Db {
 // Exec will execute the sql with the values as parameters. The int returned
 // is the number of rows affected by the sql. No options are currently
 // supported.
-func (rw *Db) Exec(_ context.Context, sql string, values []interface{}, _ ...Option) (int, error) {
+func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, _ ...Option) (int, error) {
 	const op = "db.Exec"
 	if sql == "" {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing sql")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	gormDb := rw.underlying.Exec(sql, values...)
 	if gormDb.Error != nil {
-		return NoRowsAffected, errors.Wrap(gormDb.Error, op)
+		return NoRowsAffected, errors.Wrap(ctx, gormDb.Error, op, errors.WithoutEvent())
 	}
 	return int(gormDb.RowsAffected), nil
 }
@@ -195,14 +222,14 @@ func (rw *Db) Exec(_ context.Context, sql string, values []interface{}, _ ...Opt
 // operate within the context of any ongoing transaction for the db.Reader.  The
 // caller must close the returned *sql.Rows. Query can/should be used in
 // combination with ScanRows.
-func (rw *Db) Query(_ context.Context, sql string, values []interface{}, _ ...Option) (*sql.Rows, error) {
+func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, _ ...Option) (*sql.Rows, error) {
 	const op = "db.Query"
 	if sql == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing sql")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	gormDb := rw.underlying.Raw(sql, values...)
 	if gormDb.Error != nil {
-		return nil, errors.Wrap(gormDb.Error, op)
+		return nil, errors.Wrap(ctx, gormDb.Error, op, errors.WithoutEvent())
 	}
 	return gormDb.Rows()
 }
@@ -211,10 +238,10 @@ func (rw *Db) Query(_ context.Context, sql string, values []interface{}, _ ...Op
 func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
 	const op = "db.ScanRows"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(result) {
-		return errors.New(errors.InvalidParameter, op, "missing result")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing result")
 	}
 	return rw.underlying.ScanRows(rows, result)
 }
@@ -228,7 +255,7 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 		return nil
 	}
 	if err := rw.LookupById(ctx, i, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
 }
@@ -240,21 +267,21 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return errors.New(errors.InvalidParameter, op, "missing interface")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing interface")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
-		_, err := validateOplogArgs(i, opts)
+		_, err := validateOplogArgs(ctx, i, opts)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	// these fields should be nil, since they are not writeable and we want the
@@ -264,7 +291,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 	}
@@ -273,26 +300,26 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	if err := rw.underlying.Create(i).Error; err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("create failed"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("create failed"), errors.WithoutEvent())
 	}
 	if withOplog {
 		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if opts.newOplogMsg != nil {
 		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
 		}
 		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
 }
@@ -303,20 +330,20 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(createItems) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing interfaces")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing interfaces")
 	}
 	opts := GetOpts(opt...)
 	if opts.withLookup {
-		return errors.New(errors.InvalidParameter, op, "with lookup not a supported option")
+		return errors.New(ctx, errors.InvalidParameter, op, "with lookup not a supported option")
 	}
 	if opts.newOplogMsg != nil {
-		return errors.New(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
+		return errors.New(ctx, errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 	}
 	if opts.withOplog && opts.newOplogMsgs != nil {
-		return errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
+		return errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -326,35 +353,34 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 		currentType := reflect.TypeOf(v)
 		if foundType != currentType {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("create items contains disparate types. item %d is not a %s", i, foundType.Name()))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("create items contains disparate types. item %d is not a %s", i, foundType.Name()))
 		}
 	}
 	var ticket *store.Ticket
 	if opts.withOplog {
-		_, err := validateOplogArgs(createItems[0], opts)
+		_, err := validateOplogArgs(ctx, createItems[0], opts)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
 		}
 		ticket, err = rw.GetTicket(createItems[0])
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	for _, item := range createItems {
 		if err := rw.Create(ctx, item); err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
-
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to add oplog"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add oplog"))
 		}
 	}
 	if opts.newOplogMsgs != nil {
 		msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, createItems)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("returning oplog msgs failed"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
 		}
 		*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 	}
@@ -383,61 +409,68 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing interface")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing interface")
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both fieldMaskPaths and setToNullPaths are missing")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both fieldMaskPaths and setToNullPaths are missing")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 
 	// we need to filter out some non-updatable fields (like: CreateTime, etc)
 	fieldMaskPaths = filterPaths(fieldMaskPaths)
 	setToNullPaths = filterPaths(setToNullPaths)
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
 	}
 
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
 	if err != nil {
-		return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("getting update fields failed"))
+		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("getting update fields failed"))
 	}
 	if len(updateFields) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
+
+	// // This is not a boundary scope, but rather a gorm Scope:
+	// // https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
+	// scope := rw.underlying.NewScope(i)
+	// if scope.PrimaryKeyZero() {
+	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
+	// }
 
 	mDb := rw.underlying.Model(i)
 	err = mDb.Statement.Parse(i)
 	if err != nil || mDb.Statement.Schema == nil {
-		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+		return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 	}
 	reflectValue := reflect.Indirect(reflect.ValueOf(i))
 	for _, pf := range mDb.Statement.Schema.PrimaryFields {
 		if _, isZero := pf.ValueOf(reflectValue); isZero {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
+			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
 		if contains(fieldMaskPaths, pf.Name) {
-			return NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", pf.Name))
+			return NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", pf.Name))
 		}
 	}
 
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
-		_, err := validateOplogArgs(i, opts)
+		_, err := validateOplogArgs(ctx, i, opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-				return NoRowsAffected, errors.Wrap(err, op)
+				return NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 		}
 	}
@@ -446,7 +479,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	var underlying *gorm.DB
@@ -456,16 +489,16 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		var args []interface{}
 		if opts.WithVersion != nil {
 			if *opts.WithVersion == 0 {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, "with version option is zero")
+				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "with version option is zero")
 			}
 			mDb := rw.underlying.Model(i)
 			err = mDb.Statement.Parse(i)
 			if err != nil && mDb.Statement.Schema == nil {
-				return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+				return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 			}
 			if !contains(mDb.Statement.Schema.DBNames, "version") {
 				// if _, ok := stmt.Schema.FieldsByName["version"]; !ok {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
+				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
 			}
 			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
@@ -478,9 +511,9 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if underlying.Error != nil {
 		if underlying.Error == gorm.ErrRecordNotFound {
-			return NoRowsAffected, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return NoRowsAffected, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
 		}
-		return NoRowsAffected, errors.Wrap(underlying.Error, op)
+		return NoRowsAffected, errors.Wrap(ctx, underlying.Error, op, errors.WithoutEvent())
 	}
 	rowsUpdated := int(underlying.RowsAffected)
 	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {
@@ -498,13 +531,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 		if withOplog {
 			if err := rw.addOplog(ctx, UpdateOp, oplogOpts, ticket, i); err != nil {
-				return rowsUpdated, errors.Wrap(err, op, errors.WithMsg("add oplog failed"))
+				return rowsUpdated, errors.Wrap(ctx, err, op, errors.WithMsg("add oplog failed"))
 			}
 		}
 		if opts.newOplogMsg != nil {
 			msg, err := rw.newOplogMessage(ctx, UpdateOp, i, WithFieldMaskPaths(oplogFieldMasks), WithNullPaths(oplogNullPaths))
 			if err != nil {
-				return rowsUpdated, errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
+				return rowsUpdated, errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
 			}
 			*opts.newOplogMsg = *msg
 		}
@@ -513,7 +546,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	// from the db
 	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return NoRowsAffected, errors.Wrap(err, op)
+		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return rowsUpdated, nil
 }
@@ -526,33 +559,41 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing interface")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing interface")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
+	// // This is not a boundary scope, but rather a gorm Scope:
+	// // https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
+	// scope := rw.underlying.NewScope(i)
+	// if opts.withWhereClause == "" {
+	// 	if scope.PrimaryKeyZero() {
+	// 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
+	// 	}
+	// }
 
 	mDb := rw.underlying.Model(i)
 	err := mDb.Statement.Parse(i)
 	if err == nil && mDb.Statement.Schema == nil {
-		return NoRowsAffected, errors.New(errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+		return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
 	}
 	reflectValue := reflect.Indirect(reflect.ValueOf(i))
 	for _, pf := range mDb.Statement.Schema.PrimaryFields {
 		if _, isZero := pf.ValueOf(reflectValue); isZero {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
+			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
 	}
 
 	if withOplog {
-		_, err := validateOplogArgs(i, opts)
+		_, err := validateOplogArgs(ctx, i, opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	var ticket *store.Ticket
@@ -560,7 +601,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	db := rw.underlying
@@ -569,19 +610,19 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	}
 	db = db.Delete(i)
 	if db.Error != nil {
-		return NoRowsAffected, errors.Wrap(db.Error, op)
+		return NoRowsAffected, errors.Wrap(ctx, db.Error, op, errors.WithoutEvent())
 	}
 	rowsDeleted := int(db.RowsAffected)
 	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
 		if withOplog {
 			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
-				return rowsDeleted, errors.Wrap(db.Error, op, errors.WithMsg("add oplog failed"))
+				return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("add oplog failed"))
 			}
 		}
 		if opts.newOplogMsg != nil {
 			msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
 			if err != nil {
-				return rowsDeleted, errors.Wrap(db.Error, op, errors.WithMsg("returning oplog failed"))
+				return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
 			}
 			*opts.newOplogMsg = *msg
 		}
@@ -595,17 +636,17 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
 	const op = "db.DeleteItems"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(deleteItems) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "no interfaces to delete")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no interfaces to delete")
 	}
 	opts := GetOpts(opt...)
 	if opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 	}
 	if opts.withOplog && opts.newOplogMsgs != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -615,19 +656,19 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		}
 		currentType := reflect.TypeOf(v)
 		if foundType != currentType {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("items contain disparate types.  item %d is not a %s", i, foundType.Name()))
+			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("items contain disparate types.  item %d is not a %s", i, foundType.Name()))
 		}
 	}
 
 	var ticket *store.Ticket
 	if opts.withOplog {
-		_, err := validateOplogArgs(deleteItems[0], opts)
+		_, err := validateOplogArgs(ctx, deleteItems[0], opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
 		}
 		ticket, err = rw.GetTicket(deleteItems[0])
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	rowsDeleted := 0
@@ -637,20 +678,20 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		// relationship between Create and CreateItems).
 		underlying := rw.underlying.Delete(item)
 		if underlying.Error != nil {
-			return rowsDeleted, errors.Wrap(underlying.Error, op)
+			return rowsDeleted, errors.Wrap(ctx, underlying.Error, op, errors.WithoutEvent())
 		}
 		rowsDeleted += int(underlying.RowsAffected)
 	}
 	if rowsDeleted > 0 && (opts.withOplog || opts.newOplogMsgs != nil) {
 		if opts.withOplog {
 			if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("unable to add oplog"))
+				return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("unable to add oplog"))
 			}
 		}
 		if opts.newOplogMsgs != nil {
 			msgs, err := rw.oplogMsgsForItems(ctx, DeleteOp, opts, deleteItems)
 			if err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("returning oplog msgs failed"))
+				return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
 			}
 			*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 		}
@@ -658,18 +699,18 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	return rowsDeleted, nil
 }
 
-func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, error) {
+func validateOplogArgs(ctx context.Context, i interface{}, opts Options) (oplog.ReplayableMessage, error) {
 	const op = "db.validateOplogArgs"
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper", errors.WithoutEvent())
 	}
 	if len(oplogArgs.metadata) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing metadata")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing metadata", errors.WithoutEvent())
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.E(errors.WithOp(op), errors.WithMsg("not a replayable message"))
+		return nil, errors.E(ctx, errors.WithOp(op), errors.WithMsg("not a replayable message"), errors.WithoutEvent())
 	}
 	return replayable, nil
 }
@@ -677,15 +718,15 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	const op = "db.getTicketFor"
 	if rw.underlying == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
 	}
 	ticket, err := ticketer.GetTicket(aggregateName)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)), errors.WithoutEvent())
 	}
 	return ticket, nil
 }
@@ -695,14 +736,14 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	const op = "db.GetTicket"
 	if rw.underlying == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db", errors.WithoutEvent())
 	}
 	if isNil(i) {
-		return nil, errors.New(errors.InvalidParameter, op, "missing interface")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing interface", errors.WithoutEvent())
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "not a replayable message")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not a replayable message", errors.WithoutEvent())
 	}
 	return rw.getTicketFor(replayable.TableName())
 }
@@ -710,7 +751,7 @@ func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {
 	const op = "db.oplogMsgsForItems"
 	if len(items) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing items")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing items", errors.WithoutEvent())
 	}
 	oplogMsgs := []*oplog.Message{}
 	var foundType reflect.Type
@@ -720,11 +761,11 @@ func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options
 		}
 		currentType := reflect.TypeOf(item)
 		if foundType != currentType {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("items contains disparate types. item (%d) %s is not a %s", i, currentType, foundType))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("items contains disparate types. item (%d) %s is not a %s", i, currentType, foundType), errors.WithoutEvent())
 		}
 		msg, err := rw.newOplogMessage(ctx, opType, item, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		oplogMsgs = append(oplogMsgs, msg)
 	}
@@ -738,30 +779,30 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	const op = "db.addOplogForItems"
 	oplogArgs := opts.oplogOpts
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
 	if len(items) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing items")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing items", errors.WithoutEvent())
 	}
 	if oplogArgs.metadata == nil {
-		return errors.New(errors.InvalidParameter, op, "missing metadata")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata", errors.WithoutEvent())
 	}
 	if oplogArgs.wrapper == nil {
-		return errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing wrapper", errors.WithoutEvent())
 	}
 
 	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 
-	replayable, err := validateOplogArgs(items[0], opts)
+	replayable, err := validateOplogArgs(ctx, items[0], opts)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"), errors.WithoutEvent())
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
@@ -770,7 +811,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to create oplog entry"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create oplog entry"), errors.WithoutEvent())
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
@@ -778,7 +819,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		ticket,
 		oplogMsgs...,
 	); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog entry"), errors.WithoutEvent())
 	}
 	return nil
 }
@@ -786,16 +827,16 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i interface{}) error {
 	const op = "db.addOplog"
 	oplogArgs := opts.oplogOpts
-	replayable, err := validateOplogArgs(i, opts)
+	replayable, err := validateOplogArgs(ctx, i, opts)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
@@ -804,11 +845,11 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	msg, err := rw.newOplogMessage(ctx, opType, i, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	err = entry.WriteEntryWith(
 		ctx,
@@ -817,7 +858,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		msg,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog entry"), errors.WithoutEvent())
 	}
 	return nil
 }
@@ -827,24 +868,24 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper, ticket *store.Ticket, metadata oplog.Metadata, msgs []*oplog.Message, _ ...Option) error {
 	const op = "db.WriteOplogEntryWith"
 	if wrapper == nil {
-		return errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket")
 	}
 	if len(msgs) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing msgs")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing msgs")
 	}
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(metadata) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing metadata")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata")
 	}
 
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"))
 	}
 
 	entry, err := oplog.NewEntry(
@@ -854,7 +895,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to create oplog entry"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create oplog entry"))
 	}
 	err = entry.WriteEntryWith(
 		ctx,
@@ -863,17 +904,17 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 		msgs...,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog entry"))
 	}
 	return nil
 }
 
-func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, opt ...Option) (*oplog.Message, error) {
+func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{}, opt ...Option) (*oplog.Message, error) {
 	const op = "db.newOplogMessage"
 	opts := GetOpts(opt...)
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "not a replayable interface")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "not a replayable interface", errors.WithoutEvent())
 	}
 	msg := oplog.Message{
 		Message:  i.(proto.Message),
@@ -889,7 +930,7 @@ func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, o
 	case DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	default:
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("operation type %v is not supported", opType))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("operation type %v is not supported", opType), errors.WithoutEvent())
 	}
 	return &msg, nil
 }
@@ -901,12 +942,12 @@ func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, o
 func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
 	const op = "db.DoTx"
 	if w.underlying == nil {
-		return RetryInfo{}, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
-			return info, errors.New(errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1))
+			return info, errors.New(ctx, errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1), errors.WithoutEvent())
 		}
 
 		// step one of this, start a transaction...
@@ -916,23 +957,23 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		rw := &Db{newTx}
 		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
-				return info, errors.Wrap(err, op)
+				return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
-			if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
+			if errors.Match(errors.T(errors.TicketAlreadyRedeemed), err) {
 				d := backOff.Duration(attempts)
 				info.Retries++
 				info.Backoff = info.Backoff + d
 				time.Sleep(d)
 				continue
 			}
-			return info, errors.Wrap(err, op)
+			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
 		if err := newTx.Commit().Error; err != nil {
 			if err := newTx.Rollback().Error; err != nil {
-				return info, errors.Wrap(err, op)
+				return info, errors.Wrap(ctx, err, op)
 			}
-			return info, errors.Wrap(err, op)
+			return info, errors.Wrap(ctx, err, op)
 		}
 		return info, nil // it all worked!!!
 	}
@@ -940,28 +981,28 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
 // must be unique. Options are ignored.
-func (rw *Db) LookupById(_ context.Context, resourceWithIder interface{}, _ ...Option) error {
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
-	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
+	primaryKey, where, err := primaryKeyWhere(ctx, resourceWithIder)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
 		}
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
 }
 
-func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e error) {
+func primaryKeyWhere(ctx context.Context, resourceWithIder interface{}) (pkey string, w string, e error) {
 	const op = "db.primaryKeyWhere"
 	var primaryKey, where string
 	switch resourceType := resourceWithIder.(type) {
@@ -972,10 +1013,10 @@ func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e err
 		primaryKey = resourceType.GetPrivateId()
 		where = "private_id = ?"
 	default:
-		return "", "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder))
+		return "", "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder), errors.WithoutEvent())
 	}
 	if primaryKey == "" {
-		return "", "", errors.New(errors.InvalidParameter, op, "missing primary key")
+		return "", "", errors.New(ctx, errors.InvalidParameter, op, "missing primary key", errors.WithoutEvent())
 	}
 	return primaryKey, where, nil
 }
@@ -987,35 +1028,41 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string, args ...interface{}) error {
+func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	if err := rw.underlying.Where(where, args...).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
 		}
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
 }
 
 // SearchWhere will search for all the resources it can find using a where
-// clause with parameters.  Supports the WithLimit option.  If
-// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
-// default limits are used for results.  Supports the WithOrder option.
+// clause with parameters. An error will be returned if args are provided without a
+// where clause.
+//
+// Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+// Supports the WithOrder option.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	if where == "" && len(args) > 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "args provided with empty where")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	var err error
 	db := rw.underlying.WithContext(ctx)
@@ -1031,10 +1078,7 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		db = db.Limit(opts.WithLimit)
 	}
 
-	// Perform argument subst
-	switch len(args) {
-	case 0:
-	default:
+	if where != "" {
 		db = db.Where(where, args...)
 	}
 
@@ -1042,7 +1086,7 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	err = db.Find(resources).Error
 	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
-		return errors.Wrap(err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
 }
@@ -1052,7 +1096,7 @@ func filterPaths(paths []string) []string {
 	if len(paths) == 0 {
 		return nil
 	}
-	filtered := []string{}
+	var filtered []string
 	for _, p := range paths {
 		switch {
 		case strings.EqualFold(p, "CreateTime"):
@@ -1069,9 +1113,8 @@ func filterPaths(paths []string) []string {
 }
 
 func setFieldsToNil(i interface{}, fieldNames []string) {
-	if err := Clear(i, fieldNames, 2); err != nil {
-		// do nothing
-	}
+	// Note: error cases are not handled
+	_ = Clear(i, fieldNames, 2)
 }
 
 func isNil(i interface{}) bool {
@@ -1115,11 +1158,11 @@ func Clear(i interface{}, fields []string, depth int) error {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
-			return errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+			return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
 		}
 		clear(v, fm, depth)
 	default:
-		return errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
 	}
 	return nil
 }

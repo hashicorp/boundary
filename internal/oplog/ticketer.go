@@ -1,17 +1,9 @@
 package oplog
 
 import (
-	"errors"
-	"fmt"
-
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"gorm.io/gorm"
-)
-
-var (
-	ErrTicketNotFound        = errors.New("ticket not found")
-	ErrTicketAlreadyRedeemed = errors.New("ticket already redeemed")
-	ErrTicketRedeeming       = errors.New("error trying to redeem ticket")
 )
 
 const DefaultAggregateName = "global"
@@ -39,8 +31,9 @@ type GormTicketer struct {
 
 // NewGormTicketer creates a new ticketer that uses gorm for storage
 func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
+	const op = "oplog.NewGormTicketer"
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
 	}
 	opts := GetOpts(opt...)
 	enableAggregateNames := opts[optionWithAggregateNames].(bool)
@@ -50,8 +43,9 @@ func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
 // GetTicket returns a ticket for the specified name.  You MUST GetTicket in the same transaction
 // that you're using to write to the database tables. Names allow us to shard tickets around domain root names
 func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, error) {
+	const op = "oplog.(GormTicketer).GetTicket"
 	if aggregateName == "" {
-		return nil, errors.New("bad ticket name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket name")
 	}
 	name := DefaultAggregateName
 	if ticketer.withAggregateNames {
@@ -60,24 +54,25 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 	ticket := store.Ticket{}
 	if err := ticketer.tx.First(&ticket, store.Ticket{Name: name}).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrTicketNotFound
+			return nil, errors.NewDeprecated(errors.TicketNotFound, op, "ticket not found")
 		}
-		return nil, fmt.Errorf("error retreiving ticket from storage: %w", err)
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error retrieving ticket from storage"))
 	}
 	return &ticket, nil
 }
 
 // Redeem will attempt to redeem the ticket. If the ticket version has already been used, then an error is returned
 func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
+	const op = "oplog.(GormTicketer).Redeem"
 	if t == nil {
-		return errors.New("ticket is nil")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticket")
 	}
 	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
-		return ErrTicketRedeeming
+		return errors.WrapDeprecated(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
 	}
 	if tx.RowsAffected != 1 {
-		return ErrTicketAlreadyRedeemed
+		return errors.NewDeprecated(errors.TicketAlreadyRedeemed, op, "ticket already redeemed")
 	}
 	return nil
 }

@@ -7,5 +7,6 @@ export API_GEN_BASEPATH := ${GEN_BASEPATH}/api
 api:
 	go run .
 	goimports -w ${API_GEN_BASEPATH}
+	gofumpt -w ${API_GEN_BASEPATH}
 
 .PHONY: api

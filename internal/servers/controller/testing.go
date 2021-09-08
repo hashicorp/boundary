@@ -2,11 +2,13 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -14,20 +16,32 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"gorm.io/gorm"
 )
 
 const (
-	DefaultTestAuthMethodId = "ampw_1234567890"
-	DefaultTestLoginName    = "user"
-	DefaultTestPassword     = "passpass"
+	DefaultOrgId                             = "o_1234567890"
+	DefaultProjectId                         = "p_1234567890"
+	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
+	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
+	DefaultTestLoginName                     = "admin"
+	DefaultTestUnprivilegedLoginName         = "user"
+	DefaultTestPassword                      = "passpass"
+	DefaultTestUserId                        = "u_1234567890"
+	DefaultTestPasswordAccountId             = intglobals.NewPasswordAccountPrefix + "_1234567890"
+	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
+	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
+	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -44,6 +58,11 @@ type TestController struct {
 	cancel       context.CancelFunc
 	name         string
 	opts         *TestControllerOpts
+}
+
+// Server returns the underlying base server
+func (tc *TestController) Server() *base.Server {
+	return tc.b
 }
 
 // Controller returns the underlying controller
@@ -120,9 +139,10 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
-		tc.b.DevAuthMethodId,
+		tc.b.DevPasswordAuthMethodId,
+		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
@@ -132,7 +152,38 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
-	return token.Item
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
+}
+
+func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
+	if tc.opts.DisableAuthMethodCreation {
+		tc.t.Error("no default auth method ID configured")
+		return nil
+	}
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
+		tc.Context(),
+		tc.b.DevPasswordAuthMethodId,
+		"login",
+		map[string]interface{}{
+			"login_name": tc.b.DevUnprivilegedLoginName,
+			"password":   tc.b.DevUnprivilegedPassword,
+		},
+	)
+	if err != nil {
+		tc.t.Error(fmt.Errorf("error logging in: %w", err))
+		return nil
+	}
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) addrs(purpose string) []string {
@@ -239,13 +290,19 @@ type TestControllerOpts struct {
 	// set.
 	Config *config.Config
 
-	// DefaultAuthMethodId is the default auth method ID to use, if set.
-	DefaultAuthMethodId string
+	// DefaultPasswordAuthMethodId is the default password method ID to use, if set.
+	DefaultPasswordAuthMethodId string
 
-	// DefaultLoginName is the login name used when creating the default account.
+	// DefaultOidcAuthMethodId is the default OIDC method ID to use, if set.
+	DefaultOidcAuthMethodId string
+
+	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
-	// DefaultPassword is the password used when creating the default account.
+	// DefaultUnprivilegedLoginName is the login name used when creating the default unprivileged account.
+	DefaultUnprivilegedLoginName string
+
+	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
 	// DisableInitialLoginRoleCreation can be set true to disable creating the
@@ -255,6 +312,10 @@ type TestControllerOpts struct {
 	// DisableAuthMethodCreation can be set true to disable creating an auth
 	// method automatically.
 	DisableAuthMethodCreation bool
+
+	// DisableOidcAuthMethodCreation can be set true to disable the built-in
+	// OIDC listener. Useful for e.g. unix listener tests.
+	DisableOidcAuthMethodCreation bool
 
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
@@ -305,11 +366,23 @@ type TestControllerOpts struct {
 	// generated, unless provided in a non-nil Config
 	Name string
 
+	// The suffix to use for initial resources
+	InitialResourcesSuffix string
+
 	// The logger to use, or one will be created
 	Logger hclog.Logger
+
+	// A cluster address for overriding the advertised controller listener
+	// (overrides address provided in config, if any)
+	PublicClusterAddr string
+
+	// The amount of time to wait before marking connections as closed when a
+	// worker has not reported in
+	StatusGracePeriodDuration time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.NewTestController"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if opts == nil {
@@ -324,10 +397,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	// Base server
-	tc.b = base.NewServer(nil)
-	tc.b.Command = &base.Command{
+	tc.b = base.NewServer(&base.Command{
+		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
-	}
+	})
 
 	// Get dev config, or use a provided one
 	var err error
@@ -347,27 +420,46 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller.Name = opts.Name
 	}
 
-	if opts.DefaultAuthMethodId != "" {
-		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+	if opts.DefaultPasswordAuthMethodId != "" {
+		tc.b.DevPasswordAuthMethodId = opts.DefaultPasswordAuthMethodId
 	} else {
-		tc.b.DevAuthMethodId = DefaultTestAuthMethodId
+		tc.b.DevPasswordAuthMethodId = DefaultTestPasswordAuthMethodId
+	}
+	if opts.DefaultOidcAuthMethodId != "" {
+		tc.b.DevOidcAuthMethodId = opts.DefaultOidcAuthMethodId
+	} else {
+		tc.b.DevOidcAuthMethodId = DefaultTestOidcAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
 	} else {
 		tc.b.DevLoginName = DefaultTestLoginName
 	}
+	if opts.DefaultUnprivilegedLoginName != "" {
+		tc.b.DevUnprivilegedLoginName = opts.DefaultUnprivilegedLoginName
+	} else {
+		tc.b.DevUnprivilegedLoginName = DefaultTestUnprivilegedLoginName
+	}
 	if opts.DefaultPassword != "" {
 		tc.b.DevPassword = opts.DefaultPassword
+		tc.b.DevUnprivilegedPassword = opts.DefaultPassword
 	} else {
 		tc.b.DevPassword = DefaultTestPassword
+		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
+	tc.b.DevOrgId = DefaultOrgId
+	tc.b.DevProjectId = DefaultProjectId
+	tc.b.DevPasswordAccountId = DefaultTestPasswordAccountId
+	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
+	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
+	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
 	if tc.b.Logger == nil {
 		tc.b.Logger = hclog.New(&hclog.LoggerOptions{
 			Level: hclog.Trace,
+			Mutex: tc.b.StderrLock,
 		})
 	}
 
@@ -375,13 +467,37 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = base62.Random(5)
+		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
 		if err != nil {
 			t.Fatal(err)
 		}
-		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
 	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Initialize status grace period
+	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
+
 	tc.name = opts.Config.Controller.Name
+
+	if opts.InitialResourcesSuffix != "" {
+		suffix := opts.InitialResourcesSuffix
+		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
+		tc.b.DevOidcAuthMethodId = "amoidc_" + suffix
+		tc.b.DevHostCatalogId = "hcst_" + suffix
+		tc.b.DevHostId = "hst_" + suffix
+		tc.b.DevHostSetId = "hsst_" + suffix
+		tc.b.DevOrgId = "o_" + suffix
+		tc.b.DevProjectId = "p_" + suffix
+		tc.b.DevTargetId = "ttcp_" + suffix
+		tc.b.DevUserId = "u_" + suffix
+		tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
+	} else {
+		tc.b.DevUserId = DefaultTestUserId
+	}
+	tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 
 	// Set up KMSes
 	switch {
@@ -410,9 +526,14 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		t.Fatal(err)
 	}
 
+	// Set cluster address if we supplied one (overrides one in config)
+	if opts.PublicClusterAddr != "" {
+		opts.Config.Controller.PublicClusterAddr = opts.PublicClusterAddr
+	}
+
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := db.InitStore("postgres", nil, tc.b.DatabaseUrl); err != nil {
+		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
@@ -423,12 +544,17 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 				t.Fatal(err)
 			}
 			if !opts.DisableInitialLoginRoleCreation {
-				if _, err := tc.b.CreateInitialLoginRole(context.Background()); err != nil {
+				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
 				if !opts.DisableAuthMethodCreation {
-					if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
+					}
+					if !opts.DisableOidcAuthMethodCreation {
+						if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
 					}
 					if !opts.DisableScopesCreation {
 						if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
@@ -453,7 +579,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
-		if err := tc.b.CreateDevDatabase("postgres", createOpts...); err != nil {
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
+		}
+		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -464,7 +593,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
 
-	tc.c, err = New(conf)
+	tc.c, err = New(ctx, conf)
 	if err != nil {
 		tc.Shutdown()
 		t.Fatal(err)
@@ -483,19 +612,25 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.(TestController).AddClusterControllerMember"
 	if opts == nil {
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:               tc.c.conf.DatabaseUrl,
-		DefaultAuthMethodId:       tc.c.conf.DevAuthMethodId,
-		RootKms:                   tc.c.conf.RootKms,
-		WorkerAuthKms:             tc.c.conf.WorkerAuthKms,
-		RecoveryKms:               tc.c.conf.RecoveryKms,
-		Name:                      opts.Name,
-		Logger:                    tc.c.conf.Logger,
-		DisableKmsKeyCreation:     true,
-		DisableAuthMethodCreation: true,
+		DatabaseUrl:                 tc.c.conf.DatabaseUrl,
+		DefaultPasswordAuthMethodId: tc.c.conf.DevPasswordAuthMethodId,
+		DefaultOidcAuthMethodId:     tc.c.conf.DevOidcAuthMethodId,
+		RootKms:                     tc.c.conf.RootKms,
+		WorkerAuthKms:               tc.c.conf.WorkerAuthKms,
+		RecoveryKms:                 tc.c.conf.RecoveryKms,
+		Name:                        opts.Name,
+		Logger:                      tc.c.conf.Logger,
+		DefaultLoginName:            tc.b.DevLoginName,
+		DefaultPassword:             tc.b.DevPassword,
+		DisableKmsKeyCreation:       true,
+		DisableAuthMethodCreation:   true,
+		PublicClusterAddr:           opts.PublicClusterAddr,
+		StatusGracePeriodDuration:   opts.StatusGracePeriodDuration,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
@@ -506,7 +641,77 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		if err != nil {
 			t.Fatal(err)
 		}
-		nextOpts.Logger.Info("controller name generated", "name", nextOpts.Name)
+		event.WriteSysEvent(context.TODO(), op, "controller name generated", "name", nextOpts.Name)
 	}
 	return NewTestController(t, nextOpts)
+}
+
+// WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
+// come in. If it does not come in within the default status grace
+// period, this function returns an error.
+func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
+	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
+	ctx := context.TODO()
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerId)
+	waitStatusStart := time.Now()
+	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
+	defer cancel()
+	var err error
+	for {
+		if err = func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+
+			case <-time.After(time.Second):
+				// pass
+			}
+
+			return nil
+		}(); err != nil {
+			break
+		}
+
+		var waitStatusCurrent time.Time
+		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
+			if k == nil || v == nil {
+				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
+				return false
+			}
+
+			workerStatusUpdateId, ok := k.(string)
+			if !ok {
+				err = fmt.Errorf("unexpected type %T for key: key=%#v value=%#v", k, k, v)
+				return false
+			}
+
+			workerStatusUpdateTime, ok := v.(time.Time)
+			if !ok {
+				err = fmt.Errorf("unexpected type %T for value: key=%#v value=%#v", k, k, v)
+				return false
+			}
+
+			if workerStatusUpdateId == workerId {
+				waitStatusCurrent = workerStatusUpdateTime
+				return false
+			}
+
+			return true
+		})
+
+		if err != nil {
+			break
+		}
+
+		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
+			break
+		}
+	}
+
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerId))
+		return err
+	}
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
+	return nil
 }

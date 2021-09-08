@@ -1,8 +1,6 @@
 package session
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -16,11 +14,12 @@ type CloseWith struct {
 }
 
 func (c CloseWith) validate() error {
+	const op = "session.(CloseWith).validate"
 	if c.ConnectionId == "" {
-		return fmt.Errorf("missing connection id: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing connection id")
 	}
 	if c.ClosedReason.String() == "" {
-		return fmt.Errorf("missing closed reason: %w", errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing closed reason")
 	}
 	// 0 is valid for BytesUp and BytesDown
 	return nil

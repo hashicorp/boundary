@@ -19,27 +19,29 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/boundary/sdk/parseutil"
 	"github.com/hashicorp/boundary/sdk/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"golang.org/x/time/rate"
 )
 
-const EnvBoundaryAddr = "BOUNDARY_ADDR"
-const EnvBoundaryCACert = "BOUNDARY_CACERT"
-const EnvBoundaryCAPath = "BOUNDARY_CAPATH"
-const EnvBoundaryClientCert = "BOUNDARY_CLIENT_CERT"
-const EnvBoundaryClientKey = "BOUNDARY_CLIENT_KEY"
-const EnvBoundaryClientTimeout = "BOUNDARY_CLIENT_TIMEOUT"
-const EnvBoundaryTLSInsecure = "BOUNDARY_TLS_INSECURE"
-const EnvBoundaryTLSServerName = "BOUNDARY_TLS_SERVER_NAME"
-const EnvBoundaryMaxRetries = "BOUNDARY_MAX_RETRIES"
-const EnvBoundaryToken = "BOUNDARY_TOKEN"
-const EnvBoundaryRateLimit = "BOUNDARY_RATE_LIMIT"
-const EnvBoundarySRVLookup = "BOUNDARY_SRV_LOOKUP"
+const (
+	EnvBoundaryAddr          = "BOUNDARY_ADDR"
+	EnvBoundaryCACert        = "BOUNDARY_CACERT"
+	EnvBoundaryCAPath        = "BOUNDARY_CAPATH"
+	EnvBoundaryClientCert    = "BOUNDARY_CLIENT_CERT"
+	EnvBoundaryClientKey     = "BOUNDARY_CLIENT_KEY"
+	EnvBoundaryClientTimeout = "BOUNDARY_CLIENT_TIMEOUT"
+	EnvBoundaryTLSInsecure   = "BOUNDARY_TLS_INSECURE"
+	EnvBoundaryTLSServerName = "BOUNDARY_TLS_SERVER_NAME"
+	EnvBoundaryMaxRetries    = "BOUNDARY_MAX_RETRIES"
+	EnvBoundaryToken         = "BOUNDARY_TOKEN"
+	EnvBoundaryRateLimit     = "BOUNDARY_RATE_LIMIT"
+	EnvBoundarySRVLookup     = "BOUNDARY_SRV_LOOKUP"
+)
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -167,6 +169,10 @@ func DefaultConfig() (*Config, error) {
 func (c *Config) ConfigureTLS() error {
 	if c.HttpClient == nil {
 		c.HttpClient = cleanhttp.DefaultPooledClient()
+	}
+
+	if c.HttpClient.Transport.(*http.Transport).TLSClientConfig == nil {
+		c.HttpClient.Transport.(*http.Transport).TLSClientConfig = &tls.Config{}
 	}
 	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
@@ -642,7 +648,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		u.Path = ""
 	}
 
-	var host = u.Host
+	host := u.Host
 	// if SRV records exist (see
 	// https://tools.ietf.org/html/draft-andrews-http-srv-02), lookup the SRV
 	// record and take the highest match; this is not designed for
@@ -678,14 +684,17 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	ret := &retryablehttp.Request{
 		Request: req,
 	}
-	ret.SetBody(rawBody)
+	if err := ret.SetBody(rawBody); err != nil {
+		return nil, fmt.Errorf("error setting the raw body of the request: %w", err)
+	}
 
 	return ret, nil
 }
 
 // Do takes a properly configured request and applies client configuration to
 // it, returning the response.
-func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
+func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) {
+	opts := getOpts(opt...)
 	c.modifyLock.RLock()
 	limiter := c.config.Limiter
 	maxRetries := c.config.MaxRetries
@@ -695,13 +704,15 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	timeout := c.config.Timeout
 	token := c.config.Token
 	recoveryKmsWrapper := c.config.RecoveryKmsWrapper
-	outputCurlString := c.config.OutputCurlString
+	outputCurlString := c.config.OutputCurlString && !opts.withSkipCurlOuptut
 	c.modifyLock.RUnlock()
 
 	ctx := r.Context()
 
 	if limiter != nil {
-		limiter.Wait(ctx)
+		if err := limiter.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("error waiting on rate limiter: %w", err)
+		}
 	}
 
 	// Sanity check the token before potentially erroring from the API

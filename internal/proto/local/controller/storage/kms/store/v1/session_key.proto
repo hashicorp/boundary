@@ -4,7 +4,6 @@ package controller.storage.kms.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/options.proto";
 
 message SessionKey {
   // private_id is used to access the key via an API

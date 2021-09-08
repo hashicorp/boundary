@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,15 +22,16 @@ type DatabaseKeyVersion struct {
 
 // NewDatabaseKeyVersion creates a new in memory database key version. No options are
 // currently supported.
-func NewDatabaseKeyVersion(databaseKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*DatabaseKeyVersion, error) {
+func NewDatabaseKeyVersion(databaseKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*DatabaseKeyVersion, error) {
+	const op = "kms.NewDatabaseKeyVersion"
 	if databaseKeyId == "" {
-		return nil, fmt.Errorf("new database key version: missing database key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new database key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new database key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &DatabaseKeyVersion{
@@ -62,22 +62,23 @@ func (k *DatabaseKeyVersion) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface and validates the database key
 // version before it's written.
 func (k *DatabaseKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "kms.(DatabaseKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("database key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return fmt.Errorf("database key version vet for write: missing key: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.DatabaseKeyId == "" {
-			return fmt.Errorf("database key version vet for write: missing database key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing database key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("database key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("database key version vet for write: key is immutable: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }
@@ -99,20 +100,22 @@ func (k *DatabaseKeyVersion) SetTableName(n string) {
 
 // Encrypt will encrypt the database key version's key
 func (k *DatabaseKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(DatabaseKeyVersion).Encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.DatabaseKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.DatabaseKeyVersion, nil); err != nil {
-		return fmt.Errorf("error encrypting kms database key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
 
 // Decrypt will decrypt the database key version's key
 func (k *DatabaseKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(DatabaseKeyVersion).Decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.DatabaseKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.DatabaseKeyVersion, nil); err != nil {
-		return fmt.Errorf("error decrypting kms database key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

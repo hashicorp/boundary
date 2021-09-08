@@ -8,9 +8,12 @@ export function getPropsForPage(schema, params) {
   const serviceIds = getServiceIds(operationObjects)
   // info and sidenav data are needed on all pages
   const info = schema.info
-  const sidenavOrder = getSidenavData(serviceIds)
+  const navData = getSidenavData(serviceIds)
   // If there's no "page" param, then this is the landing page
   const isLanding = !params || !params.page || params.page.length == 0
+
+  const currentPath = params && params.page ? params.page.join('/') : ''
+
   // Otherwise, we should have an operationCategory that matches the slug-ified ID from the URL path
   const operationCategory = isLanding
     ? false
@@ -24,7 +27,8 @@ export function getPropsForPage(schema, params) {
           )
           return { name, slug, operations }
         })[0]
-  return { info, sidenavOrder, operationCategory }
+
+  return { info, navData, operationCategory, currentPath }
 }
 
 /* Given a schema, return all the paths we'll render for our openapi generated docs */
@@ -44,7 +48,7 @@ to render a flat list of services */
 function getSidenavData(serviceIds) {
   const order = serviceIds.map((serviceId) => {
     return {
-      sidebar_title: capitalCase(serviceId),
+      title: capitalCase(serviceId),
       indexData: true,
       path: getServiceSlug(serviceId),
     }

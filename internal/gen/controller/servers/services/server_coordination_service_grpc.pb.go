@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // ServerCoordinationServiceClient is the client API for ServerCoordinationService service.
@@ -69,7 +70,7 @@ type UnsafeServerCoordinationServiceServer interface {
 }
 
 func RegisterServerCoordinationServiceServer(s grpc.ServiceRegistrar, srv ServerCoordinationServiceServer) {
-	s.RegisterService(&_ServerCoordinationService_serviceDesc, srv)
+	s.RegisterService(&ServerCoordinationService_ServiceDesc, srv)
 }
 
 func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -90,7 +91,10 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-var _ServerCoordinationService_serviceDesc = grpc.ServiceDesc{
+// ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.servers.services.v1.ServerCoordinationService",
 	HandlerType: (*ServerCoordinationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

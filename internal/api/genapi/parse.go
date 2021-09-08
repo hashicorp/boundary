@@ -10,8 +10,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 
 	"github.com/iancoleman/strcase"
 )
@@ -35,7 +35,7 @@ func parsePBs() {
 		msg := in.inProto.ProtoReflect()
 		desc := msg.Descriptor()
 
-		//printDebug(desc)
+		// printDebug(desc)
 
 		// Evaluate above, populate below.
 		in.generatedStructure.pkg = packageFromFullName(desc.FullName())
@@ -65,7 +65,12 @@ func parsePBs() {
 				if pkg != "" && pkg != in.generatedStructure.pkg {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
-				fi.FieldType = sliceText + ptr + name
+				switch name {
+				case "v1.AuthorizedCollectionActionsEntry":
+					fi.FieldType = "map[string][]string"
+				default:
+					fi.FieldType = sliceText + ptr + name
+				}
 			case protoreflect.BytesKind:
 				fi.FieldType = "[]byte"
 			default:
@@ -73,7 +78,7 @@ func parsePBs() {
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}
-		//fmt.Printf("Parsed: %#v\n", in.generatedStructure)
+		// fmt.Printf("Parsed: %#v\n", in.generatedStructure)
 	}
 }
 
@@ -94,6 +99,7 @@ var (
 	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
+	valueName       = (&_struct.Value{}).ProtoReflect().Descriptor().FullName()
 )
 
 func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
@@ -108,6 +114,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "int32"
 	case structValueName:
 		return "", "", "map[string]interface{}"
+	case valueName:
+		return "", "", "interface{}"
 	case timestampName:
 		return "", "time", "Time"
 	default:

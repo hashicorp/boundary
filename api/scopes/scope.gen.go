@@ -2,7 +2,6 @@
 package scopes
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,29 +12,20 @@ import (
 )
 
 type Scope struct {
-	Id          string     `json:"id,omitempty"`
-	ScopeId     string     `json:"scope_id,omitempty"`
-	Scope       *ScopeInfo `json:"scope,omitempty"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	CreatedTime time.Time  `json:"created_time,omitempty"`
-	UpdatedTime time.Time  `json:"updated_time,omitempty"`
-	Version     uint32     `json:"version,omitempty"`
-	Type        string     `json:"type,omitempty"`
+	Id                          string              `json:"id,omitempty"`
+	ScopeId                     string              `json:"scope_id,omitempty"`
+	Scope                       *ScopeInfo          `json:"scope,omitempty"`
+	Name                        string              `json:"name,omitempty"`
+	Description                 string              `json:"description,omitempty"`
+	CreatedTime                 time.Time           `json:"created_time,omitempty"`
+	UpdatedTime                 time.Time           `json:"updated_time,omitempty"`
+	Version                     uint32              `json:"version,omitempty"`
+	Type                        string              `json:"type,omitempty"`
+	PrimaryAuthMethodId         string              `json:"primary_auth_method_id,omitempty"`
+	AuthorizedActions           []string            `json:"authorized_actions,omitempty"`
+	AuthorizedCollectionActions map[string][]string `json:"authorized_collection_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n Scope) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Scope) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Scope) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type ScopeReadResult struct {
@@ -47,27 +37,26 @@ func (n ScopeReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n ScopeReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n ScopeReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n ScopeReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type ScopeCreateResult = ScopeReadResult
-type ScopeUpdateResult = ScopeReadResult
+type (
+	ScopeCreateResult = ScopeReadResult
+	ScopeUpdateResult = ScopeReadResult
+)
 
 type ScopeDeleteResult struct {
 	response *api.Response
 }
 
-func (n ScopeDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for ScopeDeleteResult
+func (n ScopeDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n ScopeDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n ScopeDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type ScopeListResult struct {
@@ -79,12 +68,8 @@ func (n ScopeListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n ScopeListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n ScopeListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n ScopeListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -149,9 +134,9 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Sc
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*ScopeReadResult, error) {
-	if scopeId == "" {
-		return nil, fmt.Errorf("empty scopeId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*ScopeReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -159,7 +144,7 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -172,7 +157,7 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -190,9 +175,9 @@ func (c *Client) Read(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*ScopeUpdateResult, error) {
-	if scopeId == "" {
-		return nil, fmt.Errorf("empty scopeId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*ScopeUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -204,7 +189,7 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, scopeId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -222,7 +207,7 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -253,9 +238,9 @@ func (c *Client) Update(ctx context.Context, scopeId string, version uint32, opt
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*ScopeDeleteResult, error) {
-	if scopeId == "" {
-		return nil, fmt.Errorf("empty scopeId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*ScopeDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -263,7 +248,7 @@ func (c *Client) Delete(ctx context.Context, scopeId string, opt ...Option) (*Sc
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

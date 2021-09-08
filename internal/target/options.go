@@ -21,13 +21,16 @@ type options struct {
 	withDefaultPort            uint32
 	withLimit                  int
 	withScopeId                string
+	withScopeIds               []string
 	withScopeName              string
 	withUserId                 string
 	withTargetType             *TargetType
-	withHostSets               []string
+	withHostSources            []string
+	withCredentialSources      []string
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
 	withPublicId               string
+	withWorkerFilter           string
 }
 
 func getDefaultOptions() options {
@@ -37,13 +40,16 @@ func getDefaultOptions() options {
 		withLimit:                  0,
 		withDefaultPort:            0,
 		withScopeId:                "",
+		withScopeIds:               nil,
 		withScopeName:              "",
 		withUserId:                 "",
 		withTargetType:             nil,
-		withHostSets:               nil,
+		withHostSources:            nil,
+		withCredentialSources:      nil,
 		withSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		withSessionConnectionLimit: 1,
 		withPublicId:               "",
+		withWorkerFilter:           "",
 	}
 }
 
@@ -84,6 +90,13 @@ func WithScopeId(scopeId string) Option {
 	}
 }
 
+// WithScopeId provides an option to search by multiple scope id
+func WithScopeIds(scopeIds []string) Option {
+	return func(o *options) {
+		o.withScopeIds = scopeIds
+	}
+}
+
 // WithScopeId provides an option to search by a scope name
 func WithScopeName(scopeName string) Option {
 	return func(o *options) {
@@ -105,10 +118,17 @@ func WithTargetType(t TargetType) Option {
 	}
 }
 
-// WithHostSets provides an option for providing a list of host set ids
-func WithHostSets(hs []string) Option {
+// WithHostSources provides an option for providing a list of host source ids
+func WithHostSources(hs []string) Option {
 	return func(o *options) {
-		o.withHostSets = hs
+		o.withHostSources = hs
+	}
+}
+
+// WithCredentialSources provides an option for providing a list of credential source ids
+func WithCredentialSources(cl []string) Option {
+	return func(o *options) {
+		o.withCredentialSources = cl
 	}
 }
 
@@ -128,5 +148,12 @@ func WithSessionConnectionLimit(limit int32) Option {
 func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
+	}
+}
+
+// WithWorkerFilter provides an optional worker filter
+func WithWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = filter
 	}
 }

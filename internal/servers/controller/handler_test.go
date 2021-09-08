@@ -2,10 +2,13 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -17,7 +20,7 @@ import (
 func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultAuthMethodId:          "ampw_1234567890",
+		DefaultPasswordAuthMethodId:  "ampw_1234567890",
 		DefaultLoginName:             "admin",
 		DefaultPassword:              "password123",
 	})
@@ -43,9 +46,9 @@ func TestAuthenticationHandler(t *testing.T) {
 	body := make(map[string]interface{})
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	require.Contains(t, body, "id")
-	require.Contains(t, body, "token")
-	pubId, tok := body["id"].(string), body["token"].(string)
+	require.Contains(t, body, "attributes")
+	attrs := body["attributes"].(map[string]interface{})
+	pubId, tok := attrs["id"].(string), attrs["token"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
@@ -64,10 +67,12 @@ func TestAuthenticationHandler(t *testing.T) {
 	body = make(map[string]interface{})
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	require.Contains(t, body, "id")
-	require.Contains(t, body, "auth_method_id")
-	require.Contains(t, body, "user_id")
-	require.NotContains(t, body, "token")
+	attrs = body["attributes"].(map[string]interface{})
+
+	require.Contains(t, attrs, "id")
+	require.Contains(t, attrs, "auth_method_id")
+	require.Contains(t, attrs, "user_id")
+	require.NotContains(t, attrs, "token")
 
 	cookies := make(map[string]*http.Cookie)
 	for _, c := range resp.Cookies() {
@@ -81,7 +86,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.False(t, cookies[handlers.JsVisibleCookieName].HttpOnly)
 	tok = cookies[handlers.JsVisibleCookieName].Value
 
-	pubId = body["id"].(string)
+	pubId = attrs["id"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 }
@@ -98,8 +103,11 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/accounts/someid",
 			"v1/auth-methods",
 			"v1/auth-methods/someid",
+			"v1/auth-methods/someid:authenticate:callback",
 			"v1/auth-tokens",
 			"v1/auth-tokens/someid",
+			"v1/credential-stores",
+			"v1/credential-stores/someid",
 			"v1/groups",
 			"v1/groups/someid",
 			"v1/host-catalogs",
@@ -113,7 +121,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"400_v1/sc\u200Bopes",
 			"200_v1/scopes",
 			"v1/scopes/someid",
-			"v1/sessions/",
+			"v1/sessions",
 			"v1/sessions/someid",
 			"v1/targets",
 			"v1/targets/someid",
@@ -124,6 +132,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			// Creation end points
 			"v1/accounts",
 			"v1/auth-methods",
+			"v1/credential-stores",
 			"v1/groups",
 			"v1/host-catalogs",
 			"v1/host-sets",
@@ -137,6 +146,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/accounts/someid:set-password",
 			"v1/accounts/someid:change-password",
 			"v1/auth-methods/someid:authenticate",
+			"v1/auth-methods/someid:authenticate:login",
 			"v1/groups/someid:add-members",
 			"v1/groups/someid:set-members",
 			"v1/groups/someid:remove-members",
@@ -162,6 +172,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/accounts/someid",
 			"v1/auth-methods/someid",
 			"v1/auth-tokens/someid",
+			"v1/credential-stores/someid",
 			"v1/groups/someid",
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
@@ -174,6 +185,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 		"PATCH": {
 			"v1/accounts/someid",
 			"v1/auth-methods/someid",
+			"v1/credential-stores/someid",
 			"v1/groups/someid",
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
@@ -186,7 +198,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 	} {
 		for _, p := range paths {
 			t.Run(fmt.Sprintf("%s/%s", verb, p), func(t *testing.T) {
-
 				var expCode int
 				if !strings.HasPrefix(p, "v1/") {
 					sp := strings.Split(p, "_")
@@ -212,4 +223,117 @@ func TestHandleImplementedPaths(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestCallbackInterceptor(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() {
+		// Ignore errors as a normal shutdown will also close the listener when
+		// the server Shutdown is called. This is just in case.
+		_ = listener.Close()
+	}()
+
+	noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		var buf bytes.Buffer
+		read, err := buf.ReadFrom(r.Body)
+		require.NoError(t, err)
+		written, err := w.Write(buf.Bytes())
+		require.NoError(t, err)
+		require.EqualValues(t, read, written)
+	})
+
+	server := &http.Server{
+		Handler: wrapHandlerWithCallbackInterceptor(noopHandler, nil),
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil {
+			if err != http.ErrServerClosed {
+				require.NoError(t, err)
+			}
+		}
+	}()
+
+	testCases := []struct {
+		name     string
+		path     string
+		args     url.Values
+		wantJson *cmdAttrs
+	}{
+		{
+			name: "not callback, no args",
+			path: "v1/auth-methods/ampw_1234567890:read",
+		},
+		{
+			name: "not callback, with args",
+			path: "v1/auth-methods/ampw_1234567890:read",
+			args: url.Values{
+				"state": []string{"fooBar"},
+				"token": []string{"barFoo"},
+			},
+		},
+		{
+			name:     "callback, no args",
+			path:     "v1/auth-methods/ampw_1234567890:authenticate:callback",
+			wantJson: &cmdAttrs{Command: "callback"},
+		},
+		{
+			name: "callback, invalid pattern",
+			path: "v1/auth-methods/ampw_1234567890:read:callback",
+		},
+		{
+			name: "callback, with args",
+			path: "v1/auth-methods/ampw_1234567890:authenticate:callback",
+			args: url.Values{
+				"state": []string{"fooBar"},
+				"token": []string{"barFoo"},
+			},
+			wantJson: &cmdAttrs{
+				Command: "callback",
+				Attributes: map[string]interface{}{
+					"state": "fooBar",
+					"token": "barFoo",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+
+			req, err := http.NewRequest(http.MethodGet,
+				fmt.Sprintf("http://%s/%s", listener.Addr().String(), tc.path),
+				nil)
+			require.NoError(err)
+
+			if tc.args != nil {
+				req.URL.RawQuery = tc.args.Encode()
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(err)
+			require.EqualValues(http.StatusOK, resp.StatusCode)
+
+			if tc.wantJson != nil {
+				require.NotNil(resp.Body)
+				defer resp.Body.Close()
+				wantJsonJson, err := json.Marshal(tc.wantJson)
+				require.NoError(err)
+				var buf bytes.Buffer
+				_, err = buf.ReadFrom(resp.Body)
+				require.NoError(err)
+				require.Equal(wantJsonJson, buf.Bytes())
+			} else {
+				require.Equal(http.NoBody, resp.Body)
+			}
+		})
+	}
+
+	require.NoError(t, server.Shutdown(context.Background()))
 }

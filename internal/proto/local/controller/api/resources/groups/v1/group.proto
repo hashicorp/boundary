@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.groups.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups;groups";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups;groups";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -41,7 +41,7 @@ message Group {
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
+	// The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// Output only. Contains the list of member IDs in this Group.
@@ -49,4 +49,7 @@ message Group {
 
 	// Output only. The members of this Group.
 	repeated Member members = 100;
+
+	// Output only. The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

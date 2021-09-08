@@ -53,6 +53,10 @@ message TargetView {
   // Maximum number of connections in a session
   // @inject_tag: `gorm:"default:null"`
   int32 session_connection_limit = 110;
+
+  // A boolean expression that allows filtering the workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string worker_filter = 120;
 }
 
 message TargetHostSet {
@@ -124,4 +128,29 @@ message TcpTarget {
     this: "SessionConnectionLimit"
     that: "session_connection_limit"
   }];
+
+  // A boolean expression that allows filtering the workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string worker_filter = 120 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
+  }];
+}
+
+message CredentialLibrary {
+  // target_id of the Target
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // credential_library_id of the CredentialLibrary
+  // @inject_tag: gorm:"primary_key"
+  string credential_library_id = 20;
+
+  // credential_purpose is the purpose of the credential for the target
+  // @inject_tag: gorm:"primary_key"
+  string credential_purpose = 30;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
 }

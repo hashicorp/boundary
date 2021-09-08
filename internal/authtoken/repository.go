@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -33,13 +32,14 @@ type Repository struct {
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+	const op = "authtoken.NewRepository"
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: auth token: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db reader")
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: auth token: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db writer")
 	case kms == nil:
-		return nil, fmt.Errorf("kms: auth token: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := getOpts(opt...)
@@ -54,49 +54,59 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-// CreateAuthToken inserts an Auth Token into the repository and returns a new Auth Token.  The returned auth token
-// contains the auth token value. The provided IAM User ID must be associated to the provided auth account id
-// or an error will be returned. All options are ignored.
+// CreateAuthToken inserts an Auth Token into the repository and returns a new
+// Auth Token.  The returned auth token contains the auth token value. The
+// provided IAM User ID must be associated to the provided auth account id or an
+// error will be returned.  The Auth Token will have a Status of "issued".
+// The WithStatus and WithPublicId options are supported and all other options
+// are ignored.
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
-	if withIamUser == nil {
-		return nil, fmt.Errorf("create: auth token: no user: %w", errors.ErrInvalidParameter)
+	const op = "authtoken.(Repository).CreateAuthToken"
+	if withIamUser == nil || withIamUser.User == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user")
 	}
 	if withIamUser.GetPublicId() == "" {
-		return nil, fmt.Errorf("create: auth token: no user id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	if withAuthAccountId == "" {
-		return nil, fmt.Errorf("create: auth token: no auth account id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth account id")
 	}
-
-	at := allocAuthToken()
+	at, err := newAuthToken()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	at.AuthAccountId = withAuthAccountId
-
-	id, err := newAuthTokenId()
-	if err != nil {
-		return nil, fmt.Errorf("create: auth token id: %w", err)
+	opts := getOpts(opt...)
+	if opts.withPublicId == "" {
+		id, err := NewAuthTokenId()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		opts.withPublicId = id
 	}
-	at.PublicId = id
+	at.PublicId = opts.withPublicId
 
-	token, err := newAuthToken()
-	if err != nil {
-		return nil, fmt.Errorf("create: auth token value: %w", err)
+	switch {
+	case opts.withStatus != "":
+		at.Status = string(PendingStatus)
+	default:
+		at.Status = string(IssuedStatus)
 	}
-	at.Token = token
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
 	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidTimeStamp))
 	}
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
-	var newAuthToken *writableAuthToken
+	var newAuthToken *AuthToken
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -105,22 +115,23 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 			acct := allocAuthAccount()
 			acct.PublicId = withAuthAccountId
 			if err := read.LookupByPublicId(ctx, acct); err != nil {
-				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
+				return errors.Wrap(ctx, err, op, errors.WithMsg("auth account lookup"))
 			}
 			if acct.GetIamUserId() != withIamUser.GetPublicId() {
-				return fmt.Errorf("create: auth token: auth account %q mismatch with iam user %q", withAuthAccountId, withIamUser.GetPublicId())
+				return errors.New(ctx, errors.InvalidParameter, op,
+					fmt.Sprintf("auth account %q mismatch with iam user %q", withAuthAccountId, withIamUser.GetPublicId()))
 			}
 			at.ScopeId = acct.GetScopeId()
 			at.AuthMethodId = acct.GetAuthMethodId()
 			at.IamUserId = acct.GetIamUserId()
 
-			newAuthToken = at.toWritableAuthToken()
+			newAuthToken = at.clone()
 			if err := newAuthToken.encrypt(ctx, databaseWrapper); err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
 			// tokens are not replicated, so they don't need oplog entries.
 			if err := w.Create(ctx, newAuthToken); err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
 			newAuthToken.CtToken = nil
 
@@ -129,35 +140,40 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("create: auth token: %v: %w", at, err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return newAuthToken.toAuthToken(), nil
+	return newAuthToken, nil
 }
 
 // LookupAuthToken returns the AuthToken for the provided id. Returns nil, nil if no AuthToken is found for id.
 // For security reasons, the actual token is not included in the returned AuthToken.
 // All exported options are ignored.
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
+	const op = "authtoken.(Repository).LookupAuthToken"
 	if id == "" {
-		return nil, fmt.Errorf("lookup: auth token: missing public id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	opts := getOpts(opt...)
 
-	at := allocAuthToken()
-	at.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
+	// use the view, to bring in the required account columns. Just don't forget
+	// to convert it before returning it.
+	atv := allocAuthTokenView()
+	atv.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, atv); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("auth token: lookup: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
+
+	at := atv.toAuthToken()
 	if opts.withTokenValue {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
-			return nil, fmt.Errorf("lookup: unable to get database wrapper: %w", err)
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := at.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, fmt.Errorf("lookup: auth token: cannot decrypt auth token value: %w", err)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
@@ -174,11 +190,12 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 //
 // NOTE: Do not log or add the token string to any errors to avoid leaking it as it is a secret.
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
+	const op = "authtoken.(Repository).ValidateToken"
 	if token == "" {
-		return nil, fmt.Errorf("validate token: auth token: missing token: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	}
 	if id == "" {
-		return nil, fmt.Errorf("validate token: auth token: missing public id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 
 	retAT, err := r.LookupAuthToken(ctx, id, withTokenValue())
@@ -187,7 +204,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("validate token: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if retAT == nil {
 		return nil, nil
@@ -196,11 +213,11 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	// If the token is too old or stale invalidate it and return nothing.
 	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
 	if err != nil {
-		return nil, fmt.Errorf("validate token: expiration time : %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("expiration time"), errors.WithCode(errors.InvalidTimeStamp))
 	}
 	lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
 	if err != nil {
-		return nil, fmt.Errorf("validate token: last accessed time : %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("last accessed time"), errors.WithCode(errors.InvalidTimeStamp))
 	}
 
 	now := time.Now()
@@ -214,16 +231,16 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				delAt := retAT.toWritableAuthToken()
+				delAt := retAT.clone()
 				// tokens are not replicated, so they don't need oplog entries.
 				if _, err := w.Delete(ctx, delAt); err != nil {
-					return fmt.Errorf("validate token: delete auth token: %w", err)
+					return errors.Wrap(ctx, err, op, errors.WithMsg("delete auth token"))
 				}
 				retAT = nil
 				return nil
 			})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		return nil, nil
 	}
@@ -243,7 +260,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				at := retAT.toWritableAuthToken()
+				at := retAT.clone()
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 				// trigger to set ApproximateLastAccessTime to the commit
 				// timestamp. Tokens are not replicated, so they don't need oplog entries.
@@ -253,35 +270,44 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 					nil,
 					[]string{"ApproximateLastAccessTime"},
 				)
-				if err == nil && rowsUpdated > 1 {
-					return errors.ErrMultipleRecords
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
 				}
-				return err
+				if rowsUpdated > 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				}
+				return nil
 			},
 		)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("validate token: auth token: %s: %w", id, err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(id))
 	}
 	return retAT, nil
 }
 
-// ListAuthTokens in an org and supports the WithLimit option.
-func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt ...Option) ([]*AuthToken, error) {
-	if withOrgId == "" {
-		return nil, fmt.Errorf("list users: missing org id %w", errors.ErrInvalidParameter)
+// ListAuthTokens lists auth tokens in the given scopes and supports the
+// WithLimit option.
+func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
+	const op = "authtoken.(Repository).ListAuthTokens"
+	if len(withScopeIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 
-	var authTokens []*AuthToken
-	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(opts.withLimit)); err != nil {
-		return nil, fmt.Errorf("list users: %w", err)
+	// use the view, to bring in the required account columns. Just don't forget
+	// to convert them before returning them
+	var atvs []*authTokenView
+	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	for _, at := range authTokens {
-		at.Token = ""
-		at.CtToken = nil
-		at.KeyId = ""
+	authTokens := make([]*AuthToken, 0, len(atvs))
+	for _, atv := range atvs {
+		atv.Token = ""
+		atv.CtToken = nil
+		atv.KeyId = ""
+		authTokens = append(authTokens, atv.toAuthToken())
 	}
 	return authTokens, nil
 }
@@ -289,8 +315,9 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt .
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Option) (int, error) {
+	const op = "authtoken.(Repository).DeleteAuthToken"
 	if id == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: auth token: missing public id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 
 	at, err := r.LookupAuthToken(ctx, id)
@@ -298,7 +325,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		if errors.IsNotFoundError(err) {
 			return db.NoRowsAffected, nil
 		}
-		return db.NoRowsAffected, fmt.Errorf("delete: auth token: lookup %w", err)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	if at == nil {
 		return db.NoRowsAffected, nil
@@ -310,26 +337,109 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			deleteAT := at.toWritableAuthToken()
+			deleteAT := at.clone()
 			// tokens are not replicated, so they don't need oplog entries.
 			rowsDeleted, err = w.Delete(ctx, deleteAT)
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: auth token: %s: %w", id, err)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(id))
 	}
 
 	return rowsDeleted, nil
 }
 
-func allocAuthToken() *AuthToken {
-	fresh := &AuthToken{
-		AuthToken: &store.AuthToken{},
+// IssueAuthToken will retrieve the "pending" token and update it's status to
+// "issued".  If the token has already been issued, an error is returned with a
+// nil token.  If no token is found for the tokenRequestId an error is returned
+// with a nil token.
+//
+// Note: no oplog entries are created for auth token operations (this is intentional).
+func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) (*AuthToken, error) {
+	const op = "authtoken.(Repository).IssueAuthToken"
+	if tokenRequestId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token request id")
 	}
-	return fresh
+
+	var at *AuthToken
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			at = allocAuthToken()
+			at.PublicId = tokenRequestId
+			at.Status = string(IssuedStatus)
+			// note: no oplog operations are created for auth token operations (this is intentional).
+			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
+			// trigger to set ApproximateLastAccessTime to the commit timestamp.
+			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, []string{"ApproximateLastAccessTime"}, db.WithWhere("status = ?", PendingStatus))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsUpdated == 0 {
+				return errors.New(ctx, errors.RecordNotFound, op, "pending auth token not found")
+			}
+			if rowsUpdated > 1 {
+				return errors.New(ctx, errors.Internal, op, fmt.Sprintf("should have updated 1 row and we attempted to update %d rows", rowsUpdated))
+			}
+			if at.Status != string(IssuedStatus) {
+				return errors.New(ctx, errors.Internal, op, "updated auth token status != issued")
+			}
+
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+			}
+			at, err = txRepo.LookupAuthToken(ctx, at.PublicId, withTokenValue())
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if at == nil {
+				return errors.New(ctx, errors.RecordNotFound, op, "issued auth token not found")
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err // error already wrapped when raised from r.DoTx(...)
+	}
+	return at, nil
+}
+
+// CloseExpiredPendingTokens will close expired pending tokens in the repo.
+// This function should called on a periodic basis a Controllers via it's
+// "ticker" pattern.
+func (r *Repository) CloseExpiredPendingTokens(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).CloseExpiredPendingTokens"
+
+	args := []interface{}{string(FailedStatus), string(PendingStatus)}
+	const sql = `update auth_token set status = ? where status = ? and now() > expiration_time`
+	var tokensClosed int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			var err error
+			tokensClosed, err = w.Exec(ctx, sql, args)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, err // error already wrapped when raised from r.DoTx(...)
+	}
+	return tokensClosed, nil
 }

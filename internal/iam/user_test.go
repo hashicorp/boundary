@@ -80,7 +80,7 @@ func Test_UserHardcoded(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
 	for _, v := range []string{"u_anon", "u_auth"} {
-		foundUser := allocUser()
+		foundUser := AllocUser()
 		foundUser.PublicId = v
 		err := w.LookupByPublicId(context.Background(), &foundUser)
 		require.NoError(err)
@@ -107,7 +107,7 @@ func Test_UserCreate(t *testing.T) {
 		require.NoError(err)
 		require.NotEmpty(user.PublicId)
 
-		foundUser := allocUser()
+		foundUser := AllocUser()
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), &foundUser)
 		require.NoError(err)
@@ -135,12 +135,14 @@ func Test_UserUpdate(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	id := testId(t)
 	org, proj := TestScopes(t, repo)
+	org2, _ := TestScopes(t, repo)
 
 	type args struct {
 		name           string
 		description    string
 		fieldMaskPaths []string
 		ScopeId        string
+		dbOpts         []db.Option
 	}
 	tests := []struct {
 		name           string
@@ -201,6 +203,17 @@ func Test_UserUpdate(t *testing.T) {
 			wantDup:    true,
 			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_user_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
 		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        org2.PublicId,
+				dbOpts:         []db.Option{db.WithSkipVetForWrite(true)},
+			},
+			wantErr:    true,
+			wantErrMsg: `db.Update: immutable column: iam_user.scope_id: integrity violation: error #1003`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -208,19 +221,19 @@ func Test_UserUpdate(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, repo, org.PublicId)
 				u.Name = tt.args.name
-				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil)
+				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil, tt.args.dbOpts...)
 				require.NoError(err)
 			}
 
 			u := TestUser(t, repo, org.PublicId)
 
-			updateUser := allocUser()
+			updateUser := AllocUser()
 			updateUser.PublicId = u.PublicId
 			updateUser.ScopeId = tt.args.ScopeId
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths, nil)
+			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths, nil, tt.args.dbOpts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)
@@ -262,19 +275,19 @@ func Test_UserDelete(t *testing.T) {
 		},
 		{
 			name:            "bad-id",
-			user:            func() *User { u := allocUser(); u.PublicId = id; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = id; return &u }(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "anon-user",
-			user:            func() *User { u := allocUser(); u.PublicId = "u_anon"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = "u_anon"; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "auth-user",
-			user:            func() *User { u := allocUser(); u.PublicId = "u_auth"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = "u_auth"; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
@@ -282,7 +295,7 @@ func Test_UserDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteUser := allocUser()
+			deleteUser := AllocUser()
 			deleteUser.PublicId = tt.user.GetPublicId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteUser)
 			if tt.wantRowsDeleted == 0 {
@@ -312,7 +325,6 @@ func Test_UserGetScope(t *testing.T) {
 		require.NoError(err)
 		assert.True(proto.Equal(org, userScope))
 	})
-
 }
 
 func TestUser_Clone(t *testing.T) {
@@ -369,7 +381,7 @@ func TestUser_Actions(t *testing.T) {
 
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
-	u := allocUser()
+	u := AllocUser()
 	assert.Equal(t, resource.User, u.ResourceType())
 }
 
@@ -397,7 +409,7 @@ func TestUser_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocUser()
+			def := AllocUser()
 			require.Equal(defaultTableName, def.TableName())
 			s := &User{
 				User:      &store.User{},

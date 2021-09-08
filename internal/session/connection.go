@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -48,12 +47,15 @@ func (c *Connection) GetPublicId() string {
 	return c.PublicId
 }
 
-var _ Cloneable = (*Connection)(nil)
-var _ db.VetForWriter = (*Connection)(nil)
+var (
+	_ Cloneable       = (*Connection)(nil)
+	_ db.VetForWriter = (*Connection)(nil)
+)
 
-// New creates a new in memory session.  No options
+// NewConnection creates a new in memory connection.  No options
 // are currently supported.
-func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, opt ...Option) (*Connection, error) {
+func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, _ ...Option) (*Connection, error) {
+	const op = "session.NewConnection"
 	c := Connection{
 		SessionId:          sessionID,
 		ClientTcpAddress:   clientTcpAddress,
@@ -61,18 +63,18 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 		EndpointTcpAddress: endpointTcpAddr,
 		EndpointTcpPort:    endpointTcpPort,
 	}
-	if err := c.validateNewConnection("new connection:"); err != nil {
-		return nil, err
+	if err := c.validateNewConnection(); err != nil {
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &c, nil
 }
 
-// AllocConnection will allocate a Session
+// AllocConnection will allocate a Connection.
 func AllocConnection() Connection {
 	return Connection{}
 }
 
-// Clone creates a clone of the Session
+// Clone creates a clone of the Connection.
 func (c *Connection) Clone() interface{} {
 	clone := &Connection{
 		PublicId:           c.PublicId,
@@ -107,29 +109,30 @@ func (c *Connection) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the connection
 // before it's written.
-func (c *Connection) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "session.(Connection).VetForWrite"
 	opts := db.GetOpts(opt...)
 	if c.PublicId == "" {
-		return fmt.Errorf("connection vet for write: missing public id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	switch opType {
 	case db.CreateOp:
-		if err := c.validateNewConnection("connection vet for write:"); err != nil {
-			return err
+		if err := c.validateNewConnection(); err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return fmt.Errorf("connection vet for write: public id is immutable: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "public id is immutable")
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
-			return fmt.Errorf("connection vet for write: session id is immutable: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "session id is immutable")
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return fmt.Errorf("connection vet for write: create time is immutable: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "create time is immutable")
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return fmt.Errorf("connection vet for write: update time is immutable: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
 			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
-				return fmt.Errorf("connection vet for write: %w", errors.ErrInvalidParameter)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 	}
@@ -152,21 +155,22 @@ func (c *Connection) SetTableName(n string) {
 }
 
 // validateNewConnection checks everything but the connection's PublicId
-func (c *Connection) validateNewConnection(errorPrefix string) error {
+func (c *Connection) validateNewConnection() error {
+	const op = "session.(Connection).validateNewConnection"
 	if c.SessionId == "" {
-		return fmt.Errorf("%s missing session id: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return fmt.Errorf("%s missing client address: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client address")
 	}
 	if c.ClientTcpPort == 0 {
-		return fmt.Errorf("%s missing client port: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return fmt.Errorf("%s missing endpoint address: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return fmt.Errorf("%s missing endpoint port: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint port")
 	}
 	return nil
 }

@@ -3,8 +3,6 @@ syntax = "proto3";
 package controller.storage.auth.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/auth/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-
 // Account is a "shared table" between the iam, authtoken, and auth
 // subsystems. The auth system is responsible for creating entries.  The iam
 // system is only responsible/allowed to update the iam_user_id.  The authtoken

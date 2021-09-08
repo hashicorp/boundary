@@ -23,7 +23,7 @@ func TestScope_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	new, _ := TestScopes(t, repo)
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Scope
 		fieldMask []string
@@ -82,7 +82,6 @@ func TestScope_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*Scope), after.(*Scope)))
-
 		})
 	}
 }
@@ -100,7 +99,7 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 	require.NoError(t, err)
 	org, proj := TestScopes(t, repo)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		scopeId   string
 		updateTo  string
@@ -155,7 +154,7 @@ func TestUser_ImmutableFields(t *testing.T) {
 	org, proj := TestScopes(t, repo)
 	new := TestUser(t, repo, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *User
 		fieldMask []string
@@ -205,7 +204,6 @@ func TestUser_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*User), after.(*User)))
-
 		})
 	}
 }
@@ -222,7 +220,7 @@ func TestRole_ImmutableFields(t *testing.T) {
 	org, proj := TestScopes(t, repo)
 	new := TestRole(t, conn, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Role
 		fieldMask []string
@@ -272,7 +270,6 @@ func TestRole_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*Role), after.(*Role)))
-
 		})
 	}
 }
@@ -289,7 +286,7 @@ func TestGroup_ImmutableFields(t *testing.T) {
 	org, proj := TestScopes(t, repo)
 	new := TestGroup(t, conn, org.PublicId)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Group
 		fieldMask []string
@@ -339,7 +336,6 @@ func TestGroup_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*Group), after.(*Group)))
-
 		})
 	}
 }

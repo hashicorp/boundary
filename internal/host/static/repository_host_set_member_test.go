@@ -413,7 +413,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 	// hostsA has the first 3 hosts, hostsB has the last 3 hosts
 	// the middle host is shared in both.
 	hostsA, hostsB := hosts[:3], hosts[2:]
-	//hostsA is the initial set of hosts in the host set
+	// hostsA is the initial set of hosts in the host set
 	TestSetMembers(t, conn, set.PublicId, hostsA)
 
 	var hostIds []string

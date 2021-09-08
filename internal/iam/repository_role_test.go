@@ -424,9 +424,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(roleAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -577,11 +575,11 @@ func TestRepository_ListRoles(t *testing.T) {
 				withScopeId: org.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 2,
+			wantCnt: repo.defaultLimit + 1,
 			wantErr: false,
 		},
 		{
-			name:          "no-limit-proj-group",
+			name:          "no-limit-proj-role",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
@@ -626,13 +624,13 @@ func TestRepository_ListRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroup()).Error)
+			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
 				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testRoles))
-			got, err := repo.ListRoles(context.Background(), tt.args.withScopeId, tt.args.opt...)
+			got, err := repo.ListRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -641,4 +639,29 @@ func TestRepository_ListRoles(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+
+	require.NoError(t, conn.Where("1=1").Delete(allocRole()).Error)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestRole(t, conn, "global")
+		total++
+		TestRole(t, conn, org.GetPublicId())
+		total++
+		TestRole(t, conn, proj.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.hostcatalogs.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs;hostcatalogs";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs;hostcatalogs";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -34,7 +34,7 @@ message HostCatalog {
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
+	// The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// The type of Host Catalog.
@@ -42,4 +42,10 @@ message HostCatalog {
 
 	// Attributes specific to the catalog type.
 	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+
+	// Output only. The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+
+	// Output only. The authorized actions for the scope's collections.
+	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"];
 }

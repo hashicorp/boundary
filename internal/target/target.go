@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
 )
@@ -21,6 +22,7 @@ type Target interface {
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
 	GetSessionConnectionLimit() int32
+	GetWorkerFilter() string
 	oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -77,8 +79,9 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
-// targetSubType converts the target view to the concrete subtype
-func (t *targetView) targetSubType() (Target, error) {
+// targetSubtype converts the target view to the concrete subtype
+func (t *targetView) targetSubtype() (Target, error) {
+	const op = "target.targetView.targetSubtype"
 	switch t.Type {
 	case TcpTargetType.String():
 		tcpTarget := allocTcpTarget()
@@ -92,7 +95,8 @@ func (t *targetView) targetSubType() (Target, error) {
 		tcpTarget.Version = t.Version
 		tcpTarget.SessionMaxSeconds = t.SessionMaxSeconds
 		tcpTarget.SessionConnectionLimit = t.SessionConnectionLimit
+		tcpTarget.WorkerFilter = t.WorkerFilter
 		return &tcpTarget, nil
 	}
-	return nil, fmt.Errorf("%s is an unknown target subtype of %s", t.PublicId, t.Type)
+	return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
 }

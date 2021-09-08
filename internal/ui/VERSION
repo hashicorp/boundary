@@ -1,4 +1,4 @@
-b7937e77ad5a37fcf0bf0ed2b6d4e4b34d97b144 Merge pull request #383 from hashicorp/rename-core-to-admin
+28ebc931791a7b0ae79e543c05addc950fc9a944 Merge pull request #741 from hashicorp/chore-enable-capabilities
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

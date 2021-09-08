@@ -15,6 +15,21 @@ module.exports = [
     destination: '/:splat*',
     permanent: true,
   },
+
+  /////////////////////////////////
+  // DESKTOP CLIENT
+  /////////////////////////////////
+  {
+    source: '/help/desktop/targets',
+    destination: '/docs/api-clients/desktop#connect',
+    permanent: false,
+  },
+  {
+    source: '/help/desktop/sessions',
+    destination: '/docs/api-clients/desktop#connect',
+    permanent: false,
+  },
+
   /////////////////////////////////
   // DOMAIN MODEL CONCEPTS
   /////////////////////////////////
@@ -85,7 +100,17 @@ module.exports = [
   },
   {
     source: '/help/admin-ui/sessions',
-    destination: '/docs/common-workflows/manage-sessions',
+    destination: '/docs/concepts/domain-model/sessions',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/credential-stores',
+    destination: '/docs/concepts/domain-model/credential-stores',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/credential-libraries',
+    destination: '/docs/concepts/domain-model/credential-libraries',
     permanent: false,
   },
 

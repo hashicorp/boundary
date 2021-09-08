@@ -1,0 +1,57 @@
+---
+layout: docs
+page_title: Domain Model - Managed Groups
+description: |-
+  The anatomy of a Boundary managed group
+---
+
+# Managed Groups
+
+A managed group is a resource that represents a collection of [accounts][]. The
+collection is formed by evaluating account information defined by the [auth
+method][]'s identity provider against the managed group's configuration; members
+cannot be managed manually. An account can be associated with zero or more
+managed groups within the same [auth method][]. The managed group can be used as
+a principal within [roles][] to assign grants.
+
+## Attributes
+
+All managed group types have the following configurable attributes:
+
+- `name` - (optional)
+  If set, the `name` must be unique within the account's [auth method][].
+
+- `description` - (optional)
+
+### OIDC Managed Group Information and Attributes
+
+Membership in OIDC managed groups is evaluated when the auth method is used for
+authentication, based on information contained within the OIDC ID token and the
+OIDC User Info endpoint. Every authentication will result in a new evaluation of
+managed group membership.
+
+OIDC managed groups have the following additional attributes:
+
+- `filter` - (required)
+  A boolean expression defining a filter run against the provided information.
+  For general syntax information see the [filtering concepts][] page; for more
+  specific information on the data available for this purpose see the [OIDC
+  Managed Groups Filtering][] page.
+
+[filtering concepts]: /docs/concepts/filtering
+[oidc managed groups filtering]: /docs/concepts/filtering/oidc-managed-groups
+
+## Referenced By
+
+- [Accounts][]
+- [Auth Method][]
+
+[accounts]: /docs/concepts/domain-model/accounts
+[auth method]: /docs/concepts/domain-model/auth-methods
+[roles]: /docs/concepts/domain-model/roles
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+- [Managed Group Service](/api-docs/managed-group-service)

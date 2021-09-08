@@ -9,34 +9,55 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/docker"
+	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/version"
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/gatedwriter"
-	"github.com/hashicorp/shared-secure-libs/reloadutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+)
+
+const (
+	// defaultStatusGracePeriod is the default status grace period, or the period
+	// of time that we will go without a status report before we start
+	// disconnecting and marking connections as closed. This is tied to the
+	// server default liveness setting, a related value. See the servers package
+	// for more details.
+	defaultStatusGracePeriod = servers.DefaultLiveness
+
+	// statusGracePeriodEnvVar is the environment variable that can be used to
+	// configure the status grace period. This setting is provided in seconds,
+	// and can never be lower than the default status grace period defined above.
+	//
+	// TODO: This value is temporary, it will be removed once we have a better
+	// story/direction on attributes and system defaults.
+	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
 
 type Server struct {
@@ -50,6 +71,9 @@ type Server struct {
 	Logger      hclog.Logger
 	CombineLogs bool
 	LogLevel    hclog.Level
+
+	StderrLock *sync.Mutex
+	Eventer    *event.Eventer
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
@@ -67,25 +91,41 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId                 string
-	DevLoginName                    string
-	DevPassword                     string
-	DevUserId                       string
-	DevOrgId                        string
-	DevProjectId                    string
-	DevHostCatalogId                string
-	DevHostSetId                    string
-	DevHostId                       string
-	DevTargetId                     string
-	DevHostAddress                  string
-	DevTargetDefaultPort            int
-	DevTargetSessionMaxSeconds      int
-	DevTargetSessionConnectionLimit int
+	DevPasswordAuthMethodId          string
+	DevOidcAuthMethodId              string
+	DevLoginName                     string
+	DevPassword                      string
+	DevUserId                        string
+	DevPasswordAccountId             string
+	DevOidcAccountId                 string
+	DevUnprivilegedLoginName         string
+	DevUnprivilegedPassword          string
+	DevUnprivilegedUserId            string
+	DevUnprivilegedPasswordAccountId string
+	DevUnprivilegedOidcAccountId     string
+	DevOrgId                         string
+	DevProjectId                     string
+	DevHostCatalogId                 string
+	DevHostSetId                     string
+	DevHostId                        string
+	DevTargetId                      string
+	DevHostAddress                   string
+	DevTargetDefaultPort             int
+	DevTargetSessionMaxSeconds       int
+	DevTargetSessionConnectionLimit  int
 
-	DatabaseUrl            string
-	DevDatabaseCleanupFunc func() error
+	DevOidcSetup oidcSetup
+
+	DatabaseUrl                string
+	DatabaseMaxOpenConnections int
+	DevDatabaseCleanupFunc     func() error
 
 	Database *gorm.DB
+
+	// StatusGracePeriodDuration represents the period of time (as a
+	// duration) that the controller will wait before marking
+	// connections from a disconnected worker as invalid.
+	StatusGracePeriodDuration time.Duration
 }
 
 func NewServer(cmd *Command) *Server {
@@ -96,7 +136,88 @@ func NewServer(cmd *Command) *Server {
 		SecureRandomReader: rand.Reader,
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
+		StderrLock:         new(sync.Mutex),
 	}
+}
+
+// SetupEventing will setup the server's eventer and initialize the "system
+// wide" eventer with a pointer to the same eventer
+func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
+	const op = "base.(Server).SetupEventing"
+
+	if logger == nil {
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing logger")
+	}
+	if serializationLock == nil {
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing serialization lock")
+	}
+	if serverName == "" {
+		return berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server name")
+	}
+	opts := getOpts(opt...)
+	if opts.withEventerConfig != nil {
+		if err := opts.withEventerConfig.Validate(); err != nil {
+			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid eventer config"))
+		}
+	}
+	if opts.withEventerConfig == nil {
+		opts.withEventerConfig = event.DefaultEventerConfig()
+	}
+
+	if opts.withEventFlags != nil {
+		if err := opts.withEventFlags.Validate(); err != nil {
+			return berrors.WrapDeprecated(err, op, berrors.WithMsg("invalid event flags"))
+		}
+		if opts.withEventFlags.Format != "" {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].Format = opts.withEventFlags.Format
+			}
+		}
+		if opts.withEventFlags.AuditEnabled != nil {
+			opts.withEventerConfig.AuditEnabled = *opts.withEventFlags.AuditEnabled
+		}
+		if opts.withEventFlags.ObservationsEnabled != nil {
+			opts.withEventerConfig.ObservationsEnabled = *opts.withEventFlags.ObservationsEnabled
+		}
+		if opts.withEventFlags.SysEventsEnabled != nil {
+			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
+		}
+		if len(opts.withEventFlags.AllowFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].AllowFilters = opts.withEventFlags.AllowFilters
+			}
+		}
+		if len(opts.withEventFlags.DenyFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].DenyFilters = opts.withEventFlags.DenyFilters
+			}
+		}
+	}
+
+	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
+	if err != nil {
+		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
+	}
+	b.Eventer = e
+
+	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventer(e)); err != nil {
+		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to initialize system eventer"))
+	}
+
+	return nil
+}
+
+// AddEventerToContext will add the server eventer to the context provided
+func (b *Server) AddEventerToContext(ctx context.Context) (context.Context, error) {
+	const op = "base.(Server).AddEventerToContext"
+	if b.Eventer == nil {
+		return nil, berrors.NewDeprecated(berrors.InvalidParameter, op, "missing server eventer")
+	}
+	e, err := event.NewEventerContext(ctx, b.Eventer)
+	if err != nil {
+		return nil, berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to add eventer to context"))
+	}
+	return e, nil
 }
 
 func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) error {
@@ -117,6 +238,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		// Note that if logFormat is either unspecified or standard, then
 		// the resulting logger's format will be standard.
 		JSONFormat: logFormat == logging.JSONFormat,
+		Mutex:      b.StderrLock,
 	})
 
 	// create GRPC logger
@@ -138,8 +260,12 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	// logic and re-enable.
 	/*
 		proxyCfg := httpproxy.FromEnvironment()
-		b.Logger.Info("proxy environment", "http_proxy", proxyCfg.HTTPProxy,
-			"https_proxy", proxyCfg.HTTPSProxy, "no_proxy", proxyCfg.NoProxy)
+		event.WriteSysEvent(context.TODO(), op,
+			"proxy environment",
+			"http_proxy", proxyCfg.HTTPProxy,
+			"https_proxy", proxyCfg.HTTPSProxy,
+			"no_proxy",	proxyCfg.NoProxy,
+		})
 	*/
 	// Setup gorm logging
 
@@ -160,7 +286,7 @@ func (b *Server) StorePidFile(pidPath string) error {
 	}
 
 	// Open the PID file
-	pidFile, err := os.OpenFile(pidPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	pidFile, err := os.OpenFile(pidPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
@@ -188,24 +314,6 @@ func (b *Server) RemovePidFile(pidPath string) error {
 		return nil
 	}
 	return os.Remove(pidPath)
-}
-
-func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error {
-	// TODO: Figure out a user-agent we want to use for the last param
-	// TODO: Do we want different names for different components?
-	var err error
-	b.InmemSink, _, b.PrometheusEnabled, err = configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
-		Config:      telemetry,
-		Ui:          ui,
-		ServiceName: "boundary",
-		DisplayName: "Boundary",
-		UserAgent:   "boundary",
-	})
-	if err != nil {
-		return fmt.Errorf("Error initializing telemetry: %w", err)
-	}
-
-	return nil
 }
 
 func (b *Server) PrintInfo(ui cli.Ui) {
@@ -266,29 +374,42 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
-		for _, purpose := range lnConfig.Purpose {
-			purpose = strings.ToLower(purpose)
-			if !strutil.StrListContains(allowedPurposes, purpose) {
-				return fmt.Errorf("Unknown listener purpose %q", purpose)
+		if len(lnConfig.Purpose) != 1 {
+			return fmt.Errorf("Invalid size of listener purposes (%d)", len(lnConfig.Purpose))
+		}
+		purpose := strings.ToLower(lnConfig.Purpose[0])
+		if !strutil.StrListContains(allowedPurposes, purpose) {
+			return fmt.Errorf("Unknown listener purpose %q", purpose)
+		}
+		lnConfig.Purpose[0] = purpose
+
+		if lnConfig.TLSCipherSuites == nil {
+			lnConfig.TLSCipherSuites = []uint16{
+				// 1.3
+				tls.TLS_AES_128_GCM_SHA256,
+				tls.TLS_AES_256_GCM_SHA384,
+				tls.TLS_CHACHA20_POLY1305_SHA256,
+				// 1.2
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 			}
 		}
 
-		// Override for now
-		// TODO: Way to configure
-		lnConfig.TLSCipherSuites = []uint16{
-			// 1.3
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-			// 1.2
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-		}
-
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
+		lnMux, props, reloadFunc, err := NewListener(lnConfig, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
+		}
+
+		// CORS props
+		if purpose == "api" {
+			if lnConfig.CorsEnabled != nil && *lnConfig.CorsEnabled {
+				props["cors_enabled"] = "true"
+				props["cors_allowed_origins"] = fmt.Sprintf("%v", lnConfig.CorsAllowedOrigins)
+				props["cors_allowed_headers"] = fmt.Sprintf("%v", lnConfig.CorsAllowedHeaders)
+			} else {
+				props["cors_enabled"] = "false"
+			}
 		}
 
 		// X-Forwarded-For props
@@ -305,16 +426,16 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		}
 
 		if reloadFunc != nil {
-			relSlice := b.ReloadFuncs["listener|"+lnConfig.Type]
+			relSlice := b.ReloadFuncs["listeners"]
 			relSlice = append(relSlice, reloadFunc)
-			b.ReloadFuncs["listener|"+lnConfig.Type] = relSlice
+			b.ReloadFuncs["listeners"] = relSlice
 		}
 
 		if lnConfig.MaxRequestSize == 0 {
 			lnConfig.MaxRequestSize = globals.DefaultMaxRequestSize
 		}
 		// TODO: We don't actually limit this yet.
-		//props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
+		// props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
 
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration
@@ -368,10 +489,8 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
 			kms.Purpose = origPurpose
 			if wrapperConfigError != nil {
-				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
-					return fmt.Errorf(
-						"Error parsing KMS configuration: %s", wrapperConfigError)
-				}
+				return fmt.Errorf(
+					"Error parsing KMS configuration: %s", wrapperConfigError)
 			}
 			if wrapper == nil {
 				return fmt.Errorf(
@@ -438,6 +557,16 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
+	if b.DatabaseMaxOpenConnections == 1 {
+		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
+	} else {
+		underlyingDB, err := dbase.DB()
+		if err != nil {
+			return fmt.Errorf("unable retreive db: %w", err)
+		}
+		underlyingDB.SetMaxOpenConns(b.DatabaseMaxOpenConnections)
+	}
+	b.Database = dbase
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		newLogger := logger.New(
 			db.GetGormLogger(b.Logger),
@@ -451,119 +580,6 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 
 	b.Database = dbase
 
-	return nil
-}
-
-func (b *Server) CreateDevDatabase(dialect string, opt ...Option) error {
-	opts := getOpts(opt...)
-
-	var container, url string
-	var err error
-	var c func() error
-
-	switch b.DatabaseUrl {
-	case "":
-		c, url, container, err = docker.StartDbInDocker(dialect)
-		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
-		// function before returning from this method
-		defer func() {
-			if !opts.withSkipDatabaseDestruction {
-				if c != nil {
-					if err := c(); err != nil {
-						b.Logger.Error("error cleaning up docker container", "error", err)
-					}
-				}
-			}
-		}()
-		if err == docker.ErrDockerUnsupported {
-			return err
-		}
-		if err != nil {
-			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
-		}
-
-		_, err := db.InitStore(dialect, c, url)
-		if err != nil {
-			return fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
-		}
-
-		b.DevDatabaseCleanupFunc = c
-		b.DatabaseUrl = url
-
-	default:
-		if _, err := db.InitStore(dialect, c, b.DatabaseUrl); err != nil {
-			return fmt.Errorf("error initializing store: %w", err)
-		}
-	}
-
-	b.InfoKeys = append(b.InfoKeys, "dev database url")
-	b.Info["dev database url"] = b.DatabaseUrl
-	if container != "" {
-		b.InfoKeys = append(b.InfoKeys, "dev database container")
-		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
-	}
-
-	if err := b.ConnectToDatabase(dialect); err != nil {
-		return err
-	}
-
-	b.Database.Logger.LogMode(logger.Info)
-
-	if err := b.CreateGlobalKmsKeys(context.Background()); err != nil {
-		return err
-	}
-
-	if _, err := b.CreateInitialLoginRole(context.Background()); err != nil {
-		return err
-	}
-
-	if opts.withSkipAuthMethodCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, err := b.CreateInitialAuthMethod(context.Background()); err != nil {
-		return err
-	}
-
-	if opts.withSkipScopesCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, err := b.CreateInitialScopes(context.Background()); err != nil {
-		return err
-	}
-
-	if opts.withSkipHostResourcesCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, _, err := b.CreateInitialHostResources(context.Background()); err != nil {
-		return err
-	}
-
-	if opts.withSkipTargetCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, err := b.CreateInitialTarget(context.Background()); err != nil {
-		return err
-	}
-
-	// now that we have passed all the error cases, reset c to be a noop so the
-	// defer doesn't do anything.
-	c = func() error { return nil }
 	return nil
 }
 
@@ -585,9 +601,13 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
@@ -629,6 +649,12 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 				}
 			}
 		}
+	} else {
+		var err error
+		conf.Controller.PublicClusterAddr, err = parseutil.ParsePath(conf.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("Error parsing public cluster addr: %w", err)
+		}
 	}
 	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
 	if err != nil {
@@ -660,6 +686,12 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 				}
 			}
 		}
+	} else {
+		var err error
+		conf.Worker.PublicAddr, err = parseutil.ParsePath(conf.Worker.PublicAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("Error parsing public addr: %w", err)
+		}
 	}
 	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
 	if err != nil {
@@ -672,4 +704,66 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	}
 	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
 	return nil
+}
+
+// MakeSighupCh returns a channel that can be used for SIGHUP
+// reloading. This channel will send a message for every
+// SIGHUP received.
+func MakeSighupCh() chan struct{} {
+	resultCh := make(chan struct{})
+
+	signalCh := make(chan os.Signal, 4)
+	signal.Notify(signalCh, syscall.SIGHUP)
+	go func() {
+		for {
+			<-signalCh
+			resultCh <- struct{}{}
+		}
+	}()
+	return resultCh
+}
+
+// SetStatusGracePeriodDuration sets the value for
+// StatusGracePeriodDuration.
+//
+// The grace period is the length of time we allow connections to run
+// on a worker in the event of an error sending status updates. The
+// period is defined the length of time since the last successful
+// update.
+//
+// The setting is derived from one of the following, in order:
+//
+//   * Via the supplied value if non-zero.
+//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
+//   integer value to define the setting.
+//   * If either of these is missing, the default is used. See the
+//   defaultStatusGracePeriod value for the default value.
+//
+// The minimum setting for this value is the default setting. Values
+// below this will be reset to the default.
+func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
+	const op = "base.(Server).SetStatusGracePeriodDuration"
+	ctx := context.TODO()
+	var result time.Duration
+	switch {
+	case value > 0:
+		result = value
+	case os.Getenv(statusGracePeriodEnvVar) != "":
+		// TODO: See the description of the constant for more details on
+		// this env var
+		v := os.Getenv(statusGracePeriodEnvVar)
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read status grace period setting", "envvar", statusGracePeriodEnvVar, "value", v))
+			break
+		}
+
+		result = time.Second * time.Duration(n)
+	}
+
+	if result < defaultStatusGracePeriod {
+		result = defaultStatusGracePeriod
+	}
+
+	s.StatusGracePeriodDuration = result
 }

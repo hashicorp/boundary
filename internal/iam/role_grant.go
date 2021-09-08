@@ -19,17 +19,19 @@ type RoleGrant struct {
 }
 
 // ensure that RoleGrant implements the interfaces of: Cloneable and db.VetForWriter
-var _ Cloneable = (*RoleGrant)(nil)
-var _ db.VetForWriter = (*RoleGrant)(nil)
+var (
+	_ Cloneable       = (*RoleGrant)(nil)
+	_ db.VetForWriter = (*RoleGrant)(nil)
+)
 
 // NewRoleGrant creates a new in memory role grant
 func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) {
 	const op = "iam.NewRoleGrant"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if grant == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing grant")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -37,7 +39,7 @@ func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) 
 	// checking time and we just care that it parses correctly.
 	perm, err := perms.Parse("o_abcd1234", grant)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
@@ -64,10 +66,10 @@ func (g *RoleGrant) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (g *RoleGrant) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "iam.(RoleGrant).VetForWrite"
 	if g.RawGrant == "" {
-		return errors.New(errors.InvalidParameter, op, "missing grant")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -77,11 +79,11 @@ func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ .
 	// anyways because it should still be part of the vetting process.
 	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 	}
 	canonical := perm.CanonicalString()
 	if g.CanonicalGrant != "" && g.CanonicalGrant != canonical {
-		return errors.Wrap(err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
 	}
 	g.CanonicalGrant = canonical
 

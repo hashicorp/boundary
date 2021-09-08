@@ -1,6 +1,8 @@
 package hosts
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/api"
 )
 
@@ -17,6 +19,8 @@ type options struct {
 	postMap                 map[string]interface{}
 	queryMap                map[string]string
 	withAutomaticVersioning bool
+	withSkipCurlOutput      bool
+	withFilter              string
 }
 
 func getDefaultOptions() options {
@@ -29,9 +33,17 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
+	if opts.withSkipCurlOutput {
+		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
+	}
+	if opts.withFilter != "" {
+		opts.queryMap["filter"] = opts.withFilter
+	}
 	return opts, apiOpts
 }
 
@@ -42,6 +54,23 @@ func getOpts(opt ...Option) (options, []api.Option) {
 func WithAutomaticVersioning(enable bool) Option {
 	return func(o *options) {
 		o.withAutomaticVersioning = enable
+	}
+}
+
+// WithSkipCurlOutput tells the API to not use the current call for cURL output.
+// Useful for when we need to look up versions.
+func WithSkipCurlOutput(skip bool) Option {
+	return func(o *options) {
+		o.withSkipCurlOutput = true
+	}
+}
+
+// WithFilter tells the API to filter the items returned using the provided
+// filter term.  The filter should be in a format supported by
+// hashicorp/go-bexpr.
+func WithFilter(filter string) Option {
+	return func(o *options) {
+		o.withFilter = strings.TrimSpace(filter)
 	}
 }
 

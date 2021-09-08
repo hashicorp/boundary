@@ -3,8 +3,6 @@ package base
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -12,19 +10,22 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
 
-	nkeyring "github.com/99designs/keyring"
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
-	zkeyring "github.com/zalando/go-keyring"
+)
+
+const (
+	CommandSuccess int = iota
+	CommandApiError
+	CommandCliError
+	CommandUserError
 )
 
 const (
@@ -35,6 +36,8 @@ const (
 	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
 	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+
+	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
@@ -68,14 +71,17 @@ type Command struct {
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
 
-	FlagScopeId       string
-	FlagScopeName     string
-	FlagId            string
-	FlagName          string
-	FlagDescription   string
-	FlagAuthMethodId  string
-	FlagHostCatalogId string
-	FlagVersion       int
+	FlagScopeId           string
+	FlagScopeName         string
+	FlagId                string
+	FlagName              string
+	FlagDescription       string
+	FlagAuthMethodId      string
+	FlagHostCatalogId     string
+	FlagCredentialStoreId string
+	FlagVersion           int
+	FlagRecursive         bool
+	FlagFilter            string
 
 	client *api.Client
 }
@@ -115,7 +121,7 @@ func MakeShutdownCh() chan struct{} {
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
 func (c *Command) Client(opt ...Option) (*api.Client, error) {
-	// Read the test client if present
+	// Read the cached client if present
 	if c.client != nil {
 		return c.client, nil
 	}
@@ -212,7 +218,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
 
-	case c.client.Token() == "":
+	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
 			return nil, err
@@ -229,140 +235,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	}
 
 	return c.client, nil
-}
-
-func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
-	tokenName := "default"
-
-	if c.FlagTokenName != "" {
-		tokenName = c.FlagTokenName
-	}
-
-	if tokenName == "none" {
-		c.UI.Warn(`"-token-name=none" is deprecated, please use "-keyring-type=none"`)
-		c.FlagKeyringType = "none"
-	}
-
-	if c.FlagKeyringType == "none" {
-		return "", "", nil
-	}
-
-	// Set so we can look it up later when printing out curl strings
-	os.Setenv(EnvTokenName, tokenName)
-
-	var foundKeyringType bool
-	keyringType := c.FlagKeyringType
-	switch runtime.GOOS {
-	case "windows":
-		switch keyringType {
-		case "auto", "wincred", "pass":
-			foundKeyringType = true
-			if keyringType == "auto" {
-				keyringType = "wincred"
-			}
-		}
-	case "darwin":
-		switch keyringType {
-		case "auto", "keychain", "pass":
-			foundKeyringType = true
-			if keyringType == "auto" {
-				keyringType = "keychain"
-			}
-		}
-	default:
-		switch keyringType {
-		case "auto", "secret-service", "pass":
-			foundKeyringType = true
-			if keyringType == "auto" {
-				keyringType = "pass"
-			}
-		}
-	}
-
-	if !foundKeyringType {
-		return "", "", fmt.Errorf("Given keyring type %q is not valid, or not valid for this platform", c.FlagKeyringType)
-	}
-
-	var available bool
-	switch keyringType {
-	case "wincred", "keychain":
-		available = true
-	case "pass", "secret-service":
-		avail := nkeyring.AvailableBackends()
-		for _, a := range avail {
-			if keyringType == string(a) {
-				available = true
-			}
-		}
-	}
-
-	if !available {
-		return "", "", fmt.Errorf("Keyring type %q is not available on this machine. For help with setting up keyrings, see https://www.boundaryproject.io/docs/api-clients/cli.", keyringType)
-	}
-
-	os.Setenv(EnvKeyringType, keyringType)
-
-	return keyringType, tokenName, nil
-}
-
-func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken {
-	var token string
-	var err error
-
-	switch keyringType {
-	case "wincred", "keychain":
-		token, err = zkeyring.Get("HashiCorp Boundary Auth Token", tokenName)
-		if err != nil {
-			if err == zkeyring.ErrNotFound {
-				c.UI.Error("No saved credential found, continuing without")
-			} else {
-				c.UI.Error(fmt.Sprintf("Error reading auth token from keyring: %s", err))
-				c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
-			}
-			token = ""
-		}
-
-	default:
-		krConfig := nkeyring.Config{
-			LibSecretCollectionName: "login",
-			PassPrefix:              "HashiCorp_Boundary",
-			AllowedBackends:         []nkeyring.BackendType{nkeyring.BackendType(keyringType)},
-		}
-
-		kr, err := nkeyring.Open(krConfig)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error opening keyring: %s", err))
-			c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
-			break
-		}
-
-		item, err := kr.Get(tokenName)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error fetching token from keyring: %s", err))
-			c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
-			break
-		}
-
-		token = string(item.Data)
-	}
-
-	if token != "" {
-		tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
-		switch {
-		case err != nil:
-			c.UI.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
-		case len(tokenBytes) == 0:
-			c.UI.Error("Zero length token after decoding stored token from system credential store")
-		default:
-			var authToken authtokens.AuthToken
-			if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-				c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
-			} else {
-				return &authToken
-			}
-		}
-	}
-	return nil
 }
 
 type FlagSetBit uint

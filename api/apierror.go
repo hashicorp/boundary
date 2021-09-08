@@ -32,5 +32,10 @@ func (e *Error) Error() string {
 // Errors are considered the same iff they are both api.Errors and their statuses are the same.
 func (e *Error) Is(target error) bool {
 	tApiErr := AsServerError(target)
-	return tApiErr != nil && tApiErr.Kind == e.Kind && e.ResponseStatus() == tApiErr.ResponseStatus()
+	return tApiErr != nil && tApiErr.Kind == e.Kind && e.Response().StatusCode() == tApiErr.Response().StatusCode()
+}
+
+// Response returns the API response associated with the error
+func (e *Error) Response() *Response {
+	return e.response
 }

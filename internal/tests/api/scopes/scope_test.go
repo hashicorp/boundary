@@ -38,6 +38,13 @@ func TestList(t *testing.T) {
 	pl, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
+
+	filterItem := pl.Items[3]
+	pl, err = scps.List(tc.Context(), org.GetPublicId(),
+		scopes.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(pl.Items, 1)
+	assert.Equal(filterItem.Id, pl.Items[0].Id)
 }
 
 func comparableSlice(in []*scopes.Scope) []scopes.Scope {
@@ -98,7 +105,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
@@ -122,17 +129,17 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = scps.Read(tc.Context(), "p_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = scps.Read(tc.Context(), "invalid id")
 	assert.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }

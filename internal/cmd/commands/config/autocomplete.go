@@ -54,5 +54,5 @@ func (c *AutocompleteCommand) Run(args []string) int {
 	if len(args) > 0 {
 		return cli.RunResultHelp
 	}
-	return 0
+	return base.CommandSuccess
 }

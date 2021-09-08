@@ -1,9 +1,8 @@
 package target
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
@@ -11,9 +10,10 @@ const (
 )
 
 func newTcpTargetId() (string, error) {
+	const op = "target.newTcpTargetId"
 	id, err := db.NewPublicId(TcpTargetPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new tcp target id: %w", err)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }

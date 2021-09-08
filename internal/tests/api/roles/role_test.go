@@ -107,7 +107,6 @@ func TestCustom(t *testing.T) {
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)
-			version++
 		})
 	}
 }
@@ -148,7 +147,7 @@ func TestList(t *testing.T) {
 			case "org":
 				numBuiltIn = 2
 			case "proj":
-				numBuiltIn = 1
+				numBuiltIn = 2
 			}
 			require.Len(p1.Items, numBuiltIn)
 			expected = append(expected, p1.Items[0:numBuiltIn]...)
@@ -173,6 +172,13 @@ func TestList(t *testing.T) {
 			p3, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3.Items))
+
+			filterItem := p3.Items[3]
+			p3, err = roleClient.List(tc.Context(), tt.scopeId,
+				roles.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+			require.NoError(err)
+			assert.Len(p3.Items, 1)
+			assert.Equal(filterItem.Id, p3.Items[0].Id)
 		})
 	}
 }
@@ -284,7 +290,7 @@ func TestErrors(t *testing.T) {
 			require.Error(err)
 			apiErr := api.AsServerError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 			// Create another resource with the same name.
 			_, err = roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("first"))
@@ -296,19 +302,19 @@ func TestErrors(t *testing.T) {
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 			_, err = roleClient.Read(tc.Context(), "invalid id")
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 			_, err = roleClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+			assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 		})
 	}
 }

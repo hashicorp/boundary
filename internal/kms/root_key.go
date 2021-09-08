@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,9 +22,10 @@ type RootKey struct {
 // for a global or org scope, but the scope type validation will be deferred
 // until the in memory root key is written to the database.  No options
 // are currently supported.
-func NewRootKey(scopeId string, opt ...Option) (*RootKey, error) {
+func NewRootKey(scopeId string, _ ...Option) (*RootKey, error) {
+	const op = "kms.NewRootKey"
 	if scopeId == "" {
-		return nil, fmt.Errorf("new root key: missing scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	c := &RootKey{
 		RootKey: &store.RootKey{
@@ -52,17 +52,18 @@ func (k *RootKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *RootKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (k *RootKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "kms.(RootKey).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("root key vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.ScopeId == "" {
-			return fmt.Errorf("root key vet for write: missing scope id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("root key vet for write: key is immutable: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

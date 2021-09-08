@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -28,15 +28,17 @@ func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 // message.  User was picked arbitrarily.
 
 func TestValidId(t *testing.T) {
-	assert.True(t, ValidId("prefix", "prefix_somerandomid"))
-	assert.True(t, ValidId("prefix", "prefix_short"))
-	assert.True(t, ValidId("prefix", "prefix_thisisalongidentifierwhichstillworks"))
+	assert.True(t, ValidId(Id("prefix_somerandomid"), "prefix"))
+	assert.True(t, ValidId(Id("prefix_somerandomid"), "notprefix", "prefix"))
+	assert.True(t, ValidId(Id("prefix_short"), "prefix"))
+	assert.True(t, ValidId(Id("prefix_thisisalongidentifierwhichstillworks"), "prefix"))
 
-	assert.False(t, ValidId("prefix", "prefixsomerandomid"))
-	assert.False(t, ValidId("prefix", "prefix_this has spaces"))
-	assert.False(t, ValidId("prefix", "prefix_includes-dash"))
-	assert.False(t, ValidId("prefix", "prefix_other@strange!characters"))
-	assert.False(t, ValidId("short", "prefix_short"))
+	assert.False(t, ValidId(Id("prefixsomerandomid"), "prefix"))
+	assert.False(t, ValidId(Id("prefixsomerandomid"), "prefix", "alsobadprefix"))
+	assert.False(t, ValidId(Id("prefix_this has spaces"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_includes-dash"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_other@strange!characters"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_short"), "short"))
 }
 
 func TestValidNameDescription(t *testing.T) {
@@ -95,7 +97,7 @@ func TestValidateGetRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateGetRequest(tc.prefix, tc.req, tc.valFn)
+			err := ValidateGetRequest(tc.valFn, tc.req, tc.prefix)
 			if len(tc.badFields) == 0 {
 				if !assert.NoError(t, err) {
 					errorIncludesFields(t, err, []string{})
@@ -158,7 +160,7 @@ func TestValidateDeleteRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateDeleteRequest(tc.prefix, tc.req, tc.valFn)
+			err := ValidateDeleteRequest(tc.valFn, tc.req, tc.prefix)
 			if len(tc.badFields) == 0 {
 				if !assert.NoError(t, err) {
 					errorIncludesFields(t, err, []string{})
@@ -462,7 +464,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateUpdateRequest(tc.prefix, tc.req, tc.item, tc.valFn)
+			err := ValidateUpdateRequest(tc.req, tc.item, tc.valFn, tc.prefix)
 			if len(tc.badFields) == 0 {
 				if !assert.NoError(t, err) {
 					errorIncludesFields(t, err, []string{})

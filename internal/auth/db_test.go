@@ -15,7 +15,8 @@ func TestDB_AuthMethodIDTrigger(t *testing.T) {
 		createTable = `
 create table if not exists test_auth_method (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null references iam_scope(public_id)
+    scope_id wt_public_id not null references iam_scope(public_id),
+	name wt_name
 );
 `
 		insert = `

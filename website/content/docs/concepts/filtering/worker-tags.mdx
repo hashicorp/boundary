@@ -1,0 +1,92 @@
+---
+layout: docs
+page_title: Filtering - Worker Tags
+description: |-
+  How to use worker tags to control which workers can handle a given target.
+---
+
+This page describes how to use worker tags and filters to control which workers
+are allowed to handle a given target. This can be used to control traffic
+locality. As an example, this can be used to ensure that traffic going into a
+public cloud is only handled by workers running within that same cloud.
+
+# Worker Tags
+
+Starting in Boundary 0.1.5, a worker can be configured with a set of key/value
+tags in its configuration file. The keys and values can be any lower-cased
+printable value. Each key can have more than one value:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    region = ["us-east-1"]
+    type   = ["prod", "webservers"]
+  }
+}
+```
+
+As HCL is JSON-compatible, this turns into an input JSON value of:
+
+```json
+{
+  "worker": {
+    "name": "web-prod-us-east-1",
+    "tags": {
+      "region": ["us-east-1"],
+      "type": ["prod", "webservers"]
+    }
+  }
+}
+```
+
+Note that this is the canonical format, as it maps closely to the filter
+structure. However, for compatibility with some other systems, it is also
+possible to specify the tags in a pure key=value style:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags = ["region=us-east-1", "type=prod", "type=webservers"]
+}
+```
+
+In this format, it is not possible to have an equal sign be a part of the key.
+
+# Target Worker Filtering
+
+Once workers have tags, it is possible to use these tags to control which
+workers are allowed to handle a given session by specifying a `worker_filter`
+attribute when configuring [targets](/docs/concepts/domain-model/targets).
+
+As filters operate on JSON Pointer selectors, the values that are input into the
+filter come from the JSON representation of the values in the configuration file
+nested under `tags` and include a `name` value:
+
+```json
+{
+  "name": "web-prod-us-east-1",
+  "tags": {
+    "region": ["us-east-1"],
+    "type": ["prod", "webservers"]
+  }
+}
+```
+
+!> If an expression fails due to a key not being found within the input data,
+the worker is not included in the final set, so ensure that all workers that
+should match a given filter are populated with tags referenced in the filter
+string. As a corollary, it is not possible to distinguish between a worker that
+is not included due to the expression itself and a worker that did not have
+correct tags.
+
+Following are some examples of using these values in filters:
+
+- Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
+  match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
+
+- Region: `"us-east-1" in "/tags/region"`. Note that each tag can have multiple
+  values, so it must use the `in` operator to search in the collection. If you
+  know that you have only one value, an equivalent would be `"/tags/region/0" == "us-east-1"`.
+
+- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`

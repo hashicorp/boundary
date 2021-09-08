@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"go.uber.org/atomic"
 )
@@ -26,7 +27,7 @@ func TestListenCloseErrMsg(t *testing.T) {
 func TestRegistrationErrors(t *testing.T) {
 	listener := getListener(t)
 	defer listener.Close()
-	mux := New(listener, nil)
+	mux := New(listener)
 	p1config := getTestTLS(t, []string{"p1"})
 	if _, err := mux.RegisterProto("p1", nil); err.Error() != "nil tls config given" {
 		t.Fatal(err)
@@ -65,12 +66,19 @@ func TestRegistrationErrors(t *testing.T) {
 }
 
 func TestListening(t *testing.T) {
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, "TestListening", event.WithEventerConfig(testConfig))
+	if err != nil {
+		t.Fatal(err)
+	}
 	listener := getListener(t)
 
-	logger := hclog.Default()
-	logger.SetLevel(hclog.Trace)
-	//log.SetOutput(logger.StandardWriter(new(hclog.StandardLoggerOptions)))
-	mux := New(listener, logger)
+	mux := New(listener)
 	defer mux.Close()
 
 	emptyconns := atomic.NewUint32(0)

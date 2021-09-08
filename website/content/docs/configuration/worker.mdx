@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Worker - Configuration
-sidebar_title: worker
 description: |-
   The worker stanza configures worker-specific parameters.
 ---
@@ -18,26 +17,33 @@ worker {
 }
 ```
 
-- `name` - Specifies a unique name of this worker within the Boundary worker
-cluster.
+- `name` - Specifies a unique name of this worker within the Boundary
+  cluster. This value can be a direct name string, can refer to a file on disk
+  (file://) from which an name will be read; or an env var (env://) from which
+  the name will be read.
 
 - `description` - Specifies a friendly description of this worker.
 
 - `public_addr` - Specifies the public host or IP address (and optionally port)
-at which the worker can be reached _by clients for proxying_. This defaults to
-the address of the listener marked for `proxy` purpose. This is especially
-useful for cloud environments that do not bind a publicly accessible IP to a NIC
-on the host directly, such as an Amazon EIP.
+  at which the worker can be reached _by clients for proxying_. This defaults to
+  the address of the listener marked for `proxy` purpose. This is especially
+  useful for cloud environments that do not bind a publicly accessible IP to a NIC
+  on the host directly, such as an Amazon EIP.
 
 - `controllers` - A list of hosts/IP addresses and optionally ports for reaching
-controllers. The port will default to :9201 if not specified.
+  controllers. The port will default to :9201 if not specified.
+
+- `tags` - A map of key-value pairs where values are an array of strings. Most
+  commonly used for [filtering](/docs/concepts/filtering) targets a worker can
+  proxy via [worker tags](/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
+  tags set here will be re-parsed and new values used..
 
 ## KMS Configuration
 
 Workers require a KMS block designated for `worker-auth`. This is the KMS configuration for
 authentication between the workers and controllers and must be present. Example (not safe for production!):
 
-```hcl 
+```hcl
   kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
@@ -46,13 +52,13 @@ authentication between the workers and controllers and must be present. Example 
 }
 ```
 
-This configuration must be the same for the worker-auth configuration for the controller if you're 
+This configuration must be the same for the worker-auth configuration for the controller if you're
 running the controller and worker as separate servers.
 
 And optionally, a KMS stanza for configuration encryption purpose:
 
 ```hcl
-# Configuration encryption block: decrypts sensitive values in the 
+# Configuration encryption block: decrypts sensitive values in the
 # configuration file. See `boundary config [encrypt|decrypt] -h`.
 kms "aead" {
   purpose   = "config"`
@@ -62,7 +68,7 @@ kms "aead" {
 ```
 
 Boundary supports many kinds of KMS integrations. For a complete guide to all available
-KMS types, see our [KMS documentation](/docs/configuration/kms). 
+KMS types, see our [KMS documentation](/docs/configuration/kms).
 
 # Complete Configuration Example
 
@@ -70,7 +76,7 @@ KMS types, see our [KMS documentation](/docs/configuration/kms).
 listener "tcp" {
 	purpose = "proxy"
 	tls_disable = true
-	address = 127.0.0.1
+	address = "127.0.0.1"
 }
 
 worker {
@@ -78,7 +84,7 @@ worker {
   name = "demo-worker-1"
   description = "A default worker created demonstration"
 
-  # Workers must be able to reach controllers on :9202
+  # Workers must be able to reach controllers on :9201
   controllers = [
     "10.0.0.1",
     "10.0.0.2",
@@ -86,6 +92,11 @@ worker {
   ]
 
   public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
 }
 
 # must be same key as used on controller config

@@ -1,3 +1,5 @@
+load _authorized_actions
+
 export TGT_NAME='test'
 
 function create_tcp_target() {
@@ -12,7 +14,7 @@ function create_tcp_target() {
 }
 
 function read_target() {
-  boundary targets read -id $1
+  boundary targets read -id $1 -format json
 }
 
 function delete_target() {
@@ -29,15 +31,15 @@ function assoc_host_sets() {
   boundary targets add-host-sets -id $id -host-set $hst
 }
 
-function target_id() {
+function target_id_from_name() {
   local sid=$1
   local name=$2
-  strip $(list_targets $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_targets $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function target_host_set_ids() {
   local tid=$1
-  boundary targets read -id $tid -format json | jq '.host_sets[].id'  
+  boundary targets read -id $tid -format json | jq '.item.host_sets[].id'  
 }
 
 function target_has_host_set_id() {
@@ -51,4 +53,16 @@ function target_has_host_set_id() {
     fi
   done
   return 1 
+}
+
+function has_default_target_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-host-sets' 'set-host-sets' 'remove-host-sets' 'authorize-session')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

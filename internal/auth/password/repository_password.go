@@ -32,27 +32,28 @@ type authAccount struct {
 // password settings for authMethodId if authentication is successful and
 // the stored values are not using the current password settings.
 func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
+	const op = "password.(Repository).Authenticate"
 	if authMethodId == "" {
-		return nil, fmt.Errorf("password authenticate: no authMethodId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing authMethodId", errors.WithoutEvent())
 	}
 	if loginName == "" {
-		return nil, fmt.Errorf("password authenticate: no loginName: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing loginName", errors.WithoutEvent())
 	}
 	if password == "" {
-		return nil, fmt.Errorf("password authenticate: no password: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password", errors.WithoutEvent())
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("password authenticate: no scopeId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scopeId", errors.WithoutEvent())
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, fmt.Errorf("password authenticate: unable to get database wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
 
 	acct, err := r.authenticate(ctx, scopeId, authMethodId, loginName, password)
 	if err != nil {
-		return nil, fmt.Errorf("password authenticate: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if acct == nil {
 		return nil, nil
@@ -61,22 +62,22 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 	if !acct.IsCurrentConf {
 		cc, err := r.currentConfig(ctx, authMethodId)
 		if err != nil {
-			return acct.Account, fmt.Errorf("password authenticate: retrieve current password configuration: %w", err)
+			return acct.Account, errors.Wrap(ctx, err, op, errors.WithMsg("retrieve current password configuration"))
 		}
 		cred, err := newArgon2Credential(acct.PublicId, password, cc.argon2())
 		if err != nil {
-			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
+			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.PasswordInvalidConfiguration))
 		}
 
 		oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 		if err != nil {
-			return acct.Account, fmt.Errorf("password authenticate: unable to get oplog wrapper: %w", err)
+			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplong wrapper"))
 		}
 
 		// do not change the Credential Id
 		cred.PrivateId = acct.CredentialId
 		if err := cred.encrypt(ctx, databaseWrapper); err != nil {
-			return acct.Account, fmt.Errorf("password authenticate: update credential: encrypt: %w", err)
+			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("update credential"))
 		}
 
 		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId"}
@@ -85,14 +86,17 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
 				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(oplogWrapper, metadata))
-				if err == nil && rowsUpdated > 1 {
-					return errors.ErrMultipleRecords
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
 				}
-				return err
+				if rowsUpdated > 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				}
+				return nil
 			},
 		)
 		if err != nil {
-			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
+			return acct.Account, errors.Wrap(ctx, err, op, errors.WithMsg("update credential"))
 		}
 	}
 	return acct.Account, nil
@@ -104,47 +108,48 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 //
 // Returns nil, db.ErrorRecordNotFound if the account doesn't exist.
 // Returns nil, nil if old does not match the stored password for accountId.
-// Returns nil, ErrPasswordsEqual if old and new are equal.
+// Returns nil, error with code PasswordsEqual if old and new are equal.
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
+	const op = "password.(Repository).ChangePassword"
 	if accountId == "" {
-		return nil, fmt.Errorf("change password: no account id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
 	}
 	if old == "" {
-		return nil, fmt.Errorf("change password: no old password: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing old password")
 	}
 	if new == "" {
-		return nil, fmt.Errorf("change password: no new password: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing new password")
 	}
 	if old == new {
-		return nil, fmt.Errorf("change password: %w", ErrPasswordsEqual)
+		return nil, errors.New(ctx, errors.PasswordsEqual, op, "passwords must not equal")
 	}
 	if version == 0 {
-		return nil, fmt.Errorf("change password: no version supplied: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("change password: no scopeId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scopeId")
 	}
 
 	authAccount, err := r.LookupAccount(ctx, accountId)
 	if err != nil {
-		return nil, fmt.Errorf("change password: lookup account: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if authAccount == nil {
-		return nil, fmt.Errorf("change password: lookup account: account not found: %w", errors.ErrRecordNotFound)
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "account not found")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("change password: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, fmt.Errorf("change password: unable to get database wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
 
 	acct, err := r.authenticate(ctx, scopeId, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
-		return nil, fmt.Errorf("change password: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if acct == nil {
 		return nil, nil
@@ -152,18 +157,18 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 
 	cc, err := r.currentConfig(ctx, authAccount.GetAuthMethodId())
 	if err != nil {
-		return nil, fmt.Errorf("change password: retrieve current password configuration: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("retrieve current password configuration"))
 	}
 	if cc.MinPasswordLength > len(new) {
-		return nil, fmt.Errorf("change password: %w", ErrTooShort)
+		return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
 	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
 	if err != nil {
-		return nil, fmt.Errorf("change password: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
-		return nil, fmt.Errorf("change password: encrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 
 	oldCred := acct.Argon2Credential
@@ -176,24 +181,27 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 			updatedAccount.Version = version + 1
 			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(oplogWrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
-				return fmt.Errorf("change password: unable to update account version: %w", err)
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("change password: updated account and %d rows updated", rowsUpdated)
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
-			}
 			if err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
-			return w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			if err = w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create new credential"))
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("change password: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	// change the Credential Id
@@ -202,17 +210,18 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 }
 
 func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*authAccount, error) {
+	const op = "password.(Repository).authenticate"
 	var accts []authAccount
 
 	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{authMethodId, loginName})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var aa authAccount
 		if err := r.reader.ScanRows(rows, &aa); err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		accts = append(accts, aa)
 	}
@@ -223,7 +232,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 		return nil, nil
 	case len(accts) > 1:
 		// this should never happen
-		return nil, fmt.Errorf("multiple accounts returned for user name")
+		return nil, errors.New(ctx, errors.Unknown, op, "multiple accounts returned for user name")
 	default:
 		acct = accts[0]
 	}
@@ -231,11 +240,11 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
 	if err != nil {
-		return nil, fmt.Errorf("unable to get database wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
 
 	if err := acct.decrypt(ctx, databaseWrapper); err != nil {
-		return nil, fmt.Errorf("cannot decrypt credential: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("unable to decrypt credential"))
 	}
 
 	inputKey := argon2.IDKey([]byte(password), acct.Salt, acct.Iterations, acct.Memory, uint8(acct.Threads), acct.KeyLength)
@@ -249,43 +258,44 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 // SetPassword sets the password for accountId to password. If password
 // contains an empty string, the password for accountId will be deleted.
 func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
+	const op = "password.(Repository).SetPassword"
 	if accountId == "" {
-		return nil, fmt.Errorf("set password: no accountId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
 	}
 	if version == 0 {
-		return nil, fmt.Errorf("set password: no version supplied: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("set password: no scopeId: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scopeId")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("set password: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, fmt.Errorf("set password: unable to get database wrapper: %w", err)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
 
 	var newCred *Argon2Credential
 	if password != "" {
 		cc, err := r.currentConfigForAccount(ctx, accountId)
 		if err != nil {
-			return nil, fmt.Errorf("set password: retrieve current configuration: %w", err)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if cc == nil {
-			return nil, fmt.Errorf("set password: retrieve current configuration: %w", errors.ErrRecordNotFound)
+			return nil, errors.New(ctx, errors.RecordNotFound, op, "unable to retrieve current configuration")
 		}
 		if cc.MinPasswordLength > len(password) {
-			return nil, fmt.Errorf("set password: new password: %w", ErrTooShort)
+			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
 		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
 		if err != nil {
-			return nil, fmt.Errorf("set password: %w", err)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
-			return nil, fmt.Errorf("set password: encrypt: %w", err)
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 		}
 	}
 
@@ -297,27 +307,27 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			updatedAccount.Version = version + 1
 			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(oplogWrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
-				return fmt.Errorf("set password: unable to update account version: %w", err)
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("set password: updated account and %d rows updated", rowsUpdated)
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 			acct = updatedAccount
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
 				if !errors.IsNotFoundError(err) {
-					return err
+					return errors.Wrap(ctx, err, op)
 				}
 			}
 			if oldCred.PrivateId != "" {
 				dCred := oldCred.clone()
 				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
-				if err == nil && rowsDeleted > 1 {
-					return errors.ErrMultipleRecords
-				}
 				if err != nil {
-					return err
+					return errors.Wrap(ctx, err, op)
+				}
+				if rowsDeleted > 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 				}
 			}
 			if newCred != nil {
@@ -327,7 +337,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("set password: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return acct, nil
 }

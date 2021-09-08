@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // SessionServiceClient is the client API for SessionService service.
@@ -24,7 +25,7 @@ type SessionServiceClient interface {
 	ActivateSession(ctx context.Context, in *ActivateSessionRequest, opts ...grpc.CallOption) (*ActivateSessionResponse, error)
 	// CancelSession allows a worker to request that the controller cancel a session.
 	CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error)
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	AuthorizeConnection(ctx context.Context, in *AuthorizeConnectionRequest, opts ...grpc.CallOption) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
 	ConnectConnection(ctx context.Context, in *ConnectConnectionRequest, opts ...grpc.CallOption) (*ConnectConnectionResponse, error)
@@ -105,7 +106,7 @@ type SessionServiceServer interface {
 	ActivateSession(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error)
 	// CancelSession allows a worker to request that the controller cancel a session.
 	CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	AuthorizeConnection(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error)
 	// ConnectConnection updates a connection to set it to connected
 	ConnectConnection(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error)
@@ -146,7 +147,7 @@ type UnsafeSessionServiceServer interface {
 }
 
 func RegisterSessionServiceServer(s grpc.ServiceRegistrar, srv SessionServiceServer) {
-	s.RegisterService(&_SessionService_serviceDesc, srv)
+	s.RegisterService(&SessionService_ServiceDesc, srv)
 }
 
 func _SessionService_LookupSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -257,7 +258,10 @@ func _SessionService_CloseConnection_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-var _SessionService_serviceDesc = grpc.ServiceDesc{
+// SessionService_ServiceDesc is the grpc.ServiceDesc for SessionService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SessionService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.servers.services.v1.SessionService",
 	HandlerType: (*SessionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

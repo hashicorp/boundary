@@ -1,7 +1,7 @@
 syntax = "proto3";
 package controller.custom_options.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/protooptions;protooptions";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions;protooptions";
 
 import "controller/custom_options/v1/options.proto";
 

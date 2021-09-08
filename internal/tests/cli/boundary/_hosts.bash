@@ -1,3 +1,5 @@
+load _authorized_actions
+
 function create_host() {
   local name=$1
   local hcid=$2
@@ -10,7 +12,7 @@ function create_host() {
 }
 
 function read_host() {
-  boundary hosts read -id $1
+  boundary hosts read -id $1 -format json
 }
 
 function delete_host() {
@@ -25,5 +27,17 @@ function host_id() {
   local name=$1
   local hcid=$2
   
-  strip $(list_hosts $hcid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_hosts $hcid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+}
+
+function has_default_host_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

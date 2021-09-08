@@ -27,3 +27,5 @@ cd "${UI_CLONE_DIR}"
 git reset --hard
 git fetch origin "${UI_COMMITISH}"
 git checkout "${UI_COMMITISH}"
+git pull --ff-only origin "${UI_COMMITISH}"
+git reset --hard "${UI_COMMITISH}"

@@ -136,7 +136,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
 
-	var tests = []struct {
+	tests := []struct {
 		name         string
 		authMethodId string
 		want         *Argon2Configuration
@@ -207,7 +207,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 
-	var tests = []struct {
+	tests := []struct {
 		name           string
 		in             Configuration
 		want           *Argon2Configuration

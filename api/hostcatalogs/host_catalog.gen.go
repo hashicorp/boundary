@@ -2,7 +2,6 @@
 package hostcatalogs
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,30 +13,20 @@ import (
 )
 
 type HostCatalog struct {
-	Id          string                 `json:"id,omitempty"`
-	ScopeId     string                 `json:"scope_id,omitempty"`
-	Scope       *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name        string                 `json:"name,omitempty"`
-	Description string                 `json:"description,omitempty"`
-	CreatedTime time.Time              `json:"created_time,omitempty"`
-	UpdatedTime time.Time              `json:"updated_time,omitempty"`
-	Version     uint32                 `json:"version,omitempty"`
-	Type        string                 `json:"type,omitempty"`
-	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+	Id                          string                 `json:"id,omitempty"`
+	ScopeId                     string                 `json:"scope_id,omitempty"`
+	Scope                       *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                        string                 `json:"name,omitempty"`
+	Description                 string                 `json:"description,omitempty"`
+	CreatedTime                 time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                 time.Time              `json:"updated_time,omitempty"`
+	Version                     uint32                 `json:"version,omitempty"`
+	Type                        string                 `json:"type,omitempty"`
+	Attributes                  map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
+	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n HostCatalog) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalog) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n HostCatalog) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type HostCatalogReadResult struct {
@@ -49,27 +38,26 @@ func (n HostCatalogReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n HostCatalogReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n HostCatalogReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n HostCatalogReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type HostCatalogCreateResult = HostCatalogReadResult
-type HostCatalogUpdateResult = HostCatalogReadResult
+type (
+	HostCatalogCreateResult = HostCatalogReadResult
+	HostCatalogUpdateResult = HostCatalogReadResult
+)
 
 type HostCatalogDeleteResult struct {
 	response *api.Response
 }
 
-func (n HostCatalogDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for HostCatalogDeleteResult
+func (n HostCatalogDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n HostCatalogDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostCatalogDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type HostCatalogListResult struct {
@@ -81,12 +69,8 @@ func (n HostCatalogListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n HostCatalogListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalogListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostCatalogListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -156,9 +140,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogReadResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostCatalogReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -166,7 +150,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -179,7 +163,7 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -197,9 +181,9 @@ func (c *Client) Read(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalogUpdateResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*HostCatalogUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -211,7 +195,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostCatalogId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -229,7 +213,7 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -260,9 +244,9 @@ func (c *Client) Update(ctx context.Context, hostCatalogId string, version uint3
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalogDeleteResult, error) {
-	if hostCatalogId == "" {
-		return nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostCatalogDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -270,7 +254,7 @@ func (c *Client) Delete(ctx context.Context, hostCatalogId string, opt ...Option
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

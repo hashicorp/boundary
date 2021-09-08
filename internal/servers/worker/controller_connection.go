@@ -19,13 +19,15 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
 
 func (w *Worker) startControllerConnections() error {
+	const op = "worker.(Worker).startControllerConnections"
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		switch {
@@ -34,7 +36,6 @@ func (w *Worker) startControllerConnections() error {
 		default:
 			host, port, err := net.SplitHostPort(addr)
 			if err != nil && strings.Contains(err.Error(), "missing port in address") {
-				w.logger.Trace("missing port in controller address, using port 9201", "address", addr)
 				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
 			}
 			if err != nil {
@@ -58,7 +59,8 @@ func (w *Worker) startControllerConnections() error {
 	return nil
 }
 
-func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		tlsConf, authInfo, err := w.workerAuthTLSConfig()
 		if err != nil {
@@ -79,13 +81,13 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 		if err != nil {
 			if err := nonTlsConn.Close(); err != nil {
-				w.logger.Error("error closing connection after writing failure", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 			}
 			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 		}
 		if written != len(authInfo.ConnectionNonce) {
 			if err := nonTlsConn.Close(); err != nil {
-				w.logger.Error("error closing connection after writing failure", "error", err)
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 			}
 			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}
@@ -94,6 +96,7 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 }
 
 func (w *Worker) createClientConn(addr string) error {
+	const op = "worker.(Worker).createClientConn"
 	defaultTimeout := (time.Second + time.Nanosecond).String()
 	defServiceConfig := fmt.Sprintf(`
 	  {
@@ -127,11 +130,11 @@ func (w *Worker) createClientConn(addr string) error {
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 
-	w.logger.Info("connected to controller", "address", addr)
+	event.WriteSysEvent(w.baseContext, op, "connected to controller", "address", addr)
 	return nil
 }
 
-func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
 		Name:        w.conf.RawConfig.Worker.Name,

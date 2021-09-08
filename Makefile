@@ -15,6 +15,9 @@ export GEN_BASEPATH := $(shell pwd)
 api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
+cli:
+	$(MAKE) --environment-overrides -C internal/cmd/gencli cli
+
 tools:
 	go generate -tags tools tools/tools.go
 
@@ -33,7 +36,7 @@ bin: build-ui
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 fmt:
-	goimports -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
+	gofumpt -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
 
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne
@@ -64,7 +67,7 @@ build-ui:
 	./scripts/uiclone.sh && ./scripts/uigen.sh
 
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/assets.go))
+ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
 	@echo "==> No UI assets found, building..."
 	@$(MAKE) build-ui
 else
@@ -74,10 +77,10 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api migrations
+gen: cleangen proto api cli migrations perms-table fmt
 
 migrations:
-	$(MAKE) --environment-overrides -C internal/db/migrations/genmigrations migrations
+	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -126,14 +129,24 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/database_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go	
+	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go		
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/oidc/store/oidc.pb.go
+	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+
+	# these protos, services and openapi artifacts are purely for testing purposes
+	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=testing:internal/gen/testing/event/. internal/proto/local/testing/event/v1/*.proto
+
 
 	@rm -R ${TMP_DIR}
 
 protolint:
 	@buf check lint
-	@buf check breaking --against 'https://github.com/hashicorp/boundary.git'
+	@buf check breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
 
 # must have nodejs and npm installed
 website: website-install website-start
@@ -147,13 +160,19 @@ website-start:
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
+test-sql:
+	$(MAKE) -C internal/db/sqltest/ test
+
+test: 
+	~/.go/bin/go test ./... -timeout 30m
+
 install-go:
 	./ci/goinstall.sh
 
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.3
+VERSION?=0.6.0
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -167,6 +186,16 @@ docker-build:
 	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
 	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
 
+# builds multiarch from releases.hashicorp.com official binary
+docker-multiarch-build:
+	docker buildx build \
+	--push \
+	--tag $(IMAGE_TAG) \
+	--tag hashicorp/boundary:latest \
+	--build-arg VERSION=$(VERSION) \
+	--platform linux/amd64,linux/arm64 \
+	--file $(DOCKER_DIR)/Release.dockerfile .
+	
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
@@ -178,7 +207,7 @@ docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
+.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
 
 .NOTPARALLEL:
 

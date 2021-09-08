@@ -2,10 +2,9 @@ syntax = "proto3";
 
 package controller.api.resources.authtokens.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens;authtokens";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens;authtokens";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 
 // AuthToken contains all fields related to an Auth Token resource
@@ -42,4 +41,7 @@ message AuthToken {
 
 	// Output only. The time this Auth Token expires.
 	google.protobuf.Timestamp expiration_time = 110 [json_name="expiration_time"];
+
+	// Output only. The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

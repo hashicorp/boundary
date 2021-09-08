@@ -2,7 +2,6 @@
 package hostsets
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,31 +13,20 @@ import (
 )
 
 type HostSet struct {
-	Id            string                 `json:"id,omitempty"`
-	HostCatalogId string                 `json:"host_catalog_id,omitempty"`
-	Scope         *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name          string                 `json:"name,omitempty"`
-	Description   string                 `json:"description,omitempty"`
-	CreatedTime   time.Time              `json:"created_time,omitempty"`
-	UpdatedTime   time.Time              `json:"updated_time,omitempty"`
-	Version       uint32                 `json:"version,omitempty"`
-	Type          string                 `json:"type,omitempty"`
-	HostIds       []string               `json:"host_ids,omitempty"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+	Id                string                 `json:"id,omitempty"`
+	HostCatalogId     string                 `json:"host_catalog_id,omitempty"`
+	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name              string                 `json:"name,omitempty"`
+	Description       string                 `json:"description,omitempty"`
+	CreatedTime       time.Time              `json:"created_time,omitempty"`
+	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
+	Version           uint32                 `json:"version,omitempty"`
+	Type              string                 `json:"type,omitempty"`
+	HostIds           []string               `json:"host_ids,omitempty"`
+	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n HostSet) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostSet) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n HostSet) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type HostSetReadResult struct {
@@ -50,27 +38,26 @@ func (n HostSetReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n HostSetReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n HostSetReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n HostSetReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type HostSetCreateResult = HostSetReadResult
-type HostSetUpdateResult = HostSetReadResult
+type (
+	HostSetCreateResult = HostSetReadResult
+	HostSetUpdateResult = HostSetReadResult
+)
 
 type HostSetDeleteResult struct {
 	response *api.Response
 }
 
-func (n HostSetDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for HostSetDeleteResult
+func (n HostSetDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n HostSetDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostSetDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type HostSetListResult struct {
@@ -82,12 +69,8 @@ func (n HostSetListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n HostSetListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostSetListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostSetListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -152,9 +135,9 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*HostSetReadResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostSetReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -162,7 +145,7 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-sets/%s", hostSetId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-sets/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -175,7 +158,7 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -193,9 +176,9 @@ func (c *Client) Read(ctx context.Context, hostSetId string, opt ...Option) (*Ho
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, opt ...Option) (*HostSetUpdateResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*HostSetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -207,7 +190,7 @@ func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, o
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostSetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -225,7 +208,7 @@ func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, o
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-sets/%s", hostSetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-sets/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -256,9 +239,9 @@ func (c *Client) Update(ctx context.Context, hostSetId string, version uint32, o
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostSetId string, opt ...Option) (*HostSetDeleteResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostSetDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -266,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, hostSetId string, opt ...Option) (*
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-sets/%s", hostSetId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-sets/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -339,13 +322,15 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	return target, nil
 }
 
-func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into AddHosts request")
+func (c *Client) AddHosts(ctx context.Context, id string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddHosts request")
 	}
+
 	if len(hostIds) == 0 {
 		return nil, errors.New("empty hostIds passed into AddHosts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -356,7 +341,7 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddHosts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostSetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -373,9 +358,10 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", hostSetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddHosts request: %w", err)
 	}
@@ -406,9 +392,9 @@ func (c *Client) AddHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, nil
 }
 
-func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into SetHosts request")
+func (c *Client) SetHosts(ctx context.Context, id string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetHosts request")
 	}
 
 	if c.client == nil {
@@ -421,7 +407,7 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetHosts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostSetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -438,9 +424,10 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", hostSetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetHosts request: %w", err)
 	}
@@ -471,13 +458,15 @@ func (c *Client) SetHosts(ctx context.Context, hostSetId string, version uint32,
 	return target, nil
 }
 
-func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
-	if hostSetId == "" {
-		return nil, fmt.Errorf("empty hostSetId value passed into RemoveHosts request")
+func (c *Client) RemoveHosts(ctx context.Context, id string, version uint32, hostIds []string, opt ...Option) (*HostSetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveHosts request")
 	}
+
 	if len(hostIds) == 0 {
 		return nil, errors.New("empty hostIds passed into RemoveHosts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -488,7 +477,7 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveHosts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostSetId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -505,9 +494,10 @@ func (c *Client) RemoveHosts(ctx context.Context, hostSetId string, version uint
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", hostSetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveHosts request: %w", err)
 	}

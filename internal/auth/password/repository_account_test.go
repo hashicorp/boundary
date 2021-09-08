@@ -10,6 +10,7 @@ import (
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestCheckLoginName(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		in   string
 		want bool
 	}{
@@ -50,28 +51,32 @@ func TestRepository_CreateAccount(t *testing.T) {
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 	authMethod := authMethods[0]
 
-	var tests = []struct {
-		name      string
-		in        *Account
-		opts      []Option
-		want      *Account
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         *Account
+		opts       []Option
+		want       *Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "nil-Account",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-Account",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: missing Account: parameter violation: error #100",
 		},
 		{
-			name:      "nil-embedded-Account",
-			in:        &Account{},
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-embedded-Account",
+			in:         &Account{},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-scope-id",
 			in: &Account{
 				Account: &store.Account{},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
@@ -81,7 +86,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					PublicId:     "hcst_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: public id must be empty: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-uppercase",
@@ -91,7 +97,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "KaZmiErcZak11",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: KaZmiErcZak11: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-leading-space",
@@ -101,7 +108,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    " kazmierczak12",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got:  kazmierczak12: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-trailing-space",
@@ -111,7 +119,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmierczak13 ",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmierczak13 : parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-space-in-name",
@@ -121,7 +130,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmier czak14",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmier czak14: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-too-short",
@@ -131,7 +141,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "ka",
 				},
 			},
-			wantIsErr: ErrTooShort,
+			wantIsErr:  errors.TooShort,
+			wantErrMsg: "password.(Repository).CreateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "invalid-password-too-short",
@@ -144,7 +155,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 			opts: []Option{
 				WithPassword("a"),
 			},
-			wantIsErr: ErrTooShort,
+			wantIsErr:  errors.PasswordTooShort,
+			wantErrMsg: "password.(Repository).CreateAccount: must be longer than 8: password violation: error #200",
 		},
 		{
 			name: "valid-no-options",
@@ -223,15 +235,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -247,6 +259,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -269,14 +290,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 	})
 
@@ -301,7 +322,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -311,7 +332,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
+		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -329,19 +350,21 @@ func TestRepository_LookupAccount(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
-	var tests = []struct {
-		name      string
-		in        string
-		want      *Account
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         string
+		want       *Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "password.(Repository).LookupAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -362,9 +385,9 @@ func TestRepository_LookupAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -383,19 +406,21 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
-	var tests = []struct {
-		name      string
-		in        string
-		want      int
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         string
+		want       int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "password.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -417,9 +442,9 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Zero(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -438,20 +463,22 @@ func TestRepository_ListAccounts(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
-	accounts1 := TestAccounts(t, conn, authMethods[0].GetPublicId(), 3)
-	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
+	accounts1 := TestMultipleAccounts(t, conn, authMethods[0].GetPublicId(), 3)
+	accounts2 := TestMultipleAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
 
-	var tests = []struct {
-		name      string
-		in        string
-		opts      []Option
-		want      []*Account
-		wantIsErr error
+	tests := []struct {
+		name       string
+		in         string
+		opts       []Option
+		want       []*Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no auth method id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no auth method id",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "With no accounts id",
@@ -473,9 +500,9 @@ func TestRepository_ListAccounts(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -496,9 +523,9 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	accountCount := 10
-	_ = TestAccounts(t, conn, am.GetPublicId(), accountCount)
+	_ = TestMultipleAccounts(t, conn, am.GetPublicId(), accountCount)
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		repoOpts []Option
 		listOpts []Option
@@ -619,41 +646,45 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		}
 	}
 
-	var tests = []struct {
-		name      string
-		orig      *Account
-		chgFn     func(*Account) *Account
-		masks     []string
-		want      *Account
-		wantCount int
-		wantIsErr errors.Code
+	tests := []struct {
+		name       string
+		orig       *Account
+		chgFn      func(*Account) *Account
+		masks      []string
+		want       *Account
+		wantCount  int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "nil-Account",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     makeNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      makeNil(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
 		},
 		{
 			name: "nil-embedded-Account",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     makeEmbeddedNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      makeEmbeddedNil(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "no-public-id",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     deletePublicId(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      deletePublicId(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "password.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "updating-non-existent-Account",
@@ -662,9 +693,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
-			masks:     []string{"Name"},
-			wantIsErr: errors.RecordNotFound,
+			chgFn:      combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:      []string{"Name"},
+			wantIsErr:  errors.RecordNotFound,
+			wantErrMsg: "password.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: password.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name: "empty-field-mask",
@@ -673,8 +705,9 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.EmptyFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			wantIsErr:  errors.EmptyFieldMask,
+			wantErrMsg: "password.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -683,9 +716,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			masks:      []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
+			wantIsErr:  errors.InvalidFieldMask,
+			wantErrMsg: "password.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -694,9 +728,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"Bilbo"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			masks:      []string{"Bilbo"},
+			wantIsErr:  errors.InvalidFieldMask,
+			wantErrMsg: "password.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
 		},
 		{
 			name: "change-name",
@@ -841,9 +876,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName("KaZmIeRcZaK"),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      changeLoginName("KaZmIeRcZaK"),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got KaZmIeRcZaK: parameter violation: error #100",
 		},
 		{
 			name: "change-login-name-to-short",
@@ -852,9 +888,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName("ka"),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.PasswordTooShort,
+			chgFn:      changeLoginName("ka"),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.TooShort,
+			wantErrMsg: "password.(Repository).UpdateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "delete-login-name",
@@ -863,9 +900,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName(""),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      changeLoginName(""),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got : parameter violation: error #100",
 		},
 	}
 
@@ -894,6 +932,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -906,7 +945,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				return
 			}
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)
@@ -928,6 +967,14 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -938,7 +985,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		name := "test-dup-name"
 		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
-		acts := TestAccounts(t, conn, am.PublicId, 2)
+		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
 		aa := acts[0]
 		ab := acts[1]
@@ -953,7 +1000,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.Name = name
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -985,7 +1032,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -1016,7 +1063,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		loginName := "kazmierczak12"
 		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
-		acts := TestAccounts(t, conn, am.PublicId, 2)
+		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
 		aa := acts[0]
 		ab := acts[1]
@@ -1031,7 +1078,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.LoginName = loginName
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"LoginName"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -1062,7 +1109,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, intglobals.NewPasswordAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.LoginName, got.LoginName)
 
@@ -1093,8 +1140,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		ama := ams[0]
 		amb := ams[1]
 
-		aa := TestAccounts(t, conn, ama.PublicId, 1)[0]
-		ab := TestAccounts(t, conn, amb.PublicId, 1)[0]
+		aa := TestMultipleAccounts(t, conn, ama.PublicId, 1)[0]
+		ab := TestMultipleAccounts(t, conn, amb.PublicId, 1)[0]
 
 		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
 		orig := aa.clone()

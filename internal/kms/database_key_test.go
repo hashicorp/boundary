@@ -33,7 +33,7 @@ func TestDatabaseKey_Create(t *testing.T) {
 		args          args
 		want          *kms.DatabaseKey
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -41,7 +41,7 @@ func TestDatabaseKey_Create(t *testing.T) {
 			name:      "empty-rootKeyId",
 			args:      args{},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid",
@@ -63,7 +63,7 @@ func TestDatabaseKey_Create(t *testing.T) {
 			got, err := kms.NewDatabaseKey(tt.args.rootKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

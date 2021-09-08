@@ -2,7 +2,6 @@
 package hosts
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,31 +13,20 @@ import (
 )
 
 type Host struct {
-	Id            string                 `json:"id,omitempty"`
-	HostCatalogId string                 `json:"host_catalog_id,omitempty"`
-	Scope         *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name          string                 `json:"name,omitempty"`
-	Description   string                 `json:"description,omitempty"`
-	CreatedTime   time.Time              `json:"created_time,omitempty"`
-	UpdatedTime   time.Time              `json:"updated_time,omitempty"`
-	Version       uint32                 `json:"version,omitempty"`
-	Type          string                 `json:"type,omitempty"`
-	HostSetIds    []string               `json:"host_set_ids,omitempty"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+	Id                string                 `json:"id,omitempty"`
+	HostCatalogId     string                 `json:"host_catalog_id,omitempty"`
+	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name              string                 `json:"name,omitempty"`
+	Description       string                 `json:"description,omitempty"`
+	CreatedTime       time.Time              `json:"created_time,omitempty"`
+	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
+	Version           uint32                 `json:"version,omitempty"`
+	Type              string                 `json:"type,omitempty"`
+	HostSetIds        []string               `json:"host_set_ids,omitempty"`
+	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n Host) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Host) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Host) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type HostReadResult struct {
@@ -50,27 +38,26 @@ func (n HostReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n HostReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n HostReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n HostReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type HostCreateResult = HostReadResult
-type HostUpdateResult = HostReadResult
+type (
+	HostCreateResult = HostReadResult
+	HostUpdateResult = HostReadResult
+)
 
 type HostDeleteResult struct {
 	response *api.Response
 }
 
-func (n HostDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for HostDeleteResult
+func (n HostDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n HostDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type HostListResult struct {
@@ -82,12 +69,8 @@ func (n HostListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n HostListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -152,9 +135,9 @@ func (c *Client) Create(ctx context.Context, hostCatalogId string, opt ...Option
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostReadResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -162,7 +145,7 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -175,7 +158,7 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -193,9 +176,9 @@ func (c *Client) Read(ctx context.Context, hostId string, opt ...Option) (*HostR
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt ...Option) (*HostUpdateResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*HostUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -207,7 +190,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, hostId, opt...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -225,7 +208,7 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", hostId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -256,9 +239,9 @@ func (c *Client) Update(ctx context.Context, hostId string, version uint32, opt 
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*HostDeleteResult, error) {
-	if hostId == "" {
-		return nil, fmt.Errorf("empty hostId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -266,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, hostId string, opt ...Option) (*Hos
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

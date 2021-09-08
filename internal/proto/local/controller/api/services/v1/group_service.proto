@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/groups/v1/group.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 
@@ -142,6 +141,8 @@ message GetGroupResponse {
 
 message ListGroupsRequest {
   string scope_id = 1 [json_name="scope_id"];
+  bool recursive = 20 [json_name="recursive"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListGroupsResponse {

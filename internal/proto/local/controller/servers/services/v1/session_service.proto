@@ -5,7 +5,6 @@ package controller.servers.services.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
 
 import "google/protobuf/timestamp.proto";
-import "controller/servers/v1/servers.proto";
 import "controller/api/resources/targets/v1/target.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
 
@@ -20,7 +19,7 @@ service SessionService {
 	// CancelSession allows a worker to request that the controller cancel a session.
 	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {}
 
-	// AuthorizeConnection allows a worker to activate a session on a controller.
+	// AuthorizeConnection allows a worker to authorize a connection on a controller.
 	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 
 	// ConnectConnection updates a connection to set it to connected
@@ -33,6 +32,9 @@ service SessionService {
 message LookupSessionRequest {
 	// The session ID from the client
 	string session_id = 10;
+	// The name of the requesting worker, used for filtering to ensure this
+	// worker is allowed to handle this session.
+	string server_id = 20;
 }
 
 // LookupSessionResponse contains information necessary for a client to
@@ -74,6 +76,7 @@ message CancelSessionResponse {
 
 message AuthorizeConnectionRequest {
 	string session_id = 10;
+	string worker_id = 20;
 }
 
 message AuthorizeConnectionResponse {

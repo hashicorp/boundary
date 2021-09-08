@@ -1,32 +1,62 @@
 ---
 layout: docs
 page_title: Concepts
-sidebar_title: Concepts
 description: |-
   An introduction to Boundary concepts and architecture.
 ---
 
 # Concepts
 
-Boundary is a tool for managing identity-based access for modern, dynamic infrastructure. Just as infrastructure itself can be complex, at first glance Boundary can seem complex as well. As a result, it's helpful to understand how Boundary organizes security principals and resources, as well as how it allows you define granular permissions to those principals. A glossary of terms is contained in the [domain model](/docs/concepts/domain-model) section.
+Boundary is a tool for managing identity-based access for modern, dynamic
+infrastructure. Just as infrastructure itself can be complex, at first glance
+Boundary can seem complex as well. As a result, it's helpful to understand how
+Boundary organizes security principals and resources, as well as how it allows
+you define granular permissions to those principals. A glossary of terms is
+contained in the [domain model](/docs/concepts/domain-model) section.
 
 # Identity & Permission Management
 
-Identity is a core concept in Boundary. Identity is represented by two types of resources, mapping to common security principals:
+Identity is a core concept in Boundary. Identity is represented by two types of
+resources, mapping to common security principals:
 
-- [Users](/docs/concepts/domain-model/users), which represent distinct entities that can be tied to authentication accounts
-- [Groups](/docs/concepts/domain-model/groups), which are collections of Users that allow for easier access management
+- [Users](/docs/concepts/domain-model/users), which represent distinct entities
+  that can be tied to authentication accounts
+- [Groups](/docs/concepts/domain-model/groups), which are collections of Users
+  that allow for easier access management
 
-[Roles](/docs/concepts/domain-model/roles) map users and groups to a set of [grants](/docs/concepts/security/permissions), which provide the ability to perform actions within the system.
+[Roles](/docs/concepts/domain-model/roles) map users and groups to a set of
+[grants](/docs/concepts/security/permissions), which provide the ability to
+perform actions within the system.
 
 # Resource Management
 
-Boundary enables flexible management of the hosts and services for which it can broker access. Boundary administrators define [host catalogs](/docs/concepts/domain-model/host-catalogs) that contain information about [hosts](/docs/concepts/domain-model/hosts). These hosts are then collected into [host sets](/docs/concepts/domain-model/host-sets) which represent sets of equivalent hosts. Finally, [targets](/docs/concepts/domain-model/targets) tie together host sets with connection information. Final access to a resource is granted via [roles](/docs/concepts/domain-model/roles) that provide authorization to create sessions against these targets.
+Boundary enables flexible management of the hosts and services for which it can
+broker access. Boundary administrators define [host
+catalogs](/docs/concepts/domain-model/host-catalogs) that contain information
+about [hosts](/docs/concepts/domain-model/hosts). These hosts are then collected
+into [host sets](/docs/concepts/domain-model/host-sets) which represent sets of
+equivalent hosts. Finally, [targets](/docs/concepts/domain-model/targets) tie
+together host sets with connection information. Final access to a resource is
+granted via [roles](/docs/concepts/domain-model/roles) that provide
+authorization to create sessions against these targets.
+
+# Filtering
+
+Some parts of Boundary support filters for various purposes. For a description
+of the filter syntax, see the [filtering](/docs/concepts/filtering) page. See
+the docs pages for the individual resources or capabilities where filters are
+supported for the specific inputs and examples with those inputs.
 
 # Next Steps
 
-Be sure Boundary is able to run locally with the instructions at [Getting Started](/docs/getting-started). Then, learn how to create targets and initiate a session with [Connect to Your First Target](/docs/getting-started/connect-to-target).
+Be sure Boundary is able to run locally with the instructions at [Getting
+Started](/docs/getting-started). Then, learn how to create targets and initiate
+a session with [Connect to Your First
+Target](/docs/getting-started/connect-to-target).
 
 # Further Reading
 
-For more information see our general recommendations for [deployment architecture](/docs/installing/high-availability), and see the [security model](/docs/concepts/security) documentation for an explanation of the security foundations of Boundary.
+For more information see our general recommendations for [deployment
+architecture](/docs/installing/high-availability), and see the [security
+model](/docs/concepts/security) documentation for an explanation of the security
+foundations of Boundary.

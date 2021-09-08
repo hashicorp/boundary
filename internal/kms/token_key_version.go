@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,15 +22,16 @@ type TokenKeyVersion struct {
 
 // TokenKeyVersion creates a new in memory key version. No options are
 // currently supported.
-func NewTokenKeyVersion(tokenKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*TokenKeyVersion, error) {
+func NewTokenKeyVersion(tokenKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*TokenKeyVersion, error) {
+	const op = "kms.NewTokenKeyVersion"
 	if tokenKeyId == "" {
-		return nil, fmt.Errorf("new token key version: missing token key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new token key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new token key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &TokenKeyVersion{
@@ -61,19 +61,20 @@ func (k *TokenKeyVersion) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // version before it's written.
-func (k *TokenKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (k *TokenKeyVersion) VetForWrite(ctx context.Context, _r db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "kms.(TokenKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("token key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return fmt.Errorf("token key version vet for write: missing key: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.TokenKeyId == "" {
-			return fmt.Errorf("token key version vet for write: missing token key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing token key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("token key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil
@@ -96,20 +97,22 @@ func (k *TokenKeyVersion) SetTableName(n string) {
 
 // Encrypt will encrypt the key version's key
 func (k *TokenKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(TokenKeyVersion).Encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.TokenKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.TokenKeyVersion, nil); err != nil {
-		return fmt.Errorf("error encrypting kms token key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
 
 // Decrypt will decrypt the key version's key
 func (k *TokenKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(TokenKeyVersion).Decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.TokenKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.TokenKeyVersion, nil); err != nil {
-		return fmt.Errorf("error decrypting kms token key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

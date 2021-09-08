@@ -39,7 +39,7 @@ func TestRepository_CreateSessionKeyVersion(t *testing.T) {
 		name        string
 		args        args
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid",
@@ -67,7 +67,7 @@ func TestRepository_CreateSessionKeyVersion(t *testing.T) {
 				sessionKeyId: sk.PrivateId,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -76,7 +76,7 @@ func TestRepository_CreateSessionKeyVersion(t *testing.T) {
 				keyWrapper: nil,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -86,9 +86,7 @@ func TestRepository_CreateSessionKeyVersion(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(k)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			require.NoError(err)
@@ -173,9 +171,7 @@ func TestRepository_DeleteSessionKeyVersion(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.IsNotFoundError(err))
@@ -260,9 +256,7 @@ func TestRepository_LatestSessionKeyVersion(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
-				if tt.wantIsError != 0 {
-					assert.True(errors.Match(errors.T(tt.wantIsError), err))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			require.NoError(err)

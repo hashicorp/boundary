@@ -1,9 +1,5 @@
 package authtoken
 
-// This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
-// functionality directly without going through the respository.  Repository centric tests should be
-// placed in repository_test.go
-
 import (
 	"context"
 	"testing"
@@ -21,6 +17,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
+// functionality directly without going through the respository.  Repository centric tests should be
+// placed in repository_test.go
+
 func TestAuthToken_DbUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -29,9 +29,9 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
-	newAuthTokId, err := newAuthTokenId()
+	newAuthTokId, err := NewAuthTokenId()
 	require.NoError(t, err)
 
 	type args struct {
@@ -42,7 +42,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		args    args
 		want    *AuthToken
@@ -89,6 +89,14 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			},
 			cnt: 1,
 		},
+		{
+			name: "update-status",
+			args: args{
+				fieldMask: []string{"Status"},
+				authTok:   &store.AuthToken{Status: string(IssuedStatus)},
+			},
+			cnt: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -101,10 +109,9 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			wAuthToken := authTok.toWritableAuthToken()
-			err := wAuthToken.encrypt(context.Background(), wrapper)
+			err := authTok.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
-			cnt, err := w.Update(context.Background(), wAuthToken, tt.args.fieldMask, tt.args.nullMask)
+			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
 				assert.Error(err)
@@ -122,16 +129,16 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	testAuthTokenId := func() string {
-		id, err := newAuthTokenId()
+		id, err := NewAuthTokenId()
 		require.NoError(t, err)
 		return id
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		in        *store.AuthToken
 		wantError bool
@@ -148,7 +155,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 			name: "duplicate-id",
 			in: &store.AuthToken{
 				PublicId:      createdAuthToken.GetPublicId(),
-				Token:         "duplicateid_test",
+				Token:         "duplicate_id_test",
 				AuthAccountId: acct.GetPublicId(),
 			},
 			wantError: true,
@@ -159,7 +166,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			at := &writableAuthToken{AuthToken: tt.in}
+			at := &AuthToken{AuthToken: tt.in}
 			err := at.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			err = db.New(conn).Create(context.Background(), at)
@@ -175,7 +182,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 func TestAuthToken_DbDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	testAuthTokenId := func() string {
-		id, err := newAuthTokenId()
+		id, err := NewAuthTokenId()
 		require.NoError(t, err)
 		return id
 	}
@@ -185,20 +192,20 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	existingAuthTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
-		at        *writableAuthToken
+		at        *AuthToken
 		wantError bool
 		wantCnt   int
 	}{
 		{
 			name:    "basic",
-			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
 			wantCnt: 1,
 		},
 		{
 			name:    "delete-nothing",
-			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
 			wantCnt: 0,
 		},
 		{
@@ -209,7 +216,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 		},
 		{
 			name:      "delete-no-public-id",
-			at:        &writableAuthToken{AuthToken: &store.AuthToken{}},
+			at:        &AuthToken{AuthToken: &store.AuthToken{}},
 			wantCnt:   0,
 			wantError: true,
 		},

@@ -12,34 +12,35 @@ import (
 
 // CreateTokenKeyVersion inserts into the repository and returns the new key
 // version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, key []byte, opt ...Option) (*TokenKeyVersion, error) {
+func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, key []byte, _ ...Option) (*TokenKeyVersion, error) {
+	const op = "kms.(Repository).CreateTokenKeyVersion"
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("create token key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, fmt.Errorf("create token key version: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, fmt.Errorf("create token key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 	}
 	if tokenKeyId == "" {
-		return nil, fmt.Errorf("create token key version: missing token key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("create token key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocTokenKeyVersion()
 	id, err := newTokenKeyVersionId()
 	if err != nil {
-		return nil, fmt.Errorf("create token key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyVersionId = rootKeyVersionId
 	kv.Key = key
 	kv.TokenKeyId = tokenKeyId
 	if err := kv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("create token key version: encrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var returnedKey interface{}
@@ -51,33 +52,34 @@ func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 			returnedKey = kv.Clone()
 			// no token entries for root key version
 			if err := w.Create(ctx, returnedKey); err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create token key version: %w for %s token key id", err, kv.TokenKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s token key id", kv.TokenKeyId)))
 	}
-	return returnedKey.(*TokenKeyVersion), err
+	return returnedKey.(*TokenKeyVersion), nil
 }
 
 // LookupTokenKeyVersion will look up a key version in the repository.  If
 // the key version is not found, it will return nil, nil.
-func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*TokenKeyVersion, error) {
+func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*TokenKeyVersion, error) {
+	const op = "kms.(Repository).LookupTokenKeyVersion"
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup token key version: missing private id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup token key version: missing key wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, fmt.Errorf("lookup token key version: failed %w for %s", err, privateId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	if err := k.Decrypt(ctx, keyWrapper); err != nil {
-		return nil, fmt.Errorf("lookup token key version: decrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &k, nil
 }
@@ -85,14 +87,15 @@ func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapp
 // DeleteTokenKeyVersion deletes the key version for the provided id from the
 // repository returning a count of the number of records deleted.  All options
 // are ignored.
-func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
+	const op = "kms.(Repository).DeleteTokenKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete token key version: missing private id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete token key version: failed %w for %s", err, privateId)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -104,57 +107,62 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 			dk := k.Clone()
 			// no token entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete token key version: %s: %w", privateId, err)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
 
 // LatestTokenKeyVersion searches for the key version with the highest
-// version number.  When no results are found, it returns nil,
-// errors.ErrRecordNotFound.
-func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, opt ...Option) (*TokenKeyVersion, error) {
+// version number.  When no results are found, it returns nil with an
+// errors.RecordNotFound error.
+func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, _ ...Option) (*TokenKeyVersion, error) {
+	const op = "kms.(Repository).LatestTokenKeyVersion"
 	if tokenKeyId == "" {
-		return nil, fmt.Errorf("latest token key version: missing token key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("latest token key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*TokenKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "token_key_id = ?", []interface{}{tokenKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
-		return nil, fmt.Errorf("latest token key version: failed %w for %s", err, tokenKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", tokenKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.ErrRecordNotFound
+		return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("latest token key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return foundKeys[0], nil
 }
 
 // ListTokenKeyVersions will lists versions of a key.  Supports the WithLimit option.
 func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, opt ...Option) ([]DekVersion, error) {
+	const op = "kms.(Repository).ListTokenKeyVersions"
 	if tokenKeyId == "" {
-		return nil, fmt.Errorf("list token key versions: missing token key id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("list token key versions: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*TokenKeyVersion
 	err := r.list(ctx, &versions, "token_key_id = ?", []interface{}{tokenKeyId}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list token key versions: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for i, k := range versions {
 		if err := k.Decrypt(ctx, rkvWrapper); err != nil {
-			return nil, fmt.Errorf("list token key versions: error decrypting key num %d: %w", i, err)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
 		}
 	}
 	dekVersions := make([]DekVersion, 0, len(versions))

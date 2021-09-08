@@ -24,7 +24,9 @@ const (
 func (r TerminationReason) String() string {
 	return string(r)
 }
+
 func convertToReason(s string) (TerminationReason, error) {
+	const op = "session.convertToReason"
 	switch s {
 	case UnknownTermination.String():
 		return UnknownTermination, nil
@@ -41,6 +43,6 @@ func convertToReason(s string) (TerminationReason, error) {
 	case ConnectionLimit.String():
 		return ConnectionLimit, nil
 	default:
-		return "", fmt.Errorf("termination reason: %s is not a valid reason: %w", s, errors.ErrInvalidParameter)
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

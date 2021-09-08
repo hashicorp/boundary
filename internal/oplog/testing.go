@@ -1,11 +1,12 @@
 package oplog
 
 import (
+	"context"
 	"crypto/rand"
+	"database/sql"
 	"testing"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/hashicorp/boundary/internal/db/migrations"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -57,6 +58,7 @@ func testId(t *testing.T) string {
 
 func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
 	t.Helper()
+
 	cleanup, retURL, _, err = docker.StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
@@ -81,16 +83,12 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 // testInitStore will execute the migrations needed to initialize the store for tests
 func testInitStore(t *testing.T, cleanup func() error, url string) {
 	t.Helper()
-	// run migrations
-	source, err := migrations.NewMigrationSource("postgres")
-	require.NoError(t, err, "Error creating migration source")
-	m, err := migrate.NewWithSourceInstance("postgres", source, url)
-	require.NoError(t, err, "Error creating migrations")
+	ctx := context.Background()
+	dialect := "postgres"
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		if err := cleanup(); err != nil {
-			t.Fatalf("error cleaning up after migration failure: %v", err)
-		}
-		require.NoError(t, err, "Error running migrations")
-	}
+	d, err := sql.Open(dialect, url)
+	require.NoError(t, err)
+	sm, err := schema.NewManager(ctx, dialect, d)
+	require.NoError(t, err)
+	require.NoError(t, sm.RollForward(ctx))
 }

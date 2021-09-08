@@ -68,7 +68,7 @@ tx.Commit()
 ## TBD/TODO
 We need to discuss and decide how Boundary is going to handle the following oplog things:
 
-* SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Boundary will manage migrations across the system and we will likely need to reference this package's migrations somehow.
+* SQL migrations: you'll find the package's SQL migrations under: ./db/schema   We need to decide how Boundary will manage migrations across the system and we will likely need to reference this package's migrations somehow.
 
 ## oplog entry
 ```                                            

@@ -1,25 +1,24 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*InitCommand)(nil)
-var _ cli.CommandAutocomplete = (*InitCommand)(nil)
+var (
+	_ cli.Command             = (*InitCommand)(nil)
+	_ cli.CommandAutocomplete = (*InitCommand)(nil)
+)
 
 type InitCommand struct {
 	*base.Command
@@ -38,7 +37,6 @@ type InitCommand struct {
 	flagLogLevel                     string
 	flagLogFormat                    string
 	flagMigrationUrl                 string
-	flagAllowDevMigrations           bool
 	flagSkipInitialLoginRoleCreation bool
 	flagSkipAuthMethodCreation       bool
 	flagSkipScopesCreation           bool
@@ -76,7 +74,7 @@ func (c *InitCommand) Help() string {
 }
 
 func (c *InitCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP)
+	set := c.FlagSet(base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -117,12 +115,6 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	})
 
 	f = set.NewFlagSet("Init Options")
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "allow-development-migrations",
-		Target: &c.flagAllowDevMigrations,
-		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
-	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
@@ -184,35 +176,39 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
-	if migrations.DevMigration != c.flagAllowDevMigrations {
-		if migrations.DevMigration {
-			c.UI.Error(base.WrapAtLength("This version of the binary has " +
-				"dev database schema updates which may not be supported in the " +
-				"next official release. To proceed anyways please use the " +
-				"'-allow-development-migrations' flag."))
-			return 2
-		} else {
-			c.UI.Error(base.WrapAtLength("The '-allow-development-migrations' " +
-				"flag was set but this binary has no dev database schema updates."))
-			return 3
-		}
-	}
+	dialect := "postgres"
 
 	c.srv = base.NewServer(&base.Command{UI: c.UI})
 
 	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandCliError
+	}
+
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-init"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-init"
+	}
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
 	}
 
 	if err := c.srv.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	if c.srv.RootKms == nil {
 		c.UI.Error("Root KMS not found after parsing KMS blocks")
-		return 1
+		return base.CommandCliError
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
@@ -227,15 +223,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	if c.Config.Controller.Database == nil {
-		c.UI.Error(`"controller.database" config block not found`)
-		return 1
+	if c.Config.Controller == nil {
+		c.UI.Error(`"controller" config block not found`)
+		return base.CommandUserError
 	}
 
-	urlToParse := c.Config.Controller.Database.Url
-	if urlToParse == "" {
-		c.UI.Error(`"url" not specified in "database" config block"`)
-		return 1
+	if c.Config.Controller.Database == nil {
+		c.UI.Error(`"controller.database" config block not found`)
+		return base.CommandUserError
 	}
 
 	var migrationUrlToParse string
@@ -247,67 +242,52 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
-		migrationUrlToParse = urlToParse
+		migrationUrlToParse = c.Config.Controller.Database.Url
 	}
 
-	dbaseUrl, err := config.ParseAddress(urlToParse)
-	if err != nil && err != config.ErrNotAUrl {
-		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-		return 1
+	if migrationUrlToParse == "" {
+		c.UI.Error(base.WrapAtLength(`neither "url" nor "migration_url" correctly set in "database" config block nor was the "migration-url" flag used`))
+		return base.CommandUserError
 	}
 
-	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
-	if err != nil && err != config.ErrNotAUrl {
+	migrationUrl, err := parseutil.ParsePath(migrationUrlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	// Core migrations using the migration URL
-	{
-		c.srv.DatabaseUrl = strings.TrimSpace(migrationUrl)
-		ldb, err := sql.Open("postgres", c.srv.DatabaseUrl)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error opening database to check init status: %w", err).Error())
-			return 1
-		}
-		_, err = ldb.QueryContext(c.Context, "select version from schema_migrations")
-		switch {
-		case err == nil:
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
-		case errors.IsMissingTableError(err):
-			// Doesn't exist so we continue on
-		default:
-			c.UI.Error(fmt.Errorf("Error querying database for init status: %w", err).Error())
-			return 1
-		}
-		ran, err := db.InitStore("postgres", nil, c.srv.DatabaseUrl)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-			return 1
-		}
-		if !ran {
-			if base.Format(c.UI) == "table" {
-				c.UI.Info("Database already initialized.")
-				return 0
-			}
-		}
-		if base.Format(c.UI) == "table" {
-			c.UI.Info("Migrations successfully run.")
-		}
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
+	defer clean()
+	switch errCode {
+	case 0:
+	case -1:
+		return 0
+	default:
+		return errCode
 	}
 
+	urlToParse := c.Config.Controller.Database.Url
+	if urlToParse == "" {
+		c.UI.Error(`"url" not specified in "database" config block`)
+		return base.CommandUserError
+	}
+	c.srv.DatabaseUrl, err = parseutil.ParsePath(urlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
+		return base.CommandUserError
+	}
 	// Everything after is done with normal database URL and is affecting actual data
-	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
-	if err := c.srv.ConnectToDatabase("postgres"); err != nil {
+	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
-		return 1
+		return base.CommandCliError
+	}
+	if err := c.verifyOplogIsEmpty(); err != nil {
+		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
+		return base.CommandCliError
 	}
 	if err := c.srv.CreateGlobalKmsKeys(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating global-scope KMS keys: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	if base.Format(c.UI) == "table" {
@@ -321,7 +301,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			b, err := base.JsonFormatter{}.Format(jsonMap)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-				retCode = 1
+				retCode = 2
 				return
 			}
 			c.UI.Output(string(b))
@@ -329,13 +309,13 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipInitialLoginRoleCreation {
-		return 0
+		return base.CommandSuccess
 	}
 
 	role, err := c.srv.CreateInitialLoginRole(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial global-scoped login role: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	roleInfo := &RoleInfo{
@@ -350,24 +330,24 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipAuthMethodCreation {
-		return 0
+		return base.CommandSuccess
 	}
 
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
-	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
+	am, user, err := c.srv.CreateInitialPasswordAuthMethod(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	authMethodInfo := &AuthInfo{
-		AuthMethodId:   c.srv.DevAuthMethodId,
+		AuthMethodId:   c.srv.DevPasswordAuthMethodId,
 		AuthMethodName: am.Name,
 		LoginName:      c.srv.DevLoginName,
 		Password:       c.srv.DevPassword,
 		ScopeId:        scope.Global.String(),
-		UserId:         c.srv.DevUserId,
+		UserId:         user.PublicId,
 		UserName:       user.Name,
 	}
 	switch base.Format(c.UI) {
@@ -378,13 +358,13 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipScopesCreation {
-		return 0
+		return base.CommandSuccess
 	}
 
 	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	orgScopeInfo := &ScopeInfo{
@@ -408,17 +388,17 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	case "table":
 		c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
 	case "json":
-		jsonMap["proj_scope"] = projScopeInfo
+		jsonMap["project_scope"] = projScopeInfo
 	}
 
 	if c.flagSkipHostResourcesCreation {
-		return 0
+		return base.CommandSuccess
 	}
 
 	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	hostInfo := &HostInfo{
@@ -439,14 +419,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	if c.flagSkipTargetCreation {
-		return 0
+		return base.CommandSuccess
 	}
 
 	c.srv.DevTargetSessionConnectionLimit = -1
 	t, err := c.srv.CreateInitialTarget(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	targetInfo := &TargetInfo{
@@ -465,7 +445,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		jsonMap["target"] = targetInfo
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
@@ -475,14 +455,14 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	// Validation
 	switch {
 	case len(c.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
-		return 1
+		return base.CommandUserError
 	}
 
 	wrapperPath := c.flagConfig
@@ -492,21 +472,35 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	if wrapper != nil {
 		c.configWrapper = wrapper
 		if err := wrapper.Init(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return 1
+			return base.CommandUserError
 		}
 	}
 
 	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	return 0
+	return base.CommandSuccess
+}
+
+func (c *InitCommand) verifyOplogIsEmpty() error {
+	const op = "database.(InitCommand).verifyOplogIsEmpty"
+	r := c.srv.Database.DB().QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
+	if r.Err() != nil {
+		return r.Err()
+	}
+	var empty bool
+	r.Scan(&empty)
+	if !empty {
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
+	}
+	return nil
 }

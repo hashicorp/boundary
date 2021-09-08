@@ -1,12 +1,13 @@
 ---
 layout: docs
 page_title: Permissions
-sidebar_title: Permissions
 description: |-
   Boundary's permissions model
 ---
 
 # Permissions in Boundary
+
+## Overview
 
 Boundary's permissions model is a composable, RBAC, allow-only model that
 attempts to marry flexibility with usability. This page discusses the permission
@@ -14,60 +15,221 @@ model's fundamental concepts, provides examples of the specific forms of allowed
 grants, and contains a table that acts as an easy cheat sheet to help those new
 to its grant syntax with crafting roles.
 
-Each grant is a mapping that describes a resource or set of resources and the
-actions that should be allowed on them. Thus, each grant contains one or more
-of:
-
-* An `id` field that indicates a specific resource or a wildcard to match all
-* A `type` field that indicates a specific resource type or a wildcard to match all
-* An `actions` field indicating which actions to allow the client to perform on the resources matched by `id` and `type`
-
-Grant strings can be supplied via a human-friendly string syntax or via JSON.
-
-Roles are composable; a user's final set of grants will be composed of various
-roles that each contribute grants to a set of principals that include that user
-or groups of which that user is a member.
-
-## Applicable Resource Types
-
 Boundary's [domain model](/docs/concepts/domain-model) is based on resource
 types. These can be implemented directly, such as with targets, or they can be
 abstract types that are implemented by concrete types within the system. As an
 example of the latter, a host catalog is an abstract type and a Static host
 catalog is a concrete type.
 
-From a permissions standpoint, however, all actions take place against directly
+From a permissions standpoint, all actions take place against directly
 implemented or abstract types. There may be actions that are only implemented by
-some concrete types (e.g., not all auth methods will support a `change-password`
-action), but the permissions model still defines these at the abstract level.
-This helps keep the overall system relatively simple and predictable.
+some concrete types (e.g., not all `auth-method` implementations will support a
+`change-password` action), but the permissions model still defines these
+capabilities at the abstract type level. This helps keep the overall system
+relatively simple and predictable.
 
-## Scopes are Permission Boundaries
+At a very high level, permissions within Boundary are declared via grant strings
+and mapped to users via roles.
 
-Every role assigns grants within a specific scope: either the scope in which the
-role exists, or a scope that is a child of the scope in which the role exists.
-This is controlled by the role's "grant scope ID".
+### Grant Strings
+
+A grant string has a form similar to:
+
+`id=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
+
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
+
+There are currently two types of selectors:
+
+- An `id` field that indicates a specific resource or a wildcard to match all
+
+- A `type` field that indicates a specific resource type or a wildcard to match
+  all; this might also be used to grant permissions on collections of resources
+
+Selectors are used to indicate which resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors. (The acceptable grant
+string formats are detailed later on this page.)
+
+Additionally, there are two types of assigned permissions:
+
+- An `actions` field indicating which actions to allow the client to perform on
+  the resources matched by `id` and `type`
+
+- An `output_fields` field indicating which top-level fields to return in the
+  response (0.2.1+)
+
+Grant strings can be supplied via a human-friendly string syntax or via JSON.
+
+### Roles
+
+Roles map grant strings to _principals_, currently users and groups. Every role
+assigns grants within a specific scope: either the scope in which the role
+exists, or a scope that is a child of the scope in which the role exists,
+controlled by the role's "grant scope ID" value
 
 When a request is made, the scope in which to discover grants is either provided
-by the client (if against specific collection types) or is looked up using the
-resource's ID. This scope ID, along with the user's ID and the IDs of the groups
-the user belongs to, controls which roles are fetched to provide grants for the
-request.
+by the client (if against a resource collection itself) or is looked up using
+the resource's ID. This scope ID, along with the user's ID and the IDs of the
+groups the user belongs to, controls which roles are fetched to provide grants
+for the request.
 
 A role provides grants for a request if the grant scope ID matches the request's
 scope ID and one or more of the following are true:
 
-* The user's ID is contained in the principal IDs set on the role
-* A group the user belongs to is contained in the principal IDs set on the role
-* The user is logged in and the `u_auth` user is contained in the principal IDs set on the role
-* The role contains the `u_anon` user in the in the principal IDs set on the role
+- The user's ID is contained in the principal IDs set on the role
+
+- A group the user belongs to is contained in the principal IDs set on the role
+
+- The user is logged in and the `u_auth` user is contained in the principal IDs
+  set on the role
+
+- The role contains the `u_anon` user in the in the principal IDs set on the
+  role
+
+Roles are composable; a user's final set of grants will be composed of grants
+that originate from all matching roles.a
+
+## Assignable Permissions
+
+Resources identified by the ID/Type selectors have permissions granted to the
+user in the form of actions and visibility (via `output_fields`). Each of these
+is detailed in the subsections below.
+
+### Actions
+
+Actions convey the ability to perform some action against a resource or
+collection. Many of these are common CRUD actions (`create`, `read`, `update`,
+`delete`) but many resources also specify actions specific to their type; for
+instance, a `target` has an `authorize-session` action to allow you to request
+making a connection to that target, and `auth-method` resources have an
+`authenticate` action to allow you to authenticate to Boundary. For the most
+part these are straightforward, however there are a couple of special cases to
+know.
+
+#### Subactions
+
+Starting in Boundary 0.1.6, some subactions are supported. These actions have a
+format `top_level_action:subaction`, such as `read:self`. Being granted the top
+level action infers being granted all subactions. Thus, if a grant conveys
+`read`, it also matches the API actions `read` and `read:self`. However, if a
+grant conveys `read:self`, it will match the API action `read:self` but will not
+match `read`.
+
+#### The `no-op` Action
+
+Starting in Boundary 0.2.1 there is an action that can be granted called
+`no-op`. As might be apparent, `no-op` is not used for any real action in
+Boundary; the purpose of this action is for listing visibility. Boundary only
+shows resources in the output of a `list` action for which a user has at least
+one granted action. Thus, without `no-op`, in order for a resource to be visible
+in a `list` action, a different action such as `read` would have to be granted
+to a user. This could result in exposing more information than desired,
+especially in the case of listing scopes and authentication methods so that
+users can perform initial authentication to Boundary (that is, granting access
+to `u_anon`).
+
+By granting the `no-op` action to users, they can see the resources in the
+output of a list command without needing other capability grants as well.
+
+### Output Fields
+
+Starting in Boundary 0.2.1, grant strings can contain an `output_fields` field.
+This allows fine-grained control over visibility of data returned to users.
+
+In many cases, `output_fields` will not need to be set directly. However, an
+example in the form of some history helps provide some context as to when this
+might be useful.
+
+In Boundary 0.2.0, we restricted the set of fields returned for some `list`
+calls (those on the `scopes` and `auth-methods` collections) to a small set if
+the user was the anonymous user `u_anon`. Although default behavior in Boundary
+was to display all resource fields when listing, because the default was also to
+allow anonymous access to perform `list` on scopes and auth methods (in order to
+discover auth methods and then authenticate to them), returning all
+configuration information for all scopes and auth methods felt like it was
+publicly disclosing more information to users than might be desired.
+
+At the same time, this was not an ideal solution for two reasons:
+
+1. There is no one-size-fits-all security policy, and what we thought were
+   reasonable defaults may not work in all situations
+
+2. It made the scopes and auth methods listing behavior work differently from
+   any other `list` action, which is not ideal
+
+As a result, we decided to approach this problem the same way we normally try to
+within Boundary: set resonable defaults, but give the administrator ultimate
+control.
+
+The resulting behavior is as follows: `output_fields` references the field names
+of the JSON object response, composes just like other parts of the RBAC model,
+and are action-specific. That is, a grant like:
+
+`id=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
+
+will, if all by itself, result in those three identified output fields applying
+to `list` (and `no-op`) actions for all auth methods in the scope. Thus when
+performing a `list`, each item returned will have only those three fields
+populated. Any other actions (like `read` or `update`) are unaffected and will
+use defaults.
+
+A grant like:
+
+`id=*;type=auth-methods;output_fields=id`
+
+will, if all by itself, result in _any_ action against auth methods in the scope
+having only `id` returned.
+
+However, if both of the above grants are included, since grants are composable
+the final set of output fields will be `id,scope_id,name,description` for `list`
+(and `no-op`) actions, and `id` for all other actions.
+
+If, after the grants are composed for a given request, none of the grants
+applicable to the resource/action contain `output_fields` definitions, the
+defaults are used. These defaults are implemented using internal values for
+`output_fields` and vary based on whether the user is the anonymous user:
+
+- If the user is the anonymous user, a useful but restricted set of fields is
+  returned. This includes `id`, `scope_id`, `scope`, `name`, `description`, and a
+  few more.
+
+- If the user is any authenticated user, the full set of fields is returned
+
+To think about it a different way, empty `output_fields`, after grant
+composition, is equivalent to using Boundary's default; however the moment that
+grants start specifying output fields, it is composed from an empty set and thus
+nothing is contained unless explicitly specified. (An actual empty set is not
+currently supported, as we don't perform validation on the values given.
+However, this means setting `output_fields=none` is functionally equivalent!)
+
+#### Output Fields and Monitoring
+
+As another example, it's possible to get creative and use `output_fields` to
+allow services to keep tabs on various aspects of the system for monitoring
+purposes without needing to provision Boundary tokens to those services. For
+instance, by allowing access to list users to `u_anon` but restrict the set of
+fields to `id` only, a monitoring system could watch and alert if more users
+than expected are showing up in the system, while the IDs themselves are not
+really meaningful to any other caller that accesses the same endpoint.
+
+This will be especially useful once we introduce the ability to have CIDR
+restrictions against roles and/or grants, which are planned but not currently
+scheduled, as you can only have these grants apply to specific internal
+services, along with restricting the data that is returned for those services
+that do match.
 
 ## Permission Grant Formats
 
 Because of the aforementioned properties of the permissions model, grants are
 relatively simple. All grants take one of four forms. These examples use the
 canonical string syntax; the JSON equivalents are simply an object with a string
-`id` value, a string `type` value, and a string array `actions` value.
+`id` value, a string `type` value, a string array `actions` value, and a string
+array `output_fields` value.
+
+~> `output_fields` is omitted in most example below for brevity but are valid
+in all of them. It is also valid in each case to omit `actions` and specify
+_only_ `output_fields`.
 
 ### ID Only
 
@@ -76,7 +238,10 @@ Example:
 
 `id=hsst_1234567890;actions=read,update`
 
-This grants `read` and `update` actions to that single resource.
+This grants `read` and `update` actions to that single resource. It is invalid
+to specify `create` or `list` as actions in this format, as this format
+explicitly identifies a resource, whereas those actions operate exclusively on
+collections.
 
 ### Type Only
 
@@ -86,20 +251,20 @@ For a given type, allow these actions. Example:
 
 Because type specifies only a collection as opposed to specific resources within
 that collection, only collection actions are allowed in this format. Currently,
-this is `create` and `list`. 
+this is `create` and `list`.
 
 There is one additional restriction: this is only valid against "top-level"
 resource types, which currently are:
 
-* Auth Methods
-* Auth Tokens
-* Groups
-* Host Catalogs
-* Roles
-* Scopes
-* Sessions
-* Targets
-* Users
+- Auth Methods
+- Auth Tokens
+- Groups
+- Host Catalogs
+- Roles
+- Scopes
+- Sessions
+- Targets
+- Users
 
 The reason for this is that other types of resources are contained within one of
 these resource types; for instance, accounts are instantiated within an auth
@@ -115,7 +280,7 @@ easiest to explain with an example:
 `id=hcst_1234567890;type=host-set;actions=create,read,update`
 
 In this example, the user is able to create, read, or update host sets within
-the scope, but *only the host sets belonging to host catalog hcst_1234567890*.
+the scope, but _only the host sets belonging to host catalog hcst_1234567890_.
 Pinning is essentially a way to use top-level resources to create mini
 permission boundaries for their subordinate resources.
 
@@ -161,20 +326,23 @@ Such a grant is essentially a full administrator grant for a scope.
 A few template possibilities exist, which will at grant evaluation time
 substitute the given value into the ID field of the grant string:
 
-* `{{account.id}}`: The substituted value is the account ID associated with the
-token used to perform the action. As an example,
-`id={{account.id}};actions=read,change-password"` is one of Boundary's default
-grants to allow users that have authenticated with the Password auth method to
-change their own password.
+- `{{account.id}}`: The substituted value is the account ID associated with the
+  token used to perform the action. As an example,
+  `id={{account.id}};actions=read,change-password"` is one of Boundary's default
+  grants to allow users that have authenticated with the Password auth method to
+  change their own password.
 
-* `{{user.id}}`: The substituted value is the user ID associated with the token
-used to perform the action.
+- `{{user.id}}`: The substituted value is the user ID associated with the token
+  used to perform the action.
 
 ## Resource Table
 
 The following table works as a quick cheat-sheet to help you manage your
 permissions. Note that it's not exhaustive; for brevity it does _not_ show
 wildcard or templated grant strings.
+
+Additionally, this does not include available output fields; see the [service
+documentation](https://www.boundaryproject.io/api-docs) for guidance.
 
 <!-- BEGIN TABLE -->
 
@@ -203,11 +371,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>account</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>account</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -215,15 +383,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create an account
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List accounts
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -234,23 +406,23 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Pin</li>
-            <ul>
-              <li>
-                <code>&lt;auth-method-id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;auth-method-id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>account</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>account</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -258,38 +430,58 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read an account
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update an account
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete an account
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
-            <code>set-password</code>: Set a password on an account, without requring the current password
+            <code>set-password</code>: Set a password on an account, without requiring the current password
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-password</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-password</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-password</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-password</code>
+            </li>
+          </ul>
           <li>
             <code>change-password</code>: Change a password on an account given the current password
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=change-password</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=change-password</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=change-password</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=change-password</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -307,11 +499,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>auth-method</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>auth-method</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -319,15 +511,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create an auth method
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List auth methods
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -338,17 +534,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>auth-method</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>auth-method</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -356,27 +552,35 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read an auth method
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update an auth method
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete an auth method
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>authenticate</code>: Authenticate to an auth method
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=authenticate</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=authenticate</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -394,11 +598,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>auth-token</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>auth-token</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -406,9 +610,11 @@ wildcard or templated grant strings.
           <li>
             <code>list</code>: List auth tokens
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -419,17 +625,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>auth-token</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>auth-token</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -437,15 +643,19 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read an auth token
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete an auth token
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -464,11 +674,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>group</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>group</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -476,15 +686,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a group
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List groups
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -495,17 +709,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>group</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>group</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -513,39 +727,51 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>add-members</code>: Add members to a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-members</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-members</code>
+            </li>
+          </ul>
           <li>
             <code>set-members</code>: Set the full set of members on a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-members</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-members</code>
+            </li>
+          </ul>
           <li>
             <code>remove-members</code>: Remove members from a group
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-members</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-members</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -562,11 +788,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -574,15 +800,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a host
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List hosts
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -593,23 +823,23 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Pin</li>
-            <ul>
-              <li>
-                <code>&lt;host-catalog-id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;host-catalog-id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -617,24 +847,36 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a host
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a host
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a host
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -651,11 +893,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host-catalog</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host-catalog</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -663,15 +905,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a host catalog
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List host catalogs
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -682,17 +928,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host-catalog</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host-catalog</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -700,21 +946,27 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a host catalog
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a host catalog
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a host catalog
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -731,11 +983,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host-set</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host-set</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -743,42 +995,46 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a host set
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List host sets
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
     <tr>
       <td>
-        <code>/targets/&lt;id&gt;</code>
+        <code>/host-sets/&lt;id&gt;</code>
       </td>
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Pin</li>
-            <ul>
-              <li>
-                <code>&lt;host-catalog-id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;host-catalog-id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>host-set</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>host-set</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -786,45 +1042,175 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a host set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a host set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a host set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>add-hosts</code>: Add hosts to a host-set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-hosts</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=add-hosts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-hosts</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=add-hosts</code>
+            </li>
+          </ul>
           <li>
             <code>set-hosts</code>: Set the full set of hosts on a host set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-hosts</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-hosts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-hosts</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=set-hosts</code>
+            </li>
+          </ul>
           <li>
             <code>remove-hosts</code>: Remove hosts from a host set
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-hosts</code></li>
-              <li><code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=remove-hosts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-hosts</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=remove-hosts</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowSpan="2">Managed Group</td>
+      <td rowSpan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/managed-groups</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>managed-group</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a managed group
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
+          <li>
+            <code>list</code>: List managed groups
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/managed-groups/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
+          <li>Pin</li>
+          <ul>
+            <li>
+              <code>&lt;auth-method-id&gt;</code>
+            </li>
+          </ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>managed-group</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code>
+            </li>
+          </ul>
+          <li>
+            <code>update</code>: Update a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code>
+            </li>
+          </ul>
+          <li>
+            <code>delete</code>: Delete a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -843,11 +1229,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>role</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>role</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -855,15 +1241,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a role
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List roles
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -874,17 +1264,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>role</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>role</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -892,57 +1282,75 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>add-principals</code>: Add principals to a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-principals</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-principals</code>
+            </li>
+          </ul>
           <li>
             <code>set-principals</code>: Set the full set of principals on a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-principals</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-principals</code>
+            </li>
+          </ul>
           <li>
             <code>remove-principals</code>: Remove principals from a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-principals</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-principals</code>
+            </li>
+          </ul>
           <li>
             <code>add-grants</code>: Add grants to a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-grants</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-grants</code>
+            </li>
+          </ul>
           <li>
             <code>set-grants</code>: Set the full set of grants on a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-grants</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-grants</code>
+            </li>
+          </ul>
           <li>
             <code>remove-grants</code>: Remove grants from a role
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-grants</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-grants</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -960,11 +1368,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>scope</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>scope</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -972,15 +1380,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a scope
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List scopes
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -991,17 +1403,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>scope</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>scope</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1009,21 +1421,27 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a scope
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a scope
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a scope
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1040,11 +1458,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>session</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>session</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1052,9 +1470,11 @@ wildcard or templated grant strings.
           <li>
             <code>list</code>: List sessions
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1065,17 +1485,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>session</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>session</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1083,15 +1503,35 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a session
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>cancel</code>: Cancel a session
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=cancel</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=cancel</code>
+            </li>
+          </ul>
+          <li>
+            <code>read:self</code>: Read a session, which must be associated with the calling user
+          </li>
+          <ul>
+            <li>
+              <code>id=*;type=session;actions=read:self</code>
+            </li>
+          </ul>
+          <li>
+            <code>cancel:self</code>: Cancel a session, which must be associated with the calling user
+          </li>
+          <ul>
+            <li>
+              <code>id=*;type=session;actions=cancel:self</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1108,11 +1548,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>target</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>target</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1120,15 +1560,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a target
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List targets
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1139,17 +1583,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>target</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>target</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1157,45 +1601,59 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>add-host-sets</code>: Add host sets to a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-host-sets</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-host-sets</code>
+            </li>
+          </ul>
           <li>
             <code>set-host-sets</code>: Set the full set of host sets on a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-host-sets</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-host-sets</code>
+            </li>
+          </ul>
           <li>
             <code>remove-host-sets</code>: Remove host sets from a target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-host-sets</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-host-sets</code>
+            </li>
+          </ul>
           <li>
             <code>authorize-session</code>: Authorize a session via the target
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=authorize-session</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=authorize-session</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1213,11 +1671,11 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>user</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>user</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1225,15 +1683,19 @@ wildcard or templated grant strings.
           <li>
             <code>create</code>: Create a user
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=create</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
           <li>
             <code>list</code>: List users
           </li>
-            <ul>
-              <li><code>type=&lt;type&gt;;actions=list</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>
@@ -1244,17 +1706,17 @@ wildcard or templated grant strings.
       <td>
         <ul>
           <li>ID</li>
-            <ul>
-              <li>
-                <code>&lt;id&gt;</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
           <li>Type</li>
-            <ul>
-              <li>
-                <code>user</code>
-              </li>
-            </ul>
+          <ul>
+            <li>
+              <code>user</code>
+            </li>
+          </ul>
         </ul>
       </td>
       <td>
@@ -1262,39 +1724,51 @@ wildcard or templated grant strings.
           <li>
             <code>read</code>: Read a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=read</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
           <li>
             <code>update</code>: Update a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=update</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
           <li>
             <code>delete</code>: Delete a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=delete</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
           <li>
             <code>add-accounts</code>: Add accounts to a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=add-accounts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=add-accounts</code>
+            </li>
+          </ul>
           <li>
             <code>set-accounts</code>: Set the full set of accounts on a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=set-accounts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=set-accounts</code>
+            </li>
+          </ul>
           <li>
             <code>remove-accounts</code>: Remove accounts from a user
           </li>
-            <ul>
-              <li><code>id=&lt;id&gt;;actions=remove-accounts</code></li>
-            </ul>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=remove-accounts</code>
+            </li>
+          </ul>
         </ul>
       </td>
     </tr>

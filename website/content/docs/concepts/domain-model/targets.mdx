@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Domain Model - Targets
-sidebar_title: Targets
 description: |-
   The anatomy of a Boundary target
 ---
@@ -10,6 +9,7 @@ description: |-
 
 A target is a resource
 that represents a networked service
+with an associated set of permissions
 a [user][] can connect to
 and interact with
 through Boundary
@@ -17,6 +17,8 @@ by way of a session.
 A target can only be defined within a [project][].
 A target can contain references to [host sets][] from [host catalogs][]
 which belong to the same project as the target.
+A target can contain references to [credential libraries][]
+from [credential stores][] which belong to the same project as the target.
 A user can establish a session with a [host][]
 in any host set referenced by the target
 if the user has been assigned a [role][]
@@ -59,10 +61,15 @@ TCP targets have the following additional attributes:
 
 ## Referenced By
 
+- [Credential Library][]
 - [Host Set][]
 - [Project][]
 - [Session][]
 
+[credential library]: /docs/concepts/domain-model/credential-libraries
+[credential libraries]: /docs/concepts/domain-model/credential-libraries
+[credential store]: /docs/concepts/domain-model/credential-stores
+[credential stores]: /docs/concepts/domain-model/credential-stores
 [host catalog]: /docs/concepts/domain-model/host-catalogs
 [host catalogs]: /docs/concepts/domain-model/host-catalogs
 [host set]: /docs/concepts/domain-model/host-sets
@@ -84,4 +91,4 @@ TCP targets have the following additional attributes:
 
 The following services are relevant to this resource:
 
-* [Target Service](/api-docs/target-service)
+- [Target Service](/api-docs/target-service)

@@ -12,34 +12,35 @@ import (
 
 // CreateSessionKeyVersion inserts into the repository and returns the new key
 // version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, key []byte, opt ...Option) (*SessionKeyVersion, error) {
+func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, key []byte, _ ...Option) (*SessionKeyVersion, error) {
+	const op = "kms.(Repository).CreateSessionKeyVersion"
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("create session key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, fmt.Errorf("create session key version: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, fmt.Errorf("create session key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 	}
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("create session key version: missing session key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("create session key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocSessionKeyVersion()
 	id, err := newSessionKeyVersionId()
 	if err != nil {
-		return nil, fmt.Errorf("create session key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyVersionId = rootKeyVersionId
 	kv.Key = key
 	kv.SessionKeyId = sessionKeyId
 	if err := kv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("create session key version: encrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var returnedKey interface{}
@@ -51,33 +52,34 @@ func (r *Repository) CreateSessionKeyVersion(ctx context.Context, rkvWrapper wra
 			returnedKey = kv.Clone()
 			// no session entries for root key version
 			if err := w.Create(ctx, returnedKey); err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create session key version: %w for %s session key id", err, kv.SessionKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s session key id", kv.SessionKeyId)))
 	}
-	return returnedKey.(*SessionKeyVersion), err
+	return returnedKey.(*SessionKeyVersion), nil
 }
 
 // LookupSessionKeyVersion will look up a key version in the repository.  If
 // the key version is not found, it will return nil, nil.
-func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*SessionKeyVersion, error) {
+func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*SessionKeyVersion, error) {
+	const op = "kms.(Repository).LookupSessionKeyVersion"
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup session key version: missing private id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup session key version: missing key wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, fmt.Errorf("lookup session key version: failed %w for %s", err, privateId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	if err := k.Decrypt(ctx, keyWrapper); err != nil {
-		return nil, fmt.Errorf("lookup session key version: decrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &k, nil
 }
@@ -85,14 +87,15 @@ func (r *Repository) LookupSessionKeyVersion(ctx context.Context, keyWrapper wra
 // DeleteSessionKeyVersion deletes the key version for the provided id from the
 // repository returning a count of the number of records deleted.  All options
 // are ignored.
-func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
+	const op = "kms.(Repository).DeleteSessionKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete session key version: missing private id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocSessionKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete session key version: failed %w for %s", err, privateId)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -104,57 +107,62 @@ func (r *Repository) DeleteSessionKeyVersion(ctx context.Context, privateId stri
 			dk := k.Clone()
 			// no session entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete session key version: %s: %w", privateId, err)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
 
 // LatestSessionKeyVersion searches for the key version with the highest
-// version number.  When no results are found, it returns nil,
-// errors.ErrRecordNotFound.
-func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) (*SessionKeyVersion, error) {
+// version number.  When no results are found, it returns nil with an
+// errors.RecordNotFound error.
+func (r *Repository) LatestSessionKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, _ ...Option) (*SessionKeyVersion, error) {
+	const op = "kms.(Repository).LatestSessionKeyVersion"
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("latest session key version: missing session key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("latest session key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*SessionKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "session_key_id = ?", []interface{}{sessionKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
-		return nil, fmt.Errorf("latest session key version: failed %w for %s", err, sessionKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.ErrRecordNotFound
+		return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("latest session key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return foundKeys[0], nil
 }
 
 // ListSessionKeyVersions will lists versions of a key.  Supports the WithLimit option.
 func (r *Repository) ListSessionKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, sessionKeyId string, opt ...Option) ([]DekVersion, error) {
+	const op = "kms.(Repository).ListSessionKeyVersions"
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("list session key versions: missing session key id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("list session key versions: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*SessionKeyVersion
 	err := r.list(ctx, &versions, "session_key_id = ?", []interface{}{sessionKeyId}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list session key versions: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for i, k := range versions {
 		if err := k.Decrypt(ctx, rkvWrapper); err != nil {
-			return nil, fmt.Errorf("list session key versions: error decrypting key num %d: %w", i, err)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
 		}
 	}
 	dekVersions := make([]DekVersion, 0, len(versions))

@@ -9,13 +9,15 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/wrapper"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*EncryptDecryptCommand)(nil)
-var _ cli.CommandAutocomplete = (*EncryptDecryptCommand)(nil)
+var (
+	_ cli.Command             = (*EncryptDecryptCommand)(nil)
+	_ cli.CommandAutocomplete = (*EncryptDecryptCommand)(nil)
+)
 
 type EncryptDecryptCommand struct {
 	*base.Command
@@ -122,13 +124,13 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	switch c.flagConfig {
 	case "":
 		c.UI.Error(`Missing required parameter -config`)
-		return 1
+		return base.CommandUserError
 	default:
 		c.flagConfig = strings.TrimSpace(c.flagConfig)
 	}
@@ -144,16 +146,16 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	if wrapper == nil {
 		c.UI.Error(`No wrapper with "config" purpose found"`)
-		return 1
+		return base.CommandUserError
 	}
 
 	if err := wrapper.Init(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 	defer func() {
 		if err := wrapper.Finalize(c.Context); err != nil {
@@ -164,7 +166,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	d, err := ioutil.ReadFile(c.flagConfig)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error reading config file: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	raw := string(d)
@@ -172,31 +174,31 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	raw, err = configutil.EncryptDecrypt(raw, c.Func == "decrypt", c.flagStrip, wrapper)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error %sing via kms: %w", c.Func, err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	if !c.flagOverwrite {
 		c.UI.Output(raw)
-		return 0
+		return base.CommandSuccess
 	}
 
 	file, err := os.Create(c.flagConfig)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error opening file for writing: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	defer func() {
 		if err := file.Close(); err != nil {
 			c.UI.Error(fmt.Errorf("Error closing file after writing: %w", err).Error())
-			ret = 1
+			ret = base.CommandCliError
 		}
 	}()
 
 	n, err := file.WriteString(raw)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error writing to file: %w", err).Error())
-		return 1
+		return base.CommandCliError
 	}
 	if n != len(raw) {
 		c.UI.Error(fmt.Sprintf("Wrong number of bytes written to file, expected %d, wrote %d", len(raw), n))

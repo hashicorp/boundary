@@ -3,14 +3,13 @@ package oplog
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	structwrapping "github.com/hashicorp/go-kms-wrapping/structwrapping"
-
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
 )
@@ -39,6 +38,7 @@ type Metadata map[string][]string
 
 // NewEntry creates a new Entry
 func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
+	const op = "oplog.NewEntry"
 	entry := Entry{
 		Entry: &store.Entry{
 			AggregateName: aggregateName,
@@ -62,36 +62,39 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 		entry.Metadata = storeMD
 	}
 	if err := entry.validate(); err != nil {
-		return nil, fmt.Errorf("error creating entry: %w", err)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &entry, nil
 }
+
 func (e *Entry) validate() error {
+	const op = "oplog.(Entry).validate"
 	if e.Cipherer == nil {
-		return errors.New("entry Cipherer is nil")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil cipherer")
 	}
 	if e.Ticketer == nil {
-		return errors.New("entry Ticketer is nil")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticketer")
 	}
 	if e.Entry == nil {
-		return errors.New("store.Entry is nil")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil entry")
 	}
 	if e.Entry.Version == "" {
-		return errors.New("entry version is not set")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry version")
 	}
 	if e.Entry.AggregateName == "" {
-		return errors.New("entry aggregate name is not set")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry aggregate name")
 	}
 	return nil
 }
 
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
 func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
+	const op = "oplog.(Entry).UnmarshalData"
 	if types == nil {
-		return nil, errors.New("TypeCatalog is nil")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil type catalog")
 	}
 	if len(e.Data) == 0 {
-		return nil, errors.New("no Data to unmarshal")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing data")
 	}
 	msgs := []Message{}
 	queue := Queue{
@@ -104,11 +107,11 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("error removing item from queue: %w", err)
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error removing item from queue"))
 		}
 		name, err := types.GetTypeName(m)
 		if err != nil {
-			return nil, fmt.Errorf("error getting TypeName: %w", err)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths, SetToNullPaths: nullPaths})
 	}
@@ -118,71 +121,87 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if Cipherer != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
+	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
-		return errors.New("bad writer")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if err := e.validate(); err != nil {
-		return fmt.Errorf("error vetting entry for writing: %w", err)
+		return errors.Wrap(ctx, err, op)
 	}
-	if ticket == nil || ticket.Version == 0 {
-		return errors.New("bad ticket")
+	if ticket == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticket")
+	}
+	if ticket.Version == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
 	queue := Queue{}
 	for _, m := range msgs {
 		if m == nil {
-			return errors.New("bad message")
+			return errors.New(ctx, errors.InvalidParameter, op, "nil message")
 		}
 		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
-			return fmt.Errorf("error adding message to queue: %w", err)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error adding message to queue"))
 		}
 	}
-	e.Data = append(e.Data, []byte(queue.Bytes())...)
+	e.Data = append(e.Data, queue.Bytes()...)
 
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return fmt.Errorf("error encrypting entry: %w", err)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return fmt.Errorf("error writing data to storage: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
-	return e.Ticketer.Redeem(ticket)
+	if err := e.Ticketer.Redeem(ticket); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
 }
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
 //  Cipherer != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
+	const op = "oplog.(Entry).Write"
 	if err := e.validate(); err != nil {
-		return fmt.Errorf("error vetting entry for writing: %w", err)
+		return errors.Wrap(ctx, err, op)
 	}
-	if ticket == nil || ticket.Version == 0 {
-		return errors.New("bad ticket")
+	if ticket == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticket")
+	}
+	if ticket.Version == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return fmt.Errorf("error encrypting entry: %w", err)
+			return errors.Wrap(ctx, err, op)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return fmt.Errorf("error writing data to storage: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
-	return e.Ticketer.Redeem(ticket)
+	if err := e.Ticketer.Redeem(ticket); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
 }
 
 // EncryptData the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) EncryptData(ctx context.Context) error {
+	const op = "oplog.(Entry).EncryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
-		return fmt.Errorf("error encrypting entry: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
 
 // DecryptData will decrypt the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) DecryptData(ctx context.Context) error {
+	const op = "oplog.(Entry).DecryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
-		return fmt.Errorf("error decrypting entry: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -190,14 +209,15 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 // Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
 // calling Replay, otherwise you'll get "a table doesn't exist" error.
 func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, tableSuffix string) error {
+	const op = "oplog.(Entry).Replay"
 	msgs, err := e.UnmarshalData(types)
 	if err != nil {
-		return fmt.Errorf("error on UnmarshalData: %w", err)
+		return errors.Wrap(ctx, err, op)
 	}
 	for _, m := range msgs {
 		em, ok := m.Message.(ReplayableMessage)
 		if !ok {
-			return fmt.Errorf("%T is not a ReplayableMessage", m.Message)
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m.Message))
 		}
 		origTableName := em.TableName()
 		defer em.SetTableName(origTableName)
@@ -216,7 +236,7 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		replayTable := origTableName + tableSuffix
 		if !tx.hasTable(replayTable) {
 			if err := tx.createTableLike(origTableName, replayTable); err != nil {
-				return fmt.Errorf("replay: %w", err)
+				return errors.Wrap(ctx, err, op)
 			}
 		}
 
@@ -224,18 +244,18 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		switch m.OpType {
 		case OpType_OP_TYPE_CREATE:
 			if err := tx.Create(m.Message); err != nil {
-				return fmt.Errorf("replay error: %w", err)
+				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_UPDATE:
 			if err := tx.Update(m.Message, m.FieldMaskPaths, m.SetToNullPaths); err != nil {
-				return fmt.Errorf("replay error: %w", err)
+				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_DELETE:
 			if err := tx.Delete(m.Message); err != nil {
-				return fmt.Errorf("replay error: %w", err)
+				return errors.Wrap(ctx, err, op)
 			}
 		default:
-			return fmt.Errorf("replay error: unhandled operation %T", m.OpType)
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid operation %T", m.OpType))
 		}
 	}
 	return nil

@@ -1,9 +1,8 @@
 package password
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // Prefixes for private ids for types in the password package.
@@ -13,17 +12,19 @@ const (
 )
 
 func newArgon2ConfigurationId() (string, error) {
+	const op = "password.newArgon2ConfigurationId"
 	id, err := db.NewPrivateId(argon2ConfigurationPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password argon2 configuration id: %w", err)
+		return "", errors.WrapDeprecated(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 func newArgon2CredentialId() (string, error) {
+	const op = "password.newArgon2CredentialId"
 	id, err := db.NewPrivateId(argon2CredentialPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password argon2 configuration id: %w", err)
+		return "", errors.WrapDeprecated(err, op)
 	}
-	return id, err
+	return id, nil
 }

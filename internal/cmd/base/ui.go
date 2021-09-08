@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/mitchellh/cli"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type BoundaryUI struct {
@@ -15,7 +15,7 @@ type BoundaryUI struct {
 var TermWidth uint = 80
 
 func init() {
-	width, _, err := terminal.GetSize(int(os.Stdin.Fd()))
+	width, _, err := term.GetSize(int(os.Stdin.Fd()))
 	if err == nil {
 		TermWidth = uint(width)
 	}

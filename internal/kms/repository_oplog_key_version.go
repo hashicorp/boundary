@@ -12,34 +12,35 @@ import (
 
 // CreateOplogKeyVersion inserts into the repository and returns the new key
 // version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateOplogKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, key []byte, opt ...Option) (*OplogKeyVersion, error) {
+func (r *Repository) CreateOplogKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, key []byte, _ ...Option) (*OplogKeyVersion, error) {
+	const op = "kms.(Repository).CreateOplogKeyVersion"
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("create oplog key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, fmt.Errorf("create oplog key version: root key version id %s doesn't start with prefix %s: %w", rootKeyVersionId, RootKeyVersionPrefix, errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, fmt.Errorf("create oplog key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 	}
 	if oplogKeyId == "" {
-		return nil, fmt.Errorf("create oplog key version: missing oplog key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("create oplog key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocOplogKeyVersion()
 	id, err := newOplogKeyVersionId()
 	if err != nil {
-		return nil, fmt.Errorf("create oplog key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyVersionId = rootKeyVersionId
 	kv.Key = key
 	kv.OplogKeyId = oplogKeyId
 	if err := kv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("create oplog key version: encrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var returnedKey interface{}
@@ -51,33 +52,34 @@ func (r *Repository) CreateOplogKeyVersion(ctx context.Context, rkvWrapper wrapp
 			returnedKey = kv.Clone()
 			// no oplog entries for root key version
 			if err := w.Create(ctx, returnedKey); err != nil {
-				return err
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create oplog key version: %w for %s oplog key id", err, kv.OplogKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s oplog key id", kv.OplogKeyId)))
 	}
-	return returnedKey.(*OplogKeyVersion), err
+	return returnedKey.(*OplogKeyVersion), nil
 }
 
 // LookupOplogKeyVersion will look up a key version in the repository.  If
 // the key version is not found, it will return nil, nil.
-func (r *Repository) LookupOplogKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, opt ...Option) (*OplogKeyVersion, error) {
+func (r *Repository) LookupOplogKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*OplogKeyVersion, error) {
+	const op = "kms.(Repository).LookupOplogKeyVersion"
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup oplog key version: missing private id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, fmt.Errorf("lookup oplog key version: missing key wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocOplogKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, fmt.Errorf("lookup oplog key version: failed %w for %s", err, privateId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	if err := k.Decrypt(ctx, keyWrapper); err != nil {
-		return nil, fmt.Errorf("lookup oplog key version: decrypt: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &k, nil
 }
@@ -85,14 +87,15 @@ func (r *Repository) LookupOplogKeyVersion(ctx context.Context, keyWrapper wrapp
 // DeleteOplogKeyVersion deletes the key version for the provided id from the
 // repository returning a count of the number of records deleted.  All options
 // are ignored.
-func (r *Repository) DeleteOplogKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteOplogKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
+	const op = "kms.(Repository).DeleteOplogKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete oplog key version: missing private id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocOplogKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete oplog key version: failed %w for %s", err, privateId)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -104,57 +107,62 @@ func (r *Repository) DeleteOplogKeyVersion(ctx context.Context, privateId string
 			dk := k.Clone()
 			// no oplog entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete oplog key version: %s: %w", privateId, err)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
 
 // LatestOplogKeyVersion searches for the key version with the highest
-// version number.  When no results are found, it returns nil,
-// errors.ErrRecordNotFound.
-func (r *Repository) LatestOplogKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, opt ...Option) (*OplogKeyVersion, error) {
+// version number.  When no results are found, it returns nil with an
+// errors.RecordNotFound error.
+func (r *Repository) LatestOplogKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, _ ...Option) (*OplogKeyVersion, error) {
+	const op = "kms.(Repository).LatestOplogKeyVersion"
 	if oplogKeyId == "" {
-		return nil, fmt.Errorf("latest oplog key version: missing oplog key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("latest oplog key version: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*OplogKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "oplog_key_id = ?", []interface{}{oplogKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
-		return nil, fmt.Errorf("latest oplog key version: failed %w for %s", err, oplogKeyId)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", oplogKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.ErrRecordNotFound
+		return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
-		return nil, fmt.Errorf("latest oplog key version: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return foundKeys[0], nil
 }
 
 // ListOplogKeyVersions will lists versions of a key.  Supports the WithLimit option.
 func (r *Repository) ListOplogKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, oplogKeyId string, opt ...Option) ([]DekVersion, error) {
+	const op = "kms.(Repository).ListOplogKeyVersions"
 	if oplogKeyId == "" {
-		return nil, fmt.Errorf("list oplog key versions: missing oplog key id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if rkvWrapper == nil {
-		return nil, fmt.Errorf("list oplog key versions: missing root key version wrapper: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*OplogKeyVersion
 	err := r.list(ctx, &versions, "oplog_key_id = ?", []interface{}{oplogKeyId}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list oplog key versions: %w", err)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	for i, k := range versions {
 		if err := k.Decrypt(ctx, rkvWrapper); err != nil {
-			return nil, fmt.Errorf("list oplog key versions: error decrypting key num %d: %w", i, err)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
 		}
 	}
 	dekVersions := make([]DekVersion, 0, len(versions))

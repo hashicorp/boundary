@@ -28,6 +28,15 @@ export NEW_USER='test'
 	[ "$status" -eq 0 ]
 }
 
+@test "boundary/users: the $NEW_USER user contains default authorized-actions" {
+  local uid=$(user_id $NEW_USER)
+  local out=$(read_user $uid)
+
+	run has_default_user_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/account/password: can add $NEW_USER account" {
 	run create_account $NEW_USER
 	[ "$status" -eq 0 ]
@@ -63,13 +72,6 @@ export NEW_USER='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/user: can not delete already deleted $NEW_USER user" {
-  login $DEFAULT_LOGIN
-  local uid=$(user_id $NEW_USER)
-  run delete_user $uid 
-  [ "$status" -eq 1 ]
-}
-
 @test "boundary/users: can not read deleted $NEW_USER user" {
   local uid=$(user_id $NEW_USER)
 	run read_user $uid
@@ -80,16 +82,4 @@ export NEW_USER='test'
   local aid=$(account_id $NEW_USER)
   run delete_account $aid 
   [ "$status" -eq 0 ]
-}
-
-@test "boundary/account/password: can not delete already deleted $NEW_USER account" {
-  local aid=$(account_id $NEW_USER)
-  run delete_account $aid 
-  [ "$status" -eq 1 ]
-}
-
-@test "boundary/account/password: can not read deleted $NEW_USER account" {
-  local aid=$(account_id $NEW_USER)
-	run read_account $aid
-	[ "$status" -eq 1 ]
 }

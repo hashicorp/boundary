@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,15 +22,16 @@ type SessionKeyVersion struct {
 
 // SessionKeyVersion creates a new in memory key version. No options are
 // currently supported.
-func NewSessionKeyVersion(sessionKeyId string, key []byte, rootKeyVersionId string, opt ...Option) (*SessionKeyVersion, error) {
+func NewSessionKeyVersion(sessionKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*SessionKeyVersion, error) {
+	const op = "kms.NewSessionKeyVersion"
 	if sessionKeyId == "" {
-		return nil, fmt.Errorf("new session key version: missing session key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session key id")
 	}
 	if len(key) == 0 {
-		return nil, fmt.Errorf("new session key version: missing key: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, fmt.Errorf("new session key version: missing root key version id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &SessionKeyVersion{
@@ -62,18 +62,19 @@ func (k *SessionKeyVersion) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // version before it's written.
 func (k *SessionKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "kms.(SessionKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("session key version vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return fmt.Errorf("session key version vet for write: missing key: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing key")
 		}
 		if k.SessionKeyId == "" {
-			return fmt.Errorf("session key version vet for write: missing session key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing session key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return fmt.Errorf("session key version vet for write: missing root key version id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil
@@ -96,20 +97,22 @@ func (k *SessionKeyVersion) SetTableName(n string) {
 
 // Encrypt will encrypt the key version's key
 func (k *SessionKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(SessionKeyVersion).Encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.SessionKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.SessionKeyVersion, nil); err != nil {
-		return fmt.Errorf("error encrypting kms session key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
 
 // Decrypt will decrypt the key version's key
 func (k *SessionKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(SessionKeyVersion).Decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.SessionKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.SessionKeyVersion, nil); err != nil {
-		return fmt.Errorf("error decrypting kms session key version: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

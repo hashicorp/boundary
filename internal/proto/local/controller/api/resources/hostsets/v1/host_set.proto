@@ -2,12 +2,11 @@ syntax = "proto3";
 
 package controller.api.resources.hostsets.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets;hostsets";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets;hostsets";
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/hosts/v1/host.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
@@ -35,7 +34,7 @@ message HostSet {
 	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
+	// The mutation will fail if the version does not match the latest known good version.
 	uint32 version = 80;
 
 	// The type of the Host Set.
@@ -46,4 +45,7 @@ message HostSet {
 
 	// The attributes that are applicable for the specific Host Set type.
 	google.protobuf.Struct attributes = 110;
+
+	// Output only. The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

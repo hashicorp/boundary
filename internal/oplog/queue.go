@@ -3,11 +3,12 @@ package oplog
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
+	"io"
 	"sync"
 
-	common "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,6 +30,7 @@ type Queue struct {
 // update, etc).  If OpType == OpType_OP_TYPE_UPDATE, the WithFieldMaskPaths()
 // and SetToNullPaths() options are supported.
 func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) error {
+	const op = "oplog.(Queue).Add"
 	// we're not checking the Catalog for nil, since it's not used
 	// when Adding messages to the queue
 	opts := GetOpts(opt...)
@@ -36,15 +38,15 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	withNullPaths := opts[optionWithSetToNullPaths].([]string)
 
 	if _, ok := m.(ReplayableMessage); !ok {
-		return fmt.Errorf("error %T is not a ReplayableMessage", m)
+		return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m))
 	}
 	value, err := proto.Marshal(m)
 	if err != nil {
-		return fmt.Errorf("error marshaling add parameter: %w", err)
+		return errors.NewDeprecated(errors.Encode, op, "error marshaling add parameter", errors.WithWrap(err))
 	}
 	if t == OpType_OP_TYPE_UPDATE {
 		if len(withFieldMasks) == 0 && len(withNullPaths) == 0 {
-			return fmt.Errorf("queue add: missing field masks or null paths for update")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing field masks or null paths for update")
 		}
 		fMasks := withFieldMasks
 		if fMasks == nil {
@@ -56,10 +58,10 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 		}
 		i, _, _, err := common.Intersection(fMasks, nullPaths)
 		if err != nil {
-			return fmt.Errorf("queue add: %w", err)
+			return errors.WrapDeprecated(err, op)
 		}
 		if len(i) != 0 {
-			return fmt.Errorf("queue add: field masks and null paths intersect with: %s", i)
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("field masks and null paths intersect with: %s", i))
 		}
 
 	}
@@ -72,20 +74,20 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	}
 	data, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("error marhaling the msg for Add: %w", err)
+		return errors.NewDeprecated(errors.Encode, op, "error marshaling message", errors.WithWrap(err))
 	}
 	q.mx.Lock()
 	defer q.mx.Unlock()
 	err = binary.Write(q, binary.LittleEndian, uint32(len(data)))
 	if err != nil {
-		return err
+		return errors.NewDeprecated(errors.Io, op, "binary write error", errors.WithWrap(err))
 	}
 	n, err := q.Write(data)
 	if err != nil {
-		return fmt.Errorf("error writing to queue buffer: %w", err)
+		return errors.NewDeprecated(errors.Io, op, "error writing to queue buffer", errors.WithWrap(err))
 	}
 	if n != len(data) {
-		return fmt.Errorf("error writing to queue buffer (incorrect number of bytes %d of %d)", n, len(data))
+		return errors.NewDeprecated(errors.Io, op, fmt.Sprintf("error writing to queue buffer (incorrect number of bytes %d of %d)", n, len(data)))
 	}
 	return nil
 }
@@ -94,32 +96,36 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 // for the msg and if it's OpType_OP_TYPE_UPDATE, the it will also return the
 // fieldMask and setToNullPaths for the update operation.
 func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
+	const op = "oplog.(Queue).Remove"
 	if q.Catalog == nil {
-		return nil, OpType_OP_TYPE_UNSPECIFIED, nil, nil, errors.New("remove Catalog is nil")
+		return nil, OpType_OP_TYPE_UNSPECIFIED, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil catalog")
 	}
 	q.mx.Lock()
 	defer q.mx.Unlock()
 	var n uint32
 	err := binary.Read(q, binary.LittleEndian, &n)
+	if err == io.EOF {
+		return nil, 0, nil, nil, err // intentionally not wrapping error, return io.EOF so client can handle it correctly
+	}
 	if err != nil {
-		return nil, 0, nil, nil, err // intentionally not wrapping error so client can test for sentinel EOF error
+		return nil, 0, nil, nil, errors.NewDeprecated(errors.Io, op, "binary read error", errors.WithWrap(err))
 	}
 	data := q.Next(int(n))
 	msg := new(AnyOperation)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, 0, nil, nil, fmt.Errorf("error marshaling the msg for Remove: %w", err)
+		return nil, 0, nil, nil, errors.NewDeprecated(errors.Decode, op, "error unmarshaling message", errors.WithWrap(err))
 	}
 	if msg.Value == nil {
 		return nil, 0, nil, nil, nil
 	}
 	any, err := q.Catalog.Get(msg.TypeName)
 	if err != nil {
-		return nil, 0, nil, nil, fmt.Errorf("error getting the TypeName for Remove: %w", err)
+		return nil, 0, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("error getting the TypeName: %s", msg.TypeName)))
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {
-		return nil, 0, nil, nil, fmt.Errorf("error unmarshaling the value for Remove: %w", err)
+		return nil, 0, nil, nil, errors.NewDeprecated(errors.Decode, op, "error unmarshaling value", errors.WithWrap(err))
 	}
 	var masks, nullPaths []string
 	if msg.OperationType == OpType_OP_TYPE_UPDATE {
@@ -130,7 +136,7 @@ func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
 			nullPaths = msg.NullMask.GetPaths()
 		}
 		if len(masks) == 0 && len(nullPaths) == 0 {
-			return nil, 0, nil, nil, errors.New("error unmarshaling the value for Remove: field mask or null paths is required")
+			return nil, 0, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "field mask or null paths is required")
 		}
 
 	}

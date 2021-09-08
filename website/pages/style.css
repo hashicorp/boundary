@@ -1,31 +1,23 @@
 /* Global Component Styles */
 @import '~@hashicorp/mktg-global-styles/style.css';
-@import '~@hashicorp/mktg-global-styles/_temporary-to-remove/layout.css';
-@import '~@hashicorp/mktg-global-styles/_temporary-to-remove/tables.css';
-@import '~@hashicorp/nextjs-scripts/prism/style.css';
 
 @import '~@hashicorp/react-hero/style.css';
 @import '~@hashicorp/react-button/styles/index.css';
-@import '~@hashicorp/react-consent-manager/dist/style.css';
-@import '~@hashicorp/react-toggle/dist/style.css';
-@import '~@hashicorp/react-section-header/style.css';
+@import '~@hashicorp/react-consent-manager/style.css';
+@import '~@hashicorp/react-toggle/style.css';
 @import '~@hashicorp/react-vertical-text-block-list/style.css';
-@import '~@hashicorp/react-docs-sidenav/style.css';
-@import '~@hashicorp/react-docs-page/style.css';
 @import '~@hashicorp/react-search/style.css';
-@import '~@hashicorp/react-content/style.css';
 @import '~@hashicorp/react-subnav/style.css';
 @import '~@hashicorp/react-tabs/style.css';
-@import '~@hashicorp/react-enterprise-alert/dist/style.css';
+@import '~@hashicorp/react-enterprise-alert/style.css';
 @import '~@hashicorp/react-product-features-list/style.css';
-@import '~@hashicorp/react-use-cases/dist/style.css';
+@import '~@hashicorp/react-use-cases/style.css';
 @import '~@hashicorp/react-alert-banner/style.css';
 
 /* Local Components */
 @import '../components/footer/style.css';
 
 /* Local Pages */
-@import './community/style.css';
 @import './home/style.css';
 
 /* Print Styles */
@@ -55,4 +47,12 @@
   margin: 0 auto 3rem auto;
   border-radius: 3px;
   box-shadow: 0 14.3254px 14.3254px rgba(37, 41, 55, 0.16);
+}
+
+.boundary-clickthrough-desktop-video {
+  max-width: 800px;
+}
+
+.g-type-body {
+  color: var(--gray-2);
 }

@@ -3,7 +3,6 @@ package password
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -44,14 +43,29 @@ func NewArgon2Configuration() *Argon2Configuration {
 }
 
 func (c *Argon2Configuration) validate() error {
-	switch {
-	case c == nil, c.Argon2Configuration == nil:
-		return ErrInvalidConfiguration
-	case c.Iterations == 0, c.Memory == 0, c.Threads == 0, c.SaltLength == 0, c.KeyLength == 0:
-		return ErrInvalidConfiguration
-	default:
-		return nil
+	const op = "password.(Argon2Configuration).validate"
+	if c == nil {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing config")
 	}
+	if c.Argon2Configuration == nil {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing embedded config")
+	}
+	if c.Iterations == 0 {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing iterations")
+	}
+	if c.Memory == 0 {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing memory")
+	}
+	if c.Threads == 0 {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing threads")
+	}
+	if c.SaltLength == 0 {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing salt length")
+	}
+	if c.KeyLength == 0 {
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing key length")
+	}
+	return nil
 }
 
 // AuthMethodId returns the Id of the AuthMethod which owns c.
@@ -116,19 +130,20 @@ type Argon2Credential struct {
 }
 
 func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+	const op = "password.newArgon2Credential"
 	if accountId == "" {
-		return nil, fmt.Errorf("new: password argon2 credential: no accountId: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing accountId")
 	}
 	if password == "" {
-		return nil, fmt.Errorf("new: password argon2 credential: no password: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing password")
 	}
 	if conf == nil {
-		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing argon2 configuration")
 	}
 
 	id, err := newArgon2CredentialId()
 	if err != nil {
-		return nil, fmt.Errorf("new: password argon2 credential: %w", err)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	c := &Argon2Credential{
@@ -142,7 +157,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 
 	salt := make([]byte, conf.SaltLength)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, fmt.Errorf("new: password argon2 credential: %w", err)
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
 	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
@@ -170,16 +185,18 @@ func (c *Argon2Credential) SetTableName(n string) {
 }
 
 func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "password.(Argon2Credential).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return fmt.Errorf("error encrypting argon2 credential: %w", err)
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	c.KeyId = cipher.KeyID()
 	return nil
 }
 
 func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "password.(Argon2Credential).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return fmt.Errorf("error decrypting argon2 credential: %w", err)
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

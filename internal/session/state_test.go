@@ -27,7 +27,7 @@ func TestState_Create(t *testing.T) {
 		args          args
 		want          *State
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -49,7 +49,7 @@ func TestState_Create(t *testing.T) {
 				status: StatusPending,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-status",
@@ -57,7 +57,7 @@ func TestState_Create(t *testing.T) {
 				sessionId: session.PublicId,
 			},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -66,7 +66,7 @@ func TestState_Create(t *testing.T) {
 			got, err := NewState(tt.args.sessionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

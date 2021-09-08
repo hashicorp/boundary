@@ -1,10 +1,11 @@
 import VerticalTextBlockList from '@hashicorp/react-vertical-text-block-list'
 import SectionHeader from '@hashicorp/react-section-header'
 import Head from 'next/head'
+import s from './style.module.css'
 
 export default function CommunityPage() {
   return (
-    <div id="p-community">
+    <div className={s.root}>
       <Head>
         <title key="title">Community | Boundary by HashiCorp</title>
       </Head>
@@ -14,16 +15,17 @@ export default function CommunityPage() {
         use_h1={true}
       />
       <VerticalTextBlockList
+        product="boundary"
         data={[
           {
             header: 'Community Forum',
             body:
-              '[Boundary Community Forum](https://discuss.hashicorp.com/c/boundary)',
+              '<a href="https://discuss.hashicorp.com/c/boundary">Boundary Community Forum</a>',
           },
           {
             header: 'Bug Tracker',
             body:
-              '[Issue tracker on GitHub](https://github.com/hashicorp/boundary/issues). Please only use this for reporting bugs. Do not ask for general help here; use the Community Form for that.',
+              '<a href="https://github.com/hashicorp/boundary/issues">Issue tracker on GitHub</a>. Please only use this for reporting bugs. Do not ask for general help here; use the Community Form for that.',
           },
         ]}
       />

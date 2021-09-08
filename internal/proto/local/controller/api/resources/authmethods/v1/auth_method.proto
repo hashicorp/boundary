@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.resources.authmethods.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods;authmethods";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods;authmethods";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -12,42 +12,182 @@ import "controller/custom_options/v1/options.proto";
 
 // AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
-	// Output only. The ID of the Auth Method.
-	string id = 10;
+  // Output only. The ID of the Auth Method.
+  string id = 10;
 
-	// The ID of the Scope of which this Auth Method is a part.
-	string scope_id = 20 [json_name="scope_id"];
+  // The ID of the Scope of which this Auth Method is a part.
+  string scope_id = 20 [json_name = "scope_id"];
 
-	// Output only. Scope information for this Auth method.
-	resources.scopes.v1.ScopeInfo scope = 30;
+  // Output only. Scope information for this Auth method.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "Name" }];
 
-	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "Description" }];
 
-	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"];
 
-	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"];
 
-	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 80;
+  uint32 version = 80;
 
-	// The Auth Method type.
-	string type = 90;
+  // The Auth Method type.
+  string type = 90;
 
-	// The attributes that are applicable for the specific Auth Method type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+  // The attributes that are applicable for the specific Auth Method type.
+  google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+
+  // Output only. Whether this auth method is the primary auth method for it's scope.
+  // To change this value update the primary_auth_method_id field on the scope.
+  bool is_primary = 110 [json_name = "is_primary"];
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"];
+
+  // Output only. The authorized actions for the scope's collections.
+  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];
 }
 
+// The attributes of a password typed auth method.
 message PasswordAuthMethodAttributes {
-	// The minimum length allowed for user names for Accounts in this Auth Method.
-	uint32 min_login_name_length = 10 [json_name="min_login_name_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_login_name_length" that: "MinLoginNameLength"}];
+  // The minimum length allowed for user names for Accounts in this Auth Method.
+  uint32 min_login_name_length = 10
+      [json_name = "min_login_name_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.min_login_name_length" that: "MinLoginNameLength" }];
 
-	// The minimum length allowed for passwords for Accounts in this Auth Method.
-	uint32 min_password_length = 20 [json_name="min_password_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_password_length" that: "MinPasswordLength"}];
+  // The minimum length allowed for passwords for Accounts in this Auth Method.
+  uint32 min_password_length = 20
+      [json_name = "min_password_length", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.min_password_length" that: "MinPasswordLength" }];
+}
+
+// The attributes of an OIDC typed auth method.
+message OidcAuthMethodAttributes {
+  // Output only. The state of the auth method. Will be "inactive",
+  // "active-private", or "active-public".
+  string state = 10 [json_name = "state"];
+
+  // The issuer URL. Boundary expects only the schema, host, and port and will
+  // strip off ".well-known/openid-configuration" if present. This will be
+  // used for configuration discovery as well as for validation of the "iss"
+  // claim.
+  google.protobuf.StringValue issuer = 20 [json_name = "issuer", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.issuer" that: "Issuer" }];
+
+  // An OAuth 2.0 Client Identifier valid at the Authorization Server.
+  google.protobuf.StringValue client_id = 30
+      [json_name = "client_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.client_id" that: "ClientId" }];
+
+  // Input only. The client's secret.
+  google.protobuf.StringValue client_secret = 40
+      [json_name = "client_secret", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.client_secret" that: "ClientSecret" }];
+
+  // Output only. The HMAC'd value of the clients secret to indicate whether
+  // the client secret has changed.
+  string client_secret_hmac = 50 [json_name = "client_secret_hmac"];
+
+  // The OIDC "max_age" parameter sent to the Authorization Server indicating
+  // a maximum acceptable time in seconds since the user's last authentication
+  // before requiring the user to reauthenticate. 0 indicates an immediate
+  // need to reauthenticate.
+  google.protobuf.UInt32Value max_age = 60 [json_name = "max_age", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.max_age" that: "MaxAge" }];
+
+  // The signing algorithms allowed for the auth method.
+  repeated string signing_algorithms = 70
+      [json_name = "signing_algorithms", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.signing_algorithms" that: "SigningAlgs" }];
+
+  // The prefix that should be used for any URLs needed during the
+  // authentication flow. This includes the callback URL, the token retrieval
+  // URL, and the redirection URL used by the OIDC Authorization Server.
+  google.protobuf.StringValue api_url_prefix = 80
+      [json_name = "api_url_prefix", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.api_url_prefix" that: "ApiUrl" }];
+
+  // Output only. The callback URL that should be configured on the
+  // Authorization Server to use during the authentication flow.
+  string callback_url = 90 [json_name = "callback_url"];
+
+  // Optional PEM-encoded X.509 CA certificates that can be used as trust anchors
+  // when connecting to an OIDC provider.
+  repeated string idp_ca_certs = 100
+      [json_name = "idp_ca_certs", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.idp_ca_certs" that: "Certificates" }];
+
+  // Allowed audience claims for this auth method.
+  repeated string allowed_audiences = 110
+      [json_name = "allowed_audiences", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.allowed_audiences" that: "AudClaims" }];
+
+  // Optional claims scopes that will be requested during authentication.
+  // see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+  repeated string claims_scopes = 112
+      [json_name = "claims_scopes", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.claims_scopes" that: "ClaimsScopes" }];
+
+  // account_claim_maps are optional claim maps from custom claims to the
+  // standard claims of sub, name and email.  These maps are represented as
+  // key=value where the key equals the from_claim and the value equals the
+  // to_claim.  For example "oid=sub".
+  repeated string account_claim_maps = 113
+      [json_name = "account_claim_maps", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.account_claim_maps" that: "AccountClaimMaps" }];
+
+  // If the Authorization Server's discovered configuration contains values
+  // that do not match the configuration set on this auth method, this can be
+  // set to force the local configuration to override the discovered values.
+  // This is useful in the case of slow-changing or incorrect values announced
+  // by the Authorization Server. NOTE: For safety, not providing this value
+  // will be treated the same as "false"; that is, every time the method is
+  // updated or the state is changed, this value must be set to "true" or it
+  // will be disabled.
+  bool disable_discovered_config_validation = 120 [json_name = "disable_discovered_config_validation", (custom_options.v1.generate_sdk_option) = true];
+
+  // dry_run, when set on an update request, indicates that the changes should
+  // not be persisted.  Boundary will still perform the normal checks to confirm
+  // the auth method is complete and validated against the discovered config.
+  // This value will also be set on the returned resource when set in the request
+  // along with the updated fields applied to the resource (but not persisted) as
+  // a result of the update request.
+  bool dry_run = 130 [json_name = "dry_run", (custom_options.v1.generate_sdk_option) = true];
+}
+
+// The structure of the OIDC authenticate start response, in the JSON object
+message OidcAuthMethodAuthenticateStartResponse {
+  // The returned authentication URL
+  string auth_url = 10 [json_name = "auth_url"];
+
+  // The returned token ID
+  string token_id = 30 [json_name = "token_id"];
+}
+
+// The structure of OIDC callback request parameters
+message OidcAuthMethodAuthenticateCallbackRequest {
+  // The returned code
+  string code = 10 [json_name = "code"];
+
+  // The returned state
+  string state = 20 [json_name = "state"];
+
+  // Error parameters, if they are returned
+  string error = 30 [json_name = "error"];
+  string error_description = 40 [json_name = "error_description"];
+  string error_uri = 50 [json_name = "error_uri"];
+}
+
+// The structure of OIDC callback response parameters
+message OidcAuthMethodAuthenticateCallbackResponse {
+  // The final redirection URL
+  string final_redirect_url = 10 [json_name = "final_redirect_url"];
+}
+
+// The structure of OIDC token request parameters
+message OidcAuthMethodAuthenticateTokenRequest {
+  // The ID of the pending token
+  string token_id = 10 [json_name = "token_id"];
+}
+
+// Internal only: the structure of a token response if it _does not_ contain a
+// token.
+message OidcAuthMethodAuthenticateTokenResponse {
+  // The status. This will always be "unknown". It will never be forwarded to
+  // the consumer.
+  string status = 10;
 }

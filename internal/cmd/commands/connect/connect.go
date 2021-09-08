@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,14 +23,15 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	targetspb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/proxy"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
 	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
+	exec "golang.org/x/sys/execabs"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
@@ -40,12 +40,13 @@ import (
 const sessionCancelTimeout = 10 * time.Second
 
 type SessionInfo struct {
-	Address         string    `json:"address"`
-	Port            int       `json:"port"`
-	Protocol        string    `json:"protocol"`
-	Expiration      time.Time `json:"expiration"`
-	ConnectionLimit int32     `json:"connection_limit"`
-	SessionId       string    `json:"session_id"`
+	Address         string                       `json:"address"`
+	Port            int                          `json:"port"`
+	Protocol        string                       `json:"protocol"`
+	Expiration      time.Time                    `json:"expiration"`
+	ConnectionLimit int32                        `json:"connection_limit"`
+	SessionId       string                       `json:"session_id"`
+	Credentials     []*targets.SessionCredential `json:"credentials,omitempty"`
 }
 
 type ConnectionInfo struct {
@@ -56,8 +57,10 @@ type TerminationInfo struct {
 	Reason string `json:"termination_reason"`
 }
 
-var _ cli.Command = (*Command)(nil)
-var _ cli.CommandAutocomplete = (*Command)(nil)
+var (
+	_ cli.Command             = (*Command)(nil)
+	_ cli.CommandAutocomplete = (*Command)(nil)
+)
 
 type Command struct {
 	*base.Command
@@ -70,6 +73,7 @@ type Command struct {
 	flagHostId     string
 	flagExec       string
 	flagUsername   string
+	flagDbname     string
 
 	// HTTP
 	httpFlags
@@ -88,6 +92,7 @@ type Command struct {
 
 	Func string
 
+	sessionAuthz     *targets.SessionAuthorization
 	sessionAuthzData *targetspb.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
@@ -95,12 +100,14 @@ type Command struct {
 	listener           *net.TCPListener
 	listenerAddr       *net.TCPAddr
 	connsLeftCh        chan int32
-	connectionsLeft    atomic.Int32
+	connectionsLeft    *atomic.Int32
 	expiration         time.Time
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
 	proxyCancel        context.CancelFunc
 	outputJsonErrors   bool
+
+	cleanupFuncs []func() error
 }
 
 func (c *Command) Synopsis() string {
@@ -206,15 +213,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
 	})
 
-	f.BoolVar(&base.BoolVar{
-		Name:       "output-json-errors",
-		Target:     &c.outputJsonErrors,
-		EnvVar:     "BOUNDARY_CONNECT_OUTPUT_JSON_ERRORS",
-		Completion: complete.PredictNothing,
-		Usage:      "Cause errors coming from this command to be output as JSON. This is experimental only and currently only meant for internal purposes. The format may change at any time and this flag/env var may be removed or modified at any time.",
-		Hidden:     true,
-	})
-
 	switch c.Func {
 	case "connect":
 		f.StringVar(&base.StringVar{
@@ -272,31 +270,31 @@ func (c *Command) Run(args []string) (retCode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.Error(err.Error())
-		return 3
+		c.PrintCliError(err)
+		return base.CommandUserError
 	}
 
 	switch {
 	case c.flagAuthzToken != "":
 		switch {
 		case c.flagTargetId != "":
-			c.Error(`-target-id and -authz-token cannot both be specified`)
-			return 3
+			c.PrintCliError(errors.New(`-target-id and -authz-token cannot both be specified`))
+			return base.CommandUserError
 		case c.flagTargetName != "":
-			c.Error(`-target-name and -authz-token cannot both be specified`)
-			return 3
+			c.PrintCliError(errors.New(`-target-name and -authz-token cannot both be specified`))
+			return base.CommandUserError
 		}
 	default:
 		if c.flagTargetId == "" &&
 			(c.flagTargetName == "" ||
 				(c.FlagScopeId == "" && c.FlagScopeName == "")) {
-			c.Error("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either")
-			return 3
+			c.PrintCliError(errors.New("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either"))
+			return base.CommandUserError
 		}
 		if c.flagTargetId != "" &&
 			(c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
-			c.Error("Cannot specify a target ID and also other lookup parameters")
-			return 3
+			c.PrintCliError(errors.New("Cannot specify a target ID and also other lookup parameters"))
+			return base.CommandUserError
 		}
 	}
 
@@ -317,10 +315,11 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	tofuToken, err := base62.Random(20)
 	if err != nil {
-		c.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
-		return 2
+		c.PrintCliError(fmt.Errorf("Could not derive random bytes for tofu token: %w", err))
+		return base.CommandCliError
 	}
 
+	c.connectionsLeft = atomic.NewInt32(0)
 	c.connsLeftCh = make(chan int32)
 
 	if c.flagListenAddr == "" {
@@ -328,8 +327,8 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 	listenAddr := net.ParseIP(c.flagListenAddr)
 	if listenAddr == nil {
-		c.Error(fmt.Sprintf("Could not successfully parse listen address of %s", c.flagListenAddr))
-		return 3
+		c.PrintCliError(fmt.Errorf("Could not successfully parse listen address of %s", c.flagListenAddr))
+		return base.CommandUserError
 	}
 
 	authzString := c.flagAuthzToken
@@ -338,35 +337,35 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString == "-" {
 			authBytes, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
-				c.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
-				return 3
+				c.PrintCliError(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err))
+				return base.CommandUserError
 			}
 			if len(authBytes) == 0 {
-				c.Error("No authorization data read from stdin")
-				return 3
+				c.PrintCliError(errors.New("No authorization data read from stdin"))
+				return base.CommandUserError
 			}
 			authzString = string(authBytes)
 		}
 
 		if authzString == "" {
-			c.Error("Authorization data was empty")
-			return 3
+			c.PrintCliError(errors.New("Authorization data was empty"))
+			return base.CommandUserError
 		}
 
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			sessionAuthz := new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), sessionAuthz); err == nil {
-				authzString = sessionAuthz.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
 	default:
 		client, err := c.Client()
 		if err != nil {
-			c.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
-			return 2
+			c.PrintCliError(fmt.Errorf("Error creating API client: %s", err))
+			return base.CommandCliError
 		}
 		targetClient := targets.NewClient(client)
 
@@ -387,39 +386,35 @@ func (c *Command) Run(args []string) (retCode int) {
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
 			if apiErr := api.AsServerError(err); apiErr != nil {
-				switch c.outputJsonErrors {
-				case true:
-					c.Error(apiErr.ResponseBody().String())
-				default:
-					c.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
-				}
-				return 1
+				c.PrintApiError(apiErr, "Error from controller when performing authorize-session action against given target")
+				return base.CommandApiError
 			}
-			c.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
-			return 2
+			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
+			return base.CommandCliError
 		}
-		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	if err != nil {
-		c.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
-		return 3
+		c.PrintCliError(fmt.Errorf("Unable to base58-decode authorization data: %w", err))
+		return base.CommandUserError
 	}
 	if len(marshaled) == 0 {
-		c.Error("Zero length authorization information after decoding")
-		return 3
+		c.PrintCliError(errors.New("Zero length authorization information after decoding"))
+		return base.CommandUserError
 	}
 
 	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
 	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
-		c.Error(fmt.Errorf("Unable to proto-decode authorization data: %w", err).Error())
-		return 3
+		c.PrintCliError(fmt.Errorf("Unable to proto-decode authorization data: %w", err))
+		return base.CommandUserError
 	}
 
 	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
-		c.Error("No workers found in authorization string")
-		return 3
+		c.PrintCliError(errors.New("No workers found in authorization string"))
+		return base.CommandUserError
 	}
 
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
@@ -427,13 +422,13 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
-		c.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
-		return 3
+		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
+		return base.CommandUserError
 	}
 
 	if len(parsedCert.DNSNames) != 1 {
-		c.Error(fmt.Errorf("mTLS certificate has invalid parameters: %w", err).Error())
-		return 3
+		c.PrintCliError(fmt.Errorf("mTLS certificate has invalid parameters: %w", err))
+		return base.CommandUserError
 	}
 
 	c.expiration = parsedCert.NotAfter
@@ -472,15 +467,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		Port: c.flagListenPort,
 	})
 	if err != nil {
-		c.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
-		return 2
+		c.PrintCliError(fmt.Errorf("Error starting listening port: %w", err))
+		return base.CommandCliError
 	}
 
 	listenerCloseFunc := func() {
 		// Forces the for loop to exist instead of spinning on errors
 		c.connectionsLeft.Store(0)
 		if err := c.listener.Close(); err != nil {
-			c.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
+			c.PrintCliError(fmt.Errorf("Error closing listener on shutdown: %w", err))
 			retCode = 2
 		}
 	}
@@ -492,24 +487,55 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	if c.flagExec == "" {
+	var creds []*targets.SessionCredential
+	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
+		creds = c.sessionAuthz.Credentials
+	}
+	switch c.Func {
+	case "postgres":
+		// Credentials are brokered when connecting to the postgres db.
+		// TODO: Figure out how to handle cases where we don't automatically know how to
+		// broker the credentials like unrecognized or multiple credentials.
+	case "connect":
+		// "connect" indicates there is no subcommand to the connect function.
+		// The only way a user will be able to connect to the session is by
+		// connecting directly to the port and address we report to them here.
 		sessInfo := SessionInfo{
-			Protocol:        "tcp",
+			Protocol:        c.sessionAuthzData.GetType(),
 			Address:         c.listenerAddr.IP.String(),
 			Port:            c.listenerAddr.Port,
 			Expiration:      c.expiration,
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
+			Credentials:     creds,
 		}
-
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
 		case "json":
 			out, err := json.Marshal(&sessInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
-				return 2
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+				return base.CommandCliError
+			}
+			c.UI.Output(string(out))
+		}
+	default:
+		if len(creds) == 0 {
+			break
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateCredentialTableOutput(creds))
+		case "json":
+			out, err := json.Marshal(&struct {
+				Credentials []*targets.SessionCredential `json:"credentials"`
+			}{
+				Credentials: c.sessionAuthz.Credentials,
+			})
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
 		}
@@ -534,7 +560,7 @@ func (c *Command) Run(args []string) (retCode int) {
 					if c.connectionsLeft.Load() == 0 {
 						return
 					}
-					c.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+					c.PrintCliError(fmt.Errorf("Error accepting connection: %w", err))
 					continue
 				}
 			}
@@ -547,10 +573,10 @@ func (c *Command) Run(args []string) (retCode int) {
 					workerAddr,
 					transport)
 				if err != nil {
-					c.Error(err.Error())
+					c.PrintCliError(err)
 				} else {
 					if err := c.runTcpProxyV1(wsConn, listeningConn, tofuToken); err != nil {
-						c.Error(err.Error())
+						c.PrintCliError(err)
 					}
 				}
 			}()
@@ -584,7 +610,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if c.flagExec != "" {
 		c.connWg.Add(1)
-		c.execCmdReturnValue = new(atomic.Int32)
+		c.execCmdReturnValue = atomic.NewInt32(0)
 		go c.handleExec(passthroughArgs)
 	}
 
@@ -618,13 +644,19 @@ func (c *Command) Run(args []string) (retCode int) {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
-			c.Error(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err).Error())
+			c.PrintCliError(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err))
 		} else {
 			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
-				c.Error(fmt.Errorf("error sending session teardown request to worker: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error sending session teardown request to worker: %w", err))
 			}
 		}
 		cancel()
+	}
+
+	for _, f := range c.cleanupFuncs {
+		if err := f(); err != nil {
+			c.PrintCliError(err)
+		}
 	}
 
 	if termInfo.Reason != "" {
@@ -634,8 +666,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
-				return 2
+				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
+				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
 		}
@@ -648,7 +680,6 @@ func (c *Command) getWsConn(
 	ctx context.Context,
 	workerAddr string,
 	transport *http.Transport) (*websocket.Conn, error) {
-
 	conn, resp, err := websocket.Dial(
 		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
@@ -687,7 +718,6 @@ func (c *Command) sendSessionTeardown(
 	ctx context.Context,
 	wsConn *websocket.Conn,
 	tofuToken string) error {
-
 	handshake := proxy.ClientHandshake{
 		TofuToken: tofuToken,
 		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
@@ -767,7 +797,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		case "json":
 			out, err := json.Marshal(&connInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error marshaling connection information: %w", err))
 			}
 			c.UI.Output(string(out))
 		}
@@ -783,19 +813,27 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	addr := c.listenerAddr.String()
 
 	var args []string
+	var envs []string
+	var argsErr error
 
 	switch c.Func {
 	case "http":
 		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
 		if err != nil {
-			c.Error(fmt.Sprintf("Error parsing session args: %s", err))
+			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
 			return
 		}
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		args = append(args, c.postgresFlags.buildArgs(c, port, ip, addr)...)
+		pgArgs, pgEnvs, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr)
+		if pgErr != nil {
+			argsErr = pgErr
+			break
+		}
+		args = append(args, pgArgs...)
+		envs = append(envs, pgEnvs...)
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
@@ -806,11 +844,17 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	case "kube":
 		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
 		if err != nil {
-			c.Error(fmt.Sprintf("Error parsing session args: %s", err))
+			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
 			return
 		}
 		args = append(args, kubeArgs...)
+	}
+
+	if argsErr != nil {
+		c.PrintCliError(fmt.Errorf("Failed to collect args: %w", argsErr))
+		c.execCmdReturnValue.Store(int32(2))
+		return
 	}
 
 	args = append(passthroughArgs, args...)
@@ -837,11 +881,14 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	// terminal in a weird state. It suffices to simply close the connection,
 	// which already happens, so we don't need/want CommandContext here.
 	cmd := exec.Command(c.flagExec, args...)
+	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
+	// Envs that came from subcommand handling
+	cmd.Env = append(cmd.Env, envs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -860,18 +907,9 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			}
 		}
 
-		c.Error(fmt.Sprintf("Failed to run command: %s", err))
+		c.PrintCliError(fmt.Errorf("Failed to run command: %w", err))
 		c.execCmdReturnValue.Store(int32(exitCode))
 		return
 	}
 	c.execCmdReturnValue.Store(0)
-}
-
-func (c *Command) Error(err string) {
-	switch c.outputJsonErrors {
-	case true:
-		c.UI.Error(fmt.Sprintf(`{"error": %q}`, err))
-	default:
-		c.UI.Error(err)
-	}
 }

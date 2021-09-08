@@ -1,30 +1,27 @@
 ---
 layout: docs
 page_title: Systemd Installation
-sidebar_title: Systemd Install
 description: |-
   How to install Boundary under Systemd on Linux
 ---
 
 # Installing Boundary under Systemd
 
-This section covers how to install Boundary under the [Systemd](https://systemd.io/) init system on modern Linux distributions. In this section we'll cover an example of breaking out the controller and worker servers onto separate instances, though you can opt to run both on a single server.
+This section covers how to install Boundary under the [systemd](https://systemd.io/) init system on modern Linux distributions. In this section, we'll cover an example of breaking out the controller and worker servers onto separate instances, though you can opt to run both on a single server.
 
 ## Filesystem Configuration
 
 `TYPE` below can be either `worker` or `controller` if you want to run them independently, e.g. for high availability. If you want to run combined nodes, modify as desired.
 
-1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service
-   See above example configurations.
+1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service.
 
-2. `/usr/local/bin/boundary`: The Boundary binary. Can build from [GitHub repository](https://github.com/hashicorp/boundary) or download binary from our [release pages](https://www.boundaryproject.io/downloads).
+2. `/usr/local/bin/boundary`: The Boundary binary, which can be built from the [source](https://github.com/hashicorp/boundary) or downloaded from our [release page](https://www.boundaryproject.io/downloads).
 
-3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service
-   Example:
+3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service.
 
 ## User & Group Configuration
 
-We recommend running Boundary as a non-root user, and use this user to manage the Boundary process running under systemd. The example init files here do exactly this, and our example install script below creates a user and group on Debian-like Ubuntu systems as an example.
+We recommend running Boundary as a non-root user and using this user to manage the Boundary process running under systemd. The example init files here do exactly that. Our example install script below creates a user and group on Ubuntu or Debian-like systems.
 
 ## Systemd Unit file
 
@@ -46,8 +43,8 @@ WantedBy=multi-user.target
 
 ## Systemd All-in-One Installation Script
 
-Here's a simple install script that creates the boundary group and user, installs the
-systemd unit file and enables it at startup:
+Here's a simple install script that creates the `boundary` group and user, installs the
+systemd unit file, and enables it at startup:
 
 ```
 #!/bin/bash
@@ -80,7 +77,7 @@ sudo chown boundary:boundary /etc/${NAME}-${TYPE}.hcl
 sudo chown boundary:boundary /usr/local/bin/boundary
 
 # Make sure to initialize the DB before starting the service. This will result in
-# a database already initizalized warning if another controller or worker has done this
+# a database already initialized warning if another controller or worker has done this
 # already, making it a lazy, best effort initialization
 if [ "${TYPE}" = "controller" ]; then
   sudo /usr/local/bin/boundary database init -config /etc/${NAME}-${TYPE}.hcl || true

@@ -12,9 +12,7 @@ const (
 	ErrOutputStringRequest = "output a string, please"
 )
 
-var (
-	LastOutputStringError *OutputStringError
-)
+var LastOutputStringError *OutputStringError
 
 type OutputStringError struct {
 	*retryablehttp.Request
@@ -41,9 +39,9 @@ func (d *OutputStringError) parseRequest() {
 	}
 
 	// Build cURL string
-	d.parsedCurlString = "curl "
+	d.parsedCurlString = "curl"
 	if d.Request.Method != "GET" {
-		d.parsedCurlString = fmt.Sprintf("%s-X %s ", d.parsedCurlString, d.Request.Method)
+		d.parsedCurlString = fmt.Sprintf("%s -X %s", d.parsedCurlString, d.Request.Method)
 	}
 	for k, v := range d.Request.Header {
 		for _, h := range v {
@@ -59,7 +57,7 @@ func (d *OutputStringError) parseRequest() {
 					h = fmt.Sprintf("Bearer $(boundary config get-token -keyring-type %s -token-name %s)", keyringType, tokenName)
 				}
 			}
-			d.parsedCurlString = fmt.Sprintf("%s-H \"%s: %s\" ", d.parsedCurlString, k, h)
+			d.parsedCurlString = fmt.Sprintf("%s -H \"%s: %s\"", d.parsedCurlString, k, h)
 		}
 	}
 
@@ -67,10 +65,11 @@ func (d *OutputStringError) parseRequest() {
 		// We need to escape single quotes since that's what we're using to
 		// quote the body
 		escapedBody := strings.Replace(string(body), "'", "'\"'\"'", -1)
-		d.parsedCurlString = fmt.Sprintf("%s-d '%s' ", d.parsedCurlString, escapedBody)
+		d.parsedCurlString = fmt.Sprintf("%s -d '%s'", d.parsedCurlString, escapedBody)
 	}
 
-	d.parsedCurlString = fmt.Sprintf("%s%s", d.parsedCurlString, d.Request.URL.String())
+	// Filters can have shell characters so we use single quotes to surround the URL
+	d.parsedCurlString = fmt.Sprintf("%s '%s'", d.parsedCurlString, d.Request.URL.String())
 }
 
 func (d *OutputStringError) CurlString() string {

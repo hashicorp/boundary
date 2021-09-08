@@ -22,7 +22,7 @@ func Test_NewGormTicketer(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := NewGormTicketer(nil, WithAggregateNames(true))
 		require.Error(err)
-		assert.Equal(err.Error(), "tx is nil")
+		assert.Equal("oplog.NewGormTicketer: nil tx: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -46,7 +46,7 @@ func Test_GetTicket(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ticket, err := ticketer.GetTicket("")
 		require.Error(err)
-		assert.Equal(err.Error(), "bad ticket name")
+		assert.Equal("oplog.(GormTicketer).GetTicket: missing ticket name: parameter violation: error #100", err.Error())
 		assert.Nil(ticket)
 	})
 }
@@ -80,7 +80,7 @@ func Test_Redeem(t *testing.T) {
 		require.NoError(err)
 		err = ticketer.Redeem(nil)
 		require.Error(err)
-		assert.Equal(err.Error(), "ticket is nil")
+		assert.Equal("oplog.(GormTicketer).Redeem: nil ticket: parameter violation: error #100", err.Error())
 	})
 
 	t.Run("detect two redemptions in separate concurrent transactions", func(t *testing.T) {
@@ -104,7 +104,6 @@ func Test_Redeem(t *testing.T) {
 		tx.Commit()
 
 		err = secondTicketer.Redeem(secondTicket)
-		assert.Equal(err.Error(), "ticket already redeemed")
+		assert.Equal("oplog.(GormTicketer).Redeem: ticket already redeemed: integrity violation: error #106", err.Error())
 	})
-
 }

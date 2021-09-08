@@ -3,6 +3,7 @@ package kms
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,6 +26,13 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithLimit(1))
 		testOpts = getDefaultOptions()
 		testOpts.withLimit = 1
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithOrderByVersion", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithOrderByVersion(db.DescendingOrderBy))
+		testOpts := getDefaultOptions()
+		testOpts.withOrderByVersion = db.DescendingOrderBy
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -20,21 +20,21 @@ import (
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
 func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, opt ...Option) (*HostSet, error) {
-	const op = "static.CreateSet"
+	const op = "static.(Repository).CreateSet"
 	if s == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil HostSet")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.CatalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 	if s.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	s = s.clone()
 
@@ -42,7 +42,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostSetPrefix+"_") {
-			return nil, errors.New(
+			return nil, errors.New(ctx,
 				errors.InvalidPublicId,
 				op,
 				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostSetPrefix),
@@ -52,29 +52,33 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	} else {
 		id, err := newHostSetId()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		s.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newHostSet *HostSet
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newHostSet = s.clone()
-			return w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			err := w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
 		},
 	)
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
 	}
 	return newHostSet, nil
 }
@@ -94,21 +98,21 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // The WithLimit option can be used to limit the number of hosts returned.
 // All other options are ignored.
 func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
-	const op = "static.UpdateSet"
+	const op = "static.(Repository).UpdateSet"
 	if s == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostSet")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	if version == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 	if scopeId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -116,7 +120,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -129,7 +133,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	opts := getOpts(opt...)
@@ -141,7 +145,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsUpdated int
@@ -155,14 +159,14 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
@@ -170,9 +174,9 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", s.PublicId, s.Name)))
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", s.PublicId, s.Name)))
 		}
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
 	}
 
 	return returnedHostSet, hosts, rowsUpdated, nil
@@ -183,9 +187,9 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 // found, it will return nil, nil, nil. The WithLimit option can be used to
 // limit the number of hosts returned. All other options are ignored.
 func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, []*Host, error) {
-	const op = "static.LookupSet"
+	const op = "static.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -205,20 +209,19 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 				return nil
 			}
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		}
 		var err error
 		hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.Wrap(ctx, err, op)
 		}
 		return nil
 	})
-
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
 	}
 
 	return s, hosts, nil
@@ -227,9 +230,9 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
 // only option supported.
 func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
-	const op = "static.ListSets"
+	const op = "static.(Repository).ListSets"
 	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -240,7 +243,7 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 	var sets []*HostSet
 	err := r.reader.SearchWhere(ctx, &sets, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return sets, nil
 }
@@ -249,19 +252,19 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 // returning a count of the number of records deleted. All options are
 // ignored.
 func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
-	const op = "static.DeleteSet"
+	const op = "static.(Repository).DeleteSet"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	s := allocHostSet()
 	s.PublicId = publicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -271,17 +274,17 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 			ds := s.clone()
 			rowsDeleted, err = w.Delete(ctx, ds, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(ctx, err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.E(errors.WithCode(errors.MultipleRecords))
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", s.PublicId)))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", s.PublicId)))
 	}
 
 	return rowsDeleted, nil

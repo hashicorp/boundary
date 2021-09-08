@@ -120,7 +120,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(foundScope, s))
 
-			foundRoles, err := repo.ListRoles(context.Background(), foundScope.GetPublicId())
+			foundRoles, err := repo.ListRoles(context.Background(), []string{foundScope.GetPublicId()})
 			require.NoError(err)
 			numFound := 2
 			if skipCreate {
@@ -160,7 +160,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.NotNil(s)
 		assert.Equal("foo"+id, s.GetName())
 		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
-		//assert.Empty(s.GetDescription())
+		// assert.Empty(s.GetDescription())
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
@@ -248,7 +248,6 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
 		assert.Nil(foundScope)
-
 	})
 	t.Run("valid-with-bad-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -443,7 +442,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			foundScope := allocScope()
+			foundScope := AllocScope()
 			foundScope.PublicId = updatedScope.PublicId
 			where := "public_id = ?"
 			for _, f := range tt.wantNullFields {
@@ -476,85 +475,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 	})
 }
 
-func Test_Repository_ListProjects(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	const testLimit = 10
-	wrapper := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
-	org := testOrg(t, repo, "", "")
-
-	type args struct {
-		withOrgId string
-		opt       []Option
-	}
-	tests := []struct {
-		name      string
-		createCnt int
-		args      args
-		wantCnt   int
-		wantErr   bool
-	}{
-		{
-			name:      "no-limit",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				withOrgId: org.PublicId,
-				opt:       []Option{WithLimit(-1)},
-			},
-			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
-		},
-		{
-			name:      "default-limit",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				withOrgId: org.PublicId,
-			},
-			wantCnt: repo.defaultLimit,
-			wantErr: false,
-		},
-		{
-			name:      "custom-limit",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				withOrgId: org.PublicId,
-				opt:       []Option{WithLimit(3)},
-			},
-			wantCnt: 3,
-			wantErr: false,
-		},
-		{
-			name:      "bad-org",
-			createCnt: 1,
-			args: args{
-				withOrgId: "bad-id",
-			},
-			wantCnt: 0,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("public_id != ? and public_id != 'global'", org.PublicId).Delete(allocScope()).Error)
-			testProjects := []*Scope{}
-			for i := 0; i < tt.createCnt; i++ {
-				testProjects = append(testProjects, testProject(t, repo, org.PublicId))
-			}
-			assert.Equal(tt.createCnt, len(testProjects))
-			got, err := repo.ListProjects(context.Background(), tt.args.withOrgId, tt.args.opt...)
-			if tt.wantErr {
-				require.Error(err)
-				return
-			}
-			require.NoError(err)
-			assert.Equal(tt.wantCnt, len(got))
-		})
-	}
-}
-
-func Test_Repository_ListOrgs(t *testing.T) {
+func Test_Repository_ListScopes(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
@@ -599,13 +520,91 @@ func Test_Repository_ListOrgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("type = 'org'").Delete(allocScope()).Error)
+			require.NoError(conn.Where("type = 'org'").Delete(AllocScope()).Error)
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testOrgs = append(testOrgs, testOrg(t, repo, "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testOrgs))
-			got, err := repo.ListOrgs(context.Background(), tt.args.opt...)
+			got, err := repo.ListScopes(context.Background(), []string{"global"}, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+
+	require.NoError(t, conn.Where("public_id != 'global'").Delete(AllocScope()).Error)
+
+	const numPerScope = 10
+	var total int
+	var scopeIds []string
+	for i := 0; i < numPerScope; i++ {
+		scopeIds = append(scopeIds, testOrg(t, repo, "", "").PublicId)
+		total++
+		for j := 0; j < numPerScope; j++ {
+			testProject(t, repo, scopeIds[i])
+			total++
+		}
+	}
+	// Add global to the mix
+	scopeIds = append(scopeIds, "global")
+
+	got, err := repo.ListScopes(context.Background(), scopeIds)
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
+}
+
+func Test_Repository_ListRecursive(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	var testOrgs []*Scope
+	var testProjects []*Scope
+	const subPerScope = 5
+	for i := 0; i < subPerScope; i++ {
+		org := testOrg(t, repo, fmt.Sprint(i), "")
+		testOrgs = append(testOrgs, org)
+		for j := 0; j < subPerScope; j++ {
+			testProjects = append(testProjects, testProject(t, repo, org.PublicId, WithName(fmt.Sprintf("%d-%d", i, j))))
+		}
+	}
+	tests := []struct {
+		name        string
+		rootScopeId string
+		wantCnt     int
+		wantErr     bool
+	}{
+		{
+			name:        "global",
+			rootScopeId: "global",
+			wantCnt:     1 + len(testOrgs) + len(testProjects),
+		},
+		{
+			name:        "org",
+			rootScopeId: testOrgs[0].PublicId,
+			wantCnt:     1 + subPerScope,
+		},
+		{
+			name:        "project",
+			rootScopeId: testProjects[16].PublicId,
+			wantCnt:     1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := repo.ListScopesRecursively(context.Background(), tt.rootScopeId)
 			if tt.wantErr {
 				require.Error(err)
 				return

@@ -2,7 +2,7 @@
 package db_test
 
 import (
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,6 +43,7 @@ func (u *TestUser) Clone() interface{} {
 		StoreTestUser: s.(*StoreTestUser),
 	}
 }
+
 func (u *TestUser) TableName() string {
 	if u.table != "" {
 		return u.table
@@ -83,6 +84,7 @@ func (c *TestCar) TableName() string {
 
 	return defaultCarTableName
 }
+
 func (c *TestCar) SetTableName(name string) {
 	c.table = name
 }
@@ -103,6 +105,7 @@ func NewTestRental() (*TestRental, error) {
 		},
 	}, nil
 }
+
 func (r *TestRental) TableName() string {
 	if r.table != "" {
 		return r.table
@@ -110,6 +113,7 @@ func (r *TestRental) TableName() string {
 
 	return defaultRentalTableName
 }
+
 func (r *TestRental) SetTableName(name string) {
 	r.table = name
 }
@@ -137,6 +141,7 @@ func (t *TestScooter) Clone() interface{} {
 		StoreTestScooter: s.(*StoreTestScooter),
 	}
 }
+
 func (t *TestScooter) TableName() string {
 	if t.table != "" {
 		return t.table

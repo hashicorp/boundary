@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -14,10 +13,8 @@ import (
 	_ "crypto/sha512"
 
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/listenerutil"
-	"github.com/hashicorp/shared-secure-libs/reloadutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
 	"google.golang.org/grpc"
@@ -25,7 +22,7 @@ import (
 
 type ServerListener struct {
 	Mux          *alpnmux.ALPNMux
-	Config       *configutil.Listener
+	Config       *listenerutil.ListenerConfig
 	HTTPServer   *http.Server
 	GrpcServer   *grpc.Server
 	ALPNListener net.Listener
@@ -40,7 +37,7 @@ type WorkerAuthInfo struct {
 }
 
 // Factory is the factory function to create a listener.
-type ListenerFactory func(string, *configutil.Listener, hclog.Logger, cli.Ui) (string, net.Listener, error)
+type ListenerFactory func(string, *listenerutil.ListenerConfig, cli.Ui) (string, net.Listener, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
@@ -50,16 +47,16 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	var purpose string
-	if len(l.Purpose) == 1 {
-		purpose = l.Purpose[0]
+	if len(l.Purpose) != 1 {
+		return nil, nil, nil, fmt.Errorf("Expected single listener purpose, found %d", len(l.Purpose))
 	}
+	purpose := l.Purpose[0]
 
 	switch purpose {
 	case "cluster":
@@ -70,7 +67,7 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 		l.TLSDisable = true
 	}
 
-	finalAddr, ln, err := f(purpose, l, logger, ui)
+	finalAddr, ln, err := f(purpose, l, ui)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -84,10 +81,7 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 		"addr": finalAddr,
 	}
 
-	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
-		logger = nil
-	}
-	alpnMux := alpnmux.New(ln, logger)
+	alpnMux := alpnmux.New(ln)
 
 	if l.TLSDisable {
 		return alpnMux, props, nil, nil
@@ -116,7 +110,7 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 	return alpnMux, props, reloadFunc, nil
 }
 
-func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {
 	if l.Address == "" {
 		switch purpose {
 		case "cluster":
@@ -181,7 +175,7 @@ func tcpListenerFactory(purpose string, l *configutil.Listener, logger hclog.Log
 	return finalListenAddr, ln, nil
 }
 
-func unixListenerFactory(purpose string, l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (string, net.Listener, error) {
+func unixListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {
 	var uConfig *listenerutil.UnixSocketsConfig
 	if l.SocketMode != "" &&
 		l.SocketUser != "" &&
@@ -200,7 +194,7 @@ func unixListenerFactory(purpose string, l *configutil.Listener, logger hclog.Lo
 	return l.Address, ln, nil
 }
 
-func listenerWrapProxy(ln net.Listener, l *configutil.Listener) (net.Listener, error) {
+func listenerWrapProxy(ln net.Listener, l *listenerutil.ListenerConfig) (net.Listener, error) {
 	behavior := l.ProxyProtocolBehavior
 	if behavior == "" {
 		return ln, nil

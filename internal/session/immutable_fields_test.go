@@ -24,7 +24,7 @@ func TestSession_ImmutableFields(t *testing.T) {
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	new := TestDefaultSession(t, conn, wrapper, iamRepo)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Session
 		fieldMask []string
@@ -83,7 +83,6 @@ func TestSession_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(orig.(*Session), after)
-
 		})
 	}
 }
@@ -105,7 +104,7 @@ func TestState_ImmutableFields(t *testing.T) {
 	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", state.SessionId, state.Status)
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *State
 		fieldMask []string
@@ -180,7 +179,7 @@ func TestConnection_ImmutableFields(t *testing.T) {
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
 	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *Connection
 		fieldMask []string
@@ -230,7 +229,6 @@ func TestConnection_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(orig.(*Connection), after)
-
 		})
 	}
 }
@@ -253,7 +251,7 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name      string
 		update    *ConnectionState
 		fieldMask []string

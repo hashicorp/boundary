@@ -14,9 +14,13 @@ construction is thus synthesizing something reasonable from a set of Grants.
 */
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
+
+const AnonymousUserId = "u_anon"
 
 // ACL provides an entry point into the permissions engine for determining if an
 // action is allowed on a resource based on a principal's (user or group) grants.
@@ -28,7 +32,9 @@ type ACL struct {
 // pass more detailed information along in the future if we want. It was useful
 // in Vault, may be useful here.
 type ACLResults struct {
-	Allowed bool
+	AuthenticationFinished bool
+	Authorized             bool
+	OutputFields           OutputFieldsMap
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
@@ -38,17 +44,17 @@ type ACLResults struct {
 // capabilities.  Resources must have a ScopeId.
 type Resource struct {
 	// ScopeId is the scope that contains the Resource.
-	ScopeId string
+	ScopeId string `json:"scope_id,omitempty"`
 
 	// Id is the public id of the resource.
-	Id string
+	Id string `json:"id,omitempty"`
 
 	// Type of resource.
-	Type resource.Type
+	Type resource.Type `json:"type,omitempty"`
 
 	// Pin if defined would constrain the resource within the collection of the
 	// pin id.
-	Pin string
+	Pin string `json:"pin,omitempty"`
 }
 
 // NewACL creates an ACL from the grants provided.
@@ -70,54 +76,101 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 	grants := a.scopeMap[r.ScopeId]
 	results.scopeMap = a.scopeMap
 
+	var parentAction action.Type
+	split := strings.Split(aType.String(), ":")
+	if len(split) == 2 {
+		parentAction = action.Map[split[0]]
+	}
 	// Now, go through and check the cases indicated above
 	for _, grant := range grants {
-		if !(grant.actions[aType] || grant.actions[action.All]) {
+		var outputFieldsOnly bool
+		switch {
+		case len(grant.actions) == 0:
+			// Continue with the next grant, unless we have output fields
+			// specified in which case we continue to be able to apply the
+			// output fields depending on ID and type.
+			if len(grant.OutputFields) > 0 {
+				outputFieldsOnly = true
+			} else {
+				continue
+			}
+		case grant.actions[aType]:
+			// We have this action
+		case grant.actions[parentAction]:
+			// We don't have this action, but it's a subaction and we have the
+			// parent action. As an example, if we are looking for "read:self"
+			// and have "read", this is sufficient.
+		case grant.actions[action.All]:
+			// All actions are allowed
+		default:
+			// No actions in the grant match what we're looking for, so continue
+			// with the next grant
 			continue
 		}
+
+		// We step through all grants, to fetch the full list of output fields.
+		// However, we shortcut if we find *.
+		//
+		// If the action was not found above but we did find output fields in
+		// patterns that match, we do not authorize the request, but we do build
+		// up the output fields patterns.
+		var found bool
 		switch {
-		// id=<resource.id>;actions=<action> where ID cannot be a wildcard
+		// id=<resource.id>;actions=<action> where ID cannot be a wildcard; or
+		// id=<resource.id>;output_fields=<fields> where fields cannot be a
+		// wildcard.
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
-			grant.typ == resource.Unknown:
+			grant.typ == resource.Unknown &&
+			aType != action.List &&
+			aType != action.Create:
 
-			results.Allowed = true
-			return
+			found = true
 
 		// type=<resource.type>;actions=<action> when action is list or create.
 		// Must be a top level collection, otherwise must be one of the two
-		// formats specified below.
+		// formats specified below. Or,
+		// type=resource.type;output_fields=<fields> and no action.
 		case grant.id == "" &&
 			r.Id == "" &&
 			grant.typ == r.Type &&
 			grant.typ != resource.Unknown &&
 			topLevelType(r.Type) &&
-			(aType == action.List || aType == action.Create):
+			(aType == action.List ||
+				aType == action.Create):
 
-			results.Allowed = true
-			return
+			found = true
 
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
-		// unknown but can be a wildcard to allow any resource at all
+		// unknown but can be a wildcard to allow any resource at all; or
+		// id=*;type=<resource.type>;output_fields=<fields> with no action.
 		case grant.id == "*" &&
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type ||
 				grant.typ == resource.All):
 
-			results.Allowed = true
-			return
+			found = true
 
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
-		// wildcard and this this is operating on a non-top-level type
+		// wildcard and this this is operating on a non-top-level type. Same for
+		// output fields only.
 		case grant.id != "" &&
 			grant.id == r.Pin &&
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type || grant.typ == resource.All) &&
 			!topLevelType(r.Type):
 
-			results.Allowed = true
-			return
+			found = true
+		}
+
+		if found {
+			if !outputFieldsOnly {
+				results.Authorized = true
+			}
+			if results.OutputFields = results.OutputFields.AddFields(grant.OutputFields.Fields()); results.OutputFields.HasAll() && results.Authorized {
+				return
+			}
 		}
 	}
 	return

@@ -1,33 +1,56 @@
 ---
 layout: docs
 page_title: Connect to Target
-sidebar_title: Connect to Target
 description: |-
   Connecting to your first target
 ---
 
-# Connect to Your First Target
+## Connect to Your First Target
 
-The default target is a TCP target with a default port of `22` (SSH). The host
-sets for this target contain the default host, which has the address
-`127.0.0.1`. When we run `boundary connect` against this target, the single
-available host will be selected and we'll open a local authenticated proxy to
-the target host on the target's default port (`127.0.0.1:22`). Because this
-target is proxying to our local SSH server, we can use our built-in `connect
-ssh` command to wrap the proxied TCP connection and SSH via Boundary:
+The default target is a `tcp` target with a default port of `22` (which
+corresponds to the default SSH port using TCP). The host sets for this target
+contain the default host, which has the address `127.0.0.1`. When we run
+`boundary connect` against this target, the single available host will be
+selected and we'll open a local authenticated proxy to the host on the target's
+default port (`127.0.0.1:22`).
+
+```
+$ boundary connect -target-id ttcp_1234567890
+```
+
+In the output you'll see the address and port that your SSH client must be told
+to use. In the next section you'll see the `ssh` connect helper in action to
+make it easier to connect to the target with a client.
+
+`boundary connect` has a number of options; one notable option is `-listen-port`
+to choose the port on which the connect command will listen for an incoming
+connection. This can be convenient for allowing Boundary to work with
+applications that allow you to select the address to connect to but not the
+port, but for many applications there are still some extra hurdles that can
+exist, which is why we are building out helpers.
+
+The dev-mode default target allows you to make as many connections as you want
+within the authorized session. When you are finished making connections, simply
+`Ctrl-C/Command-C` the `boundary connect` process to shut down the session.
+
+### Using Connect Helpers
+
+It can be annoying to keep accepting host SSH key prompts as the port changes,
+much less having to keep copying and pasting the current port. To make this
+easier, Boundary includes connect helpers that take care of this work for you.
+These take the form of `boundary connect <subcommand>`. In the following
+example, the helper will automatically execute `ssh` for you, filling in the
+local address/port, and setting an expected host ID so that future connections
+on different automatically-allocated ports don't complain about the host ID
+changing (you'll still need to accept a host key the first time):
 
 ```
 $ boundary connect ssh -target-id ttcp_1234567890
 ```
 
-This will execute SSH on the target and port combination specified by the local
-boundary proxy. If you want to specify a username other than your currently
-logged-in user, you can do so via the `-username` flag.
-
 If you want to pass additional flags to the SSH client, you can do so by adding
 them to the command line separated by a double-dash; anything after the double
-dash will be passed to the executed client. For instance, rather than using
-`-username`, an equivalent alternative would be:
+dash will be passed to the executed client. For instance:
 
 ```
 $ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
@@ -37,6 +60,13 @@ There is also a `-style` flag to allow the command to format arguments in a
 different style expected by different SSH clients. At the moment, besides `ssh`
 (the default), the `boundary connect ssh` command supports `-style putty` to
 support passing connection information to PuTTY.
+
+One advantage to styles is that Boundary will provide information to the client
+in the format that makes sense. For example, if you want to specify a username
+other than your currently logged-in user, you can do so via the `-username`
+flag. This will ensure that regardless of whether you use the default `ssh`
+style or the `putty` style, the username is properly passed to the executed
+client -- you don't need to figure out the syntax yourself.
 
 ## Selecting Targets
 
@@ -69,6 +99,24 @@ no built-in support for a specific client using `-exec`. The `-exec` flag is a
 very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
+
+In all cases, whether using `-exec` or one of the listed helpers, you can pass
+flags to the executed command by including them after a double-dash `--`:
+
+```
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
+```
+
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
 
 For example, if you wanted to use Boundary to create an authenticated firewall
 around 'curl', you could update the default TCP target from a default port
@@ -130,7 +178,25 @@ correct available binary, as WSL must use `.exe` when invoking Windows binaries:
 $ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
 ```
 
+## Connect using Desktop Client
+
+While using desktop client, choose target and connect to retrieve local proxy
+details.
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1613612836-boundary-desktop-clickthrough-connect-target-v1-0-0.mp4"
+  />
+</video>
+
 ## Next Steps
 
-See our [common workflows](/docs/common-workflows) for in depth discussion on managing scopes, targets, 
+See our [basic administration workflows](https://learn.hashicorp.com/collections/boundary/basic-administration) for in depth discussion on managing scopes, targets,
 identities, and sessions.

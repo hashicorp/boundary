@@ -1,10 +1,14 @@
 package base
 
+import "github.com/hashicorp/boundary/internal/observability/event"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	return opts
 }
@@ -14,17 +18,27 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope              bool
-	withNoTokenValue              bool
-	withSkipDatabaseDestruction   bool
-	withSkipAuthMethodCreation    bool
-	withSkipScopesCreation        bool
-	withSkipHostResourcesCreation bool
-	withSkipTargetCreation        bool
+	withNoTokenScope               bool
+	withNoTokenValue               bool
+	withSkipDatabaseDestruction    bool
+	withSkipAuthMethodCreation     bool
+	withSkipOidcAuthMethodCreation bool
+	withSkipScopesCreation         bool
+	withSkipHostResourcesCreation  bool
+	withSkipTargetCreation         bool
+	withContainerImage             string
+	withDialect                    string
+	withEventerConfig              *event.EventerConfig
+	withEventFlags                 *EventFlags
+	withAttributeFieldPrefix       string
+	withStatusCode                 int
 }
 
 func getDefaultOptions() Options {
-	return Options{}
+	return Options{
+		withContainerImage: "postgres",
+		withDialect:        "postgres",
+	}
 }
 
 // WithNoTokenScope tells the client not to set a scope for the client from a
@@ -52,11 +66,19 @@ func WithNoTokenValue() Option {
 	}
 }
 
-// WithSkipAuthMethodCreation tells the command not to instantiate an auth
+// WithSkipAuthMethodCreation tells the command not to instantiate any auth
 // method on first run.
 func WithSkipAuthMethodCreation() Option {
 	return func(o *Options) {
 		o.withSkipAuthMethodCreation = true
+	}
+}
+
+// WithSkipOidcAuthMethodCreation tells the command not to instantiate an OIDC auth
+// method on first run, useful in some tests.
+func WithSkipOidcAuthMethodCreation() Option {
+	return func(o *Options) {
+		o.withSkipOidcAuthMethodCreation = true
 	}
 }
 
@@ -81,5 +103,49 @@ func WithSkipHostResourcesCreation() Option {
 func WithSkipTargetCreation() Option {
 	return func(o *Options) {
 		o.withSkipTargetCreation = true
+	}
+}
+
+// WithContainerImage tells the command which container image
+// to start a dev database with
+func WithContainerImage(name string) Option {
+	return func(o *Options) {
+		o.withContainerImage = name
+	}
+}
+
+func withDialect(dialect string) Option {
+	return func(o *Options) {
+		o.withDialect = dialect
+	}
+}
+
+// WithEventer allows an optional eventer config
+func WithEventerConfig(config *event.EventerConfig) Option {
+	return func(o *Options) {
+		o.withEventerConfig = config
+	}
+}
+
+// WithEventer allows an optional event configuration flags which override
+// whatever is in the EventerConfig
+func WithEventFlags(flags *EventFlags) Option {
+	return func(o *Options) {
+		o.withEventFlags = flags
+	}
+}
+
+// WithAttributeFieldPrefix tells the command what prefix
+// to attach to attribute fields when they are returned as errors.
+func WithAttributeFieldPrefix(p string) Option {
+	return func(o *Options) {
+		o.withAttributeFieldPrefix = p
+	}
+}
+
+// WithStatusCode allows passing status codes to functions
+func WithStatusCode(statusCode int) Option {
+	return func(o *Options) {
+		o.withStatusCode = statusCode
 	}
 }

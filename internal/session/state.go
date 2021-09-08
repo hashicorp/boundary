@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -62,19 +61,22 @@ type State struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*State)(nil)
-var _ db.VetForWriter = (*State)(nil)
+var (
+	_ Cloneable       = (*State)(nil)
+	_ db.VetForWriter = (*State)(nil)
+)
 
 // NewState creates a new in memory session state.  No options
 // are currently supported.
-func NewState(session_id string, state Status, opt ...Option) (*State, error) {
+func NewState(session_id string, state Status, _ ...Option) (*State, error) {
+	const op = "session.NewState"
 	s := State{
 		SessionId: session_id,
 		Status:    state,
 	}
 
-	if err := s.validate("new session state:"); err != nil {
-		return nil, err
+	if err := s.validate(); err != nil {
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -120,9 +122,10 @@ func (s *State) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the state
 // before it's written.
-func (s *State) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if err := s.validate("session state vet for write:"); err != nil {
-		return err
+func (s *State) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+	const op = "session.(State).VetForWrite"
+	if err := s.validate(); err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
@@ -143,21 +146,22 @@ func (s *State) SetTableName(n string) {
 }
 
 // validate checks the session state
-func (s *State) validate(errorPrefix string) error {
+func (s *State) validate() error {
+	const op = "session.(State).validate"
 	if s.Status == "" {
-		return fmt.Errorf("%s missing status: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
 	}
 	if s.SessionId == "" {
-		return fmt.Errorf("%s missing session id: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if s.StartTime != nil {
-		return fmt.Errorf("%s start time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return fmt.Errorf("%s end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return fmt.Errorf("%s previous end time is not settable: %w", errorPrefix, errors.ErrInvalidParameter)
+		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

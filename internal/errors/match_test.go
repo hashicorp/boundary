@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"context"
 	stderrors "errors"
 	"testing"
 
@@ -140,6 +141,9 @@ func TestTemplate_Error(t *testing.T) {
 func TestMatch(t *testing.T) {
 	t.Parallel()
 	stdErr := stderrors.New("test error")
+	errInvalidFieldMask := E(context.TODO(), WithCode(InvalidFieldMask), WithMsg("test invalid field mask error"))
+	errNotUnique := E(context.TODO(), WithCode(NotUnique), WithMsg("test not unique error"))
+
 	tests := []struct {
 		name     string
 		template *Template
@@ -149,7 +153,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "nil template",
 			template: nil,
-			err:      E(WithCode(NotUnique), WithMsg("this thing was must be unique")),
+			err:      E(context.TODO(), WithCode(NotUnique), WithMsg("this thing was must be unique")),
 			want:     false,
 		},
 		{
@@ -161,66 +165,66 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on Kind only",
 			template: T(Integrity),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Kind only",
 			template: T(Integrity),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
 		{
 			name:     "match on Code only",
 			template: T(NotUnique),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Code only",
 			template: T(NotUnique),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
 		{
 			name:     "match on Op only",
 			template: T(Op("alice.Bob")),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Op only",
 			template: T(Op("alice.Alice")),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
@@ -230,43 +234,43 @@ func TestMatch(t *testing.T) {
 				"this thing must be unique",
 				Integrity,
 				InvalidParameter,
-				ErrInvalidFieldMask,
+				errInvalidFieldMask,
 				Op("alice.Bob"),
 			),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(InvalidParameter),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "match on Wrapped only",
-			template: T(ErrInvalidFieldMask),
-			err: E(
+			template: T(errInvalidFieldMask),
+			err: E(context.TODO(),
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Wrapped only",
-			template: T(ErrNotUnique),
-			err: E(
+			template: T(errNotUnique),
+			err: E(context.TODO(),
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
 		{
 			name:     "match on Wrapped only stderror",
 			template: T(stdErr),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
@@ -277,7 +281,7 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "no match on Wrapped only stderror",
 			template: T(stderrors.New("no match")),
-			err: E(
+			err: E(context.TODO(),
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),

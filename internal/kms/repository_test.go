@@ -51,7 +51,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "kms.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -61,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "kms.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -70,7 +70,7 @@ func TestNewRepository(t *testing.T) {
 			got, err := kms.NewRepository(tt.args.r, tt.args.w)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(err.Error(), tt.wantErrString)
+				assert.Equal(tt.wantErrString, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -99,7 +99,7 @@ func TestCreateKeysTx(t *testing.T) {
 		name      string
 		args      args
 		wantErr   bool
-		wantErrIs error
+		wantErrIs errors.Code
 	}{
 		{
 			name: "valid",
@@ -121,7 +121,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "nil-writer",
@@ -133,7 +133,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -145,7 +145,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      org.PublicId,
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "empty-scope",
@@ -157,7 +157,7 @@ func TestCreateKeysTx(t *testing.T) {
 				scopeId:      "",
 			},
 			wantErr:   true,
-			wantErrIs: errors.ErrInvalidParameter,
+			wantErrIs: errors.InvalidParameter,
 		},
 		{
 			name: "bad-scope",
@@ -177,9 +177,7 @@ func TestCreateKeysTx(t *testing.T) {
 			keys, err := kms.CreateKeysTx(tt.args.ctx, tt.args.dbReader, tt.args.dbWriter, tt.args.rootWrapper, tt.args.randomReader, tt.args.scopeId)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error: %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -246,6 +244,19 @@ func TestCreateKeysTx(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tk.PrivateId, tkv.TokenKeyId)
 			assert.Equal(rkv.PrivateId, tkv.RootKeyVersionId)
+
+			oidcK := kms.AllocOidcKey()
+			oidcK.PrivateId = keys[kms.KeyTypeOidcKey].GetPrivateId()
+			err = rw.LookupById(context.Background(), &oidcK)
+			require.NoError(err)
+			assert.Equal(rk.PrivateId, oidcK.RootKeyId)
+
+			oidcKv := kms.AllocOidcKeyVersion()
+			oidcKv.PrivateId = keys[kms.KeyTypeOidcKeyVersion].GetPrivateId()
+			err = rw.LookupById(context.Background(), &oidcKv)
+			require.NoError(err)
+			assert.Equal(oidcK.PrivateId, oidcKv.OidcKeyId)
+			assert.Equal(rkv.PrivateId, oidcKv.RootKeyVersionId)
 		})
 	}
 }

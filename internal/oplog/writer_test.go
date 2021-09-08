@@ -34,7 +34,7 @@ func Test_GormWriterCreate(t *testing.T) {
 		err := w.Create(&oplog_test.TestUser{})
 		require.Error(err)
 
-		assert.Equal(err.Error(), "create Tx is nil")
+		assert.Equal("oplog.(GormWriter).Create: nil tx: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil model", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -43,7 +43,7 @@ func Test_GormWriterCreate(t *testing.T) {
 		w := GormWriter{tx}
 		err := w.Create(nil)
 		require.Error(err)
-		assert.Equal(err.Error(), "create interface is nil")
+		assert.Equal("oplog.(GormWriter).Create: nil interface: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -64,14 +64,14 @@ func Test_GormWriterDelete(t *testing.T) {
 		require.NoError(w.Delete(&user))
 		err := tx.Where("id = ?", user.Id).First(&foundUser).Error
 		require.Error(err)
-		assert.Equal(err, gorm.ErrRecordNotFound)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("nil tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := GormWriter{nil}
 		err := w.Delete(&oplog_test.TestUser{})
 		require.Error(err)
-		assert.Equal(err.Error(), "delete Tx is nil")
+		assert.Equal("oplog.(GormWriter).Delete: nil tx: parameter violation: error #100", err.Error())
 	})
 	t.Run("nil model", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -80,7 +80,7 @@ func Test_GormWriterDelete(t *testing.T) {
 		w := GormWriter{tx}
 		err := w.Delete(nil)
 		require.Error(err)
-		assert.Equal(err.Error(), "delete interface is nil")
+		assert.Equal("oplog.(GormWriter).Delete: nil interface: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -147,7 +147,7 @@ func Test_GormWriterCreateTable(t *testing.T) {
 		err := w.createTableLike("", newTableName)
 		require.Error(err)
 		assert.Error(err, err.Error(), nil)
-		assert.Equal(err.Error(), "error existingTableName is empty string")
+		assert.Equal("oplog.(GormWriter).createTableLike: missing existing table name: parameter violation: error #100", err.Error())
 	})
 	t.Run("blank name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -156,7 +156,7 @@ func Test_GormWriterCreateTable(t *testing.T) {
 		err := w.createTableLike(u.TableName(), "")
 		require.Error(err)
 		assert.Error(err, err.Error(), nil)
-		assert.Equal(err.Error(), "error newTableName is empty string")
+		assert.Equal("oplog.(GormWriter).createTableLike: missing new table name: parameter violation: error #100", err.Error())
 	})
 }
 
@@ -181,7 +181,7 @@ func Test_GormWriterDropTableIfExists(t *testing.T) {
 		w := GormWriter{Tx: db}
 		err := w.dropTableIfExists("")
 		require.Error(err)
-		assert.Equal(err.Error(), "cannot drop table whose name is an empty string")
+		assert.Equal("oplog.(GormWriter).dropTableIfExists: missing table name: parameter violation: error #100", err.Error())
 	})
 }
 

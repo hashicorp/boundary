@@ -2,7 +2,6 @@
 package authtokens
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -24,20 +23,9 @@ type AuthToken struct {
 	UpdatedTime             time.Time         `json:"updated_time,omitempty"`
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
+	AuthorizedActions       []string          `json:"authorized_actions,omitempty"`
 
 	response *api.Response
-}
-
-func (n AuthToken) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthToken) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n AuthToken) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
 }
 
 type AuthTokenReadResult struct {
@@ -49,27 +37,26 @@ func (n AuthTokenReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AuthTokenReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+func (n AuthTokenReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
-func (n AuthTokenReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-type AuthTokenCreateResult = AuthTokenReadResult
-type AuthTokenUpdateResult = AuthTokenReadResult
+type (
+	AuthTokenCreateResult = AuthTokenReadResult
+	AuthTokenUpdateResult = AuthTokenReadResult
+)
 
 type AuthTokenDeleteResult struct {
 	response *api.Response
 }
 
-func (n AuthTokenDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
+// GetItem will always be nil for AuthTokenDeleteResult
+func (n AuthTokenDeleteResult) GetItem() interface{} {
+	return nil
 }
 
-func (n AuthTokenDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthTokenDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AuthTokenListResult struct {
@@ -81,12 +68,8 @@ func (n AuthTokenListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AuthTokenListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthTokenListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthTokenListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
@@ -107,9 +90,9 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenReadResult, error) {
-	if authTokenId == "" {
-		return nil, fmt.Errorf("empty authTokenId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AuthTokenReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -117,7 +100,7 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -130,7 +113,7 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -148,9 +131,9 @@ func (c *Client) Read(ctx context.Context, authTokenId string, opt ...Option) (*
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) (*AuthTokenDeleteResult, error) {
-	if authTokenId == "" {
-		return nil, fmt.Errorf("empty authTokenId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AuthTokenDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -158,7 +141,7 @@ func (c *Client) Delete(ctx context.Context, authTokenId string, opt ...Option) 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", authTokenId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

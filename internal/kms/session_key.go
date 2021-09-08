@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -21,9 +20,10 @@ type SessionKey struct {
 
 // NewSessionKey creates a new in memory key.  No options
 // are currently supported.
-func NewSessionKey(rootKeyId string, opt ...Option) (*SessionKey, error) {
+func NewSessionKey(rootKeyId string, _ ...Option) (*SessionKey, error) {
+	const op = "kms.NewSessionKey"
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	c := &SessionKey{
 		SessionKey: &store.SessionKey{
@@ -50,13 +50,14 @@ func (k *SessionKey) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
-func (k *SessionKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (k *SessionKey) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
+	const op = "kms.(SessionKey).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("session key vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return fmt.Errorf("session key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	}
 	return nil

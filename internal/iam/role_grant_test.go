@@ -178,14 +178,14 @@ func TestRoleGrant_Delete(t *testing.T) {
 			name: "invalid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_edcb;actions=create,update",
+				grant:  "id=a_edcb;actions=read,update",
 			},
 		},
 		{
 			name: "valid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_bcde;actions=create,update",
+				grant:  "id=a_bcde;actions=read,update",
 			},
 			deletedRows: 1,
 		},
@@ -194,10 +194,10 @@ func TestRoleGrant_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
-			rg, err := NewRoleGrant(projRole.PublicId, "id=a_bcde;actions=create,update")
+			rg, err := NewRoleGrant(projRole.PublicId, "id=a_bcde;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
-			rg, err = NewRoleGrant(projRole.PublicId, "id=a_cdef;actions=create,update")
+			rg, err = NewRoleGrant(projRole.PublicId, "id=a_cdef;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
 

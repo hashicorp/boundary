@@ -25,7 +25,7 @@ func TestHostSetMember_Insert(t *testing.T) {
 	greenCat := cats[1]
 	greenSets := TestSets(t, conn, greenCat.GetPublicId(), 1)
 
-	var tests = []struct {
+	tests := []struct {
 		name    string
 		set     *HostSet
 		host    *Host

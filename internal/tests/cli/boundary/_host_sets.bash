@@ -1,3 +1,5 @@
+load _authorized_actions
+
 function create_host_set() {
   local hcid=$1
   local name=$2
@@ -26,12 +28,12 @@ function assoc_host_set_host() {
 function host_set_id() {
   local name=$1
   local hcid=$2
-  strip $(list_host_sets $hcid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_host_sets $hcid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function host_set_host_ids() {
   local id=$1
-  ids=$(read_host_set $id | jq '.["host_ids"]')
+  ids=$(read_host_set $id | jq '.item["host_ids"]')
   echo "ids $ids"
 }
 
@@ -46,4 +48,16 @@ function host_set_has_host_id() {
     fi
   done
   return 1 
+}
+
+function has_default_host_set_actions() {
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-hosts' 'set-hosts' 'remove-hosts')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1 
+    } 
+  done
 }

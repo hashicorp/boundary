@@ -21,16 +21,15 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-// routines to access it.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "static.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
 	}
 
 	opts := getOpts(opt...)

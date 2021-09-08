@@ -1,44 +1,59 @@
 package auth
 
 import (
-	"strings"
-
-	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
-type SubType int
+var registry = subtypes.NewRegistry()
 
-const (
-	UnknownSubtype SubType = iota
-	PasswordSubtype
-)
-
-func (t SubType) String() string {
-	switch t {
-	case PasswordSubtype:
-		return "password"
-	}
-	return "unknown"
+// SubtypeFromType returns the Subtype from the provided string or if
+// no Subtype was registered with that string Unknown is returned.
+func SubtypeFromType(t string) subtypes.Subtype {
+	return registry.SubtypeFromType(t)
 }
 
-// SubtypeFromType converts a string to a SubType.
-// returns UnknownSubtype if no SubType with that name is found.
-func SubtypeFromType(t string) SubType {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), PasswordSubtype.String()):
-		return PasswordSubtype
-	}
-	return UnknownSubtype
+// SubtypeFromId returns the Subtype from the provided id if the id's prefix
+// was registered with a Subtype. Otherwise Unknown is returned.
+func SubtypeFromId(id string) subtypes.Subtype {
+	return registry.SubtypeFromId(id)
 }
 
-// SubtypeFromId takes any public id in the auth subsystem and uses the prefix to determine
-// what subtype the id is for.
-// Returns UnknownSubtype if no SubType with this id's prefix is found.
-func SubtypeFromId(id string) SubType {
-	switch {
-	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
-		return PasswordSubtype
-	}
-	return UnknownSubtype
+// Register registers all the prefixes for a provided Subtype. Register returns
+// an error if the subtype has already been registered or if any of the
+// prefixes are associated with another subtype.
+func Register(subtype subtypes.Subtype, prefixes ...string) error {
+	return registry.Register(subtype, prefixes...)
+}
+
+// AuthMethod contains the common methods across all the different types of auth methods.
+type AuthMethod interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetScopeId() string
+	GetVersion() uint32
+	GetIsPrimaryAuthMethod() bool
+}
+
+type Account interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetAuthMethodId() string
+	GetVersion() uint32
+}
+
+type ManagedGroup interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetAuthMethodId() string
+	GetVersion() uint32
 }

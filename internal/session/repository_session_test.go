@@ -2,19 +2,24 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -78,7 +83,7 @@ func TestRepository_ListSession(t *testing.T) {
 			name:      "withScopeId",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeId(composedOf.ScopeId)},
+				opt: []Option{WithScopeIds([]string{composedOf.ScopeId})},
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
@@ -87,7 +92,7 @@ func TestRepository_ListSession(t *testing.T) {
 			name:      "bad-withScopeId",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeId("o_thisIsNotValid")},
+				opt: []Option{WithScopeIds([]string{"o_thisIsNotValid"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -124,15 +129,13 @@ func TestRepository_ListSession(t *testing.T) {
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
 		}
-		got, err := repo.ListSessions(context.Background(), WithOrder("create_time asc"))
+		got, err := repo.ListSessions(context.Background(), WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(wantCnt, len(got))
 
 		for i := 0; i < len(got)-1; i++ {
-			first, err := ptypes.Timestamp(got[i].CreateTime.Timestamp)
-			require.NoError(err)
-			second, err := ptypes.Timestamp(got[i+1].CreateTime.Timestamp)
-			require.NoError(err)
+			first := got[i].CreateTime.Timestamp.AsTime()
+			second := got[i+1].CreateTime.Timestamp.AsTime()
 			assert.True(first.Before(second))
 		}
 	})
@@ -147,7 +150,30 @@ func TestRepository_ListSession(t *testing.T) {
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
 		require.NoError(err)
 		assert.Equal(1, len(got))
-		assert.Equal(got[0].UserId, s.UserId)
+		assert.Equal(s.UserId, got[0].UserId)
+	})
+	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		wantCnt := 5
+		for i := 0; i < wantCnt; i++ {
+			// Scope 1 User 1
+			_ = TestSession(t, conn, wrapper, composedOf)
+		}
+		// Scope 2 User 2
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+		// Scope 1 User 2
+		coDiffUser := composedOf
+		coDiffUser.AuthTokenId = s.AuthTokenId
+		coDiffUser.UserId = s.UserId
+		wantS := TestSession(t, conn, wrapper, coDiffUser)
+
+		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithScopeIds([]string{coDiffUser.ScopeId}))
+		require.NoError(err)
+		assert.Equal(1, len(got))
+		assert.Equal(wantS.UserId, got[0].UserId)
+		assert.Equal(wantS.ScopeId, got[0].ScopeId)
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -160,12 +186,64 @@ func TestRepository_ListSession(t *testing.T) {
 		}
 		assert.Equal(10, len(testSessions))
 		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
-		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrder("create_time asc"))
+		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(2, len(got))
 		assert.Equal(StatusActive, got[0].States[0].Status)
 		assert.Equal(StatusPending, got[0].States[1].Status)
 	})
+	t.Run("withServerId", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		for i := 0; i < 6; i++ {
+			if i%2 == 0 {
+				TestWorker(t, conn, wrapper, WithServerId(fmt.Sprintf("server-%d", i/2)))
+			}
+			_ = TestSession(t, conn, wrapper, composedOf,
+				WithServerId(fmt.Sprintf("server-%d", i/2)),
+				WithDbOpts(db.WithSkipVetForWrite(true)),
+			)
+		}
+		got, err := repo.ListSessions(context.Background())
+		require.NoError(err)
+		assert.Equal(6, len(got))
+
+		for i := 0; i < 3; i++ {
+			serverId := fmt.Sprintf("server-%d", i)
+			got, err = repo.ListSessions(context.Background(), WithServerId(serverId))
+			require.NoError(err)
+			assert.Equal(2, len(got))
+			for _, item := range got {
+				assert.Equal(serverId, item.ServerId)
+			}
+		}
+	})
+}
+
+func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	require.NoError(t, conn.Where("1=1").Delete(AllocSession()).Error)
+
+	const numPerScope = 10
+	var projs []string
+	for i := 0; i < numPerScope; i++ {
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		projs = append(projs, composedOf.ScopeId)
+		s := TestSession(t, conn, wrapper, composedOf)
+		_ = TestState(t, conn, s.PublicId, StatusActive)
+	}
+
+	got, err := repo.ListSessions(context.Background(), WithScopeIds(projs))
+	require.NoError(t, err)
+	assert.Equal(t, len(projs), len(got))
 }
 
 func TestRepository_CreateSession(t *testing.T) {
@@ -185,12 +263,19 @@ func TestRepository_CreateSession(t *testing.T) {
 		name        string
 		args        args
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid",
 			args: args{
 				composedOf: TestSessionParams(t, conn, wrapper, iamRepo),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-with-credentials",
+			args: args{
+				composedOf: testSessionCredentialParams(t, conn, wrapper, iamRepo),
 			},
 			wantErr: false,
 		},
@@ -204,7 +289,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-hostId",
@@ -216,7 +301,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-targetId",
@@ -228,7 +313,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-hostSetId",
@@ -240,7 +325,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-authTokenId",
@@ -252,7 +337,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-scopeId",
@@ -264,30 +349,29 @@ func TestRepository_CreateSession(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				UserId:          tt.args.composedOf.UserId,
-				HostId:          tt.args.composedOf.HostId,
-				TargetId:        tt.args.composedOf.TargetId,
-				HostSetId:       tt.args.composedOf.HostSetId,
-				AuthTokenId:     tt.args.composedOf.AuthTokenId,
-				ScopeId:         tt.args.composedOf.ScopeId,
-				Endpoint:        "tcp://127.0.0.1:22",
-				ExpirationTime:  tt.args.composedOf.ExpirationTime,
-				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
+				UserId:             tt.args.composedOf.UserId,
+				HostId:             tt.args.composedOf.HostId,
+				TargetId:           tt.args.composedOf.TargetId,
+				HostSetId:          tt.args.composedOf.HostSetId,
+				AuthTokenId:        tt.args.composedOf.AuthTokenId,
+				ScopeId:            tt.args.composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     tt.args.composedOf.ExpirationTime,
+				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
+				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 			}
 			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
-				if tt.wantIsError != nil {
-					assert.True(errors.Is(err, tt.wantIsError))
-				}
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			require.NoError(err)
@@ -297,20 +381,30 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
 			assert.Equal(ses.States[0].Status, StatusPending)
+			assert.Equal(wrapper.KeyID(), ses.KeyId)
+			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
+			assert.Equal(wrapper.KeyID(), foundSession.KeyId)
 
 			// Account for slight offsets in nanos
 			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)
 			ses.ExpirationTime = foundSession.ExpirationTime
 
-			assert.Equal(foundSession, ses)
+			assert.Equal(ses, foundSession)
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
 			require.Equal(1, len(foundSession.States))
 			assert.Equal(foundSession.States[0].Status, StatusPending)
+			assert.Equal(s.DynamicCredentials, foundSession.DynamicCredentials)
+			for _, cred := range foundSession.DynamicCredentials {
+				assert.Empty(cred.CredentialId)
+				assert.NotEmpty(cred.SessionId)
+				assert.NotEmpty(cred.LibraryId)
+				assert.NotEmpty(cred.CredentialPurpose)
+			}
 		})
 	}
 }
@@ -333,7 +427,7 @@ func TestRepository_updateState(t *testing.T) {
 		overrideSessionVersion *uint32
 		wantStateCnt           int
 		wantErr                bool
-		wantIsError            error
+		wantIsError            errors.Code
 	}{
 		{
 			name:         "canceling",
@@ -372,7 +466,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name:      "bad-sessionId",
@@ -393,7 +487,7 @@ func TestRepository_updateState(t *testing.T) {
 				return &s
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -417,9 +511,7 @@ func TestRepository_updateState(t *testing.T) {
 			s, ss, err := repo.updateState(context.Background(), id, version, tt.newStatus)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -441,6 +533,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
+	var testServer string
 	setupFn := func(exp *timestamp.Timestamp) *Session {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		if exp != nil {
@@ -448,6 +541,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		}
 		s := TestSession(t, conn, wrapper, composedOf)
 		srv := TestWorker(t, conn, wrapper)
+		testServer = srv.PrivateId
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
@@ -490,7 +584,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		},
 		{
 			name:    "expired-session",
-			session: setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			session: setupFn(&timestamp.Timestamp{Timestamp: timestamppb.Now()}),
 			wantErr: true,
 		},
 	}
@@ -498,7 +592,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId)
+			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId, testServer)
 			if tt.wantErr {
 				require.Error(err)
 				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
@@ -552,7 +646,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 		name        string
 		connectWith ConnectWith
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name:        "valid",
@@ -566,7 +660,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpAddress",
@@ -576,7 +670,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-ClientTcpPort",
@@ -586,7 +680,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpAddress",
@@ -596,7 +690,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-EndpointTcpPort",
@@ -606,7 +700,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 				return cw
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -616,9 +710,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			c, cs, err := repo.ConnectConnection(context.Background(), tt.connectWith)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -652,7 +744,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 		session     *Session
 		reason      TerminationReason
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name:    "valid-active-session",
@@ -673,7 +765,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-session-version",
@@ -684,7 +776,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "open-connection",
@@ -703,9 +795,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			s, err := repo.TerminateSession(context.Background(), tt.session.PublicId, tt.session.Version, tt.reason)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -727,8 +817,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 
 	setupFn := func(limit int32, expireIn time.Duration, leaveOpen bool) *Session {
 		require.NotEqualf(t, int32(0), limit, "setupFn: limit cannot be zero")
-		exp, err := ptypes.TimestampProto(time.Now().Add(expireIn))
-		require.NoError(t, err)
+		exp := timestamppb.New(time.Now().Add(expireIn))
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		composedOf.ConnectionLimit = limit
 		composedOf.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
@@ -925,7 +1014,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 					}
 					assert.Equal(args.wantTermed[found.PublicId].String(), found.TerminationReason)
 					t.Logf("terminated %s has a connection limit of %d", found.PublicId, found.ConnectionLimit)
-					conn, err := repo.ListConnections(context.Background(), found.PublicId)
+					conn, err := repo.ListConnectionsBySessionId(context.Background(), found.PublicId)
 					require.NoError(err)
 					for _, sc := range conn {
 						c, cs, err := repo.LookupConnection(context.Background(), sc.PublicId)
@@ -938,7 +1027,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				} else {
 					t.Logf("not terminated %s has a connection limit of %d", found.PublicId, found.ConnectionLimit)
 					assert.Equal("", found.TerminationReason)
-					conn, err := repo.ListConnections(context.Background(), found.PublicId)
+					conn, err := repo.ListConnectionsBySessionId(context.Background(), found.PublicId)
 					require.NoError(err)
 					for _, sc := range conn {
 						cs, err := fetchConnectionStates(context.Background(), rw, sc.PublicId)
@@ -988,7 +1077,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 		closeWith   []CloseWith
 		reason      TerminationReason
 		wantErr     bool
-		wantIsError error
+		wantIsError errors.Code
 	}{
 		{
 			name:      "valid",
@@ -1000,7 +1089,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			closeWith:   []CloseWith{},
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "missing-ConnectionId",
@@ -1008,11 +1097,10 @@ func TestRepository_CloseConnections(t *testing.T) {
 				cw := setupFn(2)
 				cw[1].ConnectionId = ""
 				return cw
-
 			}(),
 			reason:      ClosedByUser,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1021,9 +1109,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 			resp, err := repo.CloseConnections(context.Background(), tt.closeWith)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1057,7 +1143,7 @@ func TestRepository_CancelSession(t *testing.T) {
 		overrideSessionId      *string
 		overrideSessionVersion *uint32
 		wantErr                bool
-		wantIsError            error
+		wantIsError            errors.Code
 		wantStatus             Status
 	}{
 		{
@@ -1105,7 +1191,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			}(),
 			wantStatus:  StatusCanceling,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name:    "bad-version-id",
@@ -1126,7 +1212,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			}(),
 			wantStatus:  StatusCanceling,
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1149,9 +1235,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			s, err := repo.CancelSession(context.Background(), id, version)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1370,7 +1454,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 		overrideSessionId      *string
 		overrideSessionVersion *uint32
 		wantErr                bool
-		wantIsError            error
+		wantIsError            errors.Code
 	}{
 		{
 			name:    "valid",
@@ -1414,7 +1498,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &id
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name:    "empty-session-version",
@@ -1424,7 +1508,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 				return &v
 			}(),
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1447,9 +1531,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			s, ss, err := repo.ActivateSession(context.Background(), id, version, worker.PrivateId, worker.Type, tofu)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantIsError != nil {
-					assert.Truef(errors.Is(err, tt.wantIsError), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
@@ -1517,7 +1599,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete session: missing public id invalid parameter",
+			wantErrMsg:      "session.(Repository).DeleteSession: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
@@ -1532,7 +1614,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete session: failed db.LookupById: record not found",
+			wantErrMsg:      "db.LookupById: record not found",
 		},
 	}
 	for _, tt := range tests {
@@ -1558,4 +1640,31 @@ func TestRepository_DeleteSession(t *testing.T) {
 			assert.Error(err)
 		})
 	}
+}
+
+func testSessionCredentialParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+	t.Helper()
+	params := TestSessionParams(t, conn, wrapper, iamRepo)
+	require := require.New(t)
+	rw := db.New(conn)
+
+	ctx := context.Background()
+	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
+	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	targetRepo, err := target.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	tcpTarget, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
+	require.NoError(err)
+	require.NotNil(tcpTarget)
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	require.NoError(err)
+	creds := []*DynamicCredential{
+		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
+		NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
+		NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+	}
+	params.DynamicCredentials = creds
+	return params
 }

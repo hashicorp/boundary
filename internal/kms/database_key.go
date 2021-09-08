@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -21,9 +20,10 @@ type DatabaseKey struct {
 
 // NewDatabaseKey creates a new in memory database key.  No options
 // are currently supported.
-func NewDatabaseKey(rootKeyId string, opt ...Option) (*DatabaseKey, error) {
+func NewDatabaseKey(rootKeyId string, _ ...Option) (*DatabaseKey, error) {
+	const op = "kms.NewDatabaseKey"
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key: missing root key id: %w", errors.ErrInvalidParameter)
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	c := &DatabaseKey{
 		DatabaseKey: &store.DatabaseKey{
@@ -51,16 +51,17 @@ func (k *DatabaseKey) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface and validates the key
 // before it's written.
 func (k *DatabaseKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "kms.(DatabaseKey).VetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("database key vet for write: missing private id: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.RootKeyId == "" {
-			return fmt.Errorf("database key vet for write: missing root key id: %w", errors.ErrInvalidParameter)
+			return errors.New(ctx, errors.InvalidParameter, op, "missing root key id")
 		}
 	case db.UpdateOp:
-		return fmt.Errorf("database key vet for write: key is immutable: %w", errors.ErrInvalidParameter)
+		return errors.New(ctx, errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

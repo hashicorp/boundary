@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Run and Login
-sidebar_title: Run and Login
 description: |-
   How to run Boundary services in dev mode and login for the first time.
 ---
@@ -23,6 +22,7 @@ dev mode. These can be overridden, or randomly generated, with flags to
 <Tabs>
 <Tab heading="CLI">
 
+
 ```
 $ boundary authenticate password \
          -login-name=admin \
@@ -35,7 +35,7 @@ an error indicating that the token could not be stored, as the freedesktop.org
 Secret Service implementation is not always available. On these systems, you can
 work around this by installing `dbus-x11` and `gnome-keyring` using your package
 manager, then creating and unlocking the default keyring with the following,
-substituting in a password of your choice for "foorbar" (but ending with `\n`).
+substituting in a password of your choice for "foobar" (but ending with `\n`).
 You can also avoid putting the password on the command line by running the
 `gnome-keyring-daemon` commands directly and entering in the password, followed
 by a newline (return) and an EOF (`Ctrl+D`).
@@ -55,13 +55,14 @@ with `jq` to pull the token value out of the response and place it wherever you
 wish, then create a command alias for `boundary` that sources that value into
 the environment or the `-token` flag.
 
-~> Token storage on *nix systems has been more problematic than we expected.
+~> Token storage on \*nix systems has been more problematic than we expected.
 We're exploring alternatives. See the discussion on [this GitHub
 issue](https://github.com/hashicorp/boundary/issues/697#issuecomment-709448942)
 to track it and voice your thoughts.
 
 </Tab>
 <Tab heading="Admin Console">
+
 
 To authenticate to the Admin UI, open
 [http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the login
@@ -75,6 +76,33 @@ name and password:
 </video>
 
 </Tab>
+
+
+<Tab heading="Desktop Client">
+<p>
+
+
+To authenticate using the Boundary desktop client, launch Boundary desktop client
+and connect to boundary to using [http://127.0.0.1:9200](http://127.0.0.1:9200)
+and enter the login name and password:
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1613612831-boundary-desktop-clickthrough-authenticate-v1-0-0.mp4"
+  />
+</video>
+
+</p>
+</Tab>
+
+
 <Tab heading="Terraform">
 
 
