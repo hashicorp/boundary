@@ -29,7 +29,7 @@ begin;
     scope_id wt_scope_id not null
     -- TODO: Allow plugins to be created in different scopes and
     --     constrain the host-catalog's plugin reference accordingly.
-    constraint plugins_must_be_global
+    constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
       on delete cascade
       on update cascade,
@@ -43,19 +43,21 @@ begin;
         check(length(trim(plugin_name)) > 0)
       constraint plugin_name_must_be_lowercase
         check(lower(trim(plugin_name)) = plugin_name)
-      constraint plugin_name_must_be_unique
+      constraint plugin_host_name_uq
         unique,
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
         check(length(trim(id_prefix)) > 0)
       constraint plugin_id_prefix_must_fit_format
         check (id_prefix ~ '^[a-z0-9]*$')
-      constraint plugin_id_prefix_must_be_unique
+      constraint plugin_host_id_prefix_uq
         unique,
+    constraint plugin_fkey
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
       on delete cascade
       on update cascade,
+    constraint plugin_host_scope_id_name_uq
     unique(scope_id, name)
   );
 

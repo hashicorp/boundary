@@ -18,7 +18,7 @@ type plugin struct {
 }
 
 // newPlugin is used in tests and creates a typeless plugin in the global scope.
-func newPlugin(name string, _ ...Option) *plugin {
+func newPlugin(name string) *plugin {
 	p := &plugin{
 		Plugin: &store.Plugin{
 			ScopeId: scope.Global.String(),
