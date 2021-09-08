@@ -121,6 +121,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/store/host.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
+	@protoc-go-inject-tag -input=./internal/host/plugin/store/host.pb.go
+	@protoc-go-inject-tag -input=./internal/plugin/host/store/plugin.pb.go
+	@protoc-go-inject-tag -input=./internal/plugin/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
