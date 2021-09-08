@@ -216,7 +216,7 @@ func flushGatedEvents(ctx context.Context, method, url string, statusCode int, s
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush observation event"))
 	}
-	err = event.WriteAudit(ctx, "handler", event.WithFlush())
+	err = event.WriteAudit(ctx, "handler", event.WithFlush(), event.WithResponse(&event.Response{StatusCode: statusCode}))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write and flush audit event"))
 	}

@@ -30,16 +30,15 @@ const (
 )
 
 type testAudit struct {
-	Id             string             `json:"id"`                     // std audit/boundary field
-	Version        string             `json:"version"`                // std audit/boundary field
-	Type           string             `json:"type"`                   // std audit field
-	Timestamp      time.Time          `json:"timestamp"`              // std audit field
-	RequestInfo    *event.RequestInfo `json:"request_info,omitempty"` // boundary field
-	Auth           *event.Auth        `json:"auth,omitempty"`         // std audit field
-	Request        *event.Request     `json:"request,omitempty"`      // std audit field
-	Response       *event.Response    `json:"response,omitempty"`     // std audit field
-	SerializedHMAC string             `json:"serialized_hmac"`        // boundary field
-	Flush          bool               `json:"-"`
+	Id          string             `json:"id"`                     // std audit/boundary field
+	Version     string             `json:"version"`                // std audit/boundary field
+	Type        string             `json:"type"`                   // std audit field
+	Timestamp   time.Time          `json:"timestamp"`              // std audit field
+	RequestInfo *event.RequestInfo `json:"request_info,omitempty"` // boundary field
+	Auth        *event.Auth        `json:"auth,omitempty"`         // std audit field
+	Request     *event.Request     `json:"request,omitempty"`      // std audit field
+	Response    *event.Response    `json:"response,omitempty"`     // std audit field
+	Flush       bool               `json:"-"`
 }
 
 func Test_NewRequestInfoContext(t *testing.T) {
@@ -922,13 +921,12 @@ func Test_WriteAudit(t *testing.T) {
 					Time:            gotAudit.Time,
 					Type:            "audit",
 					Data: map[string]interface{}{
-						"auth":            tt.wantAudit.Auth,
-						"id":              gotAudit.Data.(map[string]interface{})["id"],
-						"timestamp":       now,
-						"request":         tt.wantAudit.Request,
-						"serialized_hmac": "",
-						"type":            apiRequest,
-						"version":         testAuditVersion,
+						"auth":      tt.wantAudit.Auth,
+						"id":        gotAudit.Data.(map[string]interface{})["id"],
+						"timestamp": now,
+						"request":   tt.wantAudit.Request,
+						"type":      apiRequest,
+						"version":   testAuditVersion,
 					},
 				}
 				if tt.wantAudit.Id != "" {
