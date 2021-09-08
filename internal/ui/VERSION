@@ -1,4 +1,4 @@
-28ebc931791a7b0ae79e543c05addc950fc9a944 Merge pull request #741 from hashicorp/chore-enable-capabilities
+1321df32659b2b808ca889f053b09bee4504a368 Merge pull request #751 from hashicorp/chore-create-without-read-host
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
