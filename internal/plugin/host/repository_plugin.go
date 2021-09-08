@@ -16,6 +16,9 @@ import (
 // contain a valid ScopeID. p must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
 //
+// Both p.IdPrefix and p.PluginName are required and must match.  The
+// p.IdPrefix must contain only lower case alphanumeric characters.
+//
 // Both p.Name and p.Description are optional. If p.Name is set, it must be
 // unique within p.ScopeID.
 //
