@@ -1,4 +1,4 @@
-e613d55dcb3e08876ce6cf895b07c9db0e90dd99 Merge pull request #746 from hashicorp/fix-scope-create
+1321df32659b2b808ca889f053b09bee4504a368 Merge pull request #751 from hashicorp/chore-create-without-read-host
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
