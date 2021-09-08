@@ -502,6 +502,12 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Secrets",
+				SkipDefault: true,
+			},
+		},
 		pluralResourceName:  "host-catalogs",
 		typeOnCreate:        true,
 		versionEnabled:      true,
