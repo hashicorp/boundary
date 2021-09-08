@@ -19,7 +19,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/boundary/sdk/recovery"
+	"github.com/hashicorp/boundary/api/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
