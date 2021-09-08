@@ -193,6 +193,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			cSecret := allocHostCatalogSecret()
 			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", got.GetPublicId())
 			if tt.wantSecret == nil {
+				assert.Nil(got.secrets)
 				require.Error(t, err)
 				require.True(t, errors.IsNotFoundError(err))
 				return

@@ -16,8 +16,9 @@ import (
 // ScopeID and PluginID. c must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
 //
-// Both c.Name and c.Description are optional. If c.Name is set, it must be
-// unique within c.ScopeID.
+// c.Secret, c.Name and c.Description are optional. If c.Name is set, it must be
+// unique within c.ScopeID.  If c.Secret is set, it will be stored encrypted but
+// not included in the returned *HostCatalog.
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Option) (*HostCatalog, error) {
