@@ -22,7 +22,7 @@ tmp/
 temp/
 
 ### Visual Studio ###
-.vscode/
+; .vscode/ - commenting for customization
 
 ### macOS ###
 # General
