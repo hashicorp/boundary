@@ -2,8 +2,6 @@ module github.com/hashicorp/boundary/api
 
 go 1.15
 
-replace github.com/hashicorp/boundary/sdk => ../sdk
-
 require (
 	github.com/fatih/structs v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
