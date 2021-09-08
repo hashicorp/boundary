@@ -122,3 +122,9 @@ func DefaultName() Option {
 		o.postMap["name"] = nil
 	}
 }
+
+func WithSecrets(inSecrets map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["secrets"] = inSecrets
+	}
+}
