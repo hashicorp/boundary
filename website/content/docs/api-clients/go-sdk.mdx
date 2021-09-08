@@ -142,7 +142,7 @@ assuming you have an instance of Boundary that declares this as the recovery KMS
 in the Boundary controller config as well.
 
 ```go
-import "github.com/hashicorp/boundary/sdk/wrapper"
+import "github.com/hashicorp/boundary/internal/cmd/base/wrapper"
 
 const kmsConfig := `
 kms "aead" {

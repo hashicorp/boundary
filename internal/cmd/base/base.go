@@ -15,7 +15,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/sdk/wrapper"
+	"github.com/hashicorp/boundary/internal/cmd/base/wrapper"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
