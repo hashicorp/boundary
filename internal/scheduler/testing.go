@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestScheduler creates a mock controller and a new Scheduler attached to that controller id.

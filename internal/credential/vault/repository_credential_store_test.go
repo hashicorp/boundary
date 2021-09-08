@@ -20,10 +20,10 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
+	"gorm.io/gorm"
 )
 
 func TestRepository_CreateCredentialStoreResource(t *testing.T) {
@@ -755,7 +755,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {
 				dbassert.IsNull(got, "name")
 			} else {
@@ -884,8 +886,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(1, gotCount2, "count of updated records")
 		require.NotNil(got2)
 		assert.Nil(got2.CaCert)
-
-		dbassert := dbassert.New(t, conn.DB())
+		underlyingDB, err := conn.DB()
+		require.NoError(err)
+		dbassert := dbassert.New(t, underlyingDB)
 		dbassert.IsNull(got2, "CaCert")
 	})
 

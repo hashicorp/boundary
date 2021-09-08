@@ -45,10 +45,11 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.1.1
+	github.com/hashicorp/vault/sdk v0.2.1
 	github.com/iancoleman/strcase v0.1.3
+	github.com/jackc/pgconn v1.10.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
-	github.com/jinzhu/gorm v1.9.16
-	github.com/jinzhu/now v1.1.1 // indirect
+	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
@@ -81,6 +82,8 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gorm.io/driver/postgres v1.1.0
+	gorm.io/gorm v1.21.14
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )

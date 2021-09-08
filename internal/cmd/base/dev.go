@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
+	"gorm.io/gorm/logger"
 )
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
@@ -95,7 +96,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return err
 	}
 
-	b.Database.LogMode(true)
+	b.Database.Config.Logger.LogMode(logger.Info)
 
 	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
 		if c != nil {

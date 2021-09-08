@@ -15,8 +15,8 @@ func Test_ManagedGroupTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	db, err := tc.DbConn().DB()
+	require.NoError(t, err)
 
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
@@ -87,8 +87,8 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	db, err := tc.DbConn().DB()
+	require.NoError(t, err)
 
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
@@ -250,8 +250,8 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	db, err := tc.DbConn().DB()
+	require.NoError(t, err)
 
 	managedGroupId := "a_bcdefghijk"
 	defaultOidcAuthMethodId := "amoidc_1234567890"

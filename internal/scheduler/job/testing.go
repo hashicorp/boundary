@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func testJob(t *testing.T, conn *gorm.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {

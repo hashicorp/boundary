@@ -17,9 +17,9 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"

@@ -26,10 +26,10 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
-	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestCredentialStore creates a vault credential store in the provided DB with

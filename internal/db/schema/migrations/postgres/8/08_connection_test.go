@@ -39,8 +39,9 @@ func TestMigration(t *testing.T) {
 	)
 
 	conn, _ := db.TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTables)
+	db, err := conn.DB()
+	require.NoError(err)
+	_, err = db.Exec(createTables)
 	require.NoError(err)
 
 	tests := []struct {

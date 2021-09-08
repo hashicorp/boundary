@@ -109,7 +109,8 @@ values ($1);
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -180,7 +181,8 @@ values ($1);
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -693,7 +695,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -740,7 +743,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -786,7 +790,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -832,7 +837,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -878,7 +884,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -924,7 +931,8 @@ returning id;
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -974,7 +982,8 @@ select wt_is_sentinel($1);
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.DB()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name  string
@@ -1036,8 +1045,10 @@ insert on test_not_null_columns
 	)
 
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.DB()
+	assert.NoError(t, err)
+
+	_, err = db.Exec(createTable)
 	assert.NoError(t, err)
 
 	tests := []struct {

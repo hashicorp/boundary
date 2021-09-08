@@ -18,9 +18,9 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 const testUpdateTokenStatusExpirationQuery = `
