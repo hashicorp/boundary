@@ -12,7 +12,7 @@ begin;
     add column scope_id wt_scope_id
       not null
       default 'global'
-      constraint plugin_must_be_in_global
+      constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
         on delete cascade
         on update cascade;

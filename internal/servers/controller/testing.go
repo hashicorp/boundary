@@ -30,6 +30,8 @@ import (
 )
 
 const (
+	DefaultOrgId                             = "o_1234567890"
+	DefaultProjectId                         = "p_1234567890"
 	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
 	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
 	DefaultTestLoginName                     = "admin"
@@ -445,6 +447,8 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevPassword = DefaultTestPassword
 		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
+	tc.b.DevOrgId = DefaultOrgId
+	tc.b.DevProjectId = DefaultProjectId
 	tc.b.DevPasswordAccountId = DefaultTestPasswordAccountId
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId

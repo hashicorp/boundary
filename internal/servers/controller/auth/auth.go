@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
@@ -21,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"github.com/hashicorp/boundary/sdk/recovery"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"

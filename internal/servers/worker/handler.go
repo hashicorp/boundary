@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -152,12 +153,12 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			_, err := session.Cancel(ctx, sessClient, sessionId)
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
-				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil {
+				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
 				return
 			}
-			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil {
+			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil && !errors.Is(err, io.EOF) {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return

@@ -3714,6 +3714,10 @@
           "type": "object",
           "description": "Attributes specific to the catalog type."
         },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets specific to the catalog type. These are never output."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
