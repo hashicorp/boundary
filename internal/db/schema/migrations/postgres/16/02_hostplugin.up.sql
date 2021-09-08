@@ -43,7 +43,7 @@ begin;
         check(length(trim(plugin_name)) > 0)
       constraint plugin_name_must_be_lowercase
         check(lower(trim(plugin_name)) = plugin_name)
-      constraint plugin_host_name_uq
+      constraint plugin_host_plugin_name_uq
         unique,
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
