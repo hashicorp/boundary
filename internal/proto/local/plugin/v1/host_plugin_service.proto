@@ -45,10 +45,10 @@ message OnCreateCatalogRequest {
 }
 
 message OnCreateCatalogResponse {
-	// Secret data to persist encrypted within Boundary. This should be
-	// used to store authentication data and other necessary
-	// configuration to be used in later hooks and calls. Returning an
-	// error from the call will cause this data to not be persisted.
+	// Secret data to persist encrypted within Boundary. This should be used to
+	// store authentication data and other necessary configuration to be used in
+	// later hooks and calls. Returning an error from the call will cause this
+	// data to not be persisted. If this is nil, nothing is written.
 	HostCatalogPersisted persisted = 10;
 }
 
@@ -56,9 +56,9 @@ message OnUpdateCatalogRequest {
 	// The existing state of the catalog.
 	controller.api.resources.hostcatalogs.v1.HostCatalog current_catalog = 10;
 
-	// The requested new state of the catalog. This field may contain
-	// optional secret data that may have been updated from old
-	// authentication data contained within the persisted state.
+	// The requested new state of the catalog. This field may contain optional
+	// secret data that may have been updated from old authentication data
+	// contained within the persisted state.
 	controller.api.resources.hostcatalogs.v1.HostCatalog new_catalog = 20;
   
 	// The existing persisted secret data.
@@ -66,11 +66,10 @@ message OnUpdateCatalogRequest {
 }
 
 message OnUpdateCatalogResponse {
-	// The updated secret data to persist encrypted within Boundary.
-	// It's important that this be returned if it existed previously,
-	// as the returned data overwrites the previously existing copy. If
-	// an error is returned, the update of the persisted data is
-	// aborted.
+	// The updated secret data to persist encrypted within Boundary. If an error
+	// is returned, the update of the persisted data is aborted. If this is nil,
+	// no changes are written. To remove all values, simply return an allocated
+	// but empty map.
 	HostCatalogPersisted persisted = 10;
 }
 
@@ -150,8 +149,8 @@ message ListHostsResponseHost {
 	// useful, ie: a compute instance ID.
 	string external_id = 10;
 
-	// Required. The primary address for the host.
-	string address = 20;
+	// Required. Any and all known IP addresses for the host.
+	repeated string ip_addresses = 20;
 
 	// Optional. Provider-specific metadata that is applicable to this
 	// host. Example: host descriptions, tags, alternate network
