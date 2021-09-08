@@ -54,6 +54,51 @@ func TestPlugin_Create(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "idprefix-capitalized",
+			args: args{
+				pluginName: "idprefixcapitalized",
+				idPrefix:   "IdPrefixCapitalized",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "idprefixcapitalized",
+					IdPrefix:   "IdPrefixCapitalized",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "idprefix-space",
+			args: args{
+				pluginName: "idprefix space",
+				idPrefix:   "idprefix space",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "idprefix space",
+					IdPrefix:   "idprefix space",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pluginName-capitalized",
+			args: args{
+				pluginName: "PluginNameCapitalized",
+				idPrefix:   "pluginnamecapitalized",
+			},
+			want: &Plugin{
+				Plugin: &store.Plugin{
+					PluginName: "PluginNameCapitalized",
+					IdPrefix:   "pluginnamecapitalized",
+					ScopeId:    scope.Global.String(),
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "valid-no-options",
 			args: args{
 				pluginName: "validnooptions",
