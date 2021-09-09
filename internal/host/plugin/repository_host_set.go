@@ -54,7 +54,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host plugin"))
 	}
 
-	id, err := newHostSetId(plg.GetIdPrefix())
+	id, err := newHostSetId(ctx, plg.GetIdPrefix())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

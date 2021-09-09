@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,21 +18,24 @@ import (
 type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
+
+	secrets map[string]interface{} `gorm:"-"`
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
 // and pluginId. Name and description are the only valid options. All other
 // options are ignored.
-func NewHostCatalog(ctx context.Context, pluginId, scopeId string, opt ...Option) (*HostCatalog, error) {
+func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
 	opts := getOpts(opt...)
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			PluginId:    pluginId,
 			ScopeId:     scopeId,
+			PluginId:    pluginId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
 		},
+		secrets: opts.withSecrets,
 	}
 
 	if opts.withAttributes != nil {
@@ -50,11 +54,22 @@ func allocHostCatalog() *HostCatalog {
 	}
 }
 
+// clone provides a deep copy of the HostCatalog with the exception of the
+// secret.  The secret shallow copied.
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
-	return &HostCatalog{
+
+	hc := &HostCatalog{
 		HostCatalog: cp.(*store.HostCatalog),
 	}
+	if c.secrets != nil {
+		newSecret := make(map[string]interface{}, len(c.secrets))
+		for k, v := range c.secrets {
+			newSecret[k] = v
+		}
+		hc.secrets = newSecret
+	}
+	return hc
 }
 
 // TableName returns the table name for the host catalog.
@@ -69,4 +84,16 @@ func (c *HostCatalog) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (c *HostCatalog) SetTableName(n string) {
 	c.tableName = n
+}
+
+func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{s.PublicId},
+		"resource-type":      []string{"plugin-host-catalog"},
+		"op-type":            []string{op.String()},
+	}
+	if s.ScopeId != "" {
+		metadata["scope-id"] = []string{s.ScopeId}
+	}
+	return metadata
 }

@@ -24,7 +24,7 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
-	cs := TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId(), WithName("foo"), WithDescription("bar"))
+	cs := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(cs.GetPublicId())
 	assert.True(strings.HasPrefix(cs.GetPublicId(), fmt.Sprintf("%s_%s", HostCatalogPrefix, "prefix")))
 	assert.Equal("foo", cs.GetName())
@@ -43,7 +43,7 @@ func Test_TestSet(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
-	c := TestCatalog(t, conn, plg.GetPublicId(), prj.GetPublicId())
+	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	set := TestSet(t, conn, c.GetPublicId(), WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	assert.True(strings.HasPrefix(set.GetPublicId(), fmt.Sprintf("%s_%s", HostSetPrefix, "prefix")))
