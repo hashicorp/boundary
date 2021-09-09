@@ -18,7 +18,6 @@ func TestPlugin_Create(t *testing.T) {
 	type args struct {
 		pluginName string
 		idPrefix   string
-		semVer     string
 		opts       []Option
 	}
 
