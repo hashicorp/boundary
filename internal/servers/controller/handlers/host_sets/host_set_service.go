@@ -742,17 +742,19 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 		}
 	}
 
-	switch h := in.(type) {
-	case *plugin.HostSet:
-		attrs := map[string]interface{}{}
-		err := json.Unmarshal(h.Attributes, &attrs)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		if len(attrs) > 0 {
-			out.Attributes, err = structpb.NewStruct(attrs)
+	if outputFields.Has(globals.AttributesField) {
+		switch h := in.(type) {
+		case *plugin.HostSet:
+			attrs := map[string]interface{}{}
+			err := json.Unmarshal(h.Attributes, &attrs)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
+			}
+			if len(attrs) > 0 {
+				out.Attributes, err = structpb.NewStruct(attrs)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
 			}
 		}
 	}
