@@ -7059,7 +7059,7 @@ alter table wh_host_dimension
         check(length(trim(plugin_name)) > 0)
       constraint plugin_name_must_be_lowercase
         check(lower(trim(plugin_name)) = plugin_name)
-      constraint plugin_host_name_uq
+      constraint plugin_host_plugin_name_uq
         unique,
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
@@ -7217,7 +7217,7 @@ alter table wh_host_dimension
     update_time wt_timestamp,
     version wt_version,
     attributes bytea not null
-      constraint attributes_must_not_empty
+      constraint attributes_must_not_be_empty
       check(length(attributes) > 0),
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
@@ -7289,7 +7289,7 @@ alter table wh_host_dimension
     update_time wt_timestamp,
     version wt_version,
     attributes bytea not null
-      constraint attributes_must_not_empty
+      constraint attributes_must_not_be_empty
         check(length(attributes) > 0),
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
