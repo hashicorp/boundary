@@ -60,8 +60,8 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "invalid-public-id-set",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					PublicId:  "abcd_OOOOOOOOOO",
+					CatalogId:  catalog.PublicId,
+					PublicId:   "abcd_OOOOOOOOOO",
 					Attributes: attrs,
 				},
 			},
@@ -80,13 +80,13 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "valid-no-options",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
+					CatalogId:  catalog.PublicId,
 					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
+					CatalogId:  catalog.PublicId,
 					Attributes: attrs,
 				},
 			},
@@ -95,15 +95,15 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "valid-with-name",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					Name:      "test-name-repo",
+					CatalogId:  catalog.PublicId,
+					Name:       "test-name-repo",
 					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					Name:      "test-name-repo",
+					CatalogId:  catalog.PublicId,
+					Name:       "test-name-repo",
 					Attributes: attrs,
 				},
 			},
@@ -114,14 +114,14 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes: attrs,
+					Attributes:  attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes: attrs,
+					Attributes:  attrs,
 				},
 			},
 		},
@@ -163,8 +163,8 @@ func TestRepository_CreateSet(t *testing.T) {
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
-				CatalogId: catalog.PublicId,
-				Name:      "test-name-repo",
+				CatalogId:  catalog.PublicId,
+				Name:       "test-name-repo",
 				Attributes: []byte("{}"),
 			},
 		}
@@ -195,7 +195,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
-				Name: "test-name-repo",
+				Name:       "test-name-repo",
 				Attributes: []byte("{}"),
 			},
 		}
