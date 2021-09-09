@@ -6,6 +6,10 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+// tmp use of local clone as we understand any required upstream PRs to
+// compatibility.
+replace gorm.io/gorm => /Users/jimlambrt/workspaces/github/hashicorp/gorm-v2
+
 require (
 	github.com/armon/go-metrics v0.3.9
 	github.com/bufbuild/buf v0.37.0
@@ -49,7 +53,6 @@ require (
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jackc/pgconn v1.10.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
-	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0

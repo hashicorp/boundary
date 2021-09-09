@@ -102,6 +102,7 @@ func TestTagUpdatingListing(t *testing.T) {
 			},
 		},
 	}
+
 	_, _, err := repo.UpsertServer(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 

@@ -46,7 +46,9 @@ func testOpen(dbType string, connectionUrl string) (*gorm.DB, error) {
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}
-	db, err := gorm.Open(dialect, &gorm.Config{})
+	db, err := gorm.Open(dialect, &gorm.Config{
+		ConvertNullToZeroValues: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to open database: %w", err)
 	}
@@ -253,6 +255,7 @@ func Test_UnmarshalData(t *testing.T) {
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
 	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
+	require.NoError(t, err)
 
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	require.NoError(t, err)

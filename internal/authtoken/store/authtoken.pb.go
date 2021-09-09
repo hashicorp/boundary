@@ -55,14 +55,14 @@ type AuthToken struct {
 	// @inject_tag: `gorm:"default:not_null"`
 	AuthAccountId string `protobuf:"bytes,10,opt,name=auth_account_id,json=authAccountId,proto3" json:"auth_account_id,omitempty" gorm:"default:not_null"`
 	// scope_id is not stored in the backing DB but it derived from the linked to auth account.
-	// @inject_tag: gorm:"-"
-	ScopeId string `protobuf:"bytes,11,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"-"`
+	// @inject_tag: gorm:"->"
+	ScopeId string `protobuf:"bytes,11,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"->"`
 	// auth_method_id is not stored in the backing DB but it derived from the linked to auth account.
-	// @inject_tag: gorm:"-"
-	AuthMethodId string `protobuf:"bytes,12,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"-"`
+	// @inject_tag: gorm:"->"
+	AuthMethodId string `protobuf:"bytes,12,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"->"`
 	// iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
-	// @inject_tag: gorm:"-"
-	IamUserId string `protobuf:"bytes,13,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty" gorm:"-"`
+	// @inject_tag: gorm:"->"
+	IamUserId string `protobuf:"bytes,13,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty" gorm:"->"`
 	// key_id is the key ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,
 	// which is useful for caching purposes.

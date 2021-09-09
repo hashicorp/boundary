@@ -438,12 +438,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
 
-	// // This is not a boundary scope, but rather a gorm Scope:
-	// // https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	// scope := rw.underlying.NewScope(i)
-	// if scope.PrimaryKeyZero() {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
-	// }
+	names, isZero, err := rw.primaryFieldsAreZero(ctx, i)
+	if err != nil {
+		return NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	if isZero {
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key is not set for: %s", names), errors.WithoutEvent())
+	}
 
 	mDb := rw.underlying.Model(i)
 	err = mDb.Statement.Parse(i)
@@ -569,14 +570,6 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog && opts.newOplogMsg != nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
-	// // This is not a boundary scope, but rather a gorm Scope:
-	// // https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	// scope := rw.underlying.NewScope(i)
-	// if opts.withWhereClause == "" {
-	// 	if scope.PrimaryKeyZero() {
-	// 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
-	// 	}
-	// }
 
 	mDb := rw.underlying.Model(i)
 	err := mDb.Statement.Parse(i)
@@ -1089,6 +1082,23 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
+}
+
+func (rw *Db) primaryFieldsAreZero(ctx context.Context, i interface{}) ([]string, bool, error) {
+	const op = "db.primaryFieldsAreZero"
+	var fieldNames []string
+	tx := rw.underlying.Model(i)
+	if err := tx.Statement.Parse(i); err != nil {
+		return nil, false, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	for _, f := range tx.Statement.Schema.PrimaryFields {
+		if f.PrimaryKey {
+			if _, isZero := f.ValueOf(reflect.ValueOf(i)); isZero {
+				fieldNames = append(fieldNames, f.Name)
+			}
+		}
+	}
+	return fieldNames, len(fieldNames) > 0, nil
 }
 
 // filterPaths will filter out non-updatable fields

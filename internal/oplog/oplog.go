@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
-	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
 )
 

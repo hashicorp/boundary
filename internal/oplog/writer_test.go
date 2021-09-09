@@ -7,6 +7,7 @@ import (
 	dbassert "github.com/hashicorp/dbassert/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	_ "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -302,7 +303,7 @@ func TestGormWriter_Update(t *testing.T) {
 			u.Name = tt.args.user.Name
 			u.Email = tt.args.user.Email
 			u.PhoneNumber = tt.args.user.PhoneNumber
-			err = w.Update(tt.args.user, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
+			err = w.Update(u, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
 			if tt.wantErr {
 				require.Error(err)
 				return

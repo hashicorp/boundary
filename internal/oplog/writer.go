@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 // Writer interface for Entries
@@ -48,8 +49,15 @@ func (w *GormWriter) Create(i interface{}) error {
 	if i == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
-	if err := w.Tx.Create(i).Error; err != nil {
-		return errors.WrapDeprecated(err, op)
+
+	if tabler, ok := i.(schema.Tabler); ok {
+		if err := w.Tx.Table(tabler.TableName()).Create(i).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
+	} else {
+		if err := w.Tx.Create(i).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
 	}
 	return nil
 }
@@ -74,8 +82,15 @@ func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []stri
 	if err != nil {
 		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to build update fields"))
 	}
-	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
-		return errors.WrapDeprecated(err, op)
+
+	if tabler, ok := i.(schema.Tabler); ok {
+		if err := w.Tx.Table(tabler.TableName()).Model(i).Updates(updateFields).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
+	} else {
+		if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
 	}
 	return nil
 }
@@ -89,8 +104,14 @@ func (w *GormWriter) Delete(i interface{}) error {
 	if i == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
-	if err := w.Tx.Delete(i).Error; err != nil {
-		return errors.WrapDeprecated(err, op)
+	if tabler, ok := i.(schema.Tabler); ok {
+		if err := w.Tx.Table(tabler.TableName()).Delete(i).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
+	} else {
+		if err := w.Tx.Delete(i).Error; err != nil {
+			return errors.WrapDeprecated(err, op)
+		}
 	}
 	return nil
 }

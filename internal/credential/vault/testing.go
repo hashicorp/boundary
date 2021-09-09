@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"

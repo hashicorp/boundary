@@ -136,6 +136,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go

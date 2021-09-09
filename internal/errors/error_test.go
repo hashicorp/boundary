@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -254,8 +254,8 @@ func Test_WrapError(t *testing.T) {
 		},
 		{
 			name: "NotSpecificIntegrity",
-			err: &pq.Error{
-				Code:    pq.ErrorCode("23001"),
+			err: &pgconn.PgError{
+				Code:    "23001",
 				Message: "test msg",
 			},
 			want: &errors.Err{
@@ -449,8 +449,8 @@ func TestConvertError(t *testing.T) {
 		},
 		{
 			name: "NotSpecificIntegrity",
-			e: &pq.Error{
-				Code: pq.ErrorCode("23001"),
+			e: &pgconn.PgError{
+				Code: "23001",
 			},
 			wantErr: errors.EDeprecated(errors.WithCode(errors.NotSpecificIntegrity)),
 		},

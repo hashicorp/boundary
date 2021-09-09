@@ -51,20 +51,20 @@ type User struct {
 	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// Output only. login_name is a string that maps to the user's account "login
 	// name" from the scope's primary auth method
-	// @inject_tag: `gorm:"-"`
-	LoginName string `protobuf:"bytes,90,opt,name=login_name,proto3" json:"login_name,omitempty" gorm:"-"`
+	// @inject_tag: `gorm:"->"`
+	LoginName string `protobuf:"bytes,90,opt,name=login_name,proto3" json:"login_name,omitempty" gorm:"->"`
 	// Output only. full_name is a string that maps to the user's account name
 	// from the scope's primary auth method
-	// @inject_tag: `gorm:"-"`
-	FullName string `protobuf:"bytes,100,opt,name=full_name,proto3" json:"full_name,omitempty" gorm:"-"`
+	// @inject_tag: `gorm:"->"`
+	FullName string `protobuf:"bytes,100,opt,name=full_name,proto3" json:"full_name,omitempty" gorm:"->"`
 	// Output only. email is a string that maps to the user's account email from
 	// the scope's primary auth method
-	// @inject_tag: `gorm:"-"`
-	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" gorm:"-"`
+	// @inject_tag: `gorm:"->"`
+	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" gorm:"->"`
 	// Output only. primary_account_id is a string that maps to the user's account
 	// public_id from the scope's primary auth method
-	// @inject_tag: `gorm:"-"`
-	PrimaryAccountId string `protobuf:"bytes,120,opt,name=primary_account_id,proto3" json:"primary_account_id,omitempty" gorm:"-"`
+	// @inject_tag: `gorm:"->"`
+	PrimaryAccountId string `protobuf:"bytes,120,opt,name=primary_account_id,proto3" json:"primary_account_id,omitempty" gorm:"->"`
 }
 
 func (x *User) Reset() {

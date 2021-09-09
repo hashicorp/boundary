@@ -234,6 +234,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	csWithoutClientCert := stores[1]
 
 	ccert := allocClientCertificate()
+	ccert.StoreId = csWithoutClientCert.GetPublicId()
 	rows, err := rw.Delete(context.Background(), ccert, db.WithWhere("store_id = ?", csWithoutClientCert.GetPublicId()))
 	require.NoError(t, err)
 	require.Equal(t, 1, rows)
@@ -1309,7 +1310,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		const query = `
 update credential_vault_token
    set status   = 'revoked'
- where store_id = $1
+ where store_id = ?
    and status   = 'current';
 `
 		t.Helper()
@@ -1331,7 +1332,7 @@ update credential_vault_token
 		const query = `
 update credential_vault_token
    set status   = 'expired'
- where store_id = $1
+ where store_id = ?
    and status   = 'current';
 `
 		t.Helper()

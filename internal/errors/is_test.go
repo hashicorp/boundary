@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,15 +26,15 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "postgres-not-unique",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23503"),
+			in: &pgconn.PgError{
+				Code: "23503",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-unique2",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23505"),
+			in: &pgconn.PgError{
+				Code: "23505",
 			},
 			want: true,
 		},
@@ -47,8 +47,8 @@ func TestError_IsUnique(t *testing.T) {
 			name: "wrapped-pq-is-unique",
 			in: errors.E(
 				context.TODO(),
-				errors.WithWrap(&pq.Error{
-					Code: pq.ErrorCode("23505"),
+				errors.WithWrap(&pgconn.PgError{
+					Code: "23505",
 				}),
 			),
 			want: true,
@@ -89,15 +89,15 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "postgres-not-check-constraint",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23505"),
+			in: &pgconn.PgError{
+				Code: "23505",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-check-constraint",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23514"),
+			in: &pgconn.PgError{
+				Code: "23514",
 			},
 			want: true,
 		},
@@ -109,8 +109,8 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		{
 			name: "wrapped-pq-is-check-constraint",
 			in: errors.E(context.TODO(), errors.WithCode(errors.CheckConstraint),
-				errors.WithWrap(&pq.Error{
-					Code: pq.ErrorCode("23514"),
+				errors.WithWrap(&pgconn.PgError{
+					Code: "23514",
 				}),
 			),
 			want: true,
@@ -151,22 +151,22 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "postgres-is-unique-not-not-null",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23505"),
+			in: &pgconn.PgError{
+				Code: "23505",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-check-constraint-not-not-null",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23514"),
+			in: &pgconn.PgError{
+				Code: "23514",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-not-null",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23502"),
+			in: &pgconn.PgError{
+				Code: "23502",
 			},
 			want: true,
 		},
@@ -178,8 +178,8 @@ func TestError_IsNotNullError(t *testing.T) {
 		{
 			name: "wrapped-pq-is-not-null",
 			in: errors.E(context.TODO(), errors.WithCode(errors.NotNull),
-				errors.WithWrap(&pq.Error{
-					Code: pq.ErrorCode("23502"),
+				errors.WithWrap(&pgconn.PgError{
+					Code: "23502",
 				}),
 			),
 			want: true,
@@ -219,22 +219,22 @@ func TestError_IsMissingTableError(t *testing.T) {
 		},
 		{
 			name: "postgres-is-unique-not-not-null",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23505"),
+			in: &pgconn.PgError{
+				Code: "23505",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-check-constraint-not-not-null",
-			in: &pq.Error{
-				Code: pq.ErrorCode("23514"),
+			in: &pgconn.PgError{
+				Code: "23514",
 			},
 			want: false,
 		},
 		{
 			name: "postgres-is-missing-table",
-			in: &pq.Error{
-				Code: pq.ErrorCode("42P01"),
+			in: &pgconn.PgError{
+				Code: "42P01",
 			},
 			want: true,
 		},

@@ -11,13 +11,13 @@ insert into credential_vault_token (
   last_renewal_time, -- $6
   expiration_time -- $7
 ) values (
-  $1, -- token_hmac
-  $2, -- token
-  $3, -- store_id
-  $4, -- key_id
-  $5, -- status
-  $6, -- last_renewal_time
-  wt_add_seconds_to_now($7)  -- expiration_time
+  @1, -- token_hmac
+  @2, -- token
+  @3, -- store_id
+  @4, -- key_id
+  @5, -- status
+  @6, -- last_renewal_time
+  wt_add_seconds_to_now(@7)  -- expiration_time
 );
 `
 
@@ -33,15 +33,15 @@ insert into credential_vault_credential (
   last_renewal_time, -- $8
   expiration_time -- $9
 ) values (
-  $1, -- public_id
-  $2, -- library_id
-  $3, -- session_id
-  $4, -- token_hmac
-  $5, -- external_id
-  $6, -- is_renewable
-  $7, -- status
-  $8, -- last_renewal_time
-  wt_add_seconds_to_now($9)  -- expiration_time
+  @public_id, -- public_id
+  @library_id, -- library_id
+  @session_id, -- session_id
+  @token_hmac, -- token_hmac
+  @external_id, -- external_id
+  @is_renewable, -- is_renewable
+  @status, -- status
+  @last_renewal_time, -- last_renewal_time
+  wt_add_seconds_to_now(@expiration_time)  -- expiration_time
 );
 `
 
@@ -57,14 +57,14 @@ insert into credential_vault_credential (
   last_renewal_time, -- $8
   expiration_time -- infinity
 ) values (
-  $1, -- public_id
-  $2, -- library_id
-  $3, -- session_id
-  $4, -- token_hmac
-  $5, -- external_id
-  $6, -- is_renewable
-  $7, -- status
-  $8, -- last_renewal_time
+  @public_id, -- public_id
+  @library_id, -- library_id
+  @session_id, -- session_id
+  @token_hmac, -- token_hmac
+  @external_id, -- external_id
+  @is_renewable, -- is_renewable
+  @status, -- status
+  @last_renewal_time, -- last_renewal_time
   'infinity' -- expiration_time
 );
 `
@@ -73,7 +73,7 @@ insert into credential_vault_credential (
 insert into credential_vault_client_certificate
   (store_id, certificate, certificate_key, certificate_key_hmac, key_id)
 values
-  ($1, $2, $3, $4, $5)
+  (@store_id, @certificate, @certificate_key, @certificate_key_hmac, @key_id)
 on conflict (store_id) do update
   set certificate          = excluded.certificate,
       certificate_key      = excluded.certificate_key,
@@ -84,7 +84,7 @@ returning *;
 
 	deleteClientCertQuery = `
 delete from credential_vault_client_certificate
- where store_id = $1;
+ where store_id = ?;
 `
 
 	selectPrivateLibrariesQuery = `
@@ -95,10 +95,10 @@ select *
 
 	updateSessionCredentialQuery = `
 update session_credential_dynamic
-   set credential_id = $1
- where library_id = $2
-   and session_id = $3
-   and credential_purpose = $4
+   set credential_id = @public_id
+ where library_id = @library_id
+   and session_id = @session_id
+   and credential_purpose = @purpose
    and credential_id is null
 returning *;
 `
@@ -129,7 +129,7 @@ select extract(epoch from (last_renewal_time + (expiration_time - last_renewal_t
 	revokeCredentialsQuery = `
 update credential_vault_credential
    set status = 'revoke'
- where session_id = $1
+ where session_id = ?
    and status = 'active';
 `
 
@@ -166,7 +166,7 @@ update credential_vault_credential
 	softDeleteStoreQuery = `
 update credential_vault_store
    set delete_time = now()
- where public_id = $1
+ where public_id = ?
    and delete_time is null
 returning *;
 `

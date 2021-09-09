@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -128,8 +129,8 @@ func (r *Repository) CloseDeadConnectionsForWorker(ctx context.Context, serverId
 		publicIdStr = `public_id not in (%s) and`
 		params := make([]string, len(foundConns))
 		for i, connId := range foundConns {
-			params[i] = fmt.Sprintf("$%d", i+2) // Add one for server ID, and offsets start at 1
-			args = append(args, connId)
+			params[i] = fmt.Sprintf("@%d", i+2) // Add one for server ID, and offsets start at 1
+			args = append(args, sql.Named(fmt.Sprintf("%d", i+2), connId))
 		}
 		publicIdStr = fmt.Sprintf(publicIdStr, strings.Join(params, ","))
 	}
@@ -224,8 +225,8 @@ func (r *Repository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundCo
 	// foundConns first
 	connsParams := make([]string, len(foundConns))
 	for i, connId := range foundConns {
-		connsParams[i] = fmt.Sprintf("$%d", i+1)
-		args = append(args, connId)
+		connsParams[i] = fmt.Sprintf("@%d", i+1)
+		args = append(args, sql.Named(fmt.Sprintf("%d", i+1), connId))
 	}
 	connsStr := strings.Join(connsParams, ",")
 
@@ -235,8 +236,8 @@ func (r *Repository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundCo
 		offset := len(foundConns) + 1
 		sessionsParams := make([]string, len(filterSessions))
 		for i, sessionId := range filterSessions {
-			sessionsParams[i] = fmt.Sprintf("$%d", i+offset)
-			args = append(args, sessionId)
+			sessionsParams[i] = fmt.Sprintf("@%d", i+offset)
+			args = append(args, sql.Named(fmt.Sprintf("%d", i+offset), sessionId))
 		}
 
 		const sessionIdFmtStr = `and session_id not in (%s)`
