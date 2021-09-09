@@ -44,6 +44,12 @@ func NewHostCatalog(ctx context.Context, pluginId, scopeId string, opt ...Option
 	return hc, nil
 }
 
+func allocHostCatalog() *HostCatalog {
+	return &HostCatalog{
+		HostCatalog: &store.HostCatalog{},
+	}
+}
+
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
 	return &HostCatalog{
