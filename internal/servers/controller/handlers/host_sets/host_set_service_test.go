@@ -151,7 +151,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
-	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hs := plugin.TestSet(t, conn, hc.GetPublicId())
 
 	toMerge := &pbs.GetHostSetRequest{}
@@ -340,8 +340,8 @@ func TestList_Plugin(t *testing.T) {
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
-	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
-	hcNoHosts := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
@@ -700,7 +700,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
-	hc := plugin.TestCatalog(t, conn, plg.GetPublicId(), proj.GetPublicId())
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	testAttrs, err := structpb.NewStruct(map[string]interface{}{
 		"int":         1,
