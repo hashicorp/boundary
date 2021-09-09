@@ -82,7 +82,7 @@ type OnCreateCatalogResponse struct {
 	// Secret data to persist encrypted within Boundary. This should be used to
 	// store authentication data and other necessary configuration to be used in
 	// later hooks and calls. Returning an error from the call will cause this
-	// data to not be persisted. If this is nil, no changes are written.
+	// data to not be persisted. If this is nil, nothing is written.
 	Persisted *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
 }
 
@@ -132,9 +132,9 @@ type OnUpdateCatalogRequest struct {
 
 	// The existing state of the catalog.
 	CurrentCatalog *hostcatalogs.HostCatalog `protobuf:"bytes,10,opt,name=current_catalog,json=currentCatalog,proto3" json:"current_catalog,omitempty"`
-	// The requested new state of the catalog. This field may contain
-	// optional secret data that may have been updated from old
-	// authentication data contained within the persisted state.
+	// The requested new state of the catalog. This field may contain optional
+	// secret data that may have been updated from old authentication data
+	// contained within the persisted state.
 	NewCatalog *hostcatalogs.HostCatalog `protobuf:"bytes,20,opt,name=new_catalog,json=newCatalog,proto3" json:"new_catalog,omitempty"`
 	// The existing persisted secret data.
 	Persisted *HostCatalogPersisted `protobuf:"bytes,30,opt,name=persisted,proto3" json:"persisted,omitempty"`
@@ -198,11 +198,10 @@ type OnUpdateCatalogResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The updated secret data to persist encrypted within Boundary.
-	// It's important that this be returned if it existed previously,
-	// as the returned data overwrites the previously existing copy. If
-	// an error is returned, the update of the persisted data is
-	// aborted. If this is nil, no changes are written.
+	// The updated secret data to persist encrypted within Boundary. If an error
+	// is returned, the update of the persisted data is aborted. If this is nil,
+	// no changes are written. To remove all values, simply return an allocated
+	// but empty map.
 	Persisted *HostCatalogPersisted `protobuf:"bytes,10,opt,name=persisted,proto3" json:"persisted,omitempty"`
 }
 
