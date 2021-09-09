@@ -17,9 +17,9 @@ import (
 )
 
 func TestHostCatalog_Create(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	ctx := context.Background()
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 
@@ -141,7 +141,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewHostCatalog(context.Background(), tt.args.scopeId, tt.args.pluginId, tt.args.opts...)
+			got, err := NewHostCatalog(ctx, tt.args.scopeId, tt.args.pluginId, tt.args.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, got)
 
@@ -155,7 +155,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			got.PublicId = id
 
 			w := db.New(conn)
-			err = w.Create(context.Background(), got)
+			err = w.Create(ctx, got)
 			if tt.wantCreateErr {
 				assert.Error(t, err)
 			} else {
@@ -165,7 +165,7 @@ func TestHostCatalog_Create(t *testing.T) {
 						PublicId: id,
 					},
 				}
-				require.NoError(t, w.LookupById(context.Background(), found))
+				require.NoError(t, w.LookupById(ctx, found))
 				assert.Empty(t, cmp.Diff(got.HostCatalog, found.HostCatalog, protocmp.Transform()), "%q compared to %q", got.Attributes, found.Attributes)
 			}
 		})
@@ -182,7 +182,7 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test1", "prefix1")
 	plg2 := host.TestPlugin(t, conn, "test2", "prefix2")
 
-	got, err := NewHostCatalog(ctx, plg.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
+	got, err := NewHostCatalog(ctx, prj.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	assert.Error(t, w.Create(ctx, got))
 
 	// Can't create another resource with same name in same scope even for different plugin
-	got, err = NewHostCatalog(ctx, plg2.GetPublicId(), prj.GetPublicId(), WithName("duplicate"))
+	got, err = NewHostCatalog(ctx, prj.GetPublicId(), plg2.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId(ctx, plg2.GetIdPrefix())
 	require.NoError(t, err)
