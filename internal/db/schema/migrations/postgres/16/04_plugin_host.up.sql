@@ -40,7 +40,7 @@ begin;
   create table host_plugin_catalog (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint scope_fkey
+      constraint iam_scope_fkey
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
@@ -54,13 +54,15 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null,
+    attributes bytea not null
+      constraint attributes_must_not_be_empty
+      check(length(attributes) > 0),
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
       references host_catalog (scope_id, public_id)
       on delete cascade
       on update cascade,
-    constraint catalog_name_must_be_unique_in_scope
+    constraint host_plugin_catalog_scope_id_name_uq
     unique(scope_id, name)
   );
 
@@ -124,15 +126,17 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null,
-    constraint host_plugin_set_name_must_be_unique_in_catalog
+    attributes bytea not null
+      constraint attributes_must_not_be_empty
+        check(length(attributes) > 0),
+    constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
     foreign key (catalog_id, public_id)
       references host_set (catalog_id, public_id)
       on delete cascade
       on update cascade,
-    constraint public_id_is_unique_in_catalog
+    constraint host_plugin_set_catalog_id_public_id_uq
     unique(catalog_id, public_id)
   );
 

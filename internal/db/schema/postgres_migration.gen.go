@@ -6952,7 +6952,7 @@ alter table wh_host_dimension
     add column scope_id wt_scope_id
       not null
       default 'global'
-      constraint plugin_must_be_in_global
+      constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
         on delete cascade
         on update cascade;
@@ -7045,7 +7045,7 @@ alter table wh_host_dimension
     scope_id wt_scope_id not null
     -- TODO: Allow plugins to be created in different scopes and
     --     constrain the host-catalog's plugin reference accordingly.
-    constraint plugins_must_be_global
+    constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
       on delete cascade
       on update cascade,
@@ -7059,19 +7059,21 @@ alter table wh_host_dimension
         check(length(trim(plugin_name)) > 0)
       constraint plugin_name_must_be_lowercase
         check(lower(trim(plugin_name)) = plugin_name)
-      constraint plugin_name_must_be_unique
+      constraint plugin_host_plugin_name_uq
         unique,
     id_prefix text not null
       constraint plugin_id_prefix_must_be_not_empty
         check(length(trim(id_prefix)) > 0)
       constraint plugin_id_prefix_must_fit_format
         check (id_prefix ~ '^[a-z0-9]*$')
-      constraint plugin_id_prefix_must_be_unique
+      constraint plugin_host_id_prefix_uq
         unique,
+    constraint plugin_fkey
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
       on delete cascade
       on update cascade,
+    constraint plugin_host_scope_id_name_uq
     unique(scope_id, name)
   );
 
@@ -7200,7 +7202,7 @@ alter table wh_host_dimension
   create table host_plugin_catalog (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint scope_fkey
+      constraint iam_scope_fkey
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
@@ -7214,13 +7216,15 @@ alter table wh_host_dimension
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null,
+    attributes bytea not null
+      constraint attributes_must_not_be_empty
+      check(length(attributes) > 0),
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
       references host_catalog (scope_id, public_id)
       on delete cascade
       on update cascade,
-    constraint catalog_name_must_be_unique_in_scope
+    constraint host_plugin_catalog_scope_id_name_uq
     unique(scope_id, name)
   );
 
@@ -7284,15 +7288,17 @@ alter table wh_host_dimension
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null,
-    constraint host_plugin_set_name_must_be_unique_in_catalog
+    attributes bytea not null
+      constraint attributes_must_not_be_empty
+        check(length(attributes) > 0),
+    constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
     foreign key (catalog_id, public_id)
       references host_set (catalog_id, public_id)
       on delete cascade
       on update cascade,
-    constraint public_id_is_unique_in_catalog
+    constraint host_plugin_set_catalog_id_public_id_uq
     unique(catalog_id, public_id)
   );
 

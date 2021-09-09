@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 )
 
+// HostCatalogSecret contains the encrypted secret for a host catalog.
+// It is owned by a HostCatalog.
 type HostCatalogSecret struct {
 	*store.HostCatalogSecret
 	tableName string `gorm:"-"`
@@ -50,7 +52,7 @@ func (c *HostCatalogSecret) SetTableName(n string) {
 }
 
 func (c *HostCatalogSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(HostCatalogSecret).encrypt"
+	const op = "plugin.(HostCatalogSecret).encrypt"
 	if len(c.Secret) == 0 {
 		errors.New(ctx, errors.InvalidParameter, op, "no attributes defined")
 	}
@@ -63,7 +65,7 @@ func (c *HostCatalogSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper
 }
 
 func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(HostCatalogSecret).decrypt"
+	const op = "plugin.(HostCatalogSecret).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.HostCatalogSecret, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
