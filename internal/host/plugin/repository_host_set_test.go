@@ -28,7 +28,7 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
-	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	attrs := []byte("{}")
 
 	tests := []struct {
@@ -159,7 +159,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+		catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
@@ -190,8 +190,8 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, iamRepo)
-		catalogA := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
-		catalogB := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+		catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+		catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
@@ -224,6 +224,7 @@ func TestRepository_CreateSet(t *testing.T) {
 }
 
 func TestRepository_LookupSet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -232,9 +233,9 @@ func TestRepository_LookupSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
 
-	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, catalog.PublicId)
-	hostSetId, err := newHostSetId(plg.GetIdPrefix())
+	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -265,7 +266,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupSet(context.Background(), tt.in)
+			got, err := repo.LookupSet(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -286,8 +287,8 @@ func TestRepository_ListSets(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list", "list")
-	catalogA := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
-	catalogB := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
 		TestSet(t, conn, catalogA.PublicId),
@@ -350,7 +351,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
-	catalog := TestCatalog(t, conn, plg.GetPublicId(), prj.PublicId)
+	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
