@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-// A Repository stores and retrieves the persistent types in the static
+// A Repository stores and retrieves the persistent types in the plugin
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
 	reader db.Reader
