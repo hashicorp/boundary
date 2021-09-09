@@ -17,8 +17,8 @@ type options struct {
 	withName        string
 	withDescription string
 	withLimit       int
-	withAttributes map[string]interface{}
-	withSecrets    map[string]interface{}
+	withAttributes  map[string]interface{}
+	withSecrets     map[string]interface{}
 }
 
 func getDefaultOptions() options {
