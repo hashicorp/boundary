@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -55,7 +56,8 @@ type Controller struct {
 	StaticHostRepoFn      common.StaticRepoFactory
 	TargetRepoFn          common.TargetRepoFactory
 
-	scheduler *scheduler.Scheduler
+	scheduler         *scheduler.Scheduler
+	hostPluginManager *hostplugin.PluginManager
 
 	kms *kms.Kms
 }
@@ -124,6 +126,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, scheduler.WithRunJobsLimit(10))
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
+	}
+	hostPluginRepo, err := hostplugin.NewRepository(dbase, dbase, c.kms)
+	if err != nil {
+		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
+	}
+	c.hostPluginManager, err = hostplugin.NewPluginManager(ctx, hostPluginRepo)
+	if err != nil {
+		return nil, fmt.Errorf("error creating host plugin manager: %w", err)
 	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
 		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))

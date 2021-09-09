@@ -115,4 +115,5 @@ func TestLoadPluginEmbeddedValid(t *testing.T) {
 	client, err := manager.LoadPlugin(context.Background(), plugin.PublicId)
 	require.NoError(err)
 	require.NotNil(client)
+	require.Contains(manager.clients, "testing")
 }

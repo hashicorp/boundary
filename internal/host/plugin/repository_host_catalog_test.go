@@ -23,7 +23,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	plg := hostplg.TestPlugin(t, conn, "testing", "testing")
 
 	tests := []struct {
 		name       string
@@ -78,14 +78,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 		},
@@ -98,7 +98,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte("{}"),
 				},
 			},
-			wantIsErr: errors.InvalidParameter,
+			wantIsErr: errors.RecordNotFound,
 		},
 		{
 			name: "valid-with-name",
@@ -107,7 +107,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Name:       "test-name-repo",
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 			want: &HostCatalog{
@@ -115,7 +115,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Name:       "test-name-repo",
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 		},
@@ -126,7 +126,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 			want: &HostCatalog{
@@ -134,7 +134,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
 		},
@@ -145,12 +145,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 				secrets: map[string]interface{}{
-					"k1": "v1",
-					"k2": 2,
-					"k3": nil,
+					"secret": "A485613C-2C28-432E-965C-7F3707E6818E",
 				},
 			},
 			want: &HostCatalog{
@@ -158,10 +156,35 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte(`{"foo":"bar","type":"catalog"}`),
 				},
 			},
-			wantSecret: []byte(`{"k1":"v1","k2":2,"k3":null}`),
+			wantSecret: []byte(`{"secret":"A485613C-2C28-432E-965C-7F3707E6818E"}`),
+		},
+		{
+			name: "valid-plugin-error-bad-attributes",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					Attributes: []byte(`{"bad":"data"}`),
+				},
+			},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "valid-plugin-error-bad-secret",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
+				},
+				secrets: map[string]interface{}{
+					"bad": "nope",
+				},
+			},
+			wantIsErr: errors.InvalidParameter,
 		},
 	}
 
@@ -170,10 +193,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
+			hostPluginRepo, err := hostplg.NewRepository(rw, rw, kmsCache)
+			assert.NoError(err)
+			assert.NotNil(hostPluginRepo)
+			hostPluginManager, err := hostplg.NewPluginManager(ctx, hostPluginRepo)
+			assert.NoError(err)
+			assert.NotNil(hostPluginManager)
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			got, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
+			got, err := repo.CreateCatalog(ctx, tt.in, hostPluginManager, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -212,6 +241,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		hostPluginRepo, err := hostplg.NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		assert.NotNil(hostPluginRepo)
+		hostPluginManager, err := hostplg.NewPluginManager(ctx, hostPluginRepo)
+		assert.NoError(err)
+		assert.NotNil(hostPluginManager)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -221,11 +256,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				ScopeId:    prj.GetPublicId(),
 				Name:       "test-name-repo",
 				PluginId:   plg.GetPublicId(),
-				Attributes: []byte("{}"),
+				Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 			},
 		}
 
-		got, err := repo.CreateCatalog(context.Background(), in)
+		got, err := repo.CreateCatalog(context.Background(), in, hostPluginManager)
 		assert.NoError(err)
 		assert.NotNil(got)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
@@ -234,7 +269,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateCatalog(context.Background(), in)
+		got2, err := repo.CreateCatalog(context.Background(), in, hostPluginManager)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
@@ -242,6 +277,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		hostPluginRepo, err := hostplg.NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		assert.NotNil(hostPluginRepo)
+		hostPluginManager, err := hostplg.NewPluginManager(ctx, hostPluginRepo)
+		assert.NoError(err)
+		assert.NotNil(hostPluginManager)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -250,13 +291,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			HostCatalog: &store.HostCatalog{
 				Name:       "test-name-repo",
 				PluginId:   plg.GetPublicId(),
-				Attributes: []byte("{}"),
+				Attributes: []byte(`{"foo":"bar","type":"catalog"}`),
 			},
 		}
 		in2 := in.clone()
 
 		in.ScopeId = prj.GetPublicId()
-		got, err := repo.CreateCatalog(context.Background(), in)
+		got, err := repo.CreateCatalog(context.Background(), in, hostPluginManager)
 		assert.NoError(err)
 		assert.NotNil(got)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
@@ -266,7 +307,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.ScopeId = org.GetPublicId()
-		got2, err := repo.CreateCatalog(context.Background(), in2)
+		got2, err := repo.CreateCatalog(context.Background(), in2, hostPluginManager)
 		assert.NoError(err)
 		assert.NotNil(got2)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got2.PublicId)
@@ -346,6 +387,88 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_LookupCatalogByNameAndScope(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId(), WithName("test"))
+
+	tests := []struct {
+		name       string
+		nameParam  string
+		scopeParam string
+		want       *HostCatalog
+		wantErr    errors.Code
+	}{
+		{
+			name:       "found",
+			nameParam:  cat.GetName(),
+			scopeParam: cat.GetScopeId(),
+			want:       cat,
+		},
+		{
+			name:       "not-found-name",
+			nameParam:  "nope",
+			scopeParam: cat.GetScopeId(),
+			want:       nil,
+		},
+		{
+			name:       "not-found-scope",
+			nameParam:  cat.GetName(),
+			scopeParam: "nope",
+			want:       nil,
+		},
+		{
+			name:       "missing-scope-id",
+			scopeParam: "",
+			wantErr:    errors.InvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			got, err := repo.LookupCatalogByNameAndScope(ctx, tt.nameParam, tt.scopeParam)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+
+			switch {
+			case tt.want == nil:
+				assert.Nil(got)
+			case tt.want != nil:
+				assert.NotNil(got)
+				assert.Equal(got, tt.want)
+			}
+		})
+	}
+
+	t.Run("blank-name-allowed", func(t *testing.T) {
+		assert := assert.New(t)
+		noNameCat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		got, err := repo.LookupCatalogByNameAndScope(ctx, "", noNameCat.GetScopeId())
+		assert.NoError(err)
+		assert.NotNil(got)
+		assert.Equal(noNameCat, got)
+	})
 }
 
 func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {

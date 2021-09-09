@@ -19,7 +19,8 @@ var embeddedPluginClients = map[string]func() plugin.HostPluginServiceClient{
 
 // PluginManager is a helper for loading and managing host plugins.
 type PluginManager struct {
-	repo *Repository
+	repo    *Repository
+	clients map[string]plugin.HostPluginServiceClient
 }
 
 // NewPluginManager takes in a repo and returns a PluginManager.
@@ -39,34 +40,41 @@ func NewPluginManager(ctx context.Context, repo *Repository, _ ...Option) (*Plug
 // necessary, and returning the client for the particular plugin.
 //
 // TODO: This feature is under heavy development.
-func (m *PluginManager) LoadPlugin(ctx context.Context, id string) (plugin.HostPluginServiceClient, error) {
+func (m *PluginManager) LoadPlugin(ctx context.Context, id string) (plugin.HostPluginServiceClient, string, error) {
 	const op = "host.(PluginManager).LoadPlugin"
 	if id == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
+		return nil, "", errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
 
 	// Attempt to look up the plugin in the database.
 	plugin, err := m.repo.LookupPlugin(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("plugin lookup failed"))
+		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("plugin lookup failed"))
 	}
 
 	if plugin == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("could not find plugin for id %q", id))
+		return nil, "", errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("could not find plugin for id %q", id))
 	}
 
-	// This is a shim to embedded instantiation of the plugin client.
-	// We currently use a static list of plugins which link directly to
-	// the list of built-in plugins. TODO: replace this with the
-	// full-on go-plugin launcher once it is ready.
-	clientFunc, ok := embeddedPluginClients[plugin.PluginName]
+	// Check to see if the plugin has already been started. If not,
+	// start it.
+	client, ok := m.clients[plugin.PluginName]
 	if !ok {
-		// TODO: We may need a new error class for plugin management.
-		// Lookup errors here and other instantiation errors after this
-		// could be indicative of deeper system errors, ie: installation
-		// errors, execution errors, etc.
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin with name %q is not an embedded plugin", plugin.PluginName))
+		// This is a shim to embedded instantiation of the plugin client.
+		// We currently use a static list of plugins which link directly to
+		// the list of built-in plugins. TODO: replace this with the
+		// full-on go-plugin launcher once it is ready.
+		clientFunc, ok := embeddedPluginClients[plugin.PluginName]
+		if !ok {
+			// TODO: We may need a new error class for plugin management.
+			// Lookup errors here and other instantiation errors after this
+			// could be indicative of deeper system errors, ie: installation
+			// errors, execution errors, etc.
+			return nil, "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin with name %q is not an embedded plugin", plugin.PluginName))
+		}
+
+		client = clientFunc()
 	}
 
-	return clientFunc(), nil
+	return client, "", nil
 }

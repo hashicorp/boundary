@@ -43,13 +43,18 @@ var testExpectedSetAttributesNew = map[string]interface{}{
 	"foo":  "baz",
 }
 
+// testExpectedCatalogSecret is the expected catalog secret that will toggle
+// secret data to be returned by OnCreateCatalog. If present in the request the
+// secret needs match this value.
+var testExpectedCatalogSecret = map[string]interface{}{
+	"secret": "A485613C-2C28-432E-965C-7F3707E6818E",
+}
+
 // testExpectedPersisted is the expected persisted data for functions
 // that take persisted data pre-update. See
 // testExpectedPersistedNew for data that's expected to be sent
 // back on update and should be expected post-update.
-var testExpectedPersisted = map[string]interface{}{
-	"secret": "A485613C-2C28-432E-965C-7F3707E6818E",
-}
+var testExpectedPersisted = testExpectedCatalogSecret
 
 // testExpectedPersistedNew is the expected persisted data
 // post-update.
@@ -91,15 +96,25 @@ func (p *TestHostPlugin) OnCreateCatalog(ctx context.Context, in *plugin.OnCreat
 	}
 
 	attrsMap := attrs.AsMap()
-	if diff := cmp.Diff(attrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, attrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
-	return &plugin.OnCreateCatalogResponse{
-		Persisted: &plugin.HostCatalogPersisted{
+	result := new(plugin.OnCreateCatalogResponse)
+
+	secrets := cat.GetSecrets()
+	if secrets != nil && len(secrets.AsMap()) != 0 {
+		secretsMap := secrets.AsMap()
+		if diff := cmp.Diff(testExpectedCatalogSecret, secretsMap); diff != "" {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
+		}
+
+		result.Persisted = &plugin.HostCatalogPersisted{
 			Data: mapAsStruct(testExpectedPersisted),
-		},
-	}, nil
+		}
+	}
+
+	return result, nil
 }
 
 // OnUpdateCatalog implements HostPluginServiceClient for TestHostPlugin.
@@ -136,17 +151,17 @@ func (p *TestHostPlugin) OnUpdateCatalog(ctx context.Context, in *plugin.OnUpdat
 	}
 
 	currAttrsMap := currAttrs.AsMap()
-	if diff := cmp.Diff(currAttrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, currAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	newAttrsMap := newAttrs.AsMap()
-	if diff := cmp.Diff(newAttrsMap, testExpectedCatalogAttributesNew); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributesNew, newAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersisted); diff != "" {
+	if diff := cmp.Diff(testExpectedPersisted, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
@@ -181,12 +196,12 @@ func (p *TestHostPlugin) OnDeleteCatalog(ctx context.Context, in *plugin.OnDelet
 	}
 
 	attrsMap := attrs.AsMap()
-	if diff := cmp.Diff(attrsMap, testExpectedCatalogAttributesNew); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributesNew, attrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersistedNew); diff != "" {
+	if diff := cmp.Diff(testExpectedPersistedNew, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
@@ -227,17 +242,17 @@ func (p *TestHostPlugin) OnCreateSet(ctx context.Context, in *plugin.OnCreateSet
 	}
 
 	catAttrsMap := catAttrs.AsMap()
-	if diff := cmp.Diff(catAttrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, catAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	setAttrsMap := setAttrs.AsMap()
-	if diff := cmp.Diff(setAttrsMap, testExpectedSetAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedSetAttributes, setAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersisted); diff != "" {
+	if diff := cmp.Diff(testExpectedPersisted, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
@@ -288,22 +303,22 @@ func (p *TestHostPlugin) OnUpdateSet(ctx context.Context, in *plugin.OnUpdateSet
 	}
 
 	catAttrsMap := catAttrs.AsMap()
-	if diff := cmp.Diff(catAttrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, catAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	currSetAttrsMap := currSetAttrs.AsMap()
-	if diff := cmp.Diff(currSetAttrsMap, testExpectedSetAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedSetAttributes, currSetAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	newSetAttrsMap := newSetAttrs.AsMap()
-	if diff := cmp.Diff(newSetAttrsMap, testExpectedSetAttributesNew); diff != "" {
+	if diff := cmp.Diff(testExpectedSetAttributesNew, newSetAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersisted); diff != "" {
+	if diff := cmp.Diff(testExpectedPersisted, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
@@ -344,17 +359,17 @@ func (p *TestHostPlugin) OnDeleteSet(ctx context.Context, in *plugin.OnDeleteSet
 	}
 
 	catAttrsMap := catAttrs.AsMap()
-	if diff := cmp.Diff(catAttrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, catAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	setAttrsMap := setAttrs.AsMap()
-	if diff := cmp.Diff(setAttrsMap, testExpectedSetAttributesNew); diff != "" {
+	if diff := cmp.Diff(testExpectedSetAttributesNew, setAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersisted); diff != "" {
+	if diff := cmp.Diff(testExpectedPersisted, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
@@ -404,17 +419,17 @@ func (p *TestHostPlugin) ListHosts(ctx context.Context, in *plugin.ListHostsRequ
 	}
 
 	catAttrsMap := catAttrs.AsMap()
-	if diff := cmp.Diff(catAttrsMap, testExpectedCatalogAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedCatalogAttributes, catAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	setAttrsMap := setAttrs.AsMap()
-	if diff := cmp.Diff(setAttrsMap, testExpectedSetAttributes); diff != "" {
+	if diff := cmp.Diff(testExpectedSetAttributes, setAttrsMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
 	persistedDataMap := persistedData.AsMap()
-	if diff := cmp.Diff(persistedDataMap, testExpectedPersisted); diff != "" {
+	if diff := cmp.Diff(testExpectedPersisted, persistedDataMap); diff != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, diff)
 	}
 
