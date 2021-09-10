@@ -7,7 +7,7 @@ version: 2
 jobs:
   test-sql-13-alpine:
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-2004:202107-02
     steps:
     - checkout
     - run:
@@ -249,7 +249,7 @@ jobs:
         - .buildcache/packages/store
   test-sql-11-alpine:
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-2004:202107-02
     steps:
     - checkout
     - run:
@@ -887,7 +887,7 @@ jobs:
         - .buildcache/packages/store
   test-sql-12-alpine:
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-2004:202107-02
     steps:
     - checkout
     - run:
@@ -969,14 +969,26 @@ jobs:
         - .buildcache/packages/store
   build:
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-2004:202107-02
+    resource_class: large
     steps:
     - checkout
+    - run:
+        command: |
+          which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
+          make DOCKER_ARGS='-d' -C testing/dbtest/docker database-up
+          until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit -1; sleep 1; done
+        name: Initialize Test Database
     - run:
         command: |
           make test-ci
         name: Run Acceptance Tests
         no_output_timeout: 15m
+    - run:
+        command: |
+          make -C testing/dbtest/docker clean
+        name: Cleanup
+        when: always
     - run:
         command: |
           echo 'export SLACK_BUILD_STATUS="fail"' >> $BASH_ENV
@@ -1467,7 +1479,7 @@ jobs:
         - .buildcache/packages/store
   test-sql-latest:
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-2004:202107-02
     steps:
     - checkout
     - run:

@@ -160,14 +160,20 @@ website-install:
 website-start:
 	@npm start --prefix website/
 
+test-database-up:
+	make -C testing/dbtest/docker database-up
+
+test-database-down:
+	make -C testing/dbtest/docker clean
+
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
-test: 
-	~/.go/bin/go test ./... -timeout 30m
+test:
+	go test ./... -timeout 30m
 
 install-go:
 	./ci/goinstall.sh
@@ -210,7 +216,7 @@ docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
+.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
 
 .NOTPARALLEL:
 
