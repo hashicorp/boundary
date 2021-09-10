@@ -18,7 +18,7 @@ func Test_AuthMethodSubtypes(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres", db.WithTemplate("template1"))
 	rw := db.New(conn)
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)

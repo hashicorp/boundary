@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/docker"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMigrateStore(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -45,10 +45,10 @@ func TestMigrateStore(t *testing.T) {
 
 func Test_MigrateStore_WithMigrationStates(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())

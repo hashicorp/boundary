@@ -1,0 +1,6 @@
+FROM postgres:13-alpine
+
+ADD init-db.sh /docker-entrypoint-initdb.d/00-init-db.sh
+ADD postgresql.conf /etc/postgresql/postgresql.conf
+
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]

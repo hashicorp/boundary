@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,10 +30,10 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		//
 		// 4) asserting some bits about the state of the db.
 		assert, require := assert.New(t), require.New(t)
-		dialect := "postgres"
+		dialect := dbtest.Postgres
 		ctx := context.Background()
 
-		c, u, _, err := docker.StartDbInDocker(dialect)
+		c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 		require.NoError(err)
 		t.Cleanup(func() {
 			require.NoError(c())
