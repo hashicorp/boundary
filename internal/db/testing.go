@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/jinzhu/gorm"
@@ -30,7 +31,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 
 	switch opts.withTestDatabaseUrl {
 	case "":
-		cleanup, url, _, err = StartDbInDocker(dialect)
+		cleanup, url, _, err = dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(opts.withTemplate))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,6 +173,7 @@ type testOptions struct {
 	withOperation         oplog.OpType
 	withTestDatabaseUrl   string
 	withResourcePrivateId bool
+	withTemplate          string
 }
 
 func getDefaultTestOptions() testOptions {
@@ -209,5 +211,13 @@ func WithTestDatabaseUrl(url string) TestOption {
 func WithResourcePrivateId(enable bool) TestOption {
 	return func(o *testOptions) {
 		o.withResourcePrivateId = enable
+	}
+}
+
+// WithTemplate provides a way to specify the source database template for creating
+// a database.
+func WithTemplate(template string) TestOption {
+	return func(o *testOptions) {
+		o.withTemplate = template
 	}
 }

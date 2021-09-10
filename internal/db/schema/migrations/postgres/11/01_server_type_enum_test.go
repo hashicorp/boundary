@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,10 +40,10 @@ func Test_ServerEnumChanges(t *testing.T) {
 	require := require.New(t)
 	const priorMigration = 10007
 	const serverEnumMigration = 11001
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 	ctx := context.Background()
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())

@@ -7,7 +7,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jinzhu/gorm"
@@ -22,8 +21,6 @@ var (
 func init() {
 	pq.EnableInfinityTs(NegativeInfinityTS, PositiveInfinityTS)
 }
-
-var StartDbInDocker = docker.StartDbInDocker
 
 type DbType int
 
