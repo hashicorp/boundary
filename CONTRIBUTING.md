@@ -70,7 +70,40 @@ Any bug fixes fall into this section.
 
 ## Testing
 
-To run the entire test suite run this command in the root of the project:
+Most tests require a postgres database instance to successfully run.
+This is provided via docker
+by running a customized postgres image that is optimized for boundary tests.
+
+Before running the test suite, this docker container must be started:
+
+```
+$ make test-database-up
+```
+
+This can take a few seconds to initialize as it will
+create a template database with the boundary migrations.
+The progress can be checked b running:
+
+```
+$ docker logs -f boundary-sql-tests
+```
+
+Once a log line like the following is seen, the container is ready for running
+tests:
+
+```
+PostgreSQL init process complete; ready for start up.
+```
+
+Alternatively if the `pg_isready` command is installed, it can be used to
+determine if the container is ready, i.e.:
+
+```
+$ until pg_isready -h 127.0.0.1; do sleep 1; done
+```
+
+To run the entire test suite run this command in the root of the project
+once the test database is ready:
 
 ```
 $ make test
@@ -88,3 +121,65 @@ run:
 ```
 $ go test -run TestAuthTokenAuthenticator -v ./internal/auth
 ```
+
+### Stopping the test database container
+
+The test database container can be shutdown using:
+
+```
+$ make test-database-down
+```
+
+Note that the container does *not* need to be shutdown between each run of
+`make test` or `go test`.
+
+### Test database container options
+
+By default the container uses the host port of 5432.
+This can changed using an environment variable:
+
+```
+$ export TEST_DB_PORT=5433
+$ make test-database-up
+$ make test
+```
+
+The default docker image is built using the `postgres:11` base image.
+The image can be changed using a make option to test against other versions:
+
+```
+$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:12-alpine test-database-up
+$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:13-alpine test-database-up
+$ make IMAGE_TAG=docker.io/hashicorpboundary/postgres:alpine test-database-up
+```
+
+Additional options can be passed to postgres to customize and override the
+configuration in the config file of the docker image.
+See the troubleshooting section below for more details.
+
+### Troubleshooting test database container
+
+The postgres configuration file included in the image
+is optimized to support running the full test suite in parallel in CI.
+As such, there may be issues starting the container locally,
+especially in cases where the container has less then 4GB of memory.
+
+This is likely the case if the output of `docker logs boundary-sql-tests` shows:
+
+```
+pg_ctl: could not start server
+```
+
+In this case adjust the
+[max_connections](https://www.postgresql.org/docs/11/runtime-config-connection.html#GUC-MAX-CONNECTIONS)
+and/or
+[shared_buffers](https://www.postgresql.org/docs/11/runtime-config-resource.html#GUC-SHARED-BUFFERS):
+
+```
+make PG_OPTS="-c max_connections=1000" test-database-up
+```
+
+Note that if `max_connections` is set too low, it may result in sporadic test
+failures if a connection cannot be established. In this case, reduce the number
+of concurrent tests via `GOMAXPROCS` or selectively run tests.
+

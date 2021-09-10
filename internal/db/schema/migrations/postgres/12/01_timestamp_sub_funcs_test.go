@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,9 +34,9 @@ func testSetupDb(ctx context.Context, t *testing.T) *sql.DB {
 	t.Helper()
 	require := require.New(t)
 
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())
