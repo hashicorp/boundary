@@ -3,12 +3,13 @@ package db
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOpen(t *testing.T) {
-	cleanup, url, _, err := StartDbInDocker("postgres")
+	cleanup, url, _, err := dbtest.StartUsingTemplate(dbtest.Postgres)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,12 +9,12 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -30,9 +30,9 @@ func TestMigrations_UserDimension(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())

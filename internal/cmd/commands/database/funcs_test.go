@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 
 func TestMigrateDatabase(t *testing.T) {
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
 	cases := []struct {
 		name           string
@@ -29,7 +29,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "not_initialized_expected_not_intialized",
 			initialized: false,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -43,7 +43,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "basic_initialized_expects_initialized",
 			initialized: true,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -69,7 +69,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "basic_initialized_expects_not_initialized",
 			initialized: false,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -95,7 +95,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "old_version_table_used_intialized",
 			initialized: true,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -115,7 +115,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "old_version_table_used_not_intialized",
 			initialized: false,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -149,7 +149,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "cant_get_lock_initialized",
 			initialized: true,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -172,7 +172,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:        "cant_get_lock_not_initialized",
 			initialized: false,
 			urlProvider: func() string {
-				c, u, _, err := db.StartDbInDocker(dialect)
+				c, u, _, err := dbtest.StartUsingTemplate(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -210,7 +210,7 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
-	c, u, _, err := db.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
