@@ -25,6 +25,11 @@ const (
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
+	// NOTE: When adding a new type, be sure to update:
+	//
+	// * The Grant.validateType function and test
+	// * The perms.topLevelTypes function
+	// * The scopes service collection actions for appropriate scopes
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {

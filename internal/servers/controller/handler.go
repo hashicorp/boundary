@@ -92,7 +92,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
 	}
-	hss, err := host_sets.NewService(c.StaticHostRepoFn)
+	hss, err := host_sets.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host set handler service: %w", err)
 	}
