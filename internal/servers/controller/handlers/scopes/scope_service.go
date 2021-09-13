@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
@@ -76,10 +77,11 @@ var (
 		},
 
 		scope.Project.String(): {
-			resource.Group:       groups.CollectionActions,
-			resource.HostCatalog: host_catalogs.CollectionActions,
-			resource.Role:        roles.CollectionActions,
-			resource.Target:      targets.CollectionActions,
+			resource.CredentialStore: credentialstores.CollectionActions,
+			resource.Group:           groups.CollectionActions,
+			resource.HostCatalog:     host_catalogs.CollectionActions,
+			resource.Role:            roles.CollectionActions,
+			resource.Target:          targets.CollectionActions,
 		},
 	}
 )
