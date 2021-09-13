@@ -67,7 +67,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 			cmd.Server.DevTargetId = defaultTestTargetId
 		}
 
-		err = cmd.CreateDevDatabase(cmd.Context, base.WithContainerImage("postgres"), base.WithSkipOidcAuthMethodCreation())
+		err = cmd.CreateDevDatabase(cmd.Context, base.WithDatabaseTemplate("boundary_template"), base.WithSkipOidcAuthMethodCreation())
 		if err != nil {
 			if cmd.DevDatabaseCleanupFunc != nil {
 				require.NoError(cmd.DevDatabaseCleanupFunc())

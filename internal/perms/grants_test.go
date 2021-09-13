@@ -107,35 +107,14 @@ func Test_ActionParsingValidation(t *testing.T) {
 
 func Test_ValidateType(t *testing.T) {
 	t.Parallel()
-
-	type input struct {
-		name      string
-		input     Grant
-		errResult string
-	}
-
-	tests := []input{
-		{
-			name: "no specifier",
-		},
-		{
-			name: "valid specifier",
-			input: Grant{
-				typ: resource.HostCatalog,
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			err := test.input.validateType()
-			if test.errResult == "" {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				assert.Equal(t, test.errResult, err.Error())
-			}
-		})
+	var g Grant
+	for i := resource.Unknown; i <= resource.CredentialLibrary; i++ {
+		g.typ = i
+		if i == resource.Controller || i == resource.Worker {
+			assert.Error(t, g.validateType())
+		} else {
+			assert.NoError(t, g.validateType())
+		}
 	}
 }
 

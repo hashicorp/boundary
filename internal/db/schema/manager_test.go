@@ -8,16 +8,16 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewManager(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -37,18 +37,15 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestCurrentState(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	t.Cleanup(func() {
 		if err := c(); err != nil {
 			t.Fatalf("Got error at cleanup: %v", err)
 		}
 	})
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, c())
-	})
 	ctx := context.Background()
 	d, err := sql.Open(dialect, u)
 	require.NoError(t, err)
@@ -79,9 +76,9 @@ func TestCurrentState(t *testing.T) {
 }
 
 func TestRollForward(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -104,13 +101,13 @@ func TestRollForward(t *testing.T) {
 }
 
 func TestRollForward_NotFromFresh(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 	oState := migrationStates[dialect]
 
 	nState := createPartialMigrationState(oState, 8)
 	migrationStates[dialect] = nState
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -142,9 +139,9 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 }
 
 func TestRunMigration_canceledContext(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -163,7 +160,7 @@ func TestRunMigration_canceledContext(t *testing.T) {
 }
 
 func TestRollForward_BadSQL(t *testing.T) {
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 	oState := migrationStates[dialect]
 	defer func() { migrationStates[dialect] = oState }()
 
@@ -172,7 +169,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 	nState.upMigrations[10] = []byte("SELECT 1 FROM NonExistantTable;")
 	migrationStates[dialect] = nState
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -194,9 +191,9 @@ func TestRollForward_BadSQL(t *testing.T) {
 
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -219,9 +216,9 @@ func TestManager_ExclusiveLock(t *testing.T) {
 
 func TestManager_SharedLock(t *testing.T) {
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -248,9 +245,9 @@ func TestManager_SharedLock(t *testing.T) {
 func Test_GetMigrationLog(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

@@ -38,7 +38,7 @@ func TestMigration(t *testing.T) {
 		selectQuery = `select session_id, server_id from session_connection_testing order by session_id`
 	)
 
-	conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres", db.WithTemplate("template1"))
 	db, err := conn.DB()
 	require.NoError(err)
 	_, err = db.Exec(createTables)

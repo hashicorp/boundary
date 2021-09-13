@@ -5,15 +5,12 @@ import (
 	stderrors "errors"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-var StartDbInDocker = docker.StartDbInDocker
 
 type DbType int
 

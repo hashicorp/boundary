@@ -146,6 +146,12 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"credential-stores": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"groups": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
