@@ -18,9 +18,11 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -979,6 +981,10 @@ func TestAddTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	addCases := []struct {
 		name           string
 		tar            *target.TcpTarget
@@ -1002,6 +1008,18 @@ func TestAddTargetHostSets(t *testing.T) {
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+		{
+			name:           "Add plugin set on empty target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			addHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:           "Add plugin set on populated target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			addHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
 	}
 
@@ -1095,6 +1113,10 @@ func TestSetTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	setCases := []struct {
 		name           string
 		tar            *target.TcpTarget
@@ -1124,6 +1146,18 @@ func TestSetTargetHostSets(t *testing.T) {
 			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{},
 			resultHostSets: nil,
+		},
+		{
+			name:           "Set plugin set on empty target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			setHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:           "Set plugin set on populated target",
+			tar:            target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			setHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
 		},
 	}
 	for _, tc := range setCases {
@@ -1205,6 +1239,10 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	removeCases := []struct {
 		name        string
 		tar         *target.TcpTarget
@@ -1235,6 +1273,12 @@ func TestRemoveTargetHostSets(t *testing.T) {
 			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 			resultHosts: []string{},
+		},
+		{
+			name:        "Remove 1 plugin of 2 sets",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			removeHosts: []string{pluginHs.GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId()},
 		},
 	}
 
@@ -1333,6 +1377,10 @@ func TestAddTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	addCases := []struct {
 		name              string
 		tar               *target.TcpTarget
@@ -1356,6 +1404,18 @@ func TestAddTargetHostSources(t *testing.T) {
 			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+		{
+			name:              "Add plugin set on empty target",
+			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			addHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:              "Add plugin set on populated target",
+			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			addHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
 	}
 
@@ -1449,6 +1509,10 @@ func TestSetTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	setCases := []struct {
 		name              string
 		tar               *target.TcpTarget
@@ -1466,6 +1530,12 @@ func TestSetTargetHostSources(t *testing.T) {
 			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:              "Set plugin set on populated target",
+			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			setHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Set duplicate host set on populated target",
@@ -1559,6 +1629,10 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	plg := host.TestPlugin(t, conn, "test", "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+
 	removeCases := []struct {
 		name              string
 		tar               *target.TcpTarget
@@ -1576,6 +1650,12 @@ func TestRemoveTargetHostSources(t *testing.T) {
 			name:              "Remove 1 of 2 sets",
 			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId()},
+			resultHostSources: []string{hs[0].GetPublicId()},
+		},
+		{
+			name:              "Remove 1 plugin set of 2 sets",
+			tar:               target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			removeHostSources: []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
