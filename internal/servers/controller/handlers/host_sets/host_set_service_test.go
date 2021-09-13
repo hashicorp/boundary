@@ -157,13 +157,14 @@ func TestGet_Plugin(t *testing.T) {
 	toMerge := &pbs.GetHostSetRequest{}
 
 	pHost := &pb.HostSet{
-		HostCatalogId:     hc.GetPublicId(),
-		Id:                hs.GetPublicId(),
-		CreatedTime:       hs.CreateTime.GetTimestamp(),
-		UpdatedTime:       hs.UpdateTime.GetTimestamp(),
-		Type:              name,
-		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		AuthorizedActions: testAuthorizedActions,
+		HostCatalogId:      hc.GetPublicId(),
+		Id:                 hs.GetPublicId(),
+		CreatedTime:        hs.CreateTime.GetTimestamp(),
+		UpdatedTime:        hs.UpdateTime.GetTimestamp(),
+		Type:               name,
+		Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+		AuthorizedActions:  testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -771,6 +772,28 @@ func TestCreate_Plugin(t *testing.T) {
 					Type:              name,
 					AuthorizedActions: testAuthorizedActions,
 					Attributes:        testAttrs,
+				},
+			},
+		},
+		{
+			name: "With Preferred Endpoints",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId:      hc.GetPublicId(),
+				Name:               &wrappers.StringValue{Value: "name"},
+				Description:        &wrappers.StringValue{Value: "desc"},
+				Type:               name,
+				PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+			}},
+			res: &pbs.CreateHostSetResponse{
+				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Item: &pb.HostSet{
+					HostCatalogId:      hc.GetPublicId(),
+					Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:               &wrappers.StringValue{Value: "name"},
+					Description:        &wrappers.StringValue{Value: "desc"},
+					Type:               name,
+					PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+					AuthorizedActions:  testAuthorizedActions,
 				},
 			},
 		},

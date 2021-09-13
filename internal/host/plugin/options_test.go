@@ -26,4 +26,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 5
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPreferredEndpoints", func(t *testing.T) {
+		opts := getOpts(WithPreferredEndpoints([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withPreferredEndpoints = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
 }

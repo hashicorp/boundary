@@ -43,6 +43,10 @@ message HostSet {
 	// Output only. A list of Hosts in this Host Set.
 	repeated string host_ids = 100 [json_name="host_ids"];
 
+	// An ordered list of endpoint preferences used to choose from among
+	// multiple possible endpoints for a host.
+	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true];
+
 	// The attributes that are applicable for the specific Host Set type.
 	google.protobuf.Struct attributes = 110;
 

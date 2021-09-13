@@ -14,11 +14,12 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
-	withAttributes  map[string]interface{}
-	withSecrets     map[string]interface{}
+	withName               string
+	withDescription        string
+	withLimit              int
+	withAttributes         map[string]interface{}
+	withSecrets            map[string]interface{}
+	withPreferredEndpoints []string
 }
 
 func getDefaultOptions() options {
@@ -54,6 +55,13 @@ func WithAttributes(attrs map[string]interface{}) Option {
 func WithSecrets(secrets map[string]interface{}) Option {
 	return func(o *options) {
 		o.withSecrets = secrets
+	}
+}
+
+// WithPreferredEndpoints provides an optional preferred endpoints field.
+func WithPreferredEndpoints(with []string) Option {
+	return func(o *options) {
+		o.withPreferredEndpoints = with
 	}
 }
 

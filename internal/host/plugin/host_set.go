@@ -16,17 +16,18 @@ type HostSet struct {
 	tableName string `gorm:"-"`
 }
 
-// NewHostSet creates a new in memory HostSet assigned to catalogId.
-// Attributes, name, and description are the only valid options. All other
-// options are ignored.
+// NewHostSet creates a new in memory HostSet assigned to catalogId. Attributes,
+// name, description, and preferred endpoints are the only valid options. All
+// other options are ignored.
 func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet, error) {
 	const op = "plugin.NewHostSet"
 	opts := getOpts(opt...)
 	set := &HostSet{
 		HostSet: &store.HostSet{
-			CatalogId:   catalogId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			CatalogId:          catalogId,
+			Name:               opts.withName,
+			Description:        opts.withDescription,
+			PreferredEndpoints: opts.withPreferredEndpoints,
 		},
 	}
 
