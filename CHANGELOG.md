@@ -4,8 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.6.0 (2021/09/03)
+### Bug Fixes
 
+* grants: Fix issue where `credential-store`, `credential-library`, and
+  `managed-group` would not be accepted as specific `type` values in grant
+  strings. Also, fix authorized actions not showing `credential-store` values in
+  project scope output. ([PR](https://github.com/hashicorp/boundary/pull/1524))
+
+## 0.6.0 (2021/09/03)
 
 ### New and Improved
 
@@ -25,7 +31,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/1474))
 * targets: Fix panic when using `boundary targets authorize-session`
   ([issue](https://github.com/hashicorp/boundary/issues/1488),
-  [PR](https://github.com/hashicorp/boundary/pull/1496)).
+  [PR](https://github.com/hashicorp/boundary/pull/1496))
 
 ## 0.5.1 (2021/08/16)
 
