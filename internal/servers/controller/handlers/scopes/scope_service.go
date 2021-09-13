@@ -62,7 +62,6 @@ var (
 			resource.Group:      groups.CollectionActions,
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
-			resource.Session:    sessions.CollectionActions,
 			resource.User:       users.CollectionActions,
 		},
 
@@ -72,7 +71,6 @@ var (
 			resource.Group:      groups.CollectionActions,
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
-			resource.Session:    sessions.CollectionActions,
 			resource.User:       users.CollectionActions,
 		},
 
@@ -81,6 +79,7 @@ var (
 			resource.Group:           groups.CollectionActions,
 			resource.HostCatalog:     host_catalogs.CollectionActions,
 			resource.Role:            roles.CollectionActions,
+			resource.Session:         sessions.CollectionActions,
 			resource.Target:          targets.CollectionActions,
 		},
 	}
