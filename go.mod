@@ -9,7 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/armon/go-metrics v0.3.9
 	github.com/bufbuild/buf v0.37.0
-	github.com/dhui/dktest v0.3.4
+	github.com/dhui/dktest v0.3.4 // indirect
 	github.com/fatih/color v1.12.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -68,6 +68,7 @@ require (
 	github.com/pires/go-proxyproto v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
+	github.com/ryanuber/go-glob v1.0.0
 	github.com/spf13/cobra v1.1.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
