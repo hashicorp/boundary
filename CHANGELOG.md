@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+
+## 0.6.1 (2021/09/14)
+
 ### Bug Fixes
 
 * grants: Fix issue where `credential-store`, `credential-library`, and
