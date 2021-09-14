@@ -493,7 +493,11 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 func (c *InitCommand) verifyOplogIsEmpty() error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
-	r := c.srv.Database.DB().QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
+	underlyingDB, err := c.srv.Database.DB()
+	if err != nil {
+		return errors.NewDeprecated(errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
+	}
+	r := underlyingDB.QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
 	if r.Err() != nil {
 		return r.Err()
 	}

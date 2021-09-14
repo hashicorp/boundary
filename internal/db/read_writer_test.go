@@ -18,11 +18,11 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 )
 
 func TestDb_UpdateUnsetField(t *testing.T) {
@@ -44,7 +44,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 	cnt, err := rw.Update(context.Background(), updatedTu, []string{"Name"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, cnt)
-	assert.Equal(t, "ignore", updatedTu.Email)
+	assert.Equal(t, "", updatedTu.Email)
 	assert.Equal(t, "updated", updatedTu.Name)
 }
 
@@ -1463,7 +1463,7 @@ func TestDb_ScanRows(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
@@ -1493,7 +1493,7 @@ func TestDb_Query(t *testing.T) {
 		assert.NotEmpty(user.Id)
 		assert.Equal("alice", user.Name)
 
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()

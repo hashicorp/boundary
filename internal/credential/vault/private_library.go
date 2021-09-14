@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -170,14 +171,17 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 
 	libIds := mapper.libIds()
-
-	inClause := strings.TrimSuffix(strings.Repeat("?,", len(libIds)), ",")
+	var inClauseSpots []string
+	for i := 1; i < len(libIds)+1; i++ {
+		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", i))
+	}
+	inClause := strings.Join(inClauseSpots, ",")
 
 	query := fmt.Sprintf(selectPrivateLibrariesQuery, inClause)
 
 	var params []interface{}
-	for _, v := range libIds {
-		params = append(params, v)
+	for idx, v := range libIds {
+		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), v))
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {

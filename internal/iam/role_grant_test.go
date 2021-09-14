@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -162,7 +161,7 @@ func TestRoleGrant_Delete(t *testing.T) {
 				grant:  "id=*;type=*;actions=*",
 			},
 			wantErr:     true,
-			wantsErrStr: "primary key is not set",
+			wantsErrStr: "is not set",
 		},
 		{
 			name: "nil-grant",
@@ -170,9 +169,8 @@ func TestRoleGrant_Delete(t *testing.T) {
 				roleId: projRole.PublicId,
 				grant:  "",
 			},
-			// Note: Gorm's primary key checking is only for what it considers
-			// the main primary key field, hence this doesn't error as the above
-			// case does
+			wantErr:     true,
+			wantsErrStr: "is not set",
 		},
 		{
 			name: "invalid",
@@ -211,7 +209,7 @@ func TestRoleGrant_Delete(t *testing.T) {
 			deleted, err := rw.Delete(context.Background(), rg)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(strings.Contains(err.Error(), tt.wantsErrStr))
+				assert.Contains(err.Error(), tt.wantsErrStr)
 				return
 			}
 			require.NoError(err)

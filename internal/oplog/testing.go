@@ -12,16 +12,18 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func testCleanup(t *testing.T, cleanupFunc func() error, db *gorm.DB) {
 	t.Helper()
 	err := cleanupFunc()
 	assert.NoError(t, err)
-	err = db.Close()
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	err = sqlDB.Close()
 	assert.NoError(t, err)
 }
 

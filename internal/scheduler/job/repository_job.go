@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -28,14 +29,16 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 
 	opts := getOpts(opt...)
 
+	defaultId := defaultPluginId
+
 	j := allocJob()
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, createJobQuery, []interface{}{
-				defaultPluginId,
-				name,
-				description,
-				int(opts.withNextRunIn.Round(time.Second).Seconds()),
+				sql.Named("plugin_id", defaultId),
+				sql.Named("name", name),
+				sql.Named("description", description),
+				sql.Named("next_scheduled_run", int(opts.withNextRunIn.Round(time.Second).Seconds())),
 			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -171,12 +174,11 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 
-	j := allocJob()
 	var rowsDeleted int
 	_, err := r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, j, db.WithWhere("name = ?", []interface{}{name}))
+			rowsDeleted, err = w.Exec(ctx, deleteJobByName, []interface{}{name})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

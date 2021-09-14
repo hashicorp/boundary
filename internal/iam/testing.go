@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestRepo creates a repo that can be used for various purposes. Crucially, it
@@ -277,7 +277,9 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	}
 
 	var count int
-	err := conn.DB().QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&count)
+	underlyingDB, err := conn.DB()
+	require.NoError(err)
+	err = underlyingDB.QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&count)
 	require.NoError(err)
 	require.Equal(1, count)
 
@@ -297,7 +299,9 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	require.NotEmpty(acct.PublicId)
 
 	if userId == "" {
-		dbassert := dbassert.New(t, conn.DB())
+		underlyingDB, err := conn.DB()
+		require.NoError(err)
+		dbassert := dbassert.New(t, underlyingDB)
 		dbassert.IsNull(acct, "IamUserId")
 	}
 	return acct
@@ -316,7 +320,8 @@ func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
 	id, err := db.NewPublicId(authMethodPrefix)
 	require.NoError(err)
 
-	_, err = conn.DB().Exec(insertAuthMethod, id, scopeId)
+	rw := db.New(conn)
+	_, err = rw.Exec(context.Background(), insertAuthMethod, []interface{}{id, scopeId})
 	require.NoError(err)
 	return id
 }

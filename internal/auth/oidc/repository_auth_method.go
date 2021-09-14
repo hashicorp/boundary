@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -73,7 +74,12 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	}
 
 	columns := []string{"public_id", "auth_method_id", "issuer", "subject"}
-	values := []interface{}{pubId, am.PublicId, iss, sub}
+	values := []interface{}{
+		sql.Named("1", pubId),
+		sql.Named("2", am.PublicId),
+		sql.Named("3", iss),
+		sql.Named("4", sub),
+	}
 	var conflictClauses, fieldMasks, nullMasks []string
 
 	{
@@ -81,8 +87,8 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		columns, values = append(columns, "token_claims"), append(values, string(marshaledTokenClaims))
-		conflictClauses = append(conflictClauses, fmt.Sprintf("token_claims = $%d", len(values)))
+		columns, values = append(columns, "token_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledTokenClaims)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("token_claims = @%d", len(values)))
 		fieldMasks = append(fieldMasks, TokenClaimsField)
 	}
 	{
@@ -90,8 +96,8 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		columns, values = append(columns, "userinfo_claims"), append(values, string(marshaledAccessTokenClaims))
-		conflictClauses = append(conflictClauses, fmt.Sprintf("userinfo_claims = $%d", len(values)))
+		columns, values = append(columns, "userinfo_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledAccessTokenClaims)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("userinfo_claims = @%d", len(values)))
 		fieldMasks = append(fieldMasks, UserinfoClaimsField)
 	}
 
@@ -108,14 +114,14 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	switch {
 	case AccessTokenClaims[fromName] != nil:
 		foundName = AccessTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, foundName)
+		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
 	case IdTokenClaims[fromName] != nil:
 		foundName = IdTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, foundName)
+		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
 	}
 	if foundName != nil {
 		acctForOplog.FullName = foundName.(string)
-		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = $%d", len(values)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = @%d", len(values)))
 		fieldMasks = append(fieldMasks, NameField)
 	} else {
 		conflictClauses = append(conflictClauses, "full_name = NULL")
@@ -126,14 +132,14 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	switch {
 	case AccessTokenClaims[fromEmail] != nil:
 		foundEmail = AccessTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, foundEmail)
+		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
 	case IdTokenClaims[fromEmail] != nil:
 		foundEmail = IdTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, foundEmail)
+		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
 	}
 	if foundEmail != nil {
 		acctForOplog.Email = foundEmail.(string)
-		conflictClauses = append(conflictClauses, fmt.Sprintf("email = $%d", len(values)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("email = @%d", len(values)))
 		fieldMasks = append(fieldMasks, "Email")
 	} else {
 		conflictClauses = append(conflictClauses, "email = NULL")
@@ -142,7 +148,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 
 	placeHolders := make([]string, 0, len(columns))
 	for colNum := range columns {
-		placeHolders = append(placeHolders, fmt.Sprintf("$%d", colNum+1))
+		placeHolders = append(placeHolders, fmt.Sprintf("@%d", colNum+1))
 	}
 	query := fmt.Sprintf(acctUpsertQuery, strings.Join(columns, ", "), strings.Join(placeHolders, ", "), strings.Join(conflictClauses, ", "))
 

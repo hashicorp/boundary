@@ -13,7 +13,7 @@ current_libraries (library_id) as (
   -- returns the current list
   select credential_library_id
     from target_credential_library
-   where target_id = $1
+   where target_id = @target_id
 ),
 keep_libraries (library_id) as (
   -- returns the KEEP list
