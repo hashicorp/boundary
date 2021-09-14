@@ -13,10 +13,8 @@ import (
 
 var testDBPort = "5432"
 
-var (
-	// StartUsingTemplate creates a new test database from a postgres template database.
-	StartUsingTemplate func(dialect string, opt ...Option) (func() error, string, string, error) = startUsingTemplate
-)
+// StartUsingTemplate creates a new test database from a postgres template database.
+var StartUsingTemplate func(dialect string, opt ...Option) (func() error, string, string, error) = startUsingTemplate
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -39,12 +37,12 @@ const (
 )
 
 var supportedDialects = map[string]struct{}{
-	Postgres: struct{}{},
+	Postgres: {},
 }
 
 var supportedTemplates = map[string]struct{}{
-	BoundaryTemplate: struct{}{},
-	Template1:        struct{}{},
+	BoundaryTemplate: {},
+	Template1:        {},
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
