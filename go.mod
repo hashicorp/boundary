@@ -53,7 +53,6 @@ require (
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgconn v1.10.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
-	github.com/jinzhu/gorm v1.9.12
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
