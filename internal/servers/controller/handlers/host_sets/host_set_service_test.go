@@ -150,9 +150,10 @@ func TestGet_Plugin(t *testing.T) {
 	}
 
 	name := "test"
+	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 	plg := host.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, hc.GetPublicId())
+	hs := plugin.TestSet(t, conn, hc.GetPublicId(), plugin.WithPreferredEndpoints(prefEndpoints))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -163,7 +164,7 @@ func TestGet_Plugin(t *testing.T) {
 		UpdatedTime:        hs.UpdateTime.GetTimestamp(),
 		Type:               name,
 		Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+		PreferredEndpoints: prefEndpoints,
 		AuthorizedActions:  testAuthorizedActions,
 	}
 
@@ -180,7 +181,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -192,7 +193,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostSetRequest{Id: static.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -725,6 +726,8 @@ func TestCreate_Plugin(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
+
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
@@ -782,7 +785,7 @@ func TestCreate_Plugin(t *testing.T) {
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
 				Type:               name,
-				PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
@@ -792,10 +795,21 @@ func TestCreate_Plugin(t *testing.T) {
 					Name:               &wrappers.StringValue{Value: "name"},
 					Description:        &wrappers.StringValue{Value: "desc"},
 					Type:               name,
-					PreferredEndpoints: []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"},
+					PreferredEndpoints: prefEndpoints,
 					AuthorizedActions:  testAuthorizedActions,
 				},
 			},
+		},
+		{
+			name: "Bad Preferred Endpoints",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId:      hc.GetPublicId(),
+				Name:               &wrappers.StringValue{Value: "name"},
+				Description:        &wrappers.StringValue{Value: "desc"},
+				Type:               name,
+				PreferredEndpoints: append(prefEndpoints, "foobar:1.2.3.4"),
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with mismatched type/name",

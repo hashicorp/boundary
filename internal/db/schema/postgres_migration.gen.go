@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 16005,
+		binarySchemaVersion: 16004,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -7291,6 +7291,7 @@ alter table wh_host_dimension
     attributes bytea not null
       constraint attributes_must_not_be_empty
         check(length(attributes) > 0),
+    preferred_endpoints text,
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
@@ -7325,35 +7326,6 @@ alter table wh_host_dimension
     ('host_plugin_catalog', 1),
     ('host_plugin_catalog_secret', 1),
     ('host_plugin_set', 1);
-`),
-			16005: []byte(`
-create table host_set_preferred_endpoint (
-  host_set_id wt_public_id not null
-    constraint host_set_id_fkey
-    references host_set(public_id)
-    on delete cascade
-    on update cascade,
-  priority int not null
-    check(priority > 0),
-  condition text not null
-    check(length(condition) > 0),
-  primary key(host_set_id, priority)
-);
-
--- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
--- assigned to host sets are immutable.
-create or replace function
-  host_set_immutable_preferred_endpoint()
-  returns trigger
-as $$
-begin
-  raise exception 'preferred endpoints are immutable';
-end;
-$$ language plpgsql;
-
-create trigger immutable_preferred_endpoint
-  before update on host_set_preferred_endpoint
-  for each row execute procedure host_set_immutable_preferred_endpoint();
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

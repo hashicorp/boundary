@@ -82,9 +82,10 @@ message HostSet {
   // @inject_tag: `gorm:"default:null"`
   bytes attributes = 8;
 
-  // preferred endpoints
-  // @inject_tag: `gorm:"-"`
-  repeated string preferred_endpoints = 9;
+  // preferred_endpoints is a joined representation of the free-text preference
+  // values
+  // @inject_tag: `gorm:"default:null"`
+  string preferred_endpoints = 9;
 }
 
 message HostCatalogSecret {
@@ -113,18 +114,4 @@ message HostCatalogSecret {
   // It must be set.
   // @inject_tag: `gorm:"not_null"`
   string key_id = 6;
-}
-
-message PreferredEndpoint {
-  // The ID of the host set this belongs to.
-  // @inject_tag: `gorm:"primary_key"`
-  string host_set_id = 1;
-
-  // The priority order, zero-indexed
-  // @inject_tag: `gorm:"primary_key"`
-  uint32 priority = 2;
-
-  // The string text of the preference condition
-  // @inject_tag: `gorm:"not_null"`
-  string condition = 3;
 }

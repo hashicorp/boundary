@@ -65,50 +65,14 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var preferredEndpoints []interface{}
-	if s.PreferredEndpoints != nil {
-		preferredEndpoints = make([]interface{}, 0, len(s.PreferredEndpoints))
-		for i, e := range s.PreferredEndpoints {
-			obj, err := NewPreferredEndpoint(ctx, s.PublicId, uint32(i+1), e)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-			preferredEndpoints = append(preferredEndpoints, obj)
-		}
-	}
-
-	var returnedHostSet *HostSet
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
+	var newHostSet *HostSet
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
-			ticket, err := w.GetTicket(s)
+			newHostSet = s.clone()
+			err := w.Create(ctx, newHostSet, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
-			}
-
-			returnedHostSet = s.clone()
-			var hsOplogMsg oplog.Message
-			if err := w.Create(ctx, returnedHostSet, db.NewOplogMsg(&hsOplogMsg)); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			msgs = append(msgs, &hsOplogMsg)
-
-			if len(preferredEndpoints) > 0 {
-				peOplogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
-				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peOplogMsgs)); err != nil {
-					return err
-				}
-				msgs = append(msgs, peOplogMsgs...)
-			}
-
-			metadata := s.oplog(oplog.OpType_OP_TYPE_CREATE)
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
-			}
-
 			return nil
 		},
 	)
@@ -119,7 +83,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
 	}
-	return returnedHostSet, nil
+	return newHostSet, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host

@@ -129,6 +129,7 @@ begin;
     attributes bytea not null
       constraint attributes_must_not_be_empty
         check(length(attributes) > 0),
+    preferred_endpoints text,
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
