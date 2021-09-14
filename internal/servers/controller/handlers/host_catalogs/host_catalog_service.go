@@ -2,12 +2,15 @@ package host_catalogs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -23,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -61,23 +65,31 @@ func init() {
 type Service struct {
 	pbs.UnimplementedHostCatalogServiceServer
 
-	staticRepoFn common.StaticRepoFactory
-	iamRepoFn    common.IamRepoFactory
+	staticRepoFn     common.StaticRepoFactory
+	pluginHostRepoFn common.PluginHostRepoFactory
+	pluginRepoFn common.HostPluginRepoFactory
+	iamRepoFn        common.IamRepoFactory
 }
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.HostPluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "host_catalogs.NewService"
 	if repoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
+	if pluginHostRepoFn == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing plugin host repository")
+	}
+	if hostPluginRepoFn == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing host plugin repository")
+	}
 	if iamRepoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{staticRepoFn: repoFn, iamRepoFn: iamRepoFn}, nil
+	return Service{staticRepoFn: repoFn, pluginHostRepoFn: pluginHostRepoFn, pluginRepoFn: hostPluginRepoFn, iamRepoFn: iamRepoFn}, nil
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
@@ -315,22 +327,40 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*static.HostCatalog, error) {
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, err
+func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, error) {
+	var cat host.Catalog
+	switch host.SubtypeFromId(id) {
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		hc, err := repo.LookupCatalog(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if hc == nil {
+			return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
+		}
+		cat = hc
+	case plugin.Subtype:
+		repo, err := s.pluginHostRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		hc, err := repo.LookupCatalog(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if hc == nil {
+			return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
+		}
+		cat = hc
 	}
-	hc, err := repo.LookupCatalog(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if hc == nil {
-		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
-	}
-	return hc, nil
+	return cat, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*static.HostCatalog, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]host.Catalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -339,21 +369,29 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*static
 	if err != nil {
 		return nil, err
 	}
-	return ul, nil
+	var res []host.Catalog
+	for _, c := range ul {
+		res = append(res, c)
+	}
+	pluginRepo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	pl, err := pluginRepo.ListCatalogs(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range pl {
+		res = append(res, c)
+	}
+	return res, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+func (s Service) createStaticInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
 	const op = "host_catalogs.(Service).createInRepo"
-	var opts []static.Option
-	if item.GetName() != nil {
-		opts = append(opts, static.WithName(item.GetName().GetValue()))
-	}
-	if item.GetDescription() != nil {
-		opts = append(opts, static.WithDescription(item.GetDescription().GetValue()))
-	}
-	h, err := static.NewHostCatalog(projId, opts...)
+	h, err := toStorageStaticCatalog(ctx, projId, item)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build catalog for creation"))
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -369,20 +407,51 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	return out, nil
 }
 
+func (s Service) createPluginInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*plugin.HostCatalog, error) {
+	const op = "host_catalogs.(Service).createInRepo"
+	plgRepo, err := s.pluginRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plg, err := plgRepo.LookupPluginByPluginName(ctx, item.GetType())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	h, err := toStoragePluginCatalog(ctx, projId, plg.GetPublicId(), item)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build catalog for creation"))
+	}
+	repo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	out, err := repo.CreateCatalog(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host catalog"))
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
+	}
+	return out, nil
+}
+
+func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (hc host.Catalog, err error) {
+	switch host.SubtypeFromType(item.GetType()) {
+	case static.Subtype:
+		hc, err = s.createStaticInRepo(ctx, projId, item)
+	default:
+		hc, err = s.createPluginInRepo(ctx, projId, item)
+	}
+	return hc, err
+}
+
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
 	const op = "host_catalogs.(Service).updateInRepo"
-	var opts []static.Option
-	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, static.WithDescription(desc.GetValue()))
-	}
-	if name := item.GetName(); name != nil {
-		opts = append(opts, static.WithName(name.GetValue()))
-	}
-	version := item.GetVersion()
-	h, err := static.NewHostCatalog(projId, opts...)
+	h, err := toStorageStaticCatalog(ctx, projId, item)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
 	}
+	version := item.GetVersion()
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -438,28 +507,49 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		repo, err := s.staticRepoFn()
-		if err != nil {
-			res.Error = err
-			return res
+		switch host.SubtypeFromId(id) {
+		case static.Subtype:
+			repo, err := s.staticRepoFn()
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			cat, err := repo.LookupCatalog(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cat == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cat.GetScopeId()
+			opts = append(opts, auth.WithId(id))
+		case plugin.Subtype:
+			repo, err := s.pluginHostRepoFn()
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			cat, err := repo.LookupCatalog(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cat == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cat.GetScopeId()
+			opts = append(opts, auth.WithId(id))
 		}
-		cat, err := repo.LookupCatalog(ctx, id)
-		if err != nil {
-			res.Error = err
-			return res
-		}
-		if cat == nil {
-			res.Error = handlers.NotFoundError()
-			return res
-		}
-		parentId = cat.GetScopeId()
-		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option) (*pb.HostCatalog, error) {
+func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.HostCatalog, error) {
+	const op = "host_catalog_service.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building auth method proto")
@@ -474,7 +564,17 @@ func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = static.Subtype.String()
+		switch host.SubtypeFromId(in.GetPublicId()) {
+		case static.Subtype:
+			out.Type = static.Subtype.String()
+		default:
+			// TODO: When id prefix and plugin name can diverge, update this logic.
+			out.Type = "plugin"
+			idParts := strings.Split(in.GetPublicId(), "_")
+			if len(idParts) > 2 {
+				out.Type = idParts[1]
+			}
+		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -500,7 +600,61 @@ func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
+	if outputFields.Has(globals.AttributesField) {
+		switch h := in.(type) {
+		case *plugin.HostCatalog:
+			attrs := map[string]interface{}{}
+			err := json.Unmarshal(h.Attributes, &attrs)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			if len(attrs) > 0 {
+				out.Attributes, err = structpb.NewStruct(attrs)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+			}
+		}
+	}
 	return &out, nil
+}
+
+func toStorageStaticCatalog(ctx context.Context, scopeId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+	const op = "host_catalog_service.toStorageStaticCatalog"
+	var opts []static.Option
+	if name := item.GetName(); name != nil {
+		opts = append(opts, static.WithName(name.GetValue()))
+	}
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, static.WithDescription(desc.GetValue()))
+	}
+	hc, err := static.NewHostCatalog(scopeId, opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog"))
+	}
+	return hc, nil
+}
+
+func toStoragePluginCatalog(ctx context.Context, scopeId, plgId string, item *pb.HostCatalog) (*plugin.HostCatalog, error) {
+	const op = "host_catalog_service.toStoragePluginCatalog"
+	var opts []plugin.Option
+	if name := item.GetName(); name != nil {
+		opts = append(opts, plugin.WithName(item.GetName().GetValue()))
+	}
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, plugin.WithDescription(desc.GetValue()))
+	}
+	if attrs := item.GetAttributes(); attrs != nil {
+		opts = append(opts, plugin.WithAttributes(attrs.AsMap()))
+	}
+	if secrets := item.GetSecrets(); secrets != nil {
+		opts = append(opts, plugin.WithSecrets(secrets.AsMap()))
+	}
+	hc, err := plugin.NewHostCatalog(ctx, scopeId, plgId, opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
+	}
+	return hc, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -511,19 +665,23 @@ func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
+	pluginPrefix := plugin.HostCatalogPrefix
+	idParts := strings.Split(req.GetId(), "_")
+	if len(idParts) > 2 && idParts[0] == plugin.HostCatalogPrefix {
+		pluginPrefix = strings.Join(idParts[:2], "_")
+	}
+
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix, pluginPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
-			badFields["scope_id"] = "This field must be a valid project scope id."
+			badFields[globals.ScopeIdField] = "This field must be a valid project scope id."
 		}
-		switch host.SubtypeFromType(req.GetItem().GetType()) {
-		case static.Subtype:
-		default:
-			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", static.Subtype.String())
+		if req.GetItem().GetType() == "" {
+			badFields[globals.TypeField] = "This field is required."
 		}
 		return badFields
 	})
@@ -543,7 +701,13 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
+	pluginPrefix := plugin.HostCatalogPrefix
+	idParts := strings.Split(req.GetId(), "_")
+	if len(idParts) > 2 && idParts[0] == plugin.HostCatalogPrefix {
+		pluginPrefix = strings.Join(idParts[:2], "_")
+	}
+
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix, pluginPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {

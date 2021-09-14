@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -55,6 +56,7 @@ type Controller struct {
 	SessionRepoFn         common.SessionRepoFactory
 	StaticHostRepoFn      common.StaticRepoFactory
 	PluginHostRepoFn      common.PluginHostRepoFactory
+	HostPluginRepoFn      common.HostPluginRepoFactory
 	TargetRepoFn          common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
@@ -135,6 +137,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.PluginHostRepoFn = func() (*plugin.Repository, error) {
 		return plugin.NewRepository(dbase, dbase, c.kms)
+	}
+	c.HostPluginRepoFn = func() (*host.Repository, error) {
+		return host.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
