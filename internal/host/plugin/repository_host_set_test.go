@@ -92,6 +92,23 @@ func TestRepository_CreateSet(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-preferred-endpoints",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          catalog.PublicId,
+					Attributes:         attrs,
+					PreferredEndpoints: "cidr:1.2.3.4/32|dns:a.b.c",
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          catalog.PublicId,
+					Attributes:         attrs,
+					PreferredEndpoints: "cidr:1.2.3.4/32|dns:a.b.c",
+				},
+			},
+		},
+		{
 			name: "valid-with-name",
 			in: &HostSet{
 				HostSet: &store.HostSet{
