@@ -27,6 +27,8 @@ func init() {
 //
 // handleTcpProxyV1 blocks until an error (EOF on happy path) is received on either
 // connection.
+//
+// All options are ignored.
 func handleTcpProxyV1(ctx context.Context, conf proxy.Config, _ ...proxy.Option) {
 	const op = "tcp.HandleTcpProxyV1"
 	si := conf.SessionInfo
