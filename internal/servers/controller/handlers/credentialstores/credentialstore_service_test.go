@@ -34,7 +34,17 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var (
+	testAuthorizedActions           = []string{"no-op", "read", "update", "delete"}
+	testAuthorizedCollectionActions = map[string]*structpb.ListValue{
+		"credential-libraries": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("create"),
+				structpb.NewStringValue("list"),
+			},
+		},
+	}
+)
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -57,14 +67,15 @@ func TestList(t *testing.T) {
 	var wantStores []*pb.CredentialStore
 	for _, s := range vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 10) {
 		wantStores = append(wantStores, &pb.CredentialStore{
-			Id:                s.GetPublicId(),
-			ScopeId:           prj.GetPublicId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       s.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       s.GetUpdateTime().GetTimestamp(),
-			Version:           s.GetVersion(),
-			Type:              vault.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions,
+			Id:                          s.GetPublicId(),
+			ScopeId:                     prj.GetPublicId(),
+			Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+			CreatedTime:                 s.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 s.GetUpdateTime().GetTimestamp(),
+			Version:                     s.GetVersion(),
+			Type:                        vault.Subtype.String(),
+			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedCollectionActions: testAuthorizedCollectionActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 					Address:                  wrapperspb.String(s.GetVaultAddress()),
@@ -451,7 +462,8 @@ func TestCreate(t *testing.T) {
 						require.NoError(t, err)
 						return attrs
 					}(),
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedCollectionActions,
 				},
 			},
 		},
@@ -495,7 +507,8 @@ func TestCreate(t *testing.T) {
 						require.NoError(t, err)
 						return attrs
 					}(),
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedCollectionActions,
 				},
 			},
 		},
@@ -580,14 +593,15 @@ func TestGet(t *testing.T) {
 			id:   store.GetPublicId(),
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
-					Id:                store.GetPublicId(),
-					ScopeId:           store.GetScopeId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              vault.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions,
-					CreatedTime:       store.CreateTime.GetTimestamp(),
-					UpdatedTime:       store.UpdateTime.GetTimestamp(),
-					Version:           1,
+					Id:                          store.GetPublicId(),
+					ScopeId:                     store.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:                        vault.Subtype.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedCollectionActions,
+					CreatedTime:                 store.CreateTime.GetTimestamp(),
+					UpdatedTime:                 store.UpdateTime.GetTimestamp(),
+					Version:                     1,
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 							Address:                  wrapperspb.String(store.GetVaultAddress()),
