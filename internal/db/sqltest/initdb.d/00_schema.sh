@@ -26,8 +26,31 @@ docker_process_sql() {
 	PGHOST= PGHOSTADDR= "${query_runner[@]}" "$@"
 }
 
-# Run migrations in order.
-for file in $(ls -v /migrations/**/*.sql); do
-  echo running "$file"
-  docker_process_sql -f "$file"
-done
+if [ -d /migrations/base ]; then
+    # Run migrations in order.
+    for file in $(ls -v /migrations/base/postgres/**/*.up.sql); do
+      echo running "$file"
+      docker_process_sql -f "$file"
+    done
+
+    if [ -d /migrations/oss ]; then
+        # Run migrations in order.
+        for file in $(ls -v /migrations/oss/postgres/**/*.up.sql); do
+          echo running "$file"
+          docker_process_sql -f "$file"
+        done
+    fi
+
+    for d in $(find /migrations/ -mindepth 1 -maxdepth 1 -type d -not -name 'oss' -not -name 'base'); do
+        for file in $(ls -v ${d}/postgres/**/*.up.sql); do
+            echo running "$file"
+            docker_process_sql -f "$file"
+        done
+    done
+else
+    # Run migrations in order.
+    for file in $(ls -v /migrations/**/*.up.sql); do
+      echo running "$file"
+      docker_process_sql -f "$file"
+    done
+fi
