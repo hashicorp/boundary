@@ -38,7 +38,7 @@ func CalculateAuthorizedCollectionActions(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			ret[k.String()+"s"] = lv
+			ret[k.PluralString()] = lv
 		}
 	}
 	return ret, nil
