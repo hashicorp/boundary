@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -25,10 +26,15 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
+
+	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
+	// test against the expected values sent to the plugin.
+	gotPluginAttrs := map[string]interface{}{}
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &testPlugin{
-			onCreateCatalog: func(ctx context.Context, request *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-				return &plgpb.OnCreateCatalogResponse{}, nil
+			onCreateCatalog: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+				gotPluginAttrs = req.GetCatalog().GetAttributes().AsMap()
+				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Data: req.GetCatalog().GetSecrets()}}, nil
 			},
 		},
 	}
@@ -147,6 +153,23 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-with-attributes",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte(`{"k1":"foo"}`),
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte(`{"k1":"foo"}`),
+				},
+			},
+		},
+		{
 			name: "valid-with-secret",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
@@ -155,11 +178,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte("{}"),
 				},
-				secrets: map[string]interface{}{
-					"k1": "v1",
-					"k2": 2,
-					"k3": nil,
-				},
+				secrets: []byte(`{"k1":"v1","k2":2,"k3":null}`),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
@@ -195,6 +214,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+
+			wantedPluginAttributes := map[string]interface{}{}
+			require.NoError(t, json.Unmarshal(tt.want.GetAttributes(), &wantedPluginAttributes))
+			assert.Equal(wantedPluginAttributes, gotPluginAttrs)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 

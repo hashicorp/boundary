@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -29,8 +30,13 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
+
+	var pluginReceivedAttrs map[string]interface{}
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &testPlugin{onCreateSet: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			pluginReceivedAttrs = req.GetSet().GetAttributes().AsMap()
+			return &plgpb.OnCreateSetResponse{}, nil
+		}},
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -130,6 +136,23 @@ func TestRepository_CreateSet(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-custom-attributes",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:   catalog.PublicId,
+					Description: ("test-description-repo"),
+					Attributes: []byte(`{"k1":"foo"}`),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:   catalog.PublicId,
+					Description: ("test-description-repo"),
+					Attributes: []byte(`{"k1":"foo"}`),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -153,6 +176,10 @@ func TestRepository_CreateSet(t *testing.T) {
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+			wantedPluginAttributes := map[string]interface{}{}
+			require.NoError(json.Unmarshal(tt.want.Attributes, &wantedPluginAttributes))
+			assert.Equal(wantedPluginAttributes, pluginReceivedAttrs)
+
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}

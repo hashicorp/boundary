@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -9,6 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // CreateSet inserts s into the repository and returns a new HostSet
@@ -46,8 +50,24 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host catalog"))
 	}
 
-	// TODO: Contain the following plugin logic inside a plugin manager as well as
-	//  calling the plugin which we have looked up.
+	cSecret := allocHostCatalogSecret()
+	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", s.GetCatalogId()); err != nil {
+		if !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog secret"))
+		}
+		cSecret = nil
+	}
+	if cSecret != nil {
+		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+		}
+		if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		c.secrets = cSecret.GetSecret()
+	}
+
 	plg := hostplg.NewPlugin("", "")
 	plg.PublicId = c.GetPluginId()
 	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
@@ -59,6 +79,22 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	s.PublicId = id
+
+	plgClient, ok := r.plugins[plg.GetPublicId()]
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
+	}
+	plgHc, err := toPluginCatalog(ctx, c)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plgHs, err := toPluginSet(ctx, s)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs}); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -128,4 +164,29 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return sets, nil
+}
+
+// toPluginSet returns a host set in the format expected by the host plugin system.
+func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
+	const op = "plugin.toPluginCatalog"
+	if in == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
+	}
+	hs := &pb.HostSet{
+		Id:                          in.GetPublicId(),
+	}
+	if in.GetAttributes() != nil {
+		attrs := map[string]interface{}{}
+		if err := json.Unmarshal(in.GetAttributes(), &attrs); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal attributes"))
+		}
+		if len(attrs) > 0 {
+			attrSt, err := structpb.NewStruct(attrs)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("proto marshaling attributes"))
+			}
+			hs.Attributes = attrSt
+		}
+	}
+	return hs, nil
 }

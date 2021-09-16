@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -9,6 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // CreateCatalog inserts c into the repository and returns a new
@@ -43,7 +47,6 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c = c.clone()
 
-	// TODO: Capture this in a plugin manager and call the plugin's OnCreateCatalog function
 	plg := hostplg.NewPlugin("", "")
 	plg.PublicId = c.PluginId
 	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
@@ -59,23 +62,38 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c.PublicId = id
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	plgClient, ok := r.plugins[plg.GetPublicId()]
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
 	}
-	dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+		return nil, errors.Wrap(ctx, err, op)
 	}
+	plgResp, err := plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	persistedData := plgResp.GetPersisted().GetData()
 
 	var hcSecret *HostCatalogSecret
-	if c.secrets != nil {
-		// TODO: Create the secret using the returned value from the call to the plugin.
-		hcSecret, err = newHostCatalogSecret(ctx, id, c.secrets)
+	if persistedData != nil {
+		hcSecret, err = newHostCatalogSecret(ctx, id, persistedData.AsMap())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		hcSecret.encrypt(ctx, dbWrapper)
+		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+		}
+		if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newHostCatalog *HostCatalog
@@ -163,4 +181,45 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return hostCatalogs, nil
+}
+
+// toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
+// by the host plugin system.
+func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, error) {
+	const op = "plugin.toPluginCatalog"
+	if in == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
+	}
+	hc := &pb.HostCatalog{
+		Id:                          in.GetPublicId(),
+		ScopeId:                     in.GetScopeId(),
+	}
+	if in.GetAttributes() != nil {
+		attrs := map[string]interface{}{}
+		if err := json.Unmarshal(in.GetAttributes(), &attrs); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal attributes"))
+		}
+		if len(attrs) > 0 {
+			attrSt, err := structpb.NewStruct(attrs)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to proto marshal attributes"))
+			}
+			hc.Attributes = attrSt
+		}
+	}
+	if in.secrets != nil {
+		secrets := map[string]interface{}{}
+		if err := json.Unmarshal(in.secrets, &secrets); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to json unmarshal secrets"))
+		}
+		if len(secrets) > 0 {
+			secretSt, err := structpb.NewStruct(secrets)
+			if err != nil {
+				// Create a new error instead of wrapping it in case the error contains some secret info.
+				return nil, errors.New(ctx, errors.Internal, op, "unable to proto marshal secrets")
+			}
+			hc.Secrets = secretSt
+		}
+	}
+	return hc, nil
 }
