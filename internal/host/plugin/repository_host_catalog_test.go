@@ -156,16 +156,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-attributes",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     prj.GetPublicId(),
-					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte(`{"k1":"foo"}`),
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					Attributes: []byte(`{"k1":"foo"}`),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     prj.GetPublicId(),
-					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte(`{"k1":"foo"}`),
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   plg.GetPublicId(),
+					Attributes: []byte(`{"k1":"foo"}`),
 				},
 			},
 		},

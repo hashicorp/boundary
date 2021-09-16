@@ -58,7 +58,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb
 		reader:       r,
 		writer:       w,
 		kms:          kms,
-		plugins: 	  plgs,
+		plugins:      plgs,
 		defaultLimit: opts.withLimit,
 	}, nil
 }

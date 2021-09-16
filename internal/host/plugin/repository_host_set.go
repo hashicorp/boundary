@@ -44,28 +44,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
-	c := allocHostCatalog()
-	c.PublicId = s.GetCatalogId()
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host catalog"))
-	}
-
-	cSecret := allocHostCatalogSecret()
-	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", s.GetCatalogId()); err != nil {
-		if !errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog secret"))
-		}
-		cSecret = nil
-	}
-	if cSecret != nil {
-		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-		}
-		if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		c.secrets = cSecret.GetSecret()
+	c, err := r.getPrivateCatalog(ctx, s.GetCatalogId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	plg := hostplg.NewPlugin("", "")
@@ -82,7 +63,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	plgClient, ok := r.plugins[plg.GetPublicId()]
 	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin with plugin name %q not available", plg.GetPluginName()))
 	}
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
@@ -173,7 +154,7 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
 	hs := &pb.HostSet{
-		Id:                          in.GetPublicId(),
+		Id: in.GetPublicId(),
 	}
 	if in.GetAttributes() != nil {
 		attrs := map[string]interface{}{}

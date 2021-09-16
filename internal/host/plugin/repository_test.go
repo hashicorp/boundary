@@ -21,11 +21,11 @@ func TestRepository_New(t *testing.T) {
 	plgs := map[string]plgpb.HostPluginServiceServer{}
 
 	type args struct {
-		r    db.Reader
-		w    db.Writer
-		kms  *kms.Kms
+		r       db.Reader
+		w       db.Writer
+		kms     *kms.Kms
 		plugins map[string]plgpb.HostPluginServiceServer
-		opts []Option
+		opts    []Option
 	}
 
 	tests := []struct {
@@ -37,42 +37,42 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: kmsCache,
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
 				plugins: plgs,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
-				plugins: plgs,
+				plugins:      plgs,
 				defaultLimit: db.DefaultLimit,
 			},
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:    rw,
-				w:    rw,
-				kms:  kmsCache,
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
 				plugins: plgs,
-				opts: []Option{WithLimit(5)},
+				opts:    []Option{WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
-				plugins: plgs,
+				plugins:      plgs,
 				defaultLimit: 5,
 			},
 		},
 		{
 			name: "nil-reader",
 			args: args{
-				r:   nil,
-				w:   rw,
-				kms: kmsCache,
+				r:       nil,
+				w:       rw,
+				kms:     kmsCache,
 				plugins: plgs,
 			},
 			want:      nil,
@@ -81,9 +81,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:   rw,
-				w:   nil,
-				kms: kmsCache,
+				r:       rw,
+				w:       nil,
+				kms:     kmsCache,
 				plugins: plgs,
 			},
 			want:      nil,
@@ -92,9 +92,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-kms",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: nil,
+				r:       rw,
+				w:       rw,
+				kms:     nil,
 				plugins: plgs,
 			},
 			want:      nil,
@@ -103,9 +103,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-plugins",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: kmsCache,
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
 				plugins: nil,
 			},
 			want:      nil,
@@ -114,9 +114,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "all-nils",
 			args: args{
-				r:   nil,
-				w:   nil,
-				kms: nil,
+				r:       nil,
+				w:       nil,
+				kms:     nil,
 				plugins: nil,
 			},
 			want:      nil,

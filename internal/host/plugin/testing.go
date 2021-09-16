@@ -72,10 +72,10 @@ type testPlugin struct {
 	onCreateCatalog func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
 	onUpdateCatalog func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
 	onDeleteCatalog func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
-	onCreateSet func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
-	onUpdateSet func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
-	onDeleteSet func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
-	listHosts func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
+	onCreateSet     func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
+	onUpdateSet     func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
+	onDeleteSet     func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
+	listHosts       func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
 	plgpb.UnimplementedHostPluginServiceServer
 }
 

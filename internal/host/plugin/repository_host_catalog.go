@@ -152,9 +152,8 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 	if id == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	c := allocHostCatalog()
-	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+	c, err := r.getCatalog(ctx, id)
+	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -183,6 +182,46 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 	return hostCatalogs, nil
 }
 
+// getCatalog retrieves the *HostCatalog with the provided id.  If it is not found or there
+// is an problem getting it from the database an error is returned instead.
+func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, error) {
+	const op = "plugin.(Repository).getCatalog"
+	c := allocHostCatalog()
+	c.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
+	}
+	return c, nil
+}
+
+// getPrivateCatalog returns the HostCatalog with the secret populated if present.
+func (r *Repository) getPrivateCatalog(ctx context.Context, id string) (*HostCatalog, error) {
+	const op = "plugin.(Repository).getPrivateCatalog"
+	c, err := r.getCatalog(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	cSecret := allocHostCatalogSecret()
+	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", id); err != nil {
+		if !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog secret"))
+		}
+		cSecret = nil
+	}
+	if cSecret != nil {
+		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+		}
+		if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		c.secrets = cSecret.GetSecret()
+	}
+	return c, nil
+}
+
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
 // by the host plugin system.
 func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, error) {
@@ -191,8 +230,8 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
 	hc := &pb.HostCatalog{
-		Id:                          in.GetPublicId(),
-		ScopeId:                     in.GetScopeId(),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
 	}
 	if in.GetAttributes() != nil {
 		attrs := map[string]interface{}{}
