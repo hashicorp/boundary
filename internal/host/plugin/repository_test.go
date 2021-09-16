@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -21,7 +22,7 @@ func TestRepository_New(t *testing.T) {
 		r    db.Reader
 		w    db.Writer
 		kms  *kms.Kms
-		opts []Option
+		opts []host.Option
 	}
 
 	tests := []struct {
@@ -50,7 +51,7 @@ func TestRepository_New(t *testing.T) {
 				r:    rw,
 				w:    rw,
 				kms:  kmsCache,
-				opts: []Option{WithLimit(5)},
+				opts: []host.Option{host.WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,

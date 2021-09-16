@@ -81,6 +81,10 @@ func NewService(staticRepoFn common.StaticRepoFactory, pluginRepoFn common.Plugi
 }
 
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
+	return s.ListHostSetsWithOptions(ctx, req)
+}
+
+func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostSetsRequest, opt ...host.Option) (*pbs.ListHostSetsResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -88,7 +92,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -509,7 +513,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Set, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host.Option) ([]host.Set, error) {
 	const op = "host_sets.(Service).listFromRepo"
 	var sets []host.Set
 	switch host.SubtypeFromId(catalogId) {
@@ -530,7 +534,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Set
 		if err != nil {
 			return nil, err
 		}
-		sl, err := repo.ListSets(ctx, catalogId)
+		sl, err := repo.ListSets(ctx, catalogId, opt...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

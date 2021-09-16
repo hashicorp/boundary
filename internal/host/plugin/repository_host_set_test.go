@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -251,7 +252,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, catalog.PublicId)
+	hostSet := TestSet(t, conn, kms, catalog)
 	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 
@@ -308,15 +309,15 @@ func TestRepository_ListSets(t *testing.T) {
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
-		TestSet(t, conn, catalogA.PublicId),
-		TestSet(t, conn, catalogA.PublicId),
-		TestSet(t, conn, catalogA.PublicId),
+		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA),
 	}
 
 	tests := []struct {
 		name      string
 		in        string
-		opts      []Option
+		opts      []host.Option
 		want      []*HostSet
 		wantIsErr errors.Code
 	}{
@@ -372,13 +373,13 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
-		hostSets = append(hostSets, TestSet(t, conn, catalog.PublicId))
+		hostSets = append(hostSets, TestSet(t, conn, kms, catalog))
 	}
 
 	tests := []struct {
 		name     string
-		repoOpts []Option
-		listOpts []Option
+		repoOpts []host.Option
+		listOpts []host.Option
 		wantLen  int
 	}{
 		{
@@ -387,34 +388,34 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		},
 		{
 			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
+			repoOpts: []host.Option{host.WithLimit(3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
+			repoOpts: []host.Option{host.WithLimit(-1)},
 			wantLen:  count,
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []host.Option{host.WithLimit(3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []host.Option{host.WithLimit(-1)},
 			wantLen:  count,
 		},
 		{
 			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			repoOpts: []host.Option{host.WithLimit(2)},
+			listOpts: []host.Option{host.WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			repoOpts: []host.Option{host.WithLimit(6)},
+			listOpts: []host.Option{host.WithLimit(2)},
 			wantLen:  2,
 		},
 	}

@@ -130,7 +130,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // LookupSet will look up a host set in the repository and return the host
 // set. If the host set is not found, it will return nil, nil.
 // All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -153,7 +153,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
 // only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
+func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, error) {
 	const op = "plugin.(Repository).ListSets"
 	if catalogId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
@@ -166,7 +166,7 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 	return sets, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...Option) ([]*HostSet, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, error) {
 	const op = "plugin.(Repository).getSets"
 	const aggregateDelimiter = "|"
 	const priorityDelimiter = "="
@@ -178,11 +178,15 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a host set id and a catalog id is not supported")
 	}
 
-	opts := getOpts(opt...)
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
 	}
 
 	args := make([]interface{}, 0, 1)
@@ -195,9 +199,18 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		where, args = "catalog_id = ?", append(args, catalogId)
 	}
 
+	dbArgs := []db.Option{db.WithLimit(limit)}
+
+	if opts.WithOrderByCreateTime {
+		if opts.Ascending {
+			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
+		} else {
+			dbArgs = append(dbArgs, db.WithOrder("create_time"))
+		}
+	}
+
 	var aggHostSets []*hostSetAgg
-	err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, db.WithLimit(limit))
-	if err != nil {
+	if err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
 	}
 
@@ -229,8 +242,10 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
-					eps[index] = ep[1]
+					// These are 1-indexed so remove one from the value
+					eps[index-1] = ep[1]
 				}
+				hs.PreferredEndpoints = eps
 			}
 		}
 		sets = append(sets, hs)

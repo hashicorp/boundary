@@ -11,11 +11,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
@@ -151,9 +152,9 @@ func TestGet_Plugin(t *testing.T) {
 
 	name := "test"
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, hc.GetPublicId(), plugin.WithPreferredEndpoints(prefEndpoints))
+	hs := plugin.TestSet(t, conn, kms, hc, plugin.WithPreferredEndpoints(prefEndpoints))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -341,22 +342,24 @@ func TestList_Plugin(t *testing.T) {
 		return plugin.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	preferredEndpoints := []string{"cidr:1.2.3.4", "dns:*.foobar.com"}
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, hc.GetPublicId())
+		h := plugin.TestSet(t, conn, kms, hc, plugin.WithPreferredEndpoints(preferredEndpoints))
 		wantHs = append(wantHs, &pb.HostSet{
-			Id:                h.GetPublicId(),
-			HostCatalogId:     h.GetCatalogId(),
-			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-			CreatedTime:       h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
-			Version:           h.GetVersion(),
-			Type:              name,
-			AuthorizedActions: testAuthorizedActions,
+			Id:                 h.GetPublicId(),
+			HostCatalogId:      h.GetCatalogId(),
+			Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:        h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:        h.GetUpdateTime().GetTimestamp(),
+			Version:            h.GetVersion(),
+			Type:               name,
+			AuthorizedActions:  testAuthorizedActions,
+			PreferredEndpoints: preferredEndpoints,
 		})
 	}
 
@@ -399,7 +402,7 @@ func TestList_Plugin(t *testing.T) {
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
-			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			got, gErr := s.ListHostSetsWithOptions(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req, host.WithOrderByCreateTime(false))
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -701,7 +704,7 @@ func TestCreate_Plugin(t *testing.T) {
 		return plugin.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	testAttrs, err := structpb.NewStruct(map[string]interface{}{
