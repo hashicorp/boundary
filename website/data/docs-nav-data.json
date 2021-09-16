@@ -390,6 +390,14 @@
           {
             "title": "v0.4.0",
             "path": "releases/release-notes/v0_4_0"
+          },
+          {
+            "title": "v0.5.0",
+            "path": "releases/release-notes/v0_5_0"
+          },
+          {
+            "title": "v0.6.0",
+            "path": "releases/release-notes/v0_6_0"
           }
         ]
       }
