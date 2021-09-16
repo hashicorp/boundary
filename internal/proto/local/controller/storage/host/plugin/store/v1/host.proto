@@ -78,14 +78,13 @@ message HostSet {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 7;
 
-  // attributes is a jsonb formatted field.
+  // attributes is a byte field containing marshaled JSON data
   // @inject_tag: `gorm:"default:null"`
   bytes attributes = 8;
 
-  // preferred_endpoints is a joined representation of the free-text preference
-  // values
-  // @inject_tag: `gorm:"default:null"`
-  string preferred_endpoints = 9;
+  // preferred_endpoints stores string preference values
+  // @inject_tag: `gorm:"-"`
+  repeated string preferred_endpoints = 9;
 }
 
 message HostCatalogSecret {

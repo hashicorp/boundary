@@ -97,14 +97,14 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:          catalog.PublicId,
 					Attributes:         attrs,
-					PreferredEndpoints: "cidr:1.2.3.4/32|dns:a.b.c",
+					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:          catalog.PublicId,
 					Attributes:         attrs,
-					PreferredEndpoints: "cidr:1.2.3.4/32|dns:a.b.c",
+					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 				},
 			},
 		},
@@ -327,7 +327,7 @@ func TestRepository_ListSets(t *testing.T) {
 		{
 			name: "Catalog-with-no-host-sets",
 			in:   catalogB.PublicId,
-			want: []*HostSet{},
+			want: nil,
 		},
 		{
 			name: "Catalog-with-host-sets",

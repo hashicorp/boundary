@@ -272,7 +272,7 @@ func TestList(t *testing.T) {
 	var testPluginCatalogs []*pb.HostCatalog
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
-	for i := 0 ; i < 3; i++ {
+	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
@@ -306,7 +306,7 @@ func TestList(t *testing.T) {
 
 	name = "different"
 	plg = host.TestPlugin(t, conn, name, name)
-	for i := 0 ; i < 3; i++ {
+	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), plg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),

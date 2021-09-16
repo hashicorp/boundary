@@ -3,15 +3,12 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
-
-const PreferredEndpointsStorageDelimeter = `|`
 
 // A HostSet is a collection of hosts from the set's catalog.
 type HostSet struct {
@@ -27,9 +24,10 @@ func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet,
 	opts := getOpts(opt...)
 	set := &HostSet{
 		HostSet: &store.HostSet{
-			CatalogId:   catalogId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			CatalogId:          catalogId,
+			Name:               opts.withName,
+			Description:        opts.withDescription,
+			PreferredEndpoints: opts.withPreferredEndpoints,
 		},
 	}
 
@@ -39,15 +37,6 @@ func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet,
 			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 		}
 		set.Attributes = attrs
-	}
-
-	if len(opts.withPreferredEndpoints) > 0 {
-		for _, val := range opts.withPreferredEndpoints {
-			if strings.Contains(val, PreferredEndpointsStorageDelimeter) {
-				return nil, errors.New(ctx, errors.InvalidParameter, op, "illegal character in preferred endpoints string")
-			}
-		}
-		set.PreferredEndpoints = strings.Join(opts.withPreferredEndpoints, PreferredEndpointsStorageDelimeter)
 	}
 
 	return set, nil

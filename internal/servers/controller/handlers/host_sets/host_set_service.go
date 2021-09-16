@@ -748,8 +748,8 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 
 	switch h := in.(type) {
 	case *plugin.HostSet:
-		if outputFields.Has(globals.PreferredEndpointsField) && len(h.GetPreferredEndpoints()) > 0 {
-			out.PreferredEndpoints = strings.Split(h.GetPreferredEndpoints(), plugin.PreferredEndpointsStorageDelimeter)
+		if outputFields.Has(globals.PreferredEndpointsField) {
+			out.PreferredEndpoints = h.GetPreferredEndpoints()
 		}
 		if outputFields.Has(globals.AttributesField) {
 			attrs := map[string]interface{}{}

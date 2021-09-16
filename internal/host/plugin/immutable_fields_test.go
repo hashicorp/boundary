@@ -125,7 +125,7 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "plugin_host_catalog_id",
+			name: "host_plugin_catalog_id",
 			update: func() *HostSet {
 				c := new.testCloneHostSet()
 				c.CatalogId = "stc_01234567890"

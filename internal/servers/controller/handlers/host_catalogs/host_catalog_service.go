@@ -67,7 +67,7 @@ type Service struct {
 
 	staticRepoFn     common.StaticRepoFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
-	pluginRepoFn common.HostPluginRepoFactory
+	pluginRepoFn     common.HostPluginRepoFactory
 	iamRepoFn        common.IamRepoFactory
 }
 
