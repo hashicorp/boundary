@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.6.1 (2021/09/14)
 
 ### Bug Fixes
 
@@ -10,6 +10,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `managed-group` would not be accepted as specific `type` values in grant
   strings. Also, fix authorized actions not showing `credential-store` values in
   project scope output. ([PR](https://github.com/hashicorp/boundary/pull/1524))
+* actions: Fix `sessions` collection actions not being visible when reading a
+  scope ([PR](https://github.com/hashicorp/boundary/pull/1527))
+* credential stores: Fix credential stores not showing authorized collection
+  actions ([PR](https://github.com/hashicorp/boundary/pull/1530))
 
 ## 0.6.0 (2021/09/03)
 

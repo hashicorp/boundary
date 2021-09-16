@@ -26,6 +26,7 @@ func (c *Controller) startListeners() error {
 	configureForAPI := func(ln *base.ServerListener) error {
 		handler, err := c.handler(HandlerProperties{
 			ListenerConfig: ln.Config,
+			CancelCtx:      c.baseContext,
 		})
 		if err != nil {
 			return err

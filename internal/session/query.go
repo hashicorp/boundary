@@ -1,5 +1,10 @@
 package session
 
+import (
+	"fmt"
+	"strings"
+)
+
 const (
 	activateStateCte = `
 insert into session_state
@@ -346,3 +351,34 @@ with
     %s
   `
 )
+
+const (
+	sessionCredentialDynamicBatchInsertBase = `
+insert into session_credential_dynamic
+	( session_id, library_id, credential_purpose )
+values
+`
+	sessionCredentialDynamicBatchInsertValue = `
+  (?, ?, ?)`
+
+	sessionCredentialDynamicBatchInsertReturning = `
+  returning session_id, library_id, credential_id, credential_purpose
+`
+)
+
+func batchInsertsessionCredentialDynamic(creds []*DynamicCredential) (string, []interface{}, error) {
+	if len(creds) <= 0 {
+		return "", nil, fmt.Errorf("empty slice of DynamicCredential, cannot build query")
+	}
+	batchInsertParams := make([]string, 0, len(creds))
+	batchInsertArgs := make([]interface{}, 0, len(creds)*3)
+
+	for _, cred := range creds {
+		batchInsertParams = append(batchInsertParams, sessionCredentialDynamicBatchInsertValue)
+		batchInsertArgs = append(batchInsertArgs, []interface{}{cred.SessionId, cred.LibraryId, cred.CredentialPurpose}...)
+	}
+
+	q := sessionCredentialDynamicBatchInsertBase + strings.Join(batchInsertParams, ",") + sessionCredentialDynamicBatchInsertReturning
+
+	return q, batchInsertArgs, nil
+}
