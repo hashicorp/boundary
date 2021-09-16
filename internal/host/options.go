@@ -4,7 +4,9 @@ package host
 func GetOpts(opt ...Option) (options, error) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if err := o(&opts); err != nil {
+			return opts, err
+		}
 	}
 	return opts, nil
 }

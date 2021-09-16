@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/store"
+	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,9 +45,16 @@ func (pe *PreferredEndpoint) validate(ctx context.Context, caller errors.Op) err
 	if pe.HostSetId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing host set id")
 	}
+	if pe.Priority < 1 {
+		return errors.New(ctx, errors.InvalidParameter, caller, "invalid priority value")
+	}
 	if pe.Condition == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing condition")
 	}
+	if _, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder([]string{pe.Condition})); err != nil {
+		return errors.Wrap(ctx, err, caller)
+	}
+
 	return nil
 }
 

@@ -7328,6 +7328,7 @@ alter table wh_host_dimension
 `),
 			16005: []byte(`
 create table host_set_preferred_endpoint (
+  create_time wt_timestamp,
   host_set_id wt_public_id not null
     constraint host_set_id_fkey
     references host_set(public_id)
@@ -7337,7 +7338,8 @@ create table host_set_preferred_endpoint (
     check(priority > 0),
   condition text not null
     check(length(condition) > 0),
-  primary key(host_set_id, priority)
+  primary key(host_set_id, priority),
+  unique(host_set_id, condition)
 );
 
 -- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
