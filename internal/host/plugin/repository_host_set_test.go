@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -28,6 +29,10 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
+
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	attrs := []byte("{}")
 
@@ -131,7 +136,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
@@ -154,7 +159,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -185,7 +190,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -232,6 +237,9 @@ func TestRepository_LookupSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, catalog.PublicId)
@@ -263,7 +271,7 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupSet(ctx, tt.in)
@@ -287,6 +295,9 @@ func TestRepository_ListSets(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list", "list")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
@@ -323,7 +334,7 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
@@ -351,6 +362,9 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
 	var hostSets []*HostSet
@@ -406,7 +420,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)

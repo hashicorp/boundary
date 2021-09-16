@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,6 +25,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{
+			onCreateCatalog: func(ctx context.Context, request *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+				return &plgpb.OnCreateCatalogResponse{}, nil
+			},
+		},
+	}
 
 	tests := []struct {
 		name       string
@@ -170,7 +178,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(rw, rw, kmsCache, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
@@ -212,7 +220,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -242,7 +250,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -292,6 +300,9 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx, plg.GetIdPrefix())
 	assert.NoError(t, err)
@@ -326,7 +337,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -354,10 +365,13 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &testPlugin{},
+	}
+	repo, err := NewRepository(rw, rw, kms, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
-	plg := hostplg.TestPlugin(t, conn, "test", "test")
 
 	const numPerScope = 10
 	var projs []string

@@ -3,6 +3,7 @@ package plugin
 import (
 	"testing"
 
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,10 +18,13 @@ func TestRepository_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
+	plgs := map[string]plgpb.HostPluginServiceServer{}
+
 	type args struct {
 		r    db.Reader
 		w    db.Writer
 		kms  *kms.Kms
+		plugins map[string]plgpb.HostPluginServiceServer
 		opts []Option
 	}
 
@@ -36,11 +40,13 @@ func TestRepository_New(t *testing.T) {
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
+				plugins: plgs,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
+				plugins: plgs,
 				defaultLimit: db.DefaultLimit,
 			},
 		},
@@ -50,12 +56,14 @@ func TestRepository_New(t *testing.T) {
 				r:    rw,
 				w:    rw,
 				kms:  kmsCache,
+				plugins: plgs,
 				opts: []Option{WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
+				plugins: plgs,
 				defaultLimit: 5,
 			},
 		},
@@ -65,6 +73,7 @@ func TestRepository_New(t *testing.T) {
 				r:   nil,
 				w:   rw,
 				kms: kmsCache,
+				plugins: plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -75,6 +84,7 @@ func TestRepository_New(t *testing.T) {
 				r:   rw,
 				w:   nil,
 				kms: kmsCache,
+				plugins: plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -85,6 +95,18 @@ func TestRepository_New(t *testing.T) {
 				r:   rw,
 				w:   rw,
 				kms: nil,
+				plugins: plgs,
+			},
+			want:      nil,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "nil-plugins",
+			args: args{
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
+				plugins: nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -95,6 +117,7 @@ func TestRepository_New(t *testing.T) {
 				r:   nil,
 				w:   nil,
 				kms: nil,
+				plugins: nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -104,7 +127,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.plugins, tt.args.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
