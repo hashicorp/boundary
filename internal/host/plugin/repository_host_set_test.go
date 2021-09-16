@@ -291,7 +291,9 @@ func TestRepository_LookupSet(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.EqualValues(tt.want, got)
+			if tt.want != nil {
+				assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()), "LookupSet(%q) got response %q, wanted %q", tt.in, got, tt.want)
+			}
 		})
 	}
 }
