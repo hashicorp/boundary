@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -230,21 +231,43 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		hs.Version = agg.Version
 		hs.Attributes = agg.Attributes
 		if agg.PreferredEndpoints != "" {
-			splitVals := strings.Split(agg.PreferredEndpoints, aggregateDelimiter)
-			if len(splitVals) > 0 {
-				eps := make([]string, len(splitVals))
-				for _, val := range splitVals {
-					ep := strings.Split(val, priorityDelimiter)
-					if len(ep) != 2 {
-						return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", val))
+			eps := strings.Split(agg.PreferredEndpoints, aggregateDelimiter)
+			if len(eps) > 0 {
+				// We want to protect against someone messing with the DB
+				// and not panic, so we do a bit of a dance here
+				var sortErr error
+				sort.Slice(eps, func(i, j int) bool {
+					epi := strings.Split(eps[i], priorityDelimiter)
+					if len(epi) != 2 {
+						sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[i]))
+						return false
 					}
-					index, err := strconv.Atoi(ep[0])
+					epj := strings.Split(eps[j], priorityDelimiter)
+					if len(epj) != 2 {
+						sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[j]))
+						return false
+					}
+					indexi, err := strconv.Atoi(epi[0])
 					if err != nil {
-						return nil, errors.Wrap(ctx, err, op)
+						sortErr = errors.Wrap(ctx, err, op)
+						return false
 					}
-					// These are 1-indexed so remove one from the value
-					eps[index-1] = ep[1]
+					indexj, err := strconv.Atoi(epj[0])
+					if err != nil {
+						sortErr = errors.Wrap(ctx, err, op)
+						return false
+					}
+					return indexi < indexj
+				})
+				if sortErr != nil {
+					return nil, sortErr
 				}
+				for i, ep := range eps {
+					// At this point they're in the correct order, but we still
+					// have to strip off the priority
+					eps[i] = strings.Split(ep, priorityDelimiter)[0]
+				}
+
 				hs.PreferredEndpoints = eps
 			}
 		}
