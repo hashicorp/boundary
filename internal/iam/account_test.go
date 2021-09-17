@@ -65,6 +65,7 @@ func TestAccount_GetScope(t *testing.T) {
 
 func TestAccount_Clone(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -83,7 +84,7 @@ func TestAccount_Clone(t *testing.T) {
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		acct2 := testAccount(t, conn, org.PublicId, authMethodPublicId, "")
-		underlyingDB, err := conn.DB()
+		underlyingDB, err := conn.SqlDB(ctx)
 		require.NoError(t, err)
 		dbassert := dbassert.New(t, underlyingDB)
 		dbassert.IsNull(acct2, "IamUserId")

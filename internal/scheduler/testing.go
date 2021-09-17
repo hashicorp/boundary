@@ -14,7 +14,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 // TestScheduler creates a mock controller and a new Scheduler attached to that controller id.
@@ -22,7 +21,7 @@ import (
 //
 // WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
+func TestScheduler(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 
 	rw := db.New(conn)

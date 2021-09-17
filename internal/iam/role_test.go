@@ -206,6 +206,7 @@ func Test_RoleCreate(t *testing.T) {
 
 func Test_RoleUpdate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -440,7 +441,7 @@ func Test_RoleUpdate(t *testing.T) {
 			}
 			assert.True(proto.Equal(updateRole, foundRole))
 			if len(tt.args.nullPaths) != 0 {
-				underlyingDB, err := conn.DB()
+				underlyingDB, err := conn.SqlDB(ctx)
 				require.NoError(err)
 				dbassert := dbassert.New(t, underlyingDB)
 				for _, f := range tt.args.nullPaths {

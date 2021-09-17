@@ -1,6 +1,7 @@
 package dbassert
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func Test_FieldDomain(t *testing.T) {
@@ -59,11 +59,12 @@ func Test_FieldNullable(t *testing.T) {
 
 func Test_FieldIsNull(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert := assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	initStore(t, conn)
 	require := require.New(t)
-	underlyingDB, err := conn.DB()
+	underlyingDB, err := conn.SqlDB(ctx)
 	require.NoError(err)
 	assert.NoError(err)
 	mockery := new(dbassert.MockTesting)
@@ -82,10 +83,11 @@ func Test_FieldIsNull(t *testing.T) {
 
 func Test_FieldNotNull(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	initStore(t, conn)
 	require := require.New(t)
-	underlyingDB, err := conn.DB()
+	underlyingDB, err := conn.SqlDB(ctx)
 	require.NoError(err)
 	mockery := new(dbassert.MockTesting)
 	dbassert := New(mockery, underlyingDB)
@@ -113,7 +115,7 @@ type testModel struct {
 func (*testModel) TableName() string { return "test_table_dbasserts" }
 
 // CreateTestModel is a helper that creates a testModel in the DB.
-func createTestModel(t dbassert.TestingT, db *gorm.DB, nullable *string, typeInt *int) *testModel {
+func createTestModel(t dbassert.TestingT, db *db.DB, nullable *string, typeInt *int) *testModel {
 	publicId, err := base62.Random(12)
 	assert.NoError(t, err)
 	m := testModel{
@@ -126,7 +128,7 @@ func createTestModel(t dbassert.TestingT, db *gorm.DB, nullable *string, typeInt
 	return &m
 }
 
-func initStore(t *testing.T, db *gorm.DB) {
+func initStore(t *testing.T, db *db.DB) {
 	t.Helper()
 	const (
 		createDomainType = `

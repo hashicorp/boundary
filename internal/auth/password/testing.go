@@ -8,13 +8,12 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 // TestAuthMethod creates a password auth methods to the provided DB with the
 // provided scope id. If any errors are encountered during the creation of the
 // auth methods, the test will fail.
-func TestAuthMethod(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *AuthMethod {
+func TestAuthMethod(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -48,7 +47,7 @@ func TestAuthMethod(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) 
 // TestAuthMethods creates count number of password auth methods to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the auth methods, the test will fail.
-func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*AuthMethod {
+func TestAuthMethods(t *testing.T, conn *db.DB, scopeId string, count int) []*AuthMethod {
 	t.Helper()
 	var auts []*AuthMethod
 	for i := 0; i < count; i++ {
@@ -60,7 +59,7 @@ func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*
 // TestMultipleAccounts creates count number of password account to the provided DB
 // with the provided auth method id.  The auth method must have been created previously.
 // If any errors are encountered during the creation of the account, the test will fail.
-func TestMultipleAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Account {
+func TestMultipleAccounts(t *testing.T, conn *db.DB, authMethodId string, count int) []*Account {
 	t.Helper()
 	var auts []*Account
 	for i := 0; i < count; i++ {
@@ -73,7 +72,7 @@ func TestMultipleAccounts(t *testing.T, conn *gorm.DB, authMethodId string, coun
 // auth method id and loginName.  The auth method must have been created
 // previously. See password.NewAccount(...) for a list of supported options.
 // If any errors are encountered during the creation of the account, the test will fail.
-func TestAccount(t *testing.T, conn *gorm.DB, authMethodId, loginName string, opt ...Option) *Account {
+func TestAccount(t *testing.T, conn *db.DB, authMethodId, loginName string, opt ...Option) *Account {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	require.NotEmpty(loginName)

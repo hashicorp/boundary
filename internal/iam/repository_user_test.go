@@ -198,6 +198,7 @@ func TestRepository_LookupUser_WithDifferentPrimaryAuthMethods(t *testing.T) {
 
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -475,7 +476,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
 			sort.Strings(foundAccountIds)
 			assert.Equal(accountIds, foundAccountIds)
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {
@@ -710,6 +711,7 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 
 func TestRepository_LookupUserWithLogin(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -847,7 +849,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)

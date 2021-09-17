@@ -28,14 +28,13 @@ import (
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 // TestCredentialStore creates a vault credential store in the provided DB with
 // the provided scope, vault address, token, and accessor and any values passed
 // in through the Options vargs.  If any errors are encountered during the
 // creation of the store, the test will fail.
-func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
+func TestCredentialStore(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -76,7 +75,7 @@ func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, 
 // the provided DB with the provided scope id. If any errors are
 // encountered during the creation of the credential stores, the test will
 // fail.
-func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+func TestCredentialStores(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -114,7 +113,7 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 // libraries in the provided DB with the provided store id. If any errors
 // are encountered during the creation of the credential libraries, the
 // test will fail.
-func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+func TestCredentialLibraries(t *testing.T, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -145,7 +144,7 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 // TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
 // during the creation of the credentials, the test will fail.
-func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
+func TestCredentials(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
@@ -189,7 +188,7 @@ func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libr
 	return credentials
 }
 
-func createTestToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
+func createTestToken(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
 	t.Helper()
 	w := db.New(conn)
 	ctx := context.Background()
@@ -211,7 +210,7 @@ func createTestToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scop
 	return inToken
 }
 
-func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
+func testTokens(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)

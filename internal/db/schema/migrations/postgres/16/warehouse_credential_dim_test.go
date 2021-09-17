@@ -20,7 +20,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func TestMigrations_CredentialDimension(t *testing.T) {
@@ -144,7 +143,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	assert.False(state.Dirty)
 }
 
-func testOidcAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
+func testOidcAuthToken(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
 	t.Helper()
 
 	authMethod := oidc.TestAuthMethod(
@@ -171,7 +170,7 @@ func testOidcAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrappi
 	return at
 }
 
-func testSessionCredentialParams(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar *target.TcpTarget) []*session.DynamicCredential {
+func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar *target.TcpTarget) []*session.DynamicCredential {
 	t.Helper()
 	rw := db.New(conn)
 

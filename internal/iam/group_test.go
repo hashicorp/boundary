@@ -206,6 +206,7 @@ func Test_GroupCreate(t *testing.T) {
 
 func Test_GroupUpdate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -351,7 +352,7 @@ func Test_GroupUpdate(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(updateGrp, foundGrp))
 			if len(tt.args.nullPaths) != 0 {
-				underlyingDB, err := conn.DB()
+				underlyingDB, err := conn.SqlDB(ctx)
 				require.NoError(err)
 				dbassert := dbassert.New(t, underlyingDB)
 				for _, f := range tt.args.nullPaths {

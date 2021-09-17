@@ -19,7 +19,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jackc/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gorm.io/gorm"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -1642,7 +1641,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 	}
 }
 
-func testSessionCredentialParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	params := TestSessionParams(t, conn, wrapper, iamRepo)
 	require := require.New(t)

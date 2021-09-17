@@ -228,7 +228,7 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	cmd.srv = base.NewServer(&base.Command{UI: cmd.UI})
 
 	cmd.srv.DatabaseUrl = u
-	require.NoError(t, cmd.srv.ConnectToDatabase(dialect))
+	require.NoError(t, cmd.srv.ConnectToDatabase(ctx, dialect))
 
-	assert.NoError(t, cmd.verifyOplogIsEmpty())
+	assert.NoError(t, cmd.verifyOplogIsEmpty(ctx))
 }

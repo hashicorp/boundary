@@ -190,7 +190,7 @@ type VetForWriter interface {
 
 // Db uses a gorm DB connection for read/write
 type Db struct {
-	underlying *gorm.DB
+	underlying *DB
 }
 
 // ensure that Db implements the interfaces of: Reader and Writer
@@ -199,7 +199,7 @@ var (
 	_ Writer = (*Db)(nil)
 )
 
-func New(underlying *gorm.DB) *Db {
+func New(underlying *DB) *Db {
 	return &Db{underlying: underlying}
 }
 
@@ -597,7 +597,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
-	db := rw.underlying
+	db := rw.underlying.DB
 	if opts.withWhereClause != "" {
 		db = db.Where(opts.withWhereClause, opts.withWhereClauseArgs...)
 	}
@@ -713,7 +713,7 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	if rw.underlying == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewGormTicketer(rw.underlying.DB, oplog.WithAggregateNames(true))
 	if err != nil {
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
 	}
@@ -793,7 +793,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"), errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewGormTicketer(rw.underlying.DB, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
@@ -808,7 +808,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: rw.underlying},
+		&oplog.GormWriter{Tx: rw.underlying.DB},
 		ticket,
 		oplogMsgs...,
 	); err != nil {
@@ -827,7 +827,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	if ticket == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewGormTicketer(rw.underlying.DB, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
@@ -846,7 +846,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: rw.underlying},
+		&oplog.GormWriter{Tx: rw.underlying.DB},
 		ticket,
 		msg,
 	)
@@ -876,7 +876,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata")
 	}
 
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewGormTicketer(rw.underlying.DB, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"))
 	}
@@ -892,7 +892,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: rw.underlying},
+		&oplog.GormWriter{Tx: rw.underlying.DB},
 		ticket,
 		msgs...,
 	)
@@ -947,7 +947,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		newTx := w.underlying.WithContext(ctx)
 		newTx = newTx.Begin()
 
-		rw := &Db{newTx}
+		rw := &Db{underlying: &DB{newTx}}
 		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
 				return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())

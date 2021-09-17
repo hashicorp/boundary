@@ -92,10 +92,11 @@ func TestConcreteScope_ImmutableFields(t *testing.T) {
 		update = `update {{rep}} set scope_id = $1 where scope_id = $2;`
 	)
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
-	db, err := conn.DB()
+	db, err := conn.SqlDB(ctx)
 	require.NoError(t, err)
 	org, proj := TestScopes(t, repo)
 

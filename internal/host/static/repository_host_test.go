@@ -251,6 +251,7 @@ func TestRepository_CreateHost(t *testing.T) {
 }
 
 func TestRepository_UpdateHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -620,7 +621,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.CatalogId, got.CatalogId)
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {

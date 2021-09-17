@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -8,6 +9,7 @@ import (
 )
 
 func TestOpen(t *testing.T) {
+	ctx := context.Background()
 	cleanup, url, _, err := dbtest.StartUsingTemplate(dbtest.Postgres)
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +50,7 @@ func TestOpen(t *testing.T) {
 			got, err := Open(tt.args.dbType, tt.args.connectionUrl)
 			defer func() {
 				if err == nil {
-					sqlDB, err := got.DB()
+					sqlDB, err := got.SqlDB(ctx)
 					require.NoError(t, err)
 					err = sqlDB.Close()
 					require.NoError(t, err)

@@ -39,8 +39,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 const (
@@ -120,7 +118,7 @@ type Server struct {
 	DatabaseMaxOpenConnections int
 	DevDatabaseCleanupFunc     func() error
 
-	Database *gorm.DB
+	Database *db.DB
 
 	// StatusGracePeriodDuration represents the period of time (as a
 	// duration) that the controller will wait before marking
@@ -548,38 +546,22 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
-func (b *Server) ConnectToDatabase(dialect string) error {
+func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
 	dbType, err := db.StringToDbType(dialect)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-	dbase, err := db.Open(dbType, b.DatabaseUrl)
+	opts := []db.Option{
+		db.WithMaxOpenConnections(b.DatabaseMaxOpenConnections),
+	}
+	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
+		opts = append(opts, db.WithGormFormatter(b.Logger))
+	}
+	dbase, err := db.Open(dbType, b.DatabaseUrl, opts...)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-	if b.DatabaseMaxOpenConnections == 1 {
-		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
-	} else {
-		underlyingDB, err := dbase.DB()
-		if err != nil {
-			return fmt.Errorf("unable retreive db: %w", err)
-		}
-		underlyingDB.SetMaxOpenConns(b.DatabaseMaxOpenConnections)
-	}
 	b.Database = dbase
-	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
-		newLogger := logger.New(
-			db.GetGormLogger(b.Logger),
-			logger.Config{
-				LogLevel: logger.Error, // Log level
-				Colorful: false,        // Disable color
-			},
-		)
-		dbase = dbase.Session(&gorm.Session{Logger: newLogger})
-	}
-
-	b.Database = dbase
-
 	return nil
 }
 
@@ -618,13 +600,11 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	return nil
 }
 
-func (b *Server) DestroyDevDatabase() error {
+func (b *Server) DestroyDevDatabase(ctx context.Context) error {
 	if b.Database != nil {
-		underlyingDB, err := b.Database.DB()
-		if err != nil {
+		if err := b.Database.Close(ctx); err != nil {
 			return err
 		}
-		underlyingDB.Close()
 	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()

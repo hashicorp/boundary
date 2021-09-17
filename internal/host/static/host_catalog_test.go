@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
@@ -109,7 +108,7 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 }
 
-func testCatalog(t *testing.T, conn *gorm.DB, scopeId string) *HostCatalog {
+func testCatalog(t *testing.T, conn *db.DB, scopeId string) *HostCatalog {
 	t.Helper()
 	cats := TestCatalogs(t, conn, scopeId, 1)
 	return cats[0]
