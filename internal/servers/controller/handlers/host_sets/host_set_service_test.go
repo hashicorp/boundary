@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -53,7 +54,7 @@ func TestGet_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -146,7 +147,7 @@ func TestGet_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 
 	name := "test"
@@ -238,7 +239,7 @@ func TestList_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -336,7 +337,7 @@ func TestList_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
@@ -438,7 +439,7 @@ func TestDelete(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -517,7 +518,7 @@ func TestDelete_twice(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -553,7 +554,7 @@ func TestCreate_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
@@ -695,11 +696,17 @@ func TestCreate_Plugin(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
-	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
+	plgRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{
+			plg.GetPublicId(): &plugin.TestPluginServer{
+				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+					return nil, nil
+				},
+			},
+		})
+	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	testAttrs, err := structpb.NewStruct(map[string]interface{}{
@@ -916,7 +923,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	tested, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
@@ -1255,7 +1262,7 @@ func TestAddHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1375,7 +1382,7 @@ func TestSetHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1491,7 +1498,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")

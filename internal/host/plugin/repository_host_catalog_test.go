@@ -31,8 +31,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	// test against the expected values sent to the plugin.
 	gotPluginAttrs := map[string]interface{}{}
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{
-			onCreateCatalog: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+		plg.GetPublicId(): &TestPluginServer{
+			OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 				gotPluginAttrs = req.GetCatalog().GetAttributes().AsMap()
 				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Data: req.GetCatalog().GetSecrets()}}, nil
 			},
@@ -324,7 +324,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &TestPluginServer{},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx, plg.GetIdPrefix())
@@ -390,7 +390,7 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &TestPluginServer{},
 	}
 	repo, err := NewRepository(rw, rw, kms, plgm)
 	assert.NoError(t, err)

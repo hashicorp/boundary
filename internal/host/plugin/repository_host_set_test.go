@@ -33,7 +33,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	var pluginReceivedAttrs map[string]interface{}
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{onCreateSet: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+		plg.GetPublicId(): &TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 			pluginReceivedAttrs = req.GetSet().GetAttributes().AsMap()
 			return &plgpb.OnCreateSetResponse{}, nil
 		}},
@@ -265,7 +265,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &TestPluginServer{},
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -323,7 +323,7 @@ func TestRepository_ListSets(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list", "list")
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &TestPluginServer{},
 	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -390,7 +390,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &testPlugin{},
+		plg.GetPublicId(): &TestPluginServer{},
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10

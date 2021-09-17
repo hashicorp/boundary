@@ -67,63 +67,63 @@ func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *Host
 	return set
 }
 
-// testPlugin provides a host plugin service server where each method can be overwritten for tests.
-type testPlugin struct {
-	onCreateCatalog func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
-	onUpdateCatalog func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
-	onDeleteCatalog func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
-	onCreateSet     func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
-	onUpdateSet     func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
-	onDeleteSet     func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
-	listHosts       func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
+// TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
+type TestPluginServer struct {
+	OnCreateCatalogFn func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
+	OnUpdateCatalogFn func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
+	OnDeleteCatalogFn func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
+	OnCreateSetFn     func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
+	OnUpdateSetFn     func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
+	OnDeleteSetFn     func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
+	ListHostsFn       func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
 	plgpb.UnimplementedHostPluginServiceServer
 }
 
-func (t testPlugin) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-	if t.onCreateCatalog == nil {
+func (t TestPluginServer) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+	if t.OnCreateCatalogFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnCreateCatalog(ctx, req)
 	}
-	return t.onCreateCatalog(ctx, req)
+	return t.OnCreateCatalogFn(ctx, req)
 }
 
-func (t testPlugin) OnUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
-	if t.onUpdateCatalog == nil {
+func (t TestPluginServer) OnUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
+	if t.OnUpdateCatalogFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnUpdateCatalog(ctx, req)
 	}
-	return t.onUpdateCatalog(ctx, req)
+	return t.OnUpdateCatalogFn(ctx, req)
 }
 
-func (t testPlugin) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
-	if t.onDeleteCatalog == nil {
+func (t TestPluginServer) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
+	if t.OnDeleteCatalogFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnDeleteCatalog(ctx, req)
 	}
-	return t.onDeleteCatalog(ctx, req)
+	return t.OnDeleteCatalogFn(ctx, req)
 }
 
-func (t testPlugin) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
-	if t.onCreateSet == nil {
+func (t TestPluginServer) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+	if t.OnCreateSetFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnCreateSet(ctx, req)
 	}
-	return t.onCreateSet(ctx, req)
+	return t.OnCreateSetFn(ctx, req)
 }
 
-func (t testPlugin) OnUpdateSet(ctx context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
-	if t.onUpdateSet == nil {
+func (t TestPluginServer) OnUpdateSet(ctx context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+	if t.OnUpdateSetFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnUpdateSet(ctx, req)
 	}
-	return t.onUpdateSet(ctx, req)
+	return t.OnUpdateSetFn(ctx, req)
 }
 
-func (t testPlugin) OnDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error) {
-	if t.onDeleteSet == nil {
+func (t TestPluginServer) OnDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error) {
+	if t.OnDeleteSetFn == nil {
 		return t.UnimplementedHostPluginServiceServer.OnDeleteSet(ctx, req)
 	}
-	return t.onDeleteSet(ctx, req)
+	return t.OnDeleteSetFn(ctx, req)
 }
 
-func (t testPlugin) ListHosts(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
-	if t.listHosts == nil {
+func (t TestPluginServer) ListHosts(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+	if t.ListHostsFn == nil {
 		return t.UnimplementedHostPluginServiceServer.ListHosts(ctx, req)
 	}
-	return t.listHosts(ctx, req)
+	return t.ListHostsFn(ctx, req)
 }
