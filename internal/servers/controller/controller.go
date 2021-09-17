@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
@@ -136,7 +137,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*plugin.Repository, error) {
-		return plugin.NewRepository(dbase, dbase, c.kms)
+		return plugin.NewRepository(dbase, dbase, c.kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)
