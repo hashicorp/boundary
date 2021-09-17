@@ -399,8 +399,8 @@ github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBt
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/dawdle v0.4.0 h1:nAE+aCoAmVulgCPPPrp6oGOykjPhxEe4VUNms/mTKeA=
 github.com/hashicorp/dawdle v0.4.0/go.mod h1:gOBY8rFXpW4Rw39up1FIacw/1pG/fO779LfchCY3KUw=
-github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df h1:Y5++qCYLnJsz036XXKjawzg09aCvWe5Pq2n2DhbgyrA=
-github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df/go.mod h1:+B5eZq7vXqN4Gxkgjm4ub1bwG6OTcYzFL0r+bMvWorg=
+github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8 h1:/3iubtqEdLgdXB6ue+WAKvbcpn313jjL5mQvU5ByymE=
+github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8/go.mod h1:+B5eZq7vXqN4Gxkgjm4ub1bwG6OTcYzFL0r+bMvWorg=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
