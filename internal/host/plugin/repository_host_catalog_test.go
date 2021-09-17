@@ -178,7 +178,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte("{}"),
 				},
-				secrets: []byte(`{"k1":"v1","k2":2,"k3":null}`),
+				secrets: map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{

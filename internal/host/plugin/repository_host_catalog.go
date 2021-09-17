@@ -217,7 +217,12 @@ func (r *Repository) getPrivateCatalog(ctx context.Context, id string) (*HostCat
 		if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		c.secrets = cSecret.GetSecret()
+
+		sec := map[string]interface{}{}
+		if err := json.Unmarshal(cSecret.GetSecret(), &sec); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal secret"))
+		}
+		c.secrets = sec
 	}
 	return c, nil
 }
@@ -246,19 +251,13 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 			hc.Attributes = attrSt
 		}
 	}
-	if in.secrets != nil {
-		secrets := map[string]interface{}{}
-		if err := json.Unmarshal(in.secrets, &secrets); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to json unmarshal secrets"))
+	if len(in.secrets) > 0 {
+		secretSt, err := structpb.NewStruct(in.secrets)
+		if err != nil {
+			// Create a new error instead of wrapping it in case the error contains some secret info.
+			return nil, errors.New(ctx, errors.Internal, op, "unable to proto marshal secrets")
 		}
-		if len(secrets) > 0 {
-			secretSt, err := structpb.NewStruct(secrets)
-			if err != nil {
-				// Create a new error instead of wrapping it in case the error contains some secret info.
-				return nil, errors.New(ctx, errors.Internal, op, "unable to proto marshal secrets")
-			}
-			hc.Secrets = secretSt
-		}
+		hc.Secrets = secretSt
 	}
 	return hc, nil
 }

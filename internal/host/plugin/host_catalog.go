@@ -19,7 +19,7 @@ type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
 
-	secrets []byte `gorm:"-"`
+	secrets map[string]interface{} `gorm:"-"`
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
@@ -35,21 +35,15 @@ func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option
 			Name:        opts.withName,
 			Description: opts.withDescription,
 		},
+		secrets: opts.withSecrets,
 	}
 
 	if opts.withAttributes != nil {
 		attrs, err := json.Marshal(opts.withAttributes)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter), errors.WithMsg("marshaling attributes"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 		}
 		hc.Attributes = attrs
-	}
-	if opts.withSecrets != nil {
-		secrets, err := json.Marshal(opts.withSecrets)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter), errors.WithMsg("marshaling secrets"))
-		}
-		hc.secrets = secrets
 	}
 	return hc, nil
 }
@@ -60,7 +54,8 @@ func allocHostCatalog() *HostCatalog {
 	}
 }
 
-// clone provides a deep copy of the HostCatalog.
+// clone provides a deep copy of the HostCatalog with the exception of the
+// secret.  The secret shallow copied.
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
 
@@ -68,8 +63,10 @@ func (c *HostCatalog) clone() *HostCatalog {
 		HostCatalog: cp.(*store.HostCatalog),
 	}
 	if c.secrets != nil {
-		newSecret := make([]byte, len(c.secrets))
-		copy(newSecret, c.secrets)
+		newSecret := make(map[string]interface{}, len(c.secrets))
+		for k, v := range c.secrets {
+			newSecret[k] = v
+		}
 		hc.secrets = newSecret
 	}
 	return hc
