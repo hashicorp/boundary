@@ -16,7 +16,6 @@ type Option func(*options)
 type options struct {
 	withName               string
 	withDescription        string
-	withLimit              int
 	withAttributes         map[string]interface{}
 	withSecrets            map[string]interface{}
 	withPreferredEndpoints []string
@@ -62,14 +61,5 @@ func WithSecrets(secrets map[string]interface{}) Option {
 func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
 		o.withPreferredEndpoints = with
-	}
-}
-
-// WithLimit provides an option to provide a limit. Intentionally allowing
-// negative integers. If WithLimit < 0, then unlimited results are
-// returned. If WithLimit == 0, then default limits are used for results.
-func WithLimit(l int) Option {
-	return func(o *options) {
-		o.withLimit = l
 	}
 }
