@@ -72,10 +72,10 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.8.0
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
-	golang.org/x/tools v0.1.5
+	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272
+	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
+	golang.org/x/term v0.0.0-20210916214954-140adaaadfaf
+	golang.org/x/tools v0.1.6
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
 	google.golang.org/grpc v1.40.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
