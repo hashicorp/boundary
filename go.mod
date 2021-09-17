@@ -63,7 +63,7 @@ require (
 	github.com/mitchellh/pointerstructure v1.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.6.1
-	github.com/ory/dockertest/v3 v3.6.5
+	github.com/ory/dockertest/v3 v3.7.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
@@ -71,7 +71,7 @@ require (
 	github.com/spf13/cobra v1.1.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
-	go.uber.org/atomic v1.8.0
+	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272
 	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
 	golang.org/x/term v0.0.0-20210916214954-140adaaadfaf
