@@ -194,37 +194,45 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, e
 	return c, nil
 }
 
-// getPrivateCatalog returns the HostCatalog with the secret populated if present.
-func (r *Repository) getPrivateCatalog(ctx context.Context, id string) (*HostCatalog, error) {
-	const op = "plugin.(Repository).getPrivateCatalog"
-	c, err := r.getCatalog(ctx, id)
-	if err != nil {
-		return nil, err
+// getPersistedDataForCatalog returns the persisted data for a catalog if
+// present.  c must have a valid Public Id and Scope Id set.
+func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCatalog) (*plgpb.HostCatalogPersisted, error) {
+	const op = "plugin.(Repository).getPersistedDataForCatalog"
+	if c.PublicId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty public id")
 	}
-
+	if c.ScopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
+	}
 	cSecret := allocHostCatalogSecret()
-	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", id); err != nil {
-		if !errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog secret"))
+	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", c.GetPublicId()); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
 		}
-		cSecret = nil
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	if cSecret != nil {
-		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-		}
-		if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
+	if cSecret == nil {
+		return nil, nil
+	}
+	dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+	}
+	if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 
-		sec := map[string]interface{}{}
-		if err := json.Unmarshal(cSecret.GetSecret(), &sec); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal secret"))
-		}
-		c.secrets = sec
+	per := &plgpb.HostCatalogPersisted{}
+	sec := map[string]interface{}{}
+	if err := json.Unmarshal(cSecret.GetSecret(), &sec); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret json"))
 	}
-	return c, nil
+	per.Data, err = structpb.NewStruct(sec)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshaling to proto struct"))
+	}
+
+	return per, nil
 }
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected

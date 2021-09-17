@@ -44,9 +44,13 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
-	c, err := r.getPrivateCatalog(ctx, s.GetCatalogId())
+	c, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
+	}
+	per, err := r.getPersistedDataForCatalog(ctx, c)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up persisted data"))
 	}
 
 	plg := hostplg.NewPlugin("", "")
@@ -73,7 +77,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs}); err != nil {
+	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
