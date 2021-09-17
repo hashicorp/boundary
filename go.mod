@@ -9,7 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/armon/go-metrics v0.3.9
 	github.com/bufbuild/buf v0.37.0
-	github.com/dhui/dktest v0.3.4
+	github.com/dhui/dktest v0.3.4 // indirect
 	github.com/fatih/color v1.12.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/eventlogger v0.1.0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
-	github.com/hashicorp/go-bexpr v0.1.9
+	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-kms-wrapping v0.6.6
@@ -45,12 +45,12 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.1.1
-	github.com/iancoleman/strcase v0.1.3
+	github.com/iancoleman/strcase v0.2.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
-	github.com/kr/pretty v0.2.1
+	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-colorable v0.1.8
@@ -59,13 +59,13 @@ require (
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
-	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mitchellh/mapstructure v1.4.2
 	github.com/mitchellh/pointerstructure v1.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.6.1
 	github.com/ory/dockertest/v3 v3.6.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pires/go-proxyproto v0.5.0
+	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/spf13/cobra v1.1.1 // indirect
