@@ -136,7 +136,7 @@ func TestRegisterHandler(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
-	fn := func(context.Context, Config, ...Option) { return }
+	fn := func(context.Context, Config, ...Option) error { return nil }
 
 	err := RegisterHandler("protocol", fn)
 	require.NoError(err)
@@ -154,7 +154,7 @@ func TestGetHandler(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
-	fn := func(context.Context, Config, ...Option) {}
+	fn := func(context.Context, Config, ...Option) error { return nil }
 
 	err := RegisterHandler("fn", fn)
 	require.NoError(err)
