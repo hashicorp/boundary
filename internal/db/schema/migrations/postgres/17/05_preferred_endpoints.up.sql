@@ -8,7 +8,8 @@ create table host_set_preferred_endpoint (
     on delete cascade
     on update cascade,
   priority int not null
-    check(priority > 0),
+    constraint priority_must_be_greater_than_zero
+      check(priority > 0),
   condition text not null
     check(length(condition) > 0),
   primary key(host_set_id, priority),
