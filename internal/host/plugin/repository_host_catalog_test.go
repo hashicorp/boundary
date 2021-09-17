@@ -204,7 +204,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
 			require.NoError(t, err)
-			cSecret.decrypt(ctx, dbWrapper)
+			require.NoError(t, cSecret.decrypt(ctx, dbWrapper))
 			assert.Equal(string(tt.wantSecret), string(cSecret.Secret))
 		})
 	}

@@ -76,7 +76,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		hcSecret.encrypt(ctx, dbWrapper)
+		if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	var newHostCatalog *HostCatalog
