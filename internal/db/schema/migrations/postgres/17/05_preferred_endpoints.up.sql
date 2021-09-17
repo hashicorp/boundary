@@ -3,7 +3,7 @@ begin;
 create table host_set_preferred_endpoint (
   create_time wt_timestamp,
   host_set_id wt_public_id not null
-    constraint host_set_id_fkey
+    constraint host_set_fkey
     references host_set(public_id)
     on delete cascade
     on update cascade,
