@@ -18,7 +18,7 @@ create table host_set_preferred_endpoint (
 
 -- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
 -- assigned to host sets are immutable.
-create or replace function
+create function
   host_set_immutable_preferred_endpoint()
   returns trigger
 as $$
