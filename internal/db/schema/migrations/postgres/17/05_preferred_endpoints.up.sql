@@ -13,7 +13,8 @@ create table host_set_preferred_endpoint (
   condition text not null
     check(length(condition) > 0),
   primary key(host_set_id, priority),
-  unique(host_set_id, condition)
+  constraint host_set_preferred_endpoint_host_set_id_condition_uq
+    unique(host_set_id, condition)
 );
 
 -- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
