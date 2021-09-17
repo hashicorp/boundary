@@ -265,7 +265,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 				for i, ep := range eps {
 					// At this point they're in the correct order, but we still
 					// have to strip off the priority
-					eps[i] = strings.Split(ep, priorityDelimiter)[0]
+					eps[i] = strings.Split(ep, priorityDelimiter)[1]
 				}
 
 				hs.PreferredEndpoints = eps
