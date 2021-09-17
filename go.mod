@@ -12,7 +12,7 @@ require (
 	github.com/dhui/dktest v0.3.4 // indirect
 	github.com/fatih/color v1.12.0
 	github.com/fatih/structs v1.1.0
-	github.com/favadi/protoc-go-inject-tag v1.1.0
+	github.com/favadi/protoc-go-inject-tag v1.3.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
@@ -52,7 +52,7 @@ require (
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.10.2
+	github.com/lib/pq v1.10.3
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/cli v1.1.2
