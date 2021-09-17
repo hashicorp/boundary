@@ -27,11 +27,11 @@ func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) st
 	switch c.Func {
 	case "create":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary hosts static create [options] [args]",
+			"Usage: boundary hosts create static [options] [args]",
 			"",
 			"  Create a static-type host. Example:",
 			"",
-			`    $ boundary hosts static create -name prodops -description "Static host for ProdOps" -address "127.0.0.1"`,
+			`    $ boundary hosts create static -name prodops -description "Static host for ProdOps" -address "127.0.0.1"`,
 			"",
 			"",
 		})
