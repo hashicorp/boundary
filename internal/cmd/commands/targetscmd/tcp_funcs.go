@@ -46,11 +46,11 @@ func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary targets tcp update [options] [args]",
+			"Usage: boundary targets update tcp [options] [args]",
 			"",
 			"  Update a tcp-type target given its ID. Example:",
 			"",
-			`    $ boundary targets tcp update -id ttcp_1234567890 -name "devops" -description "Tcp target for DevOps"`,
+			`    $ boundary targets update tcp -id ttcp_1234567890 -name "devops" -description "Tcp target for DevOps"`,
 			"",
 			"",
 		})

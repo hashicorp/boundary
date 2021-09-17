@@ -232,7 +232,12 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 			return
 		}
 
-		handleProxyFn(connCtx, conf)
+		if err = handleProxyFn(connCtx, conf); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error handling proxy", "session_id", sessionId, "endpoint", endpoint))
+			if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+		}
 	}
 }
 
