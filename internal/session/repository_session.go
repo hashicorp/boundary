@@ -89,14 +89,26 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			if err = w.Create(ctx, returnedSession); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+
 			for _, cred := range newSession.DynamicCredentials {
 				cred.SessionId = newSession.PublicId
-				returnedCred := cred.clone()
-				if err = w.Create(ctx, returnedCred); err != nil {
+			}
+
+			// TODO: after upgrading to gorm v2 this batch insert can be replaced, since gorm v2 supports batch inserts
+			q, batchInsertArgs, err := batchInsertsessionCredentialDynamic(newSession.DynamicCredentials)
+			if err == nil {
+				rows, err := w.Query(ctx, q, batchInsertArgs)
+				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, returnedCred)
+				defer rows.Close()
+				for rows.Next() {
+					var returnedCred DynamicCredential
+					w.ScanRows(rows, &returnedCred)
+					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
+				}
 			}
+
 			var foundStates []*State
 			// trigger will create new "Pending" state
 			if foundStates, err = fetchStates(ctx, read, returnedSession.PublicId); err != nil {
