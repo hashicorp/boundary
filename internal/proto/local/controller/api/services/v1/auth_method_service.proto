@@ -9,7 +9,6 @@ import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/authmethods/v1/auth_method.proto";
-import "controller/api/resources/authtokens/v1/authtoken.proto";
 
 service AuthMethodService {
   // GetAuthMethod returns a stored Auth Method if present.  The provided request
@@ -96,7 +95,6 @@ service AuthMethodService {
   }
 
   // Authenticate validates credentials provided and returns an Auth Token.
-  // Deprecated: use AuthenticateLogin instead.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"
@@ -105,20 +103,6 @@ service AuthMethodService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Authenticate a user to an scope and retrieve an authentication token."
     };
-  }
-
-  // AuthenticateLogin validates credentials provided for a single-step login
-  // action and returns an auth token.
-  rpc AuthenticateLogin(AuthenticateLoginRequest) returns (AuthenticateLoginResponse) {
-    option (google.api.http) = {
-      post: "/v1/auth-methods/{auth_method_id}:authenticate:login"
-      body: "*"
-      response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deprecated: Use Authenticate instead"
-    };
-    option deprecated = true;
   }
 }
 
@@ -220,12 +204,14 @@ message AuthenticateRequest {
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
   string token_type = 2 [json_name = "token_type"];
-  // Deprecated; use "attributes" instead.
-  google.protobuf.Struct credentials = 3 [json_name = "credentials", deprecated = true];
   // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command to perform.
   string command = 5 [json_name = "command"];
+
+  // Deprecated fields
+  reserved "credentials";
+  reserved 3;
 }
 
 message AuthenticateResponse {
@@ -235,19 +221,4 @@ message AuthenticateResponse {
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command that was performed.
   string command = 5 [json_name = "command"];
-}
-
-message AuthenticateLoginRequest {
-  // The ID of the Auth Method in the system that should be used for authentication.
-  string auth_method_id = 1 [json_name = "auth_method_id"];
-  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
-  // to keep it safe from rogue JS in the browser.
-  string token_type = 2 [json_name = "token_type"];
-  // Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method.
-  google.protobuf.Struct credentials = 3;
-}
-
-message AuthenticateLoginResponse {
-  resources.authtokens.v1.AuthToken item = 1;
-  string token_type = 2 [json_name = "token_type"];
 }

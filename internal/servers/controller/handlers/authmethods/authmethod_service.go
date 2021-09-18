@@ -425,28 +425,6 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return nil, errors.New(ctx, errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
 
-// Deprecated: use Authenticate
-func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLoginRequest) (*pbs.AuthenticateLoginResponse, error) {
-	if err := validateAuthenticateLoginRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameField].GetStringValue(), creds[passwordField].GetStringValue())
-	if err != nil {
-		return nil, err
-	}
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthToken,
-	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
-	return &pbs.AuthenticateLoginResponse{Item: tok, TokenType: req.GetTokenType()}, nil
-}
-
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, error) {
 	var lookupErr error
 	var am auth.AuthMethod
@@ -1154,38 +1132,6 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 
-	return nil
-}
-
-// Deprecated; remove when AuthenticateLogin is removed
-func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
-	const op = "authmethod.validateAuthenticateLoginRequest"
-	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
-	}
-	badFields := make(map[string]string)
-	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
-		badFields[authMethodIdField] = "This is a required field."
-	} else if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
-		badFields[authMethodIdField] = "Invalid formatted identifier."
-	}
-	if req.GetCredentials() == nil {
-		badFields["credentials"] = "This is a required field."
-	}
-	creds := req.GetCredentials().GetFields()
-	if _, ok := creds[loginNameField]; !ok {
-		badFields["credentials.login_name"] = "This is a required field."
-	}
-	if _, ok := creds[passwordField]; !ok {
-		badFields["credentials.password"] = "This is a required field."
-	}
-	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
-	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
-	}
 	return nil
 }
 
