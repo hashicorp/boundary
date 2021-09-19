@@ -200,13 +200,13 @@ docker-multiarch-build:
 	--tag hashicorp/boundary:latest \
 	--build-arg VERSION=$(VERSION) \
 	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile .
+	--file $(DOCKER_DIR)/Release.dockerfile docker/
 	
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
 	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile .
+	-f $(DOCKER_DIR)/Dev.dockerfile docker/
 
 # requires appropriate permissions in dockerhub
 docker-publish:
