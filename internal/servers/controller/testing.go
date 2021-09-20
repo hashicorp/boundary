@@ -349,6 +349,10 @@ type TestControllerOpts struct {
 	// testing to avoid a lot of faff.
 	DisableAuthorizationFailures bool
 
+	// DisableDatabaseTemplating will cause the controller to start a new
+	// database in docker instead using a database template.
+	DisableDatabaseTemplating bool
+
 	// The controller KMS to use, or one will be created
 	RootKms wrapping.Wrapper
 
@@ -582,7 +586,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
-		createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		if !opts.DisableDatabaseTemplating {
+			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}

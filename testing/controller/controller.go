@@ -45,6 +45,7 @@ type option struct {
 	setDisableAuthMethodCreation   bool
 	setDisableDatabaseCreation     bool
 	setDisableDatabaseDestruction  bool
+	setDisableDatabaseTemplating   bool
 	setDefaultPasswordAuthMethodId bool
 	setDefaultOidcAuthMethodId     bool
 	setDefaultLoginName            bool
@@ -116,6 +117,16 @@ func DisableDatabaseDestruction() Option {
 	return func(c *option) error {
 		c.setDisableDatabaseDestruction = true
 		c.tcOptions.DisableDatabaseDestruction = true
+		return nil
+	}
+}
+
+// DisableDatabaseTemplating will cause the controller to start a new
+// database in docker instead using a database template.
+func DisableDatabaseTemplating() Option {
+	return func(c *option) error {
+		c.setDisableDatabaseTemplating = true
+		c.tcOptions.DisableDatabaseTemplating = true
 		return nil
 	}
 }
