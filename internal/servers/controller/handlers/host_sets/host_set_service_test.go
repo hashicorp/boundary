@@ -155,7 +155,9 @@ func TestGet_Plugin(t *testing.T) {
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 	plg := hostplugin.TestPlugin(t, conn, name, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, hc, plugin.WithPreferredEndpoints(prefEndpoints))
+	hs := plugin.TestSet(t, conn, kms, hc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	}, plugin.WithPreferredEndpoints(prefEndpoints))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -350,7 +352,7 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, hc, plugin.WithPreferredEndpoints(preferredEndpoints))
+		h := plugin.TestSet(t, conn, kms, hc, nil, plugin.WithPreferredEndpoints(preferredEndpoints))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:                 h.GetPublicId(),
 			HostCatalogId:      h.GetCatalogId(),

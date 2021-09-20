@@ -2,11 +2,11 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
@@ -17,6 +17,9 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestRepository_CreateCatalog(t *testing.T) {
@@ -29,11 +32,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
 	// test against the expected values sent to the plugin.
-	gotPluginAttrs := map[string]interface{}{}
+	var gotPluginAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{
 			OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-				gotPluginAttrs = req.GetCatalog().GetAttributes().AsMap()
+				gotPluginAttrs = req.GetCatalog().GetAttributes()
 				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Data: req.GetCatalog().GetSecrets()}}, nil
 			},
 		},
@@ -44,7 +47,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		in         *HostCatalog
 		opts       []Option
 		want       *HostCatalog
-		wantSecret []byte
+		wantSecret *structpb.Struct
 		wantIsErr  errors.Code
 	}{
 		{
@@ -61,7 +64,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -71,7 +74,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -92,14 +95,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -109,7 +112,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   "unknown_plugin",
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -121,7 +124,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Name:       "test-name-repo",
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			want: &HostCatalog{
@@ -129,7 +132,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Name:       "test-name-repo",
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -140,7 +143,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
 			},
 			want: &HostCatalog{
@@ -148,7 +151,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
 			},
 		},
@@ -156,16 +159,28 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-attributes",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte(`{"k1":"foo"}`),
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
+					Attributes: func() []byte {
+						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
+						require.NoError(t, err)
+						return b
+					}(),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte(`{"k1":"foo"}`),
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
+					Attributes: func() []byte {
+						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
+						require.NoError(t, err)
+						return b
+					}(),
 				},
 			},
 		},
@@ -176,23 +191,35 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
-				secrets: map[string]interface{}{
-					"k1": "v1",
-					"k2": 2,
-					"k3": nil,
-				},
+				secrets: func() *structpb.Struct {
+					st, err := structpb.NewStruct(map[string]interface{}{
+						"k1": "v1",
+						"k2": 2,
+						"k3": nil,
+					})
+					require.NoError(t, err)
+					return st
+				}(),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
 			},
-			wantSecret: []byte(`{"k1":"v1","k2":2,"k3":null}`),
+			wantSecret: func() *structpb.Struct {
+				st, err := structpb.NewStruct(map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				})
+				require.NoError(t, err)
+				return st
+			}(),
 		},
 	}
 
@@ -219,9 +246,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
-			wantedPluginAttributes := map[string]interface{}{}
-			require.NoError(t, json.Unmarshal(tt.want.GetAttributes(), &wantedPluginAttributes))
-			assert.Equal(wantedPluginAttributes, gotPluginAttrs)
+			// wantedPluginAttributes := &structpb.Struct{}
+			// require.NoError(t, proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
+			gotB, err := proto.Marshal(gotPluginAttrs)
+			require.NoError(t, err)
+			assert.Equal(tt.want.GetAttributes(), gotB)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
@@ -240,7 +269,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
 			require.NoError(t, err)
 			require.NoError(t, cSecret.decrypt(ctx, dbWrapper))
-			assert.Equal(string(tt.wantSecret), string(cSecret.Secret))
+
+			st := &structpb.Struct{}
+			require.NoError(t, proto.Unmarshal(cSecret.Secret, st))
+			assert.Empty(cmp.Diff(tt.wantSecret, st, protocmp.Transform()))
 		})
 	}
 
@@ -256,7 +288,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				ScopeId:    prj.GetPublicId(),
 				Name:       "test-name-repo",
 				PluginId:   plg.GetPublicId(),
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 
@@ -285,7 +317,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			HostCatalog: &store.HostCatalog{
 				Name:       "test-name-repo",
 				PluginId:   plg.GetPublicId(),
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 		in2 := in.clone()

@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -17,6 +16,9 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -71,7 +73,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	s.PublicId = id
 
 	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok {
+	if !ok || plgClient == nil {
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin with plugin name %q not available", plg.GetPluginName()))
 	}
 	plgHc, err := toPluginCatalog(ctx, c)
@@ -83,7 +85,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		if status.Code(err) != codes.Unimplemented {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -316,7 +320,6 @@ type hostSetAgg struct {
 // TableName returns the table name for gorm
 func (agg *hostSetAgg) TableName() string { return "host_plugin_host_set_with_value_obj" }
 
-
 // toPluginSet returns a host set in the format expected by the host plugin system.
 func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 	const op = "plugin.toPluginCatalog"
@@ -327,17 +330,11 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		Id: in.GetPublicId(),
 	}
 	if in.GetAttributes() != nil {
-		attrs := map[string]interface{}{}
-		if err := json.Unmarshal(in.GetAttributes(), &attrs); err != nil {
+		attrs := &structpb.Struct{}
+		if err := proto.Unmarshal(in.GetAttributes(), attrs); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal attributes"))
 		}
-		if len(attrs) > 0 {
-			attrSt, err := structpb.NewStruct(attrs)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("proto marshaling attributes"))
-			}
-			hs.Attributes = attrSt
-		}
+		hs.Attributes = attrs
 	}
 	return hs, nil
 }

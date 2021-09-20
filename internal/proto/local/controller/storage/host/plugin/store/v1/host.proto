@@ -43,7 +43,7 @@ message HostCatalog {
   uint32 version = 8;
 
   // attributes is a jsonb formatted field.
-  // @inject_tag: `gorm:"default:null"`
+  // @inject_tag: `gorm:"not_null"`
   bytes attributes = 9;
 }
 
@@ -79,7 +79,7 @@ message HostSet {
   uint32 version = 7;
 
   // attributes is a byte field containing marshaled JSON data
-  // @inject_tag: `gorm:"default:null"`
+  // @inject_tag: `gorm:"not_null"`
   bytes attributes = 8;
 
   // preferred_endpoints stores string preference values

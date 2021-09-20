@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,9 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestRepository_CreateSet(t *testing.T) {
@@ -32,16 +33,16 @@ func TestRepository_CreateSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
 
-	var pluginReceivedAttrs map[string]interface{}
+	var pluginReceivedAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
-			pluginReceivedAttrs = req.GetSet().GetAttributes().AsMap()
+			pluginReceivedAttrs = req.GetSet().GetAttributes()
 			return &plgpb.OnCreateSetResponse{}, nil
 		}},
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	attrs := []byte("{}")
+	attrs := []byte{}
 
 	tests := []struct {
 		name      string
@@ -160,14 +161,22 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes:  []byte(`{"k1":"foo"}`),
+					Attributes: func() []byte {
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						require.NoError(t, err)
+						return b
+					}(),
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes:  []byte(`{"k1":"foo"}`),
+					Attributes: func() []byte {
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						require.NoError(t, err)
+						return b
+					}(),
 				},
 			},
 		},
@@ -194,9 +203,9 @@ func TestRepository_CreateSet(t *testing.T) {
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
-			wantedPluginAttributes := map[string]interface{}{}
-			require.NoError(json.Unmarshal(tt.want.Attributes, &wantedPluginAttributes))
-			assert.Equal(wantedPluginAttributes, pluginReceivedAttrs)
+			wantedPluginAttributes := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(tt.want.Attributes, wantedPluginAttributes))
+			assert.Empty(cmp.Diff(wantedPluginAttributes, pluginReceivedAttrs, protocmp.Transform()))
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
@@ -215,7 +224,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			HostSet: &store.HostSet{
 				CatalogId:  catalog.PublicId,
 				Name:       "test-name-repo",
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 
@@ -246,7 +255,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in := &HostSet{
 			HostSet: &store.HostSet{
 				Name:       "test-name-repo",
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 		in2 := in.clone()
@@ -287,7 +296,9 @@ func TestRepository_LookupSet(t *testing.T) {
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, kms, catalog)
+	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	})
 	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 
@@ -349,9 +360,9 @@ func TestRepository_ListSets(t *testing.T) {
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
-		TestSet(t, conn, kms, catalogA),
-		TestSet(t, conn, kms, catalogA),
-		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA, plgm),
+		TestSet(t, conn, kms, catalogA, plgm),
+		TestSet(t, conn, kms, catalogA, plgm),
 	}
 
 	tests := []struct {
@@ -416,7 +427,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
-		hostSets = append(hostSets, TestSet(t, conn, kms, catalog))
+		hostSets = append(hostSets, TestSet(t, conn, kms, catalog, plgm))
 	}
 
 	tests := []struct {

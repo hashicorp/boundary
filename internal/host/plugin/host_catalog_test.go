@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -13,7 +12,9 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestHostCatalog_Create(t *testing.T) {
@@ -45,7 +46,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantCreateErr: true,
@@ -59,7 +60,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantCreateErr: true,
@@ -74,7 +75,7 @@ func TestHostCatalog_Create(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
 					ScopeId:    prj.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -92,7 +93,7 @@ func TestHostCatalog_Create(t *testing.T) {
 					PluginId:   plg.GetPublicId(),
 					ScopeId:    prj.GetPublicId(),
 					Name:       "test-name",
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -110,7 +111,7 @@ func TestHostCatalog_Create(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					ScopeId:     prj.GetPublicId(),
 					Description: "test-description",
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
 			},
 		},
@@ -120,7 +121,7 @@ func TestHostCatalog_Create(t *testing.T) {
 				pluginId: plg.GetPublicId(),
 				scopeId:  prj.GetPublicId(),
 				opts: []Option{
-					WithAttributes(map[string]interface{}{"foo": "bar"}),
+					WithAttributes(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
 				},
 			},
 			want: func() *HostCatalog {
@@ -131,7 +132,7 @@ func TestHostCatalog_Create(t *testing.T) {
 					},
 				}
 				var err error
-				hc.Attributes, err = json.Marshal(map[string]interface{}{"foo": "bar"})
+				hc.Attributes, err = proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}})
 				require.NoError(t, err)
 				return hc
 			}(),

@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,6 +12,9 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -64,7 +66,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	c.PublicId = id
 
 	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok {
+	if !ok || plgClient == nil {
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
 	}
 	plgHc, err := toPluginCatalog(ctx, c)
@@ -73,13 +75,14 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	plgResp, err := plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		if status.Code(err) != codes.Unimplemented {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
-	persistedData := plgResp.GetPersisted().GetData()
 
 	var hcSecret *HostCatalogSecret
-	if persistedData != nil {
-		hcSecret, err = newHostCatalogSecret(ctx, id, persistedData.AsMap())
+	if plgResp != nil && plgResp.GetPersisted().GetData() != nil {
+		hcSecret, err = newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetData())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -225,17 +228,11 @@ func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCata
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	per := &plgpb.HostCatalogPersisted{}
-	sec := map[string]interface{}{}
-	if err := json.Unmarshal(cSecret.GetSecret(), &sec); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret json"))
+	data := &structpb.Struct{}
+	if err := proto.Unmarshal(cSecret.GetSecret(), data); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
-	per.Data, err = structpb.NewStruct(sec)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshaling to proto struct"))
-	}
-
-	return per, nil
+	return &plgpb.HostCatalogPersisted{Data: data}, nil
 }
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
@@ -250,25 +247,14 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		ScopeId: in.GetScopeId(),
 	}
 	if in.GetAttributes() != nil {
-		attrs := map[string]interface{}{}
-		if err := json.Unmarshal(in.GetAttributes(), &attrs); err != nil {
+		attrs := &structpb.Struct{}
+		if err := proto.Unmarshal(in.GetAttributes(), attrs); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal attributes"))
 		}
-		if len(attrs) > 0 {
-			attrSt, err := structpb.NewStruct(attrs)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to proto marshal attributes"))
-			}
-			hc.Attributes = attrSt
-		}
+		hc.Attributes = attrs
 	}
-	if len(in.secrets) > 0 {
-		secretSt, err := structpb.NewStruct(in.secrets)
-		if err != nil {
-			// Create a new error instead of wrapping it in case the error contains some secret info.
-			return nil, errors.New(ctx, errors.Internal, op, "unable to proto marshal secrets")
-		}
-		hc.Secrets = secretSt
+	if in.secrets != nil {
+		hc.Secrets = in.secrets
 	}
 	return hc, nil
 }

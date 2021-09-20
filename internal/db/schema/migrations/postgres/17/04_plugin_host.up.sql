@@ -54,9 +54,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null
-      constraint attributes_must_not_be_empty
-      check(length(attributes) > 0),
+    attributes bytea not null,
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
       references host_catalog (scope_id, public_id)
@@ -126,9 +124,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null
-      constraint attributes_must_not_be_empty
-        check(length(attributes) > 0),
+    attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey

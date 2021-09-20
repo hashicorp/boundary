@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // HostCatalogSecret contains the encrypted secret for a host catalog.
@@ -22,7 +22,7 @@ type HostCatalogSecret struct {
 
 // newHostCatalogSecret creates an in memory host catalog secret.
 // All options are ignored.
-func newHostCatalogSecret(ctx context.Context, catalogId string, secret map[string]interface{}, _ ...Option) (*HostCatalogSecret, error) {
+func newHostCatalogSecret(ctx context.Context, catalogId string, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
 	const op = "plugin.newHostCatlogSecret"
 	hcs := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
@@ -31,7 +31,7 @@ func newHostCatalogSecret(ctx context.Context, catalogId string, secret map[stri
 	}
 
 	if secret != nil {
-		attrs, err := json.Marshal(secret)
+		attrs, err := proto.Marshal(secret)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 		}

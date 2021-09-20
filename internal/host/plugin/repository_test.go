@@ -22,11 +22,11 @@ func TestRepository_New(t *testing.T) {
 	plgs := map[string]plgpb.HostPluginServiceServer{}
 
 	type args struct {
-		r    db.Reader
-		w    db.Writer
-		kms  *kms.Kms
+		r       db.Reader
+		w       db.Writer
+		kms     *kms.Kms
 		plugins map[string]plgpb.HostPluginServiceServer
-		opts []host.Option
+		opts    []host.Option
 	}
 
 	tests := []struct {
