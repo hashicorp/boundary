@@ -33,13 +33,13 @@ RUN set -eux && \
     rm boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS boundary_${VERSION}_SHA256SUMS.sig && \
     mkdir /boundary
 
-COPY docker/config.hcl /boundary/config.hcl
+COPY config.hcl /boundary/config.hcl
 
 RUN chown -R boundary:boundary /boundary/ 
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
 
-COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
