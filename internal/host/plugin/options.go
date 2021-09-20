@@ -14,11 +14,11 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
-	withAttributes  map[string]interface{}
-	withSecrets     map[string]interface{}
+	withName               string
+	withDescription        string
+	withAttributes         map[string]interface{}
+	withSecrets            map[string]interface{}
+	withPreferredEndpoints []string
 }
 
 func getDefaultOptions() options {
@@ -57,11 +57,9 @@ func WithSecrets(secrets map[string]interface{}) Option {
 	}
 }
 
-// WithLimit provides an option to provide a limit. Intentionally allowing
-// negative integers. If WithLimit < 0, then unlimited results are
-// returned. If WithLimit == 0, then default limits are used for results.
-func WithLimit(l int) Option {
+// WithPreferredEndpoints provides an optional preferred endpoints field.
+func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
-		o.withLimit = l
+		o.withPreferredEndpoints = with
 	}
 }

@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 17004,
+		binarySchemaVersion: 17005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -7851,6 +7851,77 @@ alter table wh_session_connection_accumulating_fact
     ('host_plugin_catalog', 1),
     ('host_plugin_catalog_secret', 1),
     ('host_plugin_set', 1);
+`),
+			17005: []byte(`
+create table host_set_preferred_endpoint (
+  create_time wt_timestamp,
+  host_set_id wt_public_id not null
+    constraint host_set_fkey
+    references host_set(public_id)
+    on delete cascade
+    on update cascade,
+  priority int not null
+    constraint priority_must_be_greater_than_zero
+      check(priority > 0),
+  condition text not null
+    constraint condition_must_not_be_empty
+      check(length(trim(condition)) > 4) -- minimum is 'dns:*'
+    constraint condition_must_not_be_too_long
+      check(length(trim(condition)) < 255)
+    constraint condition_has_valid_prefix
+      check(
+        left(trim(condition), 4) = 'dns:'
+          or
+        left(trim(condition), 5) = 'cidr:'
+       )
+    constraint condition_does_not_contain_invalid_chars
+      check(
+        position('|' in trim(condition)) = 0
+          and
+        position('=' in trim(condition)) = 0
+      ),
+  primary key(host_set_id, priority),
+  constraint host_set_preferred_endpoint_host_set_id_condition_uq
+    unique(host_set_id, condition)
+);
+
+-- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
+-- assigned to host sets are immutable.
+create function
+  host_set_immutable_preferred_endpoint()
+  returns trigger
+as $$
+begin
+  raise exception 'preferred endpoints are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_preferred_endpoint
+  before update on host_set_preferred_endpoint
+  for each row execute procedure host_set_immutable_preferred_endpoint();
+
+-- host_plugin_host_set_with_value_obj is useful for reading a plugin host set with its
+-- associated value objects (preferred endpoints) as columns with delimited
+-- values. The delimiter depends on the value objects (e.g. if they need
+-- ordering).
+create view host_plugin_host_set_with_value_obj as
+select
+  hs.public_id,
+  hs.catalog_id,
+  hs.name,
+  hs.description,
+  hs.create_time,
+  hs.update_time,
+  hs.version,
+  hs.attributes,
+  -- the string_agg(..) column will be null if there are no associated value objects
+  string_agg(distinct concat_ws('=', hspe.priority, hspe.condition), '|') as preferred_endpoints
+from
+  host_plugin_set hs
+  left outer join host_set_preferred_endpoint hspe on hs.public_id = hspe.host_set_id
+group by hs.public_id;
+comment on view host_plugin_host_set_with_value_obj is
+'host plugin host set with its associated value objects';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

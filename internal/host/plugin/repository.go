@@ -6,6 +6,7 @@ package plugin
 import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
@@ -30,7 +31,7 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb.HostPluginServiceServer, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb.HostPluginServiceServer, opt ...host.Option) (*Repository, error) {
 	const op = "plugin.NewRepository"
 	switch {
 	case r == nil:
@@ -43,10 +44,13 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "plgm")
 	}
 
-	opts := getOpts(opt...)
-	if opts.withLimit == 0 {
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op)
+	}
+	if opts.WithLimit == 0 {
 		// zero signals the boundary defaults should be used.
-		opts.withLimit = db.DefaultLimit
+		opts.WithLimit = db.DefaultLimit
 	}
 
 	plgs := make(map[string]plgpb.HostPluginServiceServer, len(plgm))
@@ -59,6 +63,6 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb
 		writer:       w,
 		kms:          kms,
 		plugins:      plgs,
-		defaultLimit: opts.withLimit,
+		defaultLimit: opts.WithLimit,
 	}, nil
 }

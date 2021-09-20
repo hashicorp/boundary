@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -21,11 +22,11 @@ func TestRepository_New(t *testing.T) {
 	plgs := map[string]plgpb.HostPluginServiceServer{}
 
 	type args struct {
-		r       db.Reader
-		w       db.Writer
-		kms     *kms.Kms
+		r    db.Reader
+		w    db.Writer
+		kms  *kms.Kms
 		plugins map[string]plgpb.HostPluginServiceServer
-		opts    []Option
+		opts []host.Option
 	}
 
 	tests := []struct {
@@ -57,7 +58,7 @@ func TestRepository_New(t *testing.T) {
 				w:       rw,
 				kms:     kmsCache,
 				plugins: plgs,
-				opts:    []Option{WithLimit(5)},
+				opts:    []host.Option{host.WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,

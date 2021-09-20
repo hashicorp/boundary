@@ -70,7 +70,7 @@ func (c *HostCatalogSecret) SetTableName(n string) {
 func (c *HostCatalogSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "plugin.(HostCatalogSecret).encrypt"
 	if len(c.Secret) == 0 {
-		errors.New(ctx, errors.InvalidParameter, op, "no attributes defined")
+		return errors.New(ctx, errors.InvalidParameter, op, "no attributes defined")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.HostCatalogSecret, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
