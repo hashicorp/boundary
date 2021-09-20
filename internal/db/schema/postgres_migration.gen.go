@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 16005,
+		binarySchemaVersion: 17002,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -7464,6 +7464,85 @@ alter table wh_session_connection_accumulating_fact
     after insert on session_connection
     for each row
     execute function wh_insert_session_connection();
+`),
+			17001: []byte(`
+create table credential_vault_library_map (
+    private_id wt_private_id,
+    library_id wt_public_id
+      constraint credential_vault_library_fk
+        references credential_vault_library (public_id)
+        on delete cascade
+        on update cascade,
+    primary key (private_id, library_id),
+    constraint credential_vault_library_map_library_id_uq
+      unique(library_id)
+  );
+  comment on table credential_vault_library_map is
+    'credential_vault_library_map is a base table for the vault library map type. '
+    'Each row is owned by a single vault library and maps 1-to-1 to a row in one of the vault library map subtype tables.';
+
+  create trigger immutable_columns before update on credential_vault_library_map
+    for each row execute procedure immutable_columns('private_id', 'library_id');
+
+
+  -- insert_credential_vault_library_map_subtype() is a before insert trigger
+  -- function for subtypes of credential_vault_library_map
+  create function insert_credential_vault_library_map_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into credential_vault_library_map
+      (private_id, library_id)
+    values
+      (new.private_id, new.library_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_credential_vault_library_map_subtype() is an after delete trigger
+  -- function for subtypes of credential_vault_library_map
+  create function delete_credential_vault_library_map_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from credential_vault_library_map
+    where private_id = old.private_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+`),
+			17002: []byte(`
+create table credential_vault_library_user_password_map (
+    private_id wt_private_id,
+    library_id wt_public_id,
+    primary key (private_id, library_id),
+    constraint credential_vault_library_map_fk
+      foreign key (private_id, library_id)
+      references credential_vault_library_map (private_id, library_id)
+      on delete cascade
+      on update cascade,
+    constraint credential_vault_library_user_password_map_library_id_uq
+      unique(library_id),
+    username text not null
+      constraint username_must_not_be_empty
+        check(length(trim(username)) > 0),
+    password text not null
+      constraint password_must_not_be_empty
+        check(length(trim(password)) > 0)
+  );
+  comment on table credential_vault_library_user_password_map is
+    'credential_vault_library_user_password_map is a table '
+    'where each row represents a mapping from a generic vault secret to a user password credential type '
+    'for a vault credential library.';
+
+  create trigger immutable_columns before update on credential_vault_library_user_password_map
+    for each row execute procedure immutable_columns('private_id', 'library_id');
+
+  create trigger insert_credential_vault_library_map_subtype before insert on credential_vault_library_user_password_map
+    for each row execute procedure insert_credential_vault_library_map_subtype();
+
+  create trigger delete_credential_vault_library_map_subtype after delete on credential_vault_library_user_password_map
+    for each row execute procedure delete_credential_vault_library_map_subtype();
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
