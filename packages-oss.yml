@@ -92,7 +92,7 @@ layers:
       RUN go mod download
 
   - name: copy-source
-    source-include: "*.go"
+    source-include: "*.go *.up.sql"
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
