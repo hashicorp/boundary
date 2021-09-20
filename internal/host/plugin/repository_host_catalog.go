@@ -202,6 +202,7 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, e
 
 // getPersistedDataForCatalog returns the persisted data for a catalog if
 // present.  c must have a valid Public Id and Scope Id set.
+// TODO: consider merging the functions for getting catalog and persisted data into a view.
 func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCatalog) (*plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getPersistedDataForCatalog"
 	if c.PublicId == "" {
