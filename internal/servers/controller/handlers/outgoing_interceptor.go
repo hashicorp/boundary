@@ -20,7 +20,7 @@ const (
 	statusField           = "status"
 )
 
-func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
+func OutgoingInterceptor(_ context.Context, w http.ResponseWriter, m proto.Message) error {
 	m = m.ProtoReflect().Interface()
 	if !m.ProtoReflect().IsValid() {
 		// This would be the case if it's a nil pointer
@@ -84,24 +84,6 @@ func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Mes
 				http.SetCookie(w, &jsTok)
 				http.SetCookie(w, &httpTok)
 			}
-		}
-
-	case *pbs.AuthenticateLoginResponse:
-		if strings.EqualFold(m.GetTokenType(), "cookie") {
-			tok := m.GetItem().GetToken()
-			m.GetItem().Token = ""
-			half := len(tok) / 2
-			jsTok := http.Cookie{
-				Name:  JsVisibleCookieName,
-				Value: tok[:half],
-			}
-			httpTok := http.Cookie{
-				Name:     HttpOnlyCookieName,
-				Value:    tok[half:],
-				HttpOnly: true,
-			}
-			http.SetCookie(w, &jsTok)
-			http.SetCookie(w, &httpTok)
 		}
 	}
 

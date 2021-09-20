@@ -365,40 +365,6 @@
         ]
       }
     },
-    "/v1/auth-methods/{auth_method_id}:authenticate:login": {
-      "post": {
-        "summary": "Deprecated: Use Authenticate instead",
-        "operationId": "AuthMethodService_AuthenticateLogin",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "auth_method_id",
-            "description": "The ID of the Auth Method in the system that should be used for authentication.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateLoginRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthMethodService"
-        ]
-      }
-    },
     "/v1/auth-methods/{id}": {
       "get": {
         "summary": "Gets a single Auth Method.",
@@ -5030,34 +4996,6 @@
         }
       }
     },
-    "controller.api.services.v1.AuthenticateLoginRequest": {
-      "type": "object",
-      "properties": {
-        "auth_method_id": {
-          "type": "string",
-          "description": "The ID of the Auth Method in the system that should be used for authentication."
-        },
-        "token_type": {
-          "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
-        },
-        "credentials": {
-          "type": "object",
-          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
-        }
-      }
-    },
-    "controller.api.services.v1.AuthenticateLoginResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-        },
-        "token_type": {
-          "type": "string"
-        }
-      }
-    },
     "controller.api.services.v1.AuthenticateRequest": {
       "type": "object",
       "properties": {
@@ -5068,10 +5006,6 @@
         "token_type": {
           "type": "string",
           "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
-        },
-        "credentials": {
-          "type": "object",
-          "description": "Deprecated; use \"attributes\" instead."
         },
         "attributes": {
           "type": "object",

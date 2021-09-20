@@ -94,6 +94,7 @@ func TestClient_RevokeToken(t *testing.T) {
 	// An attempt to lookup should now fail with a 403
 	tokenLookup, err = client.lookupToken()
 	require.Error(err)
+	assert.Nil(tokenLookup)
 
 	var respErr *vault.ResponseError
 	ok := errors.As(err, &respErr)

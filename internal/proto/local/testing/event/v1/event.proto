@@ -10,7 +10,6 @@ import "google/api/annotations.proto";
 
 service TestAuthMethodService {
   // TestAuthenticate validates credentials provided and returns an Auth Token.
-  // Deprecated: use AuthenticateLogin instead.
   rpc TestAuthenticate(TestAuthenticateRequest) returns (TestAuthenticateResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"

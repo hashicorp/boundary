@@ -2,6 +2,19 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Deprecations/Changes
+
+* Removes support for the `auth-methods/<id>:authenticate:login` action that was 
+  deprecated in [Boundary 0.2.0](#020-20210414), please use 
+  `auth-methods/<id>:authenticate` instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/1534)).
+* Removes support for the `credential` field within `auth-methods/<id>:authenticate`
+  action. This field was deprecated in [Boundary 0.2.0](#020-20210414), please use
+  `attributes` instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/1534)).
+
 ## 0.6.1 (2021/09/14)
 
 ### Bug Fixes
