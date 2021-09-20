@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -39,29 +40,29 @@ func TestCatalog(t *testing.T, conn *gorm.DB, scopeId, pluginId string, opt ...O
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *gorm.DB, catalogId string, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, opt ...Option) *HostSet {
 	t.Helper()
+	require := require.New(t)
 	ctx := context.Background()
-	w := db.New(conn)
+	rw := db.New(conn)
 
-	assert := assert.New(t)
-	set, err := NewHostSet(ctx, catalogId, opt...)
-	require.NoError(t, err)
-	assert.NotNil(set)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
 
-	cg := allocHostCatalog()
-	cg.PublicId = catalogId
-	require.NoError(t, w.LookupByPublicId(ctx, cg))
+	set, err := NewHostSet(ctx, hc.PublicId, opt...)
+	require.NoError(err)
+	require.NotNil(set)
 
 	plg := host.NewPlugin("", "")
-	plg.PublicId = cg.GetPluginId()
-	require.NoError(t, w.LookupByPublicId(ctx, plg))
+	plg.PublicId = hc.GetPluginId()
+	require.NoError(rw.LookupByPublicId(ctx, plg))
 
 	id, err := newHostSetId(ctx, plg.GetIdPrefix())
-	assert.NoError(err)
-	assert.NotEmpty(id)
-	set.PublicId = id
+	require.NoError(err)
+	require.NotEmpty(id)
 
-	require.NoError(t, w.Create(ctx, set))
+	set, err = repo.CreateSet(ctx, hc.ScopeId, set, opt...)
+	require.NoError(err)
+
 	return set
 }

@@ -3863,6 +3863,13 @@
           "description": "Output only. A list of Hosts in this Host Set.",
           "readOnly": true
         },
+        "preferred_endpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An ordered list of endpoint preferences used to choose from among\nmultiple possible endpoints for a host."
+        },
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Host Set type."

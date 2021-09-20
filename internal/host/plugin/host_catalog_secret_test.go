@@ -122,6 +122,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 
 	hcs, err := newHostCatalogSecret(ctx, cat.GetPublicId(), map[string]interface{}{"foo": "bar"})
 	require.NoError(t, err)
@@ -131,6 +132,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	assert.NoError(t, err)
 
 	found, err := newHostCatalogSecret(ctx, cat.GetPublicId(), nil)
+	require.NoError(t, err)
 	assert.NoError(t, rw.LookupWhere(ctx, found, "catalog_id=?", found.GetCatalogId()))
 	require.NoError(t, found.decrypt(ctx, databaseWrapper))
 	require.NoError(t, hcs.decrypt(ctx, databaseWrapper))

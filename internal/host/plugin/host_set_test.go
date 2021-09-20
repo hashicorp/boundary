@@ -133,6 +133,22 @@ func TestHostSet_Create(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-preferred-endpoints",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts: []Option{
+					WithPreferredEndpoints([]string{"cidr:1.2.3.4"}),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          cat.GetPublicId(),
+					PreferredEndpoints: []string{"cidr:1.2.3.4"},
+					Attributes:         []byte("{}"),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

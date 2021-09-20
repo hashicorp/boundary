@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,7 @@ func Test_TestSet(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
@@ -44,7 +46,7 @@ func Test_TestSet(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, c.GetPublicId(), WithName("foo"), WithDescription("bar"))
+	set := TestSet(t, conn, kmsCache, c, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	assert.True(strings.HasPrefix(set.GetPublicId(), fmt.Sprintf("%s_%s", HostSetPrefix, "prefix")))
 	assert.Equal("foo", set.GetName())

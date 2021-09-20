@@ -21,7 +21,7 @@ func NewPreferencer(ctx context.Context, opt ...Option) (*preferencer, error) {
 	const op = "endpoint.NewPreferencer"
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
 	pref := &preferencer{
 		matchers: opts.withMatchers,

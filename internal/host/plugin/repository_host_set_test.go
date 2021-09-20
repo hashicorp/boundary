@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -60,8 +61,8 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "invalid-public-id-set",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					PublicId:  "abcd_OOOOOOOOOO",
+					CatalogId:  catalog.PublicId,
+					PublicId:   "abcd_OOOOOOOOOO",
 					Attributes: attrs,
 				},
 			},
@@ -80,14 +81,31 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "valid-no-options",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
+					CatalogId:  catalog.PublicId,
 					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
+					CatalogId:  catalog.PublicId,
 					Attributes: attrs,
+				},
+			},
+		},
+		{
+			name: "valid-preferred-endpoints",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          catalog.PublicId,
+					Attributes:         attrs,
+					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          catalog.PublicId,
+					Attributes:         attrs,
+					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 				},
 			},
 		},
@@ -95,15 +113,15 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "valid-with-name",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					Name:      "test-name-repo",
+					CatalogId:  catalog.PublicId,
+					Name:       "test-name-repo",
 					Attributes: attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId: catalog.PublicId,
-					Name:      "test-name-repo",
+					CatalogId:  catalog.PublicId,
+					Name:       "test-name-repo",
 					Attributes: attrs,
 				},
 			},
@@ -114,14 +132,14 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes: attrs,
+					Attributes:  attrs,
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
-					Attributes: attrs,
+					Attributes:  attrs,
 				},
 			},
 		},
@@ -163,8 +181,8 @@ func TestRepository_CreateSet(t *testing.T) {
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
-				CatalogId: catalog.PublicId,
-				Name:      "test-name-repo",
+				CatalogId:  catalog.PublicId,
+				Name:       "test-name-repo",
 				Attributes: []byte("{}"),
 			},
 		}
@@ -195,7 +213,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 		in := &HostSet{
 			HostSet: &store.HostSet{
-				Name: "test-name-repo",
+				Name:       "test-name-repo",
 				Attributes: []byte("{}"),
 			},
 		}
@@ -234,7 +252,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, catalog.PublicId)
+	hostSet := TestSet(t, conn, kms, catalog)
 	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 
@@ -273,7 +291,9 @@ func TestRepository_LookupSet(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.EqualValues(tt.want, got)
+			if tt.want != nil {
+				assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()), "LookupSet(%q) got response %q, wanted %q", tt.in, got, tt.want)
+			}
 		})
 	}
 }
@@ -291,15 +311,15 @@ func TestRepository_ListSets(t *testing.T) {
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
-		TestSet(t, conn, catalogA.PublicId),
-		TestSet(t, conn, catalogA.PublicId),
-		TestSet(t, conn, catalogA.PublicId),
+		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA),
 	}
 
 	tests := []struct {
 		name      string
 		in        string
-		opts      []Option
+		opts      []host.Option
 		want      []*HostSet
 		wantIsErr errors.Code
 	}{
@@ -310,7 +330,7 @@ func TestRepository_ListSets(t *testing.T) {
 		{
 			name: "Catalog-with-no-host-sets",
 			in:   catalogB.PublicId,
-			want: []*HostSet{},
+			want: nil,
 		},
 		{
 			name: "Catalog-with-host-sets",
@@ -355,13 +375,13 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
-		hostSets = append(hostSets, TestSet(t, conn, catalog.PublicId))
+		hostSets = append(hostSets, TestSet(t, conn, kms, catalog))
 	}
 
 	tests := []struct {
 		name     string
-		repoOpts []Option
-		listOpts []Option
+		repoOpts []host.Option
+		listOpts []host.Option
 		wantLen  int
 	}{
 		{
@@ -370,34 +390,34 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		},
 		{
 			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
+			repoOpts: []host.Option{host.WithLimit(3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
+			repoOpts: []host.Option{host.WithLimit(-1)},
 			wantLen:  count,
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []host.Option{host.WithLimit(3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []host.Option{host.WithLimit(-1)},
 			wantLen:  count,
 		},
 		{
 			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			repoOpts: []host.Option{host.WithLimit(2)},
+			listOpts: []host.Option{host.WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			repoOpts: []host.Option{host.WithLimit(6)},
+			listOpts: []host.Option{host.WithLimit(2)},
 			wantLen:  2,
 		},
 	}

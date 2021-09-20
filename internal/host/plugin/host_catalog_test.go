@@ -186,7 +186,7 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
-	w.Create(ctx, got)
+	require.NoError(t, w.Create(ctx, got))
 
 	// Can't create another resource with the same name in the same scope
 	got.PublicId, err = newHostCatalogId(ctx, plg.GetIdPrefix())

@@ -33,3 +33,17 @@ message Set {
   // @inject_tag: `gorm:"not_null"`
   string catalog_id = 2;
 }
+
+message PreferredEndpoint {
+  // The ID of the host set this belongs to.
+  // @inject_tag: `gorm:"primary_key"`
+  string host_set_id = 1;
+
+  // The priority order, zero-indexed
+  // @inject_tag: `gorm:"primary_key"`
+  uint32 priority = 2;
+
+  // The string text of the preference condition
+  // @inject_tag: `gorm:"not_null"`
+  string condition = 3;
+}

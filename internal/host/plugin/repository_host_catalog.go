@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
@@ -75,7 +76,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		hcSecret.encrypt(ctx, dbWrapper)
+		if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	var newHostCatalog *HostCatalog
@@ -146,20 +149,22 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 }
 
 // ListCatalogs returns a slice of HostCatalogs for the scope IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...Option) ([]*HostCatalog, error) {
+func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...host.Option) ([]*HostCatalog, error) {
 	const op = "plugin.(Repository).ListCatalogs"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
-	opts := getOpts(opt...)
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
 	}
 	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
-	if err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return hostCatalogs, nil
