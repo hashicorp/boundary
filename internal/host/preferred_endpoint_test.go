@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,7 +157,9 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, catalog, nil)
+	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
+	})
 
 	peFunc := func(priority uint32, condition string) *host.PreferredEndpoint {
 		ep, err := host.NewPreferredEndpoint(ctx, set.PublicId, priority, condition)
