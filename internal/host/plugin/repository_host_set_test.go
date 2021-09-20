@@ -32,6 +32,7 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented", "unimplemented")
 
 	var pluginReceivedAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceServer{
@@ -39,9 +40,11 @@ func TestRepository_CreateSet(t *testing.T) {
 			pluginReceivedAttrs = req.GetSet().GetAttributes()
 			return &plgpb.OnCreateSetResponse{}, nil
 		}},
+		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	attrs := []byte{}
 
 	tests := []struct {
@@ -134,6 +137,23 @@ func TestRepository_CreateSet(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:  catalog.PublicId,
 					Name:       "test-name-repo",
+					Attributes: attrs,
+				},
+			},
+		},
+		{
+			name: "valid-unimplemented-plugin",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:  unimplementedPluginCatalog.PublicId,
+					Name:       "valid-unimplemented-plugin",
+					Attributes: attrs,
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:  unimplementedPluginCatalog.PublicId,
+					Name:       "valid-unimplemented-plugin",
 					Attributes: attrs,
 				},
 			},

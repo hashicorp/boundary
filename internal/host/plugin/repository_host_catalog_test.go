@@ -29,6 +29,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test", "test")
+	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented", "unimplemented")
 
 	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
 	// test against the expected values sent to the plugin.
@@ -40,6 +41,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Data: req.GetCatalog().GetSecrets()}}, nil
 			},
 		},
+		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
 	}
 
 	tests := []struct {
@@ -102,6 +104,23 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					ScopeId:    prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
+					Attributes: []byte{},
+				},
+			},
+		},
+		{
+			name: "valid-unimplemented-plugin",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   unimplementedPlugin.GetPublicId(),
+					Attributes: []byte{},
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:    prj.GetPublicId(),
+					PluginId:   unimplementedPlugin.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
