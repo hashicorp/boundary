@@ -42,7 +42,7 @@ database-up:
 		$(PG_OPTS) 1> /dev/null
 	@echo "Test database available at:        127.0.0.1:$(TEST_DB_PORT)"
 	@echo "For database logs run:"
-	@echo "    docker logs boundary-sql-test"
+	@echo "    docker logs boundary-sql-tests"
 clean:
 	docker stop boundary-sql-tests || true
 	docker rm -v boundary-sql-tests || true
