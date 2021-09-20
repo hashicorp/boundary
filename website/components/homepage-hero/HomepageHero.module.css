@@ -10,18 +10,8 @@
     background-position: bottom 0 right -130px;
   }
 
-  & :global(.g-hero) {
+  & .hero {
     background: none;
     padding: 0;
-
-    & :global(.carousel) {
-      display: flex;
-      flex-direction: column-reverse;
-
-      & :global(.controls) {
-        padding-top: 0;
-        margin-bottom: 32px;
-      }
-    }
   }
 }
