@@ -341,18 +341,21 @@ func TestList_Plugin(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
-	}
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name, name)
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, plgm)
+	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	preferredEndpoints := []string{"cidr:1.2.3.4", "dns:*.foobar.com"}
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, hc, nil, plugin.WithPreferredEndpoints(preferredEndpoints))
+		h := plugin.TestSet(t, conn, kms, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:                 h.GetPublicId(),
 			HostCatalogId:      h.GetCatalogId(),

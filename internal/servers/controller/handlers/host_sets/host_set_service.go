@@ -2,7 +2,6 @@ package host_sets
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -24,6 +23,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -756,16 +756,13 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 			out.PreferredEndpoints = h.GetPreferredEndpoints()
 		}
 		if outputFields.Has(globals.AttributesField) {
-			attrs := map[string]interface{}{}
-			err := json.Unmarshal(h.Attributes, &attrs)
+			attrs := &structpb.Struct{}
+			err := proto.Unmarshal(h.Attributes, attrs)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			if len(attrs) > 0 {
-				out.Attributes, err = structpb.NewStruct(attrs)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
+			if len(attrs.AsMap()) > 0 {
+				out.Attributes = attrs
 			}
 		}
 	}
@@ -799,7 +796,7 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 		opts = append(opts, plugin.WithDescription(item.GetDescription().GetValue()))
 	}
 	if item.GetAttributes() != nil {
-		opts = append(opts, plugin.WithAttributes(item.GetAttributes().AsMap()))
+		opts = append(opts, plugin.WithAttributes(item.GetAttributes()))
 	}
 	if item.GetPreferredEndpoints() != nil {
 		opts = append(opts, plugin.WithPreferredEndpoints(item.GetPreferredEndpoints()))
