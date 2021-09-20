@@ -7856,21 +7856,38 @@ alter table wh_session_connection_accumulating_fact
 create table host_set_preferred_endpoint (
   create_time wt_timestamp,
   host_set_id wt_public_id not null
-    constraint host_set_id_fkey
+    constraint host_set_fkey
     references host_set(public_id)
     on delete cascade
     on update cascade,
   priority int not null
-    check(priority > 0),
+    constraint priority_must_be_greater_than_zero
+      check(priority > 0),
   condition text not null
-    check(length(condition) > 0),
+    constraint condition_must_not_be_empty
+      check(length(trim(condition)) > 4) -- minimum is 'dns:*'
+    constraint condition_must_not_be_too_long
+      check(length(trim(condition)) < 255)
+    constraint condition_has_valid_prefix
+      check(
+        left(trim(condition), 4) = 'dns:'
+          or
+        left(trim(condition), 5) = 'cidr:'
+       )
+    constraint condition_does_not_contain_invalid_chars
+      check(
+        position('|' in trim(condition)) = 0
+          and
+        position('=' in trim(condition)) = 0
+      ),
   primary key(host_set_id, priority),
-  unique(host_set_id, condition)
+  constraint host_set_preferred_endpoint_host_set_id_condition_uq
+    unique(host_set_id, condition)
 );
 
 -- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
 -- assigned to host sets are immutable.
-create or replace function
+create function
   host_set_immutable_preferred_endpoint()
   returns trigger
 as $$

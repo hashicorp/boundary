@@ -11,7 +11,22 @@ create table host_set_preferred_endpoint (
     constraint priority_must_be_greater_than_zero
       check(priority > 0),
   condition text not null
-    check(length(condition) > 0),
+    constraint condition_must_not_be_too_short
+      check(length(trim(condition)) > 4) -- minimum is 'dns:*'
+    constraint condition_must_not_be_too_long
+      check(length(trim(condition)) < 255)
+    constraint condition_has_valid_prefix
+      check(
+        left(trim(condition), 4) = 'dns:'
+          or
+        left(trim(condition), 5) = 'cidr:'
+       )
+    constraint condition_does_not_contain_invalid_chars
+      check(
+        position('|' in trim(condition)) = 0
+          and
+        position('=' in trim(condition)) = 0
+      ),
   primary key(host_set_id, priority),
   constraint host_set_preferred_endpoint_host_set_id_condition_uq
     unique(host_set_id, condition)
