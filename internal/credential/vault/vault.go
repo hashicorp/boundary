@@ -96,7 +96,7 @@ func (c *client) ping() error {
 	case err != nil:
 		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
-		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
+		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("no response: vault: %s", c.cl.Address()))
 	case !h.Initialized || h.Sealed:
 		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
 	}
