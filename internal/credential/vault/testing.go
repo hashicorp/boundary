@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -19,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -870,7 +870,7 @@ func (d *TestDatabase) ValidateCredential(t *testing.T, s *vault.Secret) error {
 	require := require.New(t)
 	require.NotNil(s)
 	dburl := d.URL.Encode(t, s)
-	db, err := sql.Open("postgres", dburl)
+	db, err := common.SqlOpen("postgres", dburl)
 	if err != nil {
 		return err
 	}

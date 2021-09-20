@@ -1407,13 +1407,13 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 
 			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
 			if err != nil {
-				var pqError *pgconn.PgError
-				if errors.As(err, &pqError) {
-					t.Log(pqError.Message)
-					t.Log(pqError.Detail)
-					t.Log(pqError.Where)
-					t.Log(pqError.ConstraintName)
-					t.Log(pqError.TableName)
+				var pgError *pgconn.PgError
+				if errors.As(err, &pgError) {
+					t.Log(pgError.Message)
+					t.Log(pgError.Detail)
+					t.Log(pgError.Where)
+					t.Log(pgError.ConstraintName)
+					t.Log(pgError.TableName)
 				}
 			}
 			require.NoError(err)

@@ -44,7 +44,7 @@ func TestError_IsUnique(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "wrapped-pq-is-unique",
+			name: "wrapped-pg-is-unique",
 			in: errors.E(
 				context.TODO(),
 				errors.WithWrap(&pgconn.PgError{
@@ -107,7 +107,7 @@ func TestError_IsCheckConstraint(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "wrapped-pq-is-check-constraint",
+			name: "wrapped-pg-is-check-constraint",
 			in: errors.E(context.TODO(), errors.WithCode(errors.CheckConstraint),
 				errors.WithWrap(&pgconn.PgError{
 					Code: "23514",
@@ -176,7 +176,7 @@ func TestError_IsNotNullError(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "wrapped-pq-is-not-null",
+			name: "wrapped-pg-is-not-null",
 			in: errors.E(context.TODO(), errors.WithCode(errors.NotNull),
 				errors.WithWrap(&pgconn.PgError{
 					Code: "23502",

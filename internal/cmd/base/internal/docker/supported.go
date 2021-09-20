@@ -4,11 +4,12 @@
 package docker
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/db/common"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/ory/dockertest/v3"
 )
 
@@ -37,7 +38,7 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 	}
 
 	switch dialect {
-	case "postgres":
+	case "postgres", "pgx":
 		switch {
 		case os.Getenv("BOUNDARY_TESTING_PG_URL") != "":
 			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
@@ -68,7 +69,7 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 	}
 
 	if err := pool.Retry(func() error {
-		db, err := sql.Open(dialect, url)
+		db, err := common.SqlOpen(dialect, url)
 		if err != nil {
 			return fmt.Errorf("error opening %s dev container: %w", dialect, err)
 		}

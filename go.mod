@@ -52,11 +52,11 @@ require (
 	github.com/hashicorp/vault/sdk v0.2.1
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgconn v1.10.0
+	github.com/jackc/pgx/v4 v4.11.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.10.3
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/cli v1.1.2

@@ -2,10 +2,10 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/mitchellh/cli"
@@ -49,7 +49,7 @@ func TestMigrateDatabase(t *testing.T) {
 					require.NoError(t, c())
 				})
 
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				earlyMigrationVersion := 2000
@@ -75,7 +75,7 @@ func TestMigrateDatabase(t *testing.T) {
 					require.NoError(t, c())
 				})
 
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				earlyMigrationVersion := 2000
@@ -100,7 +100,7 @@ func TestMigrateDatabase(t *testing.T) {
 				t.Cleanup(func() {
 					require.NoError(t, c())
 				})
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
@@ -120,7 +120,7 @@ func TestMigrateDatabase(t *testing.T) {
 				t.Cleanup(func() {
 					require.NoError(t, c())
 				})
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				createStmt := `create table if not exists schema_migrations (version bigint primary key, dirty boolean not null)`
@@ -154,7 +154,7 @@ func TestMigrateDatabase(t *testing.T) {
 				t.Cleanup(func() {
 					require.NoError(t, c())
 				})
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				man, err := schema.NewManager(ctx, dialect, dBase)
@@ -177,7 +177,7 @@ func TestMigrateDatabase(t *testing.T) {
 				t.Cleanup(func() {
 					require.NoError(t, c())
 				})
-				dBase, err := sql.Open(dialect, u)
+				dBase, err := common.SqlOpen(dialect, u)
 				require.NoError(t, err)
 
 				man, err := schema.NewManager(ctx, dialect, dBase)
@@ -217,7 +217,7 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	})
 	_ = c
 
-	dBase, err := sql.Open(dialect, u)
+	dBase, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	man, err := schema.NewManager(ctx, dialect, dBase)

@@ -2,12 +2,12 @@ package migration
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -36,7 +36,7 @@ func TestMigrations_UserDimension(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(err)
 
 	// migration to the prior migration (before the one we want to test)
