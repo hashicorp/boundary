@@ -199,6 +199,7 @@ docker-multiarch-build:
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
+	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \
 	-f $(DOCKER_DIR)/Dev.dockerfile docker/
 
