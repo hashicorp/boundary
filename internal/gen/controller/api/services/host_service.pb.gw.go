@@ -317,7 +317,7 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/GetHost")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/GetHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -340,7 +340,7 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/ListHosts")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/ListHosts", runtime.WithHTTPPathPattern("/v1/hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -363,7 +363,7 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/CreateHost")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/CreateHost", runtime.WithHTTPPathPattern("/v1/hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -386,7 +386,7 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/UpdateHost")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/UpdateHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -409,7 +409,7 @@ func RegisterHostServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/DeleteHost")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostService/DeleteHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -471,7 +471,7 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/GetHost")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/GetHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -491,7 +491,7 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/ListHosts")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/ListHosts", runtime.WithHTTPPathPattern("/v1/hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -511,7 +511,7 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/CreateHost")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/CreateHost", runtime.WithHTTPPathPattern("/v1/hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -531,7 +531,7 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/UpdateHost")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/UpdateHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -551,7 +551,7 @@ func RegisterHostServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/DeleteHost")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostService/DeleteHost", runtime.WithHTTPPathPattern("/v1/hosts/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

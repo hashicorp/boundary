@@ -335,7 +335,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/GetScope")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/GetScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -358,7 +358,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/ListScopes")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/ListScopes", runtime.WithHTTPPathPattern("/v1/scopes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -381,7 +381,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/CreateScope")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/CreateScope", runtime.WithHTTPPathPattern("/v1/scopes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -404,7 +404,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/UpdateScope")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/UpdateScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -427,7 +427,7 @@ func RegisterScopeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/DeleteScope")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/DeleteScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -489,7 +489,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/GetScope")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/GetScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -509,7 +509,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/ListScopes")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/ListScopes", runtime.WithHTTPPathPattern("/v1/scopes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -529,7 +529,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/CreateScope")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/CreateScope", runtime.WithHTTPPathPattern("/v1/scopes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -549,7 +549,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/UpdateScope")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/UpdateScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -569,7 +569,7 @@ func RegisterScopeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/DeleteScope")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ScopeService/DeleteScope", runtime.WithHTTPPathPattern("/v1/scopes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
