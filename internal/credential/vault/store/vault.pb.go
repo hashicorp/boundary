@@ -776,6 +776,90 @@ func (x *Credential) GetStatus() string {
 	return ""
 }
 
+type UserPasswordMap struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// private_id is a surrogate key.
+	// @inject_tag: `gorm:"primary_key"`
+	PrivateId string `protobuf:"bytes,1,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty" gorm:"primary_key"`
+	// library_id of the owning vault credential library.
+	// It must be set.
+	// @inject_tag: `gorm:"primary_key"`
+	LibraryId string `protobuf:"bytes,2,opt,name=library_id,json=libraryId,proto3" json:"library_id,omitempty" gorm:"primary_key"`
+	// username is the name of the attribute in a Vault secret that maps to a
+	// username.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty" gorm:"not_null"`
+	// password is the name of the attribute in a Vault secret that maps to a
+	// password.
+	// It must be set.
+	// @inject_tag: `gorm:"not_null"`
+	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty" gorm:"not_null"`
+}
+
+func (x *UserPasswordMap) Reset() {
+	*x = UserPasswordMap{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UserPasswordMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserPasswordMap) ProtoMessage() {}
+
+func (x *UserPasswordMap) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserPasswordMap.ProtoReflect.Descriptor instead.
+func (*UserPasswordMap) Descriptor() ([]byte, []int) {
+	return file_controller_storage_credential_vault_store_v1_vault_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UserPasswordMap) GetPrivateId() string {
+	if x != nil {
+		return x.PrivateId
+	}
+	return ""
+}
+
+func (x *UserPasswordMap) GetLibraryId() string {
+	if x != nil {
+		return x.LibraryId
+	}
+	return ""
+}
+
+func (x *UserPasswordMap) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UserPasswordMap) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 var File_controller_storage_credential_vault_store_v1_vault_proto protoreflect.FileDescriptor
 
 var file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc = []byte{
@@ -970,12 +1054,21 @@ var file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc = []by
 	0x54, 0x69, 0x6d, 0x65, 0x12, 0x21, 0x0a, 0x0c, 0x69, 0x73, 0x5f, 0x72, 0x65, 0x6e, 0x65, 0x77,
 	0x61, 0x62, 0x6c, 0x65, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x69, 0x73, 0x52, 0x65,
 	0x6e, 0x65, 0x77, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75,
-	0x73, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x42,
-	0x45, 0x5a, 0x43, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61,
-	0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79,
-	0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e,
-	0x74, 0x69, 0x61, 0x6c, 0x2f, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65,
-	0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x73, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22,
+	0x87, 0x01, 0x0a, 0x0f, 0x55, 0x73, 0x65, 0x72, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
+	0x4d, 0x61, 0x70, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x5f, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65,
+	0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x6c, 0x69, 0x62, 0x72, 0x61, 0x72, 0x79, 0x5f, 0x69, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x6c, 0x69, 0x62, 0x72, 0x61, 0x72, 0x79, 0x49,
+	0x64, 0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x1a, 0x0a,
+	0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x42, 0x45, 0x5a, 0x43, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72,
+	0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72,
+	0x6e, 0x61, 0x6c, 0x2f, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x2f, 0x76,
+	0x61, 0x75, 0x6c, 0x74, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -990,29 +1083,30 @@ func file_controller_storage_credential_vault_store_v1_vault_proto_rawDescGZIP()
 	return file_controller_storage_credential_vault_store_v1_vault_proto_rawDescData
 }
 
-var file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_storage_credential_vault_store_v1_vault_proto_goTypes = []interface{}{
 	(*CredentialStore)(nil),     // 0: controller.storage.credential.vault.store.v1.CredentialStore
 	(*Token)(nil),               // 1: controller.storage.credential.vault.store.v1.Token
 	(*ClientCertificate)(nil),   // 2: controller.storage.credential.vault.store.v1.ClientCertificate
 	(*CredentialLibrary)(nil),   // 3: controller.storage.credential.vault.store.v1.CredentialLibrary
 	(*Credential)(nil),          // 4: controller.storage.credential.vault.store.v1.Credential
-	(*timestamp.Timestamp)(nil), // 5: controller.storage.timestamp.v1.Timestamp
+	(*UserPasswordMap)(nil),     // 5: controller.storage.credential.vault.store.v1.UserPasswordMap
+	(*timestamp.Timestamp)(nil), // 6: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_credential_vault_store_v1_vault_proto_depIdxs = []int32{
-	5,  // 0: controller.storage.credential.vault.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 1: controller.storage.credential.vault.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 2: controller.storage.credential.vault.store.v1.CredentialStore.delete_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 3: controller.storage.credential.vault.store.v1.Token.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 4: controller.storage.credential.vault.store.v1.Token.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 5: controller.storage.credential.vault.store.v1.Token.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 6: controller.storage.credential.vault.store.v1.Token.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 7: controller.storage.credential.vault.store.v1.CredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 8: controller.storage.credential.vault.store.v1.CredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 9: controller.storage.credential.vault.store.v1.Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 10: controller.storage.credential.vault.store.v1.Credential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 11: controller.storage.credential.vault.store.v1.Credential.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5,  // 12: controller.storage.credential.vault.store.v1.Credential.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 0: controller.storage.credential.vault.store.v1.CredentialStore.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 1: controller.storage.credential.vault.store.v1.CredentialStore.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 2: controller.storage.credential.vault.store.v1.CredentialStore.delete_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 3: controller.storage.credential.vault.store.v1.Token.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 4: controller.storage.credential.vault.store.v1.Token.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 5: controller.storage.credential.vault.store.v1.Token.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 6: controller.storage.credential.vault.store.v1.Token.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 7: controller.storage.credential.vault.store.v1.CredentialLibrary.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 8: controller.storage.credential.vault.store.v1.CredentialLibrary.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 9: controller.storage.credential.vault.store.v1.Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 10: controller.storage.credential.vault.store.v1.Credential.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 11: controller.storage.credential.vault.store.v1.Credential.last_renewal_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6,  // 12: controller.storage.credential.vault.store.v1.Credential.expiration_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -1086,6 +1180,18 @@ func file_controller_storage_credential_vault_store_v1_vault_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_credential_vault_store_v1_vault_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UserPasswordMap); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1093,7 +1199,7 @@ func file_controller_storage_credential_vault_store_v1_vault_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_credential_vault_store_v1_vault_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
