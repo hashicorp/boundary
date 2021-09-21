@@ -17,33 +17,33 @@ begin;
   --
   -- https://www.postgresql.org/docs/current/errcodes-appendix.html
 
-  prepare null_username as
+  prepare null_username_attribute as
     insert into credential_vault_library_user_password_map
-      ( library_id,    private_id,     password,     username)
+      ( library_id,    private_id,     password_attribute, username_attribute)
     values
-      ('vl______wvl1', 'prv______up1', 'v_password', null    );
-  select throws_ok('null_username', '23502');
+      ('vl______wvl1', 'prv______up1', 'v_password',       null);
+  select throws_ok('null_username_attribute', '23502');
 
-  prepare empty_username as
+  prepare empty_username_attribute as
     insert into credential_vault_library_user_password_map
-      ( library_id,    private_id,     password,     username)
+      ( library_id,    private_id,     password_attribute, username_attribute)
     values
-      ('vl______wvl1', 'prv______up1', 'v_password', '   '   );
-  select throws_ok('empty_username', '23514');
+      ('vl______wvl1', 'prv______up1', 'v_password',       '   ');
+  select throws_ok('empty_username_attribute', '23514');
 
-  prepare null_password as
+  prepare null_password_attribute as
     insert into credential_vault_library_user_password_map
-      ( library_id,    private_id,     username,     password)
+      ( library_id,    private_id,     username_attribute, password_attribute)
     values
-      ('vl______wvl1', 'prv______up1', 'v_username', null    );
-  select throws_ok('null_password', '23502');
+      ('vl______wvl1', 'prv______up1', 'v_username',       null);
+  select throws_ok('null_password_attribute', '23502');
 
-  prepare empty_password as
+  prepare empty_password_attribute as
     insert into credential_vault_library_user_password_map
-      ( library_id,    private_id,     username,     password)
+      ( library_id,    private_id,     username_attribute, password_attribute)
     values
-      ('vl______wvl1', 'prv______up1', 'v_username', '   '   );
-  select throws_ok('empty_password', '23514');
+      ('vl______wvl1', 'prv______up1', 'v_username',       '   ');
+  select throws_ok('empty_password_attribute', '23514');
 
   select * from finish();
 rollback;

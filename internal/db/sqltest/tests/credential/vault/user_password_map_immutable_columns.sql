@@ -12,9 +12,9 @@ begin;
 
   prepare insert_mapper as
     insert into credential_vault_library_user_password_map
-      ( library_id,    private_id,     username,     password )
+      ( library_id,    private_id,     username_attribute, password_attribute )
     values
-      ('vl______wvl1', 'prv______up1', 'v_username', 'v_password');
+      ('vl______wvl1', 'prv______up1', 'v_username',       'v_password');
   select lives_ok('insert_mapper');
 
   select is(count(*), 1::bigint) from credential_vault_library_user_password_map where private_id = 'prv______up1';

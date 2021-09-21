@@ -11,12 +11,12 @@ begin;
       on update cascade,
     constraint credential_vault_library_user_password_map_library_id_uq
       unique(library_id),
-    username text not null
-      constraint username_must_not_be_empty
-        check(length(trim(username)) > 0),
-    password text not null
-      constraint password_must_not_be_empty
-        check(length(trim(password)) > 0)
+    username_attribute text not null
+      constraint username_attribute_must_not_be_empty
+        check(length(trim(username_attribute)) > 0),
+    password_attribute text not null
+      constraint password_attribute_must_not_be_empty
+        check(length(trim(password_attribute)) > 0)
   );
   comment on table credential_vault_library_user_password_map is
     'credential_vault_library_user_password_map is a table '
