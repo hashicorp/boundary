@@ -17,6 +17,7 @@ export default function HomepageHero({
   return (
     <div className={styles.homepageHero}>
       <Hero
+        videoControlsTop
         className={styles.hero}
         data={{
           product: 'boundary',
