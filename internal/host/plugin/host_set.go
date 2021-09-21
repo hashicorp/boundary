@@ -64,7 +64,7 @@ func (s *HostSet) clone() *HostSet {
 	hs := &HostSet{
 		HostSet: cp.(*store.HostSet),
 	}
-	if s.Attributes != nil && hs.Attributes == nil {
+	if s.Attributes != nil && len(s.Attributes) == 0 && hs.Attributes == nil {
 		hs.Attributes = []byte{}
 	}
 	return hs

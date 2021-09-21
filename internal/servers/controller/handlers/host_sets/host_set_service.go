@@ -761,7 +761,7 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			if len(attrs.AsMap()) > 0 {
+			if len(attrs.GetFields()) > 0 {
 				out.Attributes = attrs
 			}
 		}
