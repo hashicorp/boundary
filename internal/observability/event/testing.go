@@ -89,13 +89,6 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					AuditConfig: DefaultAuditConfig(),
 				},
 				{
-					Name:        "stderr",
-					Type:        StderrSink,
-					EventTypes:  []Type{EveryType},
-					Format:      opts.withSinkFormat,
-					AuditConfig: DefaultAuditConfig(),
-				},
-				{
 					Name:       "err-file-sink",
 					Type:       FileSink,
 					EventTypes: []Type{ErrorType},

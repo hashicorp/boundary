@@ -562,11 +562,6 @@ func Test_NewEventer(t *testing.T) {
 				conf:   testSetup.EventerConfig,
 			},
 			wantRegistered: []string{
-				"cloudevents",       // stderr
-				"stderr",            // stderr
-				"gated-observation", // stderr
-				"gated-audit",       // stderr
-				"encrypt-audit",     // stderr
 				"cloudevents",       // every-type-file-sync
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
@@ -577,20 +572,16 @@ func Test_NewEventer(t *testing.T) {
 			},
 			wantPipelines: []string{
 				"audit",       // every-type-file-sync
-				"audit",       // stderr
 				"observation", // every-type-file-sync
-				"observation", // stderr
 				"error",       // every-type-file-sync
-				"error",       // stderr
+				"system",      // every-type-file-sync
 				"error",       // error-file-sink
-				"system",      // stderr
-				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"error":       3,
-				"system":      2,
-				"observation": 2,
-				"audit":       2,
+				"audit":       1,
+				"error":       2,
+				"observation": 1,
+				"system":      1,
 			},
 		},
 		{
