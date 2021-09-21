@@ -21,9 +21,9 @@ type UserPasswordMap struct {
 func NewUserPasswordMap(libraryId string, username, password string) *UserPasswordMap {
 	u := &UserPasswordMap{
 		UserPasswordMap: &store.UserPasswordMap{
-			LibraryId: libraryId,
-			Username:  username,
-			Password:  password,
+			LibraryId:         libraryId,
+			UsernameAttribute: username,
+			PasswordAttribute: password,
 		},
 	}
 	return u
