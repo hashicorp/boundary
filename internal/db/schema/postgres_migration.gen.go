@@ -7742,9 +7742,7 @@ alter table wh_session_connection_accumulating_fact
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null
-      constraint attributes_must_not_be_empty
-      check(length(attributes) > 0),
+    attributes bytea not null,
     constraint host_catalog_fkey
     foreign key (scope_id, public_id)
       references host_catalog (scope_id, public_id)
@@ -7814,9 +7812,7 @@ alter table wh_session_connection_accumulating_fact
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    attributes bytea not null
-      constraint attributes_must_not_be_empty
-        check(length(attributes) > 0),
+    attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
@@ -7864,7 +7860,7 @@ create table host_set_preferred_endpoint (
     constraint priority_must_be_greater_than_zero
       check(priority > 0),
   condition text not null
-    constraint condition_must_not_be_empty
+    constraint condition_must_not_be_too_short
       check(length(trim(condition)) > 4) -- minimum is 'dns:*'
     constraint condition_must_not_be_too_long
       check(length(trim(condition)) < 255)

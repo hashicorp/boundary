@@ -16,9 +16,12 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestRepository_CreateSet(t *testing.T) {
@@ -29,8 +32,20 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented", "unimplemented")
+
+	var pluginReceivedAttrs *structpb.Struct
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			pluginReceivedAttrs = req.GetSet().GetAttributes()
+			return &plgpb.OnCreateSetResponse{}, nil
+		}},
+		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
+	}
+
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	attrs := []byte("{}")
+	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	attrs := []byte{}
 
 	tests := []struct {
 		name      string
@@ -127,6 +142,23 @@ func TestRepository_CreateSet(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-unimplemented-plugin",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:  unimplementedPluginCatalog.PublicId,
+					Name:       "valid-unimplemented-plugin",
+					Attributes: attrs,
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:  unimplementedPluginCatalog.PublicId,
+					Name:       "valid-unimplemented-plugin",
+					Attributes: attrs,
+				},
+			},
+		},
+		{
 			name: "valid-with-description",
 			in: &HostSet{
 				HostSet: &store.HostSet{
@@ -143,13 +175,38 @@ func TestRepository_CreateSet(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-custom-attributes",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:   catalog.PublicId,
+					Description: ("test-description-repo"),
+					Attributes: func() []byte {
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						require.NoError(t, err)
+						return b
+					}(),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:   catalog.PublicId,
+					Description: ("test-description-repo"),
+					Attributes: func() []byte {
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						require.NoError(t, err)
+						return b
+					}(),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
@@ -166,13 +223,17 @@ func TestRepository_CreateSet(t *testing.T) {
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+			wantedPluginAttributes := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(tt.want.Attributes, wantedPluginAttributes))
+			assert.Empty(cmp.Diff(wantedPluginAttributes, pluginReceivedAttrs, protocmp.Transform()))
+
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -183,7 +244,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			HostSet: &store.HostSet{
 				CatalogId:  catalog.PublicId,
 				Name:       "test-name-repo",
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 
@@ -203,7 +264,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -214,7 +275,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in := &HostSet{
 			HostSet: &store.HostSet{
 				Name:       "test-name-repo",
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			},
 		}
 		in2 := in.clone()
@@ -250,9 +311,14 @@ func TestRepository_LookupSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, kms, catalog)
+	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	})
 	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
 	require.NoError(t, err)
 
@@ -281,7 +347,7 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupSet(ctx, tt.in)
@@ -307,13 +373,16 @@ func TestRepository_ListSets(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list", "list")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
-		TestSet(t, conn, kms, catalogA),
-		TestSet(t, conn, kms, catalogA),
-		TestSet(t, conn, kms, catalogA),
+		TestSet(t, conn, kms, catalogA, plgm),
+		TestSet(t, conn, kms, catalogA, plgm),
+		TestSet(t, conn, kms, catalogA, plgm),
 	}
 
 	tests := []struct {
@@ -343,7 +412,7 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
@@ -371,11 +440,14 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
-		hostSets = append(hostSets, TestSet(t, conn, kms, catalog))
+		hostSets = append(hostSets, TestSet(t, conn, kms, catalog, plgm))
 	}
 
 	tests := []struct {
@@ -426,7 +498,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)

@@ -5,12 +5,12 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // A HostCatalog contains plugin host sets. It is owned by
@@ -19,7 +19,7 @@ type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
 
-	secrets map[string]interface{} `gorm:"-"`
+	secrets *structpb.Struct `gorm:"-"`
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
@@ -28,22 +28,21 @@ type HostCatalog struct {
 func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
 	opts := getOpts(opt...)
+
+	attrs, err := proto.Marshal(opts.withAttributes)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
+	}
+
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
 			ScopeId:     scopeId,
 			PluginId:    pluginId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
+			Attributes:  attrs,
 		},
 		secrets: opts.withSecrets,
-	}
-
-	if opts.withAttributes != nil {
-		attrs, err := json.Marshal(opts.withAttributes)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
-		}
-		hc.Attributes = attrs
 	}
 	return hc, nil
 }
@@ -58,16 +57,16 @@ func allocHostCatalog() *HostCatalog {
 // secret.  The secret shallow copied.
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
+	newSecret := proto.Clone(c.secrets)
 
 	hc := &HostCatalog{
 		HostCatalog: cp.(*store.HostCatalog),
+		secrets:     newSecret.(*structpb.Struct),
 	}
-	if c.secrets != nil {
-		newSecret := make(map[string]interface{}, len(c.secrets))
-		for k, v := range c.secrets {
-			newSecret[k] = v
-		}
-		hc.secrets = newSecret
+	// proto.Clone will convert slices with length and capacity of 0 to nil.
+	// Fix this since gorm treats empty slices differently than nil.
+	if c.Attributes != nil && len(c.Attributes) == 0 && hc.Attributes == nil {
+		hc.Attributes = []byte{}
 	}
 	return hc
 }

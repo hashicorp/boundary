@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -101,7 +102,9 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	new := TestSet(t, conn, kmsCache, cat)
+	new := TestSet(t, conn, kmsCache, cat, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	})
 
 	tests := []struct {
 		name      string

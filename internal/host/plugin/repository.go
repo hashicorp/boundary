@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
 // A Repository stores and retrieves the persistent types in the plugin
@@ -16,6 +17,11 @@ type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
+
+	// plugins is a map from plugin resource id to host plugin client.
+	// TODO: When we are using go-plugin change from using a plgpb.HostPluginServiceServer
+	//    to the client.
+	plugins map[string]plgpb.HostPluginServiceServer
 	// defaultLimit provides a default for limiting the number of results
 	// returned from the repo
 	defaultLimit int
@@ -25,7 +31,7 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...host.Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb.HostPluginServiceServer, opt ...host.Option) (*Repository, error) {
 	const op = "plugin.NewRepository"
 	switch {
 	case r == nil:
@@ -34,6 +40,8 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...host.Option) (
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
+	case plgm == nil:
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "plgm")
 	}
 
 	opts, err := host.GetOpts(opt...)
@@ -45,10 +53,16 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...host.Option) (
 		opts.WithLimit = db.DefaultLimit
 	}
 
+	plgs := make(map[string]plgpb.HostPluginServiceServer, len(plgm))
+	for k, v := range plgm {
+		plgs[k] = v
+	}
+
 	return &Repository{
 		reader:       r,
 		writer:       w,
 		kms:          kms,
+		plugins:      plgs,
 		defaultLimit: opts.WithLimit,
 	}, nil
 }
