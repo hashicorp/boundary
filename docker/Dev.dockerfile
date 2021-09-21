@@ -6,7 +6,7 @@ RUN addgroup boundary && \
 ADD bin/boundary /bin/boundary
 
 RUN mkdir /boundary/
-ADD docker/config.hcl /boundary/config.hcl
+ADD ./config.hcl /boundary/config.hcl
 RUN chown -R boundary:boundary /boundary/ 
 
 EXPOSE 9200 9201 9202
