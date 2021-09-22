@@ -34,7 +34,7 @@
   composes: g-type-display-2 from global;
 
   @media (--medium-up) {
-    grid-column: 1 / 5;
+    grid-column: 1 / 6;
   }
 }
 

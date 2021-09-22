@@ -45,7 +45,7 @@ export default function HomePage() {
       />
 
       <HowItWorks
-        title="Secure access to hosts and services"
+        title="Identity-based access for zero trust security"
         description={
           <>
             <p>
