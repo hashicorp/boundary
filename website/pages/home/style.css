@@ -26,6 +26,15 @@
     padding-bottom: 130px;
     background-color: var(--boundary-secondary);
   }
+
+  & .how-boundary-works {
+    background-image: linear-gradient(
+      to bottom,
+      var(--boundary-secondary) 40%,
+      var(--white) 40%
+    );
+  }
+
   & .use-cases-section {
     padding-top: 128px;
     padding-bottom: 128px;
