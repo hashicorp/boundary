@@ -268,10 +268,10 @@ export default function HomePage() {
         content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
         links={[
           {
-            text: 'Get Started',
-            url:
-              'https://learn.hashicorp.com/collections/boundary/getting-started',
-            type: 'outbound',
+            text: 'Download',
+            url: '/download',
+            type: 'download',
+            icon: { position: 'right', isAnimated: true },
           },
           { text: 'Explore documentation', url: '/docs' },
         ]}
