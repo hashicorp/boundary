@@ -15,7 +15,7 @@ export default function HowItWorks({ title, description, features }) {
         <h2 className={s.introTitle}>{title}</h2>
         <div className={s.introDescription}>{description}</div>
       </div>
-      <div className={`g-grid-container ${s.contentContainer}`}>
+      <div className={s.contentContainer}>
         <div className={s.diagram}>
           <HowBoundaryWorksDiagram activeExampleIndex={activeExampleIndex} />
         </div>
