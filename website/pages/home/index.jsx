@@ -296,6 +296,55 @@ export default function HomePage() {
         />
       </section>
 
+      <div className="use-cases-section">
+        <div className="g-grid-container">
+          <h2 className="g-type-display-2">Use cases</h2>
+          <UseCases
+            items={[
+              {
+                title: 'Identity-based access for dynamic environments',
+                description:
+                  'Configure identity-based access controls for your infrastructure, wherever it resides.',
+                image: {
+                  url: require('./img/red-usecase-accessmgmt.png?url'),
+                },
+                link: {
+                  title: 'Learn more',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
+                },
+              },
+              {
+                title: 'Compliance without overhead',
+                description:
+                  'Provide session visibility that enables teams to stay compliant.',
+                image: {
+                  url: require('./img/red-usecase-compliancewithoutoverhead.png?url'),
+                },
+                link: {
+                  title: 'Learn more',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
+                },
+              },
+              {
+                title: 'Fully integrated secrets management',
+                description:
+                  'Just-in-time credentials from Vault for SSO to critical infrastructure targets.',
+                image: {
+                  url: require('./img/red-usecase-integratedsystem.png?url'),
+                },
+                link: {
+                  title: 'Learn more',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
+                },
+              },
+            ]}
+          />
+        </div>
+      </div>
+
       <BrandedCta
         heading="Ready to get started?"
         content="Boundary is an open source solution that automates a secure identity-based user access to hosts and services across environments."
