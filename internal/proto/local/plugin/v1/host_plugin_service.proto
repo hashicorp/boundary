@@ -117,7 +117,7 @@ message OnDeleteSetRequest {
 	controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
   
 	// The host set to delete.
-	controller.api.resources.hostsets.v1.HostSet current_set = 20;
+	controller.api.resources.hostsets.v1.HostSet set = 20;
   
 	// The persisted data for the host catalog that the set belongs to.
 	HostCatalogPersisted persisted = 30;
@@ -152,22 +152,28 @@ message ListHostsResponseHost {
 	// Required. Any and all known IP addresses for the host.
 	repeated string ip_addresses = 20;
 
+	// Required. Any and all known DNS names for the host.
+	repeated string dns_names = 30;
+
+	// Required. The host set IDs that match this host, out of the host sets
+	// sent in the request.
+	repeated string set_ids = 40;
+
 	// Optional. Provider-specific metadata that is applicable to this
 	// host. Example: host descriptions, tags, alternate network
 	// addresses, etc.
 	google.protobuf.Struct attributes = 100;
 }
 
-// HostCatalogPersisted represents state persisted between host
-// catalog calls. Its intended purpose is to store authentication data
-// required by the plugin to make calls to its respective cloud API.
+// HostCatalogPersisted represents state persisted between host catalog calls.
+// Its intended purpose is to store authentication data required by the plugin
+// to make calls to its respective cloud API.
 //
-// The data stored in this message is encrypted at-rest by Boundary
-// and never returned to the end user.
+// The secrets stored in this message are encrypted at-rest by Boundary and
+// never returned to the end user.
 //
-// TODO: Add a size limit to this data before we export the plugin
-// SDK.
+// TODO: Add a size limit to this data before we export the plugin SDK.
 message HostCatalogPersisted {
-	// The persisted data.
-	google.protobuf.Struct data = 100;
+	// The persisted secrets.
+	google.protobuf.Struct secrets = 100;
 }
