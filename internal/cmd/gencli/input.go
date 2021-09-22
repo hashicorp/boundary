@@ -282,6 +282,20 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:   true,
 			VersionedActions: []string{"update"},
 		},
+		{
+			ResourceType:        resource.HostSet.String(),
+			Pkg:                 "hostsets",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "plugin",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "HostCatalog",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
 	},
 	"hosts": {
 		{

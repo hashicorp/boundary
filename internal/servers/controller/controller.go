@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
@@ -135,8 +136,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
-	c.PluginHostRepoFn = func() (*plugin.Repository, error) {
-		return plugin.NewRepository(dbase, dbase, c.kms)
+	c.PluginHostRepoFn = func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(dbase, dbase, c.kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)

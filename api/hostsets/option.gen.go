@@ -97,3 +97,15 @@ func DefaultName() Option {
 		o.postMap["name"] = nil
 	}
 }
+
+func WithPreferredEndpoints(inPreferredEndpoints []string) Option {
+	return func(o *options) {
+		o.postMap["preferred_endpoints"] = inPreferredEndpoints
+	}
+}
+
+func DefaultPreferredEndpoints() Option {
+	return func(o *options) {
+		o.postMap["preferred_endpoints"] = nil
+	}
+}

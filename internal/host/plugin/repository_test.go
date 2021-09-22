@@ -3,11 +3,13 @@ package plugin
 import (
 	"testing"
 
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -17,11 +19,14 @@ func TestRepository_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
+	plgs := map[string]plgpb.HostPluginServiceServer{}
+
 	type args struct {
-		r    db.Reader
-		w    db.Writer
-		kms  *kms.Kms
-		opts []Option
+		r       db.Reader
+		w       db.Writer
+		kms     *kms.Kms
+		plugins map[string]plgpb.HostPluginServiceServer
+		opts    []host.Option
 	}
 
 	tests := []struct {
@@ -33,38 +38,43 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: kmsCache,
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
+				plugins: plgs,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
+				plugins:      plgs,
 				defaultLimit: db.DefaultLimit,
 			},
 		},
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:    rw,
-				w:    rw,
-				kms:  kmsCache,
-				opts: []Option{WithLimit(5)},
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
+				plugins: plgs,
+				opts:    []host.Option{host.WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
+				plugins:      plgs,
 				defaultLimit: 5,
 			},
 		},
 		{
 			name: "nil-reader",
 			args: args{
-				r:   nil,
-				w:   rw,
-				kms: kmsCache,
+				r:       nil,
+				w:       rw,
+				kms:     kmsCache,
+				plugins: plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -72,9 +82,10 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:   rw,
-				w:   nil,
-				kms: kmsCache,
+				r:       rw,
+				w:       nil,
+				kms:     kmsCache,
+				plugins: plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -82,9 +93,21 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-kms",
 			args: args{
-				r:   rw,
-				w:   rw,
-				kms: nil,
+				r:       rw,
+				w:       rw,
+				kms:     nil,
+				plugins: plgs,
+			},
+			want:      nil,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "nil-plugins",
+			args: args{
+				r:       rw,
+				w:       rw,
+				kms:     kmsCache,
+				plugins: nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -92,9 +115,10 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "all-nils",
 			args: args{
-				r:   nil,
-				w:   nil,
-				kms: nil,
+				r:       nil,
+				w:       nil,
+				kms:     nil,
+				plugins: nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -104,7 +128,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.plugins, tt.args.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)

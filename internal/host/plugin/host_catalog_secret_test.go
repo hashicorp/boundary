@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,7 +13,9 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestHostCatalogSecret_New(t *testing.T) {
@@ -28,7 +29,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 
 	type args struct {
 		catalogId string
-		attrs     map[string]interface{}
+		attrs     *structpb.Struct
 	}
 
 	tests := []struct {
@@ -64,13 +65,19 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			name: "valid",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				attrs:     map[string]interface{}{"foo": "bar"},
+				attrs: func() *structpb.Struct {
+					st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
+					require.NoError(t, err)
+					return st
+				}(),
 			},
 			want: &HostCatalogSecret{
 				HostCatalogSecret: &store.HostCatalogSecret{
 					CatalogId: cat.GetPublicId(),
 					Secret: func() []byte {
-						b, err := json.Marshal(map[string]interface{}{"foo": "bar"})
+						st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
 						require.NoError(t, err)
 						return b
 					}(),
@@ -122,8 +129,10 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 
-	hcs, err := newHostCatalogSecret(ctx, cat.GetPublicId(), map[string]interface{}{"foo": "bar"})
+	hcs, err := newHostCatalogSecret(ctx, cat.GetPublicId(),
+		&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}})
 	require.NoError(t, err)
 	assert.NoError(t, hcs.encrypt(ctx, databaseWrapper))
 	q, v := hcs.insertQuery()
@@ -131,6 +140,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	assert.NoError(t, err)
 
 	found, err := newHostCatalogSecret(ctx, cat.GetPublicId(), nil)
+	require.NoError(t, err)
 	assert.NoError(t, rw.LookupWhere(ctx, found, "catalog_id=?", found.GetCatalogId()))
 	require.NoError(t, found.decrypt(ctx, databaseWrapper))
 	require.NoError(t, hcs.decrypt(ctx, databaseWrapper))
@@ -139,7 +149,8 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	assert.Empty(t, cmp.Diff(hcs, found, protocmp.Transform()))
 
 	// Update the secret and see the value updated.
-	updated, err := newHostCatalogSecret(ctx, cat.GetPublicId(), map[string]interface{}{"updated": "value"})
+	updated, err := newHostCatalogSecret(ctx, cat.GetPublicId(),
+		&structpb.Struct{Fields: map[string]*structpb.Value{"updated": structpb.NewStringValue("value")}})
 	require.NoError(t, err)
 	assert.NoError(t, updated.encrypt(ctx, databaseWrapper))
 	q, v = updated.insertQuery()

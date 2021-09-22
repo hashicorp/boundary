@@ -2,7 +2,6 @@ package host_sets
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
@@ -23,6 +23,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -80,6 +81,10 @@ func NewService(staticRepoFn common.StaticRepoFactory, pluginRepoFn common.Plugi
 }
 
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
+	return s.ListHostSetsWithOptions(ctx, req)
+}
+
+func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostSetsRequest, opt ...host.Option) (*pbs.ListHostSetsResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -87,7 +92,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +182,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
 	const op = "host_sets.(Service).CreateHostSet"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
@@ -218,7 +223,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
 	const op = "host_sets.(Service).UpdateHostSet"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
@@ -444,6 +449,9 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 		hSet = out
 	case plugin.Subtype:
 		h, err := toStoragePluginSet(ctx, catalogId, item)
+		if err != nil {
+			return nil, err
+		}
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, err
@@ -505,7 +513,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Set, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host.Option) ([]host.Set, error) {
 	const op = "host_sets.(Service).listFromRepo"
 	var sets []host.Set
 	switch host.SubtypeFromId(catalogId) {
@@ -526,7 +534,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Set
 		if err != nil {
 			return nil, err
 		}
-		sl, err := repo.ListSets(ctx, catalogId)
+		sl, err := repo.ListSets(ctx, catalogId, opt...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -742,19 +750,19 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 		}
 	}
 
-	if outputFields.Has(globals.AttributesField) {
-		switch h := in.(type) {
-		case *plugin.HostSet:
-			attrs := map[string]interface{}{}
-			err := json.Unmarshal(h.Attributes, &attrs)
+	switch h := in.(type) {
+	case *plugin.HostSet:
+		if outputFields.Has(globals.PreferredEndpointsField) {
+			out.PreferredEndpoints = h.GetPreferredEndpoints()
+		}
+		if outputFields.Has(globals.AttributesField) {
+			attrs := &structpb.Struct{}
+			err := proto.Unmarshal(h.Attributes, attrs)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			if len(attrs) > 0 {
-				out.Attributes, err = structpb.NewStruct(attrs)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
+			if len(attrs.GetFields()) > 0 {
+				out.Attributes = attrs
 			}
 		}
 	}
@@ -788,7 +796,10 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 		opts = append(opts, plugin.WithDescription(item.GetDescription().GetValue()))
 	}
 	if item.GetAttributes() != nil {
-		opts = append(opts, plugin.WithAttributes(item.GetAttributes().AsMap()))
+		opts = append(opts, plugin.WithAttributes(item.GetAttributes()))
+	}
+	if item.GetPreferredEndpoints() != nil {
+		opts = append(opts, plugin.WithPreferredEndpoints(item.GetPreferredEndpoints()))
 	}
 	hs, err := plugin.NewHostSet(ctx, catalogId, opts...)
 	if err != nil {
@@ -814,7 +825,7 @@ func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, pluginPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		pluginPrefix := plugin.HostCatalogPrefix
@@ -825,6 +836,12 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix, pluginPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
+		}
+		if len(req.GetItem().GetPreferredEndpoints()) > 0 {
+			_, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(req.GetItem().GetPreferredEndpoints()))
+			if err != nil {
+				badFields[globals.PreferredEndpointsField] = fmt.Errorf("Error parsing preferred endpoints: %w.", err).Error()
+			}
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
 		case static.Subtype:
@@ -850,17 +867,23 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if len(req.GetItem().GetPreferredEndpoints()) > 0 {
+			_, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(req.GetItem().GetPreferredEndpoints()))
+			if err != nil {
+				badFields[globals.PreferredEndpointsField] = fmt.Errorf("Error parsing preferred endpoints: %w.", err).Error()
+			}
+		}
 		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
-				badFields["type"] = "Cannot modify the resource type."
+				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 		}
 		return badFields
-	}, static.HostSetPrefix)
+	}, static.HostSetPrefix, plugin.HostSetPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {

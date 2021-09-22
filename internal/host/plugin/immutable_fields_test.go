@@ -8,7 +8,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -94,12 +96,15 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test", "prefix")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	new := TestSet(t, conn, cat.GetPublicId())
+	new := TestSet(t, conn, kmsCache, cat, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{},
+	})
 
 	tests := []struct {
 		name      string
@@ -125,7 +130,7 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "plugin_host_catalog_id",
+			name: "host_plugin_catalog_id",
 			update: func() *HostSet {
 				c := new.testCloneHostSet()
 				c.CatalogId = "stc_01234567890"

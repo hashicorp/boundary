@@ -19,7 +19,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TestAuthMethodServiceClient interface {
 	// TestAuthenticate validates credentials provided and returns an Auth Token.
-	// Deprecated: use AuthenticateLogin instead.
 	TestAuthenticate(ctx context.Context, in *TestAuthenticateRequest, opts ...grpc.CallOption) (*TestAuthenticateResponse, error)
 }
 
@@ -45,7 +44,6 @@ func (c *testAuthMethodServiceClient) TestAuthenticate(ctx context.Context, in *
 // for forward compatibility
 type TestAuthMethodServiceServer interface {
 	// TestAuthenticate validates credentials provided and returns an Auth Token.
-	// Deprecated: use AuthenticateLogin instead.
 	TestAuthenticate(context.Context, *TestAuthenticateRequest) (*TestAuthenticateResponse, error)
 	mustEmbedUnimplementedTestAuthMethodServiceServer()
 }

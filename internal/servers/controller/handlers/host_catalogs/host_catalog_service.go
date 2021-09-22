@@ -2,7 +2,6 @@ package host_catalogs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -67,7 +67,7 @@ type Service struct {
 
 	staticRepoFn     common.StaticRepoFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
-	pluginRepoFn common.HostPluginRepoFactory
+	pluginRepoFn     common.HostPluginRepoFactory
 	iamRepoFn        common.IamRepoFactory
 }
 
@@ -603,16 +603,13 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	if outputFields.Has(globals.AttributesField) {
 		switch h := in.(type) {
 		case *plugin.HostCatalog:
-			attrs := map[string]interface{}{}
-			err := json.Unmarshal(h.Attributes, &attrs)
+			attrs := &structpb.Struct{}
+			err := proto.Unmarshal(h.Attributes, attrs)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			if len(attrs) > 0 {
-				out.Attributes, err = structpb.NewStruct(attrs)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
+			if len(attrs.GetFields()) > 0 {
+				out.Attributes = attrs
 			}
 		}
 	}
@@ -645,10 +642,10 @@ func toStoragePluginCatalog(ctx context.Context, scopeId, plgId string, item *pb
 		opts = append(opts, plugin.WithDescription(desc.GetValue()))
 	}
 	if attrs := item.GetAttributes(); attrs != nil {
-		opts = append(opts, plugin.WithAttributes(attrs.AsMap()))
+		opts = append(opts, plugin.WithAttributes(attrs))
 	}
 	if secrets := item.GetSecrets(); secrets != nil {
-		opts = append(opts, plugin.WithSecrets(secrets.AsMap()))
+		opts = append(opts, plugin.WithSecrets(secrets))
 	}
 	hc, err := plugin.NewHostCatalog(ctx, scopeId, plgId, opts...)
 	if err != nil {

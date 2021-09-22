@@ -60,6 +60,15 @@ func (r Type) String() string {
 	}[r]
 }
 
+func (r Type) PluralString() string {
+	switch r {
+	case CredentialLibrary:
+		return "credential-libraries"
+	default:
+		return r.String() + "s"
+	}
+}
+
 var Map = map[string]Type{
 	Unknown.String():           Unknown,
 	All.String():               All,

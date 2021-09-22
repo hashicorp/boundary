@@ -501,6 +501,9 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
+	}
 	if outputFields.Has(globals.AttributesField) {
 		switch credential.SubtypeFromId(in.GetPublicId()) {
 		case vault.Subtype:

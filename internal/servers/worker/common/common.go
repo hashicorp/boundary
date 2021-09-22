@@ -12,6 +12,3 @@ const (
 	// the worker
 	StatusTimeout = 5 * time.Second
 )
-
-// CredentialData represents the secret data of the credential
-type CredentialData interface{}

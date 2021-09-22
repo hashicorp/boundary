@@ -560,6 +560,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"host-sets create plugin": func() (cli.Command, error) {
+			return &hostsetscmd.PluginCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"host-sets update": func() (cli.Command, error) {
 			return &hostsetscmd.Command{
 				Command: base.NewCommand(ui),
@@ -568,6 +574,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"host-sets update static": func() (cli.Command, error) {
 			return &hostsetscmd.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-sets update plugin": func() (cli.Command, error) {
+			return &hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

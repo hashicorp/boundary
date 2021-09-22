@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -62,7 +63,7 @@ func TestGet_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -151,7 +152,7 @@ func TestGet_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -240,7 +241,7 @@ func TestList(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -272,7 +273,7 @@ func TestList(t *testing.T) {
 	var testPluginCatalogs []*pb.HostCatalog
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
-	for i := 0 ; i < 3; i++ {
+	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
@@ -306,7 +307,7 @@ func TestList(t *testing.T) {
 
 	name = "different"
 	plg = host.TestPlugin(t, conn, name, name)
-	for i := 0 ; i < 3; i++ {
+	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), plg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
@@ -433,7 +434,7 @@ func TestDelete(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -503,7 +504,7 @@ func TestDelete_twice(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -538,7 +539,7 @@ func TestCreate_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -688,9 +689,6 @@ func TestCreate_Plugin(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
-	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
 	}
@@ -700,6 +698,15 @@ func TestCreate_Plugin(t *testing.T) {
 
 	name := "test"
 	plg := host.TestPlugin(t, conn, name, name)
+	pluginHostRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{
+			plg.GetPublicId(): &plugin.TestPluginServer{
+				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+					return nil, nil
+				},
+			},
+		})
+	}
 	defaultHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	defaultHcCreated := defaultHc.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateHostCatalogRequest{}
@@ -845,7 +852,7 @@ func TestUpdate(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms)
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)

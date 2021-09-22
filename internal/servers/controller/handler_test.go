@@ -27,7 +27,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	defer c.Shutdown()
 
 	request := map[string]interface{}{
-		"credentials": map[string]interface{}{
+		"attributes": map[string]interface{}{
 			"login_name": "admin",
 			"password":   "password123",
 		},
@@ -146,7 +146,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/accounts/someid:set-password",
 			"v1/accounts/someid:change-password",
 			"v1/auth-methods/someid:authenticate",
-			"v1/auth-methods/someid:authenticate:login",
 			"v1/groups/someid:add-members",
 			"v1/groups/someid:set-members",
 			"v1/groups/someid:remove-members",

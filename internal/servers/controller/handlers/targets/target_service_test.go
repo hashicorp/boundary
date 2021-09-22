@@ -38,6 +38,7 @@ import (
 	credpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -983,7 +984,9 @@ func TestAddTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	addCases := []struct {
 		name           string
@@ -1115,7 +1118,9 @@ func TestSetTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	setCases := []struct {
 		name           string
@@ -1241,7 +1246,9 @@ func TestRemoveTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	removeCases := []struct {
 		name        string
@@ -1379,7 +1386,9 @@ func TestAddTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	addCases := []struct {
 		name              string
@@ -1511,7 +1520,9 @@ func TestSetTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	setCases := []struct {
 		name              string
@@ -1631,7 +1642,9 @@ func TestRemoveTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test", "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, pluginHc.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &plugin.TestPluginServer{},
+	})
 
 	removeCases := []struct {
 		name              string

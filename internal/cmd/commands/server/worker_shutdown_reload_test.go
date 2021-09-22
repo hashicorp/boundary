@@ -1,3 +1,4 @@
+//go:build !hsm
 // +build !hsm
 
 package server

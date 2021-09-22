@@ -181,7 +181,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.6.0
+VERSION?=0.6.1
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -203,13 +203,14 @@ docker-multiarch-build:
 	--tag hashicorp/boundary:latest \
 	--build-arg VERSION=$(VERSION) \
 	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile .
-	
+	--file $(DOCKER_DIR)/Release.dockerfile docker/
+
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
+	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile .
+	-f $(DOCKER_DIR)/Dev.dockerfile docker/
 
 # requires appropriate permissions in dockerhub
 docker-publish:

@@ -47,7 +47,7 @@ func (c Config) Validate() error {
 
 // Handler is the type that all proxies need to implement to be called by the worker
 // when a new client connection is created.
-type Handler func(ctx context.Context, config Config, opt ...Option)
+type Handler func(ctx context.Context, config Config, opt ...Option) error
 
 var (
 	// handlers is the map of registered handlers

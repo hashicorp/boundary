@@ -47,12 +47,7 @@ type AuthMethodServiceClient interface {
 	// ChangeState changes the state of an Auth Method from Boundary.
 	ChangeState(ctx context.Context, in *ChangeStateRequest, opts ...grpc.CallOption) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
-	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
-	// Deprecated: Do not use.
-	// AuthenticateLogin validates credentials provided for a single-step login
-	// action and returns an auth token.
-	AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error)
 }
 
 type authMethodServiceClient struct {
@@ -126,16 +121,6 @@ func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *Authenti
 	return out, nil
 }
 
-// Deprecated: Do not use.
-func (c *authMethodServiceClient) AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error) {
-	out := new(AuthenticateLoginResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/AuthenticateLogin", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AuthMethodServiceServer is the server API for AuthMethodService service.
 // All implementations must embed UnimplementedAuthMethodServiceServer
 // for forward compatibility
@@ -169,12 +154,7 @@ type AuthMethodServiceServer interface {
 	// ChangeState changes the state of an Auth Method from Boundary.
 	ChangeState(context.Context, *ChangeStateRequest) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
-	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
-	// Deprecated: Do not use.
-	// AuthenticateLogin validates credentials provided for a single-step login
-	// action and returns an auth token.
-	AuthenticateLogin(context.Context, *AuthenticateLoginRequest) (*AuthenticateLoginResponse, error)
 	mustEmbedUnimplementedAuthMethodServiceServer()
 }
 
@@ -202,9 +182,6 @@ func (UnimplementedAuthMethodServiceServer) ChangeState(context.Context, *Change
 }
 func (UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
-}
-func (UnimplementedAuthMethodServiceServer) AuthenticateLogin(context.Context, *AuthenticateLoginRequest) (*AuthenticateLoginResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AuthenticateLogin not implemented")
 }
 func (UnimplementedAuthMethodServiceServer) mustEmbedUnimplementedAuthMethodServiceServer() {}
 
@@ -345,24 +322,6 @@ func _AuthMethodService_Authenticate_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthMethodService_AuthenticateLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthenticateLoginRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthMethodServiceServer).AuthenticateLogin(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.AuthMethodService/AuthenticateLogin",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthMethodServiceServer).AuthenticateLogin(ctx, req.(*AuthenticateLoginRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AuthMethodService_ServiceDesc is the grpc.ServiceDesc for AuthMethodService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -397,10 +356,6 @@ var AuthMethodService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Authenticate",
 			Handler:    _AuthMethodService_Authenticate_Handler,
-		},
-		{
-			MethodName: "AuthenticateLogin",
-			Handler:    _AuthMethodService_AuthenticateLogin_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

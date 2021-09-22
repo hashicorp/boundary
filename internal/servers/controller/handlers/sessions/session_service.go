@@ -220,7 +220,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	var outputFields perms.OutputFieldsMap
 	authorizedActions := authResults.FetchActionSetForId(ctx, ses.GetPublicId(), IdActions)
 
-	// Check to see if we need to verify Read vs. just ReadSelf
+	// Check to see if we need to verify Cancel vs. just CancelSelf
 	if ses.UserId != authResults.UserId {
 		if !authorizedActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()

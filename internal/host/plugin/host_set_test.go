@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestHostSet_Create(t *testing.T) {
@@ -37,7 +39,7 @@ func TestHostSet_Create(t *testing.T) {
 				catalogId: "",
 			},
 			want: &HostSet{HostSet: &store.HostSet{
-				Attributes: []byte("{}"),
+				Attributes: []byte{},
 			}},
 			wantErr: true,
 		},
@@ -49,7 +51,7 @@ func TestHostSet_Create(t *testing.T) {
 			want: &HostSet{
 				HostSet: &store.HostSet{
 					CatalogId:  cat.GetPublicId(),
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -65,7 +67,7 @@ func TestHostSet_Create(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:  cat.GetPublicId(),
 					Name:       "test-name",
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -81,7 +83,7 @@ func TestHostSet_Create(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:  cat.GetPublicId(),
 					Name:       "test-name",
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 			wantErr: true,
@@ -98,7 +100,7 @@ func TestHostSet_Create(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:  cat2.GetPublicId(),
 					Name:       "test-name",
-					Attributes: []byte("{}"),
+					Attributes: []byte{},
 				},
 			},
 		},
@@ -114,7 +116,7 @@ func TestHostSet_Create(t *testing.T) {
 				HostSet: &store.HostSet{
 					CatalogId:   cat.GetPublicId(),
 					Description: "test-description",
-					Attributes:  []byte("{}"),
+					Attributes:  []byte{},
 				},
 			},
 		},
@@ -123,13 +125,34 @@ func TestHostSet_Create(t *testing.T) {
 			args: args{
 				catalogId: cat.GetPublicId(),
 				opts: []Option{
-					WithAttributes(map[string]interface{}{"foo": "bar"}),
+					WithAttributes(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
 				},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId:  cat.GetPublicId(),
-					Attributes: []byte(`{"foo":"bar"}`),
+					CatalogId: cat.GetPublicId(),
+					Attributes: func() []byte {
+						st := &structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}
+						b, err := proto.Marshal(st)
+						require.NoError(t, err)
+						return b
+					}(),
+				},
+			},
+		},
+		{
+			name: "valid-with-preferred-endpoints",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts: []Option{
+					WithPreferredEndpoints([]string{"cidr:1.2.3.4"}),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:          cat.GetPublicId(),
+					PreferredEndpoints: []string{"cidr:1.2.3.4"},
+					Attributes:         []byte{},
 				},
 			},
 		},

@@ -34,7 +34,7 @@ func TestAuthenticate(t *testing.T) {
 
 	// Also ensure that, for now, using "credentials" still works, as well as no command.
 	reqBody := map[string]interface{}{
-		"credentials": map[string]interface{}{"login_name": "user", "password": "passpass"},
+		"attributes": map[string]interface{}{"login_name": "user", "password": "passpass"},
 	}
 	req, err := client.NewRequest(tc.Context(), "POST", fmt.Sprintf("auth-methods/%s:authenticate", tc.Server().DevPasswordAuthMethodId), reqBody)
 	require.NoError(err)

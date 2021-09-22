@@ -261,5 +261,31 @@ begin;
 
   end;
   $$ language plpgsql;
+
+  create function _wtt_load_widgets_credentials()
+    returns void
+  as $$
+  begin
+    insert into credential_vault_store
+      (scope_id,       public_id,      name,                 description, vault_address,          namespace)
+    values
+      ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
+
+    insert into credential_vault_library
+      (store_id,       public_id,      name,                   description, vault_path,           http_method)
+    values
+      ('vs_______wvs', 'vl______wvl1', 'widget vault library', 'None',      '/secrets',           'GET'),
+      ('vs_______wvs', 'vl______wvl2', 'widget vault ssh',     'None',      '/secrets/ssh/admin', 'GET'),
+      ('vs_______wvs', 'vl______wvl3', 'widget vault kv',      'None',      '/secrets/kv',        'GET');
+
+    insert into target_credential_library
+      (target_id,      credential_library_id, credential_purpose)
+    values
+      ('t_________wb', 'vl______wvl1',        'application'),
+      ('t_________wb', 'vl______wvl2',        'application'),
+      ('t_________wb', 'vl______wvl3',        'application'),
+      ('t_________wb', 'vl______wvl3',        'egress');
+  end;
+  $$ language plpgsql;
 commit;
 

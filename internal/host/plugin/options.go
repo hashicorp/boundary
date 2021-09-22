@@ -1,5 +1,7 @@
 package plugin
 
+import "google.golang.org/protobuf/types/known/structpb"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,18 +16,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
-	withAttributes  map[string]interface{}
-	withSecrets     map[string]interface{}
+	withName               string
+	withDescription        string
+	withAttributes         *structpb.Struct
+	withSecrets            *structpb.Struct
+	withPreferredEndpoints []string
 }
 
 func getDefaultOptions() options {
 	return options{
-		withDescription: "",
-		withName:        "",
-		withAttributes:  make(map[string]interface{}),
+		withAttributes: &structpb.Struct{},
 	}
 }
 
@@ -44,24 +44,22 @@ func WithName(name string) Option {
 }
 
 // WithAttributes provides an optional attributes field.
-func WithAttributes(attrs map[string]interface{}) Option {
+func WithAttributes(attrs *structpb.Struct) Option {
 	return func(o *options) {
 		o.withAttributes = attrs
 	}
 }
 
 // WithSecrets provides an optional secrets field.
-func WithSecrets(secrets map[string]interface{}) Option {
+func WithSecrets(secrets *structpb.Struct) Option {
 	return func(o *options) {
 		o.withSecrets = secrets
 	}
 }
 
-// WithLimit provides an option to provide a limit. Intentionally allowing
-// negative integers. If WithLimit < 0, then unlimited results are
-// returned. If WithLimit == 0, then default limits are used for results.
-func WithLimit(l int) Option {
+// WithPreferredEndpoints provides an optional preferred endpoints field.
+func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
-		o.withLimit = l
+		o.withPreferredEndpoints = with
 	}
 }

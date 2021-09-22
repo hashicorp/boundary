@@ -70,7 +70,10 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		ConnectionId:   "mock-connection",
 	}
 
-	go handleTcpProxyV1(ctx, conf)
+	go func() {
+		err = handleProxy(ctx, conf)
+		require.NoError(err)
+	}()
 
 	// wait for HandleTcpProxyV1 to dial endpoint
 	<-ready
