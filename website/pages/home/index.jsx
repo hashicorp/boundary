@@ -14,13 +14,13 @@ export default function HomePage() {
         description="Access any system from anywhere based on user identity."
         links={[
           {
-            title: 'Get Started',
+            title: 'Explore tutorials',
             url:
               'https://learn.hashicorp.com/collections/boundary/getting-started',
             external: true,
           },
           {
-            title: 'Boundary Desktop',
+            title: 'Download macOS Client',
             url: '/downloads#desktop',
             linkType: 'inbound',
             theme: { variant: 'tertiary' },
