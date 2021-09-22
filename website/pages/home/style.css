@@ -21,6 +21,11 @@
     }
   }
 
+  & .why-boundary {
+    padding-top: 150px;
+    padding-bottom: 130px;
+    background-color: var(--boundary-secondary);
+  }
   & .use-cases-section {
     padding-top: 128px;
     padding-bottom: 128px;

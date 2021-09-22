@@ -174,13 +174,32 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="break-section">
-        <SectionBreakCta
-          heading="Have you tried Boundary?"
-          content="Share your feedback for a chance to receive special swag."
-          link={{
-            text: 'Share your Boundary story',
-            url: 'http://hashi.co/boundary-survey',
+      <section className="why-boundary">
+        <WhyBoundary
+          heading="Why Boundary"
+          items={[
+            {
+              icon: require('./img/icons/code-white.svg?url'),
+              heading: 'On-demand identity-based access to infrastructure',
+              description:
+                'Securely connect trusted identities to logical services without having to create or store credentials or access.',
+            },
+            {
+              icon: require('./img/icons/layers-white.svg?url'),
+              heading: 'Scale access management in dynamic environments',
+              description:
+                'Scale access management by defining access controls around logical services instead of IP-based access policies.',
+            },
+            {
+              icon: require('./img/icons/refresh-white.svg?url'),
+              heading:
+                'Streamline secure remote access with easy-to-use CLI, API or UI',
+              description:
+                'Make it easy to access all applications and systems through a single workflow that works with existing tooling.',
+            },
+          ]}
+        />
+      </section>
           }}
         />
       </div>
