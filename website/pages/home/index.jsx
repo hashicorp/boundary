@@ -125,67 +125,50 @@ export default function HomePage() {
                 url: require('./img/logos/kubernetes-color.svg?url'),
               },
               {
-                url: require('./img/logos/more-gray.svg?url'),
                 alt: 'More integrations',
+                url: require('./img/logos/custom.svg?url'),
               },
             ],
           },
           {
             title: 'Access',
             description:
-              'Automate credential injection to securely access services and hosts with HashiCorp Vault. Reduce risk of leaking credentials with dynamic secrets and just-in-time credentials.',
+              'Reduce risk of leaking credentials with dynamic secrets and just-in-time credentials. Automate credential injection to securely access services and hosts with HashiCorp Vault.',
+            logos: [
+              {
+                alt: 'Postgresql',
+                url: require('./img/logos/postgresql.png?url'),
+                width: 36,
+              },
+              {
+                alt: 'SSH',
+                url: require('./img/logos/ssh.png?url'),
+                width: 42,
+              },
+              {
+                alt: 'Mongo DB',
+                url: require('./img/logos/mongo-db.svg?url'),
+              },
+              {
+                alt: 'AWS',
+                url: require('./img/logos/aws-color.svg?url'),
+              },
+              {
+                alt: 'Unknown',
+                url: require('./img/logos/unknown.svg?url'),
+              },
+              {
+                alt: 'MySQL',
+                url: require('./img/logos/my-sql-color.svg?url'),
+              },
+              {
+                alt: 'More integrations',
+                url: require('./img/logos/custom.svg?url'),
+              },
+            ],
           },
         ]}
       />
-
-      <div className="use-cases-section">
-        <div className="g-grid-container">
-          <h2 className="g-type-display-2">Use cases</h2>
-          <UseCases
-            items={[
-              {
-                title: 'Easily onboard and manage users',
-                description:
-                  'Use SSO to manage onboarding and off-boarding users.',
-                image: {
-                  url: require('./img/red-usecase-accessmgmt.png?url'),
-                },
-                link: {
-                  title: 'Learn more',
-                  url:
-                    'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
-                },
-              },
-              {
-                title: 'Open and extensible remote access',
-                description:
-                  'Integrate with existing tooling and APIs to simplify access.',
-                image: {
-                  url: require('./img/red-usecase-accessprivileges.png?url'),
-                },
-                link: {
-                  title: 'Learn more',
-                  url:
-                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
-                },
-              },
-              {
-                title: 'Compliance without overhead',
-                description:
-                  'Provide session visibility that enables teams to stay compliant.',
-                image: {
-                  url: require('./img/red-usecase-sessionvisibility.png?url'),
-                },
-                link: {
-                  title: 'Learn more',
-                  url:
-                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
-                },
-              },
-            ]}
-          />
-        </div>
-      </div>
 
       <section className="why-boundary">
         <WhyBoundary
@@ -238,7 +221,7 @@ export default function HomePage() {
               title: 'Identity-based access',
               content:
                 'Enables privileged sessions for users and applications based on user identity and role.',
-              icon: require('./img/features/identity-based-access.svg?url'),
+              icon: require('./img/icons/user.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
@@ -247,10 +230,10 @@ export default function HomePage() {
               },
             },
             {
-              title: 'Session management',
+              title: 'Session visibility and audit logs',
               content:
-                'Ensures access control regardless of user or operators’ infrastructure.',
-              icon: require('./img/features/session-management.svg?url'),
+                'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
+              icon: require('./img/icons/activity.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
@@ -259,10 +242,10 @@ export default function HomePage() {
               },
             },
             {
-              title: 'Platform agnostic',
+              title: 'Seamless IDP integration',
               content:
-                'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
-              icon: require('./img/features/platform-agnosticity.svg?url'),
+                'Integrate with IDP of choice, including Azure Active Directory, Okta, and many others that support Open ID Connect.',
+              icon: require('./img/icons/star.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
@@ -270,10 +253,10 @@ export default function HomePage() {
               },
             },
             {
-              title: 'Session visibility',
+              title: 'Dynamic secrets management',
               content:
-                'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
-              icon: require('./img/features/session-visibility.svg?url'),
+                'Leverage Vault integration for the brokering of Vault secrets to Boundary clients via the command line and desktop clients for use in Boundary sessions.',
+              icon: require('./img/icons/lock.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
@@ -282,10 +265,10 @@ export default function HomePage() {
               },
             },
             {
-              title: 'Infrastructure as code',
+              title: 'Dynamic service discovery',
               content:
-                'Define policies and manage Boundary with an Infrastructure as Code approach. Terraform provider supports the full breadth of Boundary configurations.',
-              icon: require('./img/features/config-as-code.svg?url'),
+                'Automate service discovery and access configuration as workloads are deployed or changed.',
+              icon: require('./img/icons/layers.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
@@ -294,10 +277,10 @@ export default function HomePage() {
               },
             },
             {
-              title: 'Manage dynamic environments',
+              title: 'Infrastructure as code',
               content:
-                'Secure access to dynamic systems and applications with automated controls.',
-              icon: require('./img/features/managing-dynamic-environments.svg?url'),
+                'Define policies and manage Boundary with an Infrastructure as Code approach. Terraform provider supports the full breadth of Boundary configurations.',
+              icon: require('./img/icons/terminal.svg?url'),
               link: {
                 type: 'inbound',
                 text: 'Learn more',
