@@ -9,14 +9,10 @@ export default function LogoList({ logos }) {
             // eslint-disable-next-line react/no-array-index-key
             key={stableIdx}
           >
-            <img src={logo.url} alt={logo.alt} />
+            <img src={logo.url} width={logo.width} alt={logo.alt} />
           </div>
         ))}
       </div>
-
-      <p className={`g-type-tag-label ${s.footerText}`}>
-        Integrations coming soon
-      </p>
     </div>
   )
 }

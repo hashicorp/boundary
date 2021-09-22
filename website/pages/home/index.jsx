@@ -46,20 +46,32 @@ export default function HomePage() {
 
       <HowItWorks
         title="Secure access to hosts and services"
-        description="Traditional approaches like SSH bastion hosts or VPNs require distributing and managing credentials, configuring network controls like firewalls, and exposing the private network. Boundary provides a secure way to access hosts and critical systems without having to manage credentials or expose your network, and is entirely open source."
+        description={
+          <>
+            <p>
+              In the shift to the cloud, organizations need secure access to
+              targets beyond their own perimeter.
+            </p>
+            <p>
+              Boundary provides a secure way to access hosts and critical
+              systems without having to manage credentials or expose your
+              network, and is entirely open source.
+            </p>
+          </>
+        }
         features={[
           {
-            title: 'Authenticate',
+            title: 'Authenticate & authorize',
             description:
-              'Authenticate with any trusted identity provider you are already using. No need to distribute new credentials and manage them.',
+              'Authenticate with any trusted identity provider you are already using and authorize access based on granular, logical roles and services.',
             logos: [
               {
                 alt: 'GitHub',
-                url: require('./img/logos/github-gray.svg?url'),
+                url: require('./img/logos/github-black.svg?url'),
               },
               {
                 alt: 'AWS',
-                url: require('./img/logos/aws-gray.svg?url'),
+                url: require('./img/logos/aws-color.svg?url'),
               },
               {
                 alt: 'Microsoft Azure',
@@ -79,14 +91,14 @@ export default function HomePage() {
               },
               {
                 alt: 'More integrations',
-                url: require('./img/logos/more-gray.svg?url'),
+                url: require('./img/logos/custom.svg?url'),
               },
             ],
           },
           {
-            title: 'Authorize',
+            title: 'Connect',
             description:
-              'Authorize access based on logical roles and services, instead of physical IP addresses. Manage dynamic infrastructure and integrate service registries so hosts and service catalogs are kept up-to-date.',
+              'Manage dynamic infrastructure and integrate service registries so hosts and service catalogs are kept up-to-date.',
             logos: [
               {
                 alt: 'Consul',
