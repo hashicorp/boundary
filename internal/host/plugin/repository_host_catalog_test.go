@@ -38,7 +38,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		plg.GetPublicId(): &TestPluginServer{
 			OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 				gotPluginAttrs = req.GetCatalog().GetAttributes()
-				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Data: req.GetCatalog().GetSecrets()}}, nil
+				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
 			},
 		},
 		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},

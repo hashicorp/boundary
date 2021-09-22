@@ -81,8 +81,8 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 
 	var hcSecret *HostCatalogSecret
-	if plgResp != nil && plgResp.GetPersisted().GetData() != nil {
-		hcSecret, err = newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetData())
+	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+		hcSecret, err = newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -229,11 +229,11 @@ func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCata
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	data := &structpb.Struct{}
-	if err := proto.Unmarshal(cSecret.GetSecret(), data); err != nil {
+	secrets := &structpb.Struct{}
+	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
-	return &plgpb.HostCatalogPersisted{Data: data}, nil
+	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
 }
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
