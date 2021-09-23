@@ -68,6 +68,8 @@ func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, pl
 	return set
 }
 
+var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)
+
 // TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
 type TestPluginServer struct {
 	OnCreateCatalogFn func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
