@@ -18,27 +18,54 @@ func init() {
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	// TODO: Pull these out of being constants and have them derivable at run time.
 	HostCatalogPrefix = "hcplg"
 	HostSetPrefix     = "hsplg"
+	HostPrefix        = "hplg"
 
 	Subtype = subtypes.Subtype("plugin")
 )
 
 func newHostCatalogId(ctx context.Context, upre string) (string, error) {
+	const op = "plugin.newHostCatalogId"
+	if upre == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
+	}
 	prefix := fmt.Sprintf("%s_%s", HostCatalogPrefix, upre)
 	id, err := db.NewPublicId(prefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }
 
 func newHostSetId(ctx context.Context, upre string) (string, error) {
+	const op = "plugin.newHostSetId"
+	if upre == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
+	}
 	prefix := fmt.Sprintf("%s_%s", HostSetPrefix, upre)
 	id, err := db.NewPublicId(prefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return id, nil
+}
+
+func newHostId(ctx context.Context, upre string, catalogId, externalId string) (string, error) {
+	const op = "plugin.newHostId"
+	if upre == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
+	}
+	if catalogId == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+	}
+	if externalId == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
+	}
+	prefix := fmt.Sprintf("%s_%s", HostPrefix, upre)
+	id, err := db.NewPublicId(prefix, db.WithPrngValues([]string{catalogId, externalId}))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }

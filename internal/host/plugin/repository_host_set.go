@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -337,4 +338,116 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		hs.Attributes = attrs
 	}
 	return hs, nil
+}
+
+// Endpoints provides all the endpoints available for a given set id.
+// An error is returned if the set, related catalog, or related plugin are
+// unable to be retrieved.  If a host does not contain an addressible endpoint
+// it is not included in the resulting slice of endpoints.
+func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpoint, error) {
+	const op = "plugin.(Repository).Endpoints"
+	if setId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set id")
+	}
+	sets, err := r.getSets(ctx, setId, "")
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set %s", setId)))
+	}
+	var set *HostSet
+	switch len(sets) {
+	case 0:
+		return nil, nil
+	case 1:
+		set = sets[0]
+	default:
+		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 set", setId))
+	}
+	cat, err := r.getCatalog(ctx, set.GetCatalogId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalog %s", set.GetCatalogId())))
+	}
+	if cat == nil {
+		return nil, nil
+	}
+	plg, err := r.getPlugin(ctx, cat.GetPluginId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve plugin %s", cat.GetPluginId())))
+	}
+	if plg == nil {
+		return nil, nil
+	}
+
+	pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(set.GetPreferredEndpoints()))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, ok := r.plugins[plg.GetPublicId()]
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
+	}
+	per, err := r.getPersistedDataForCatalog(ctx, cat)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plgCat, err := toPluginCatalog(ctx, cat)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
+	}
+	plgSet, err := toPluginSet(ctx, set)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin set conversion"))
+	}
+	resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
+		Catalog:   plgCat,
+		Sets:      []*pb.HostSet{plgSet},
+		Persisted: per,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var hosts []interface{}
+	var es []*host.Endpoint
+	for _, h := range resp.GetHosts() {
+		hostId, err := newHostId(ctx, plg.GetIdPrefix(), cat.GetPublicId(), h.GetExternalId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		var opts []endpoint.Option
+		opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
+		addr, err := pref.Choose(ctx, opts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if addr == "" {
+			continue
+		}
+		es = append(es, &host.Endpoint{
+			HostId:  hostId,
+			SetId:   setId,
+			Address: addr,
+		})
+
+		host := newHost(ctx, cat.GetPublicId(), addr)
+		host.PublicId = hostId
+		hosts = append(hosts, host)
+	}
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if _, err := r.writer.DeleteItems(ctx, hosts); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("couldn't delete existing hosts"))
+			}
+			if err := r.writer.CreateItems(ctx, hosts); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("can't persist hosts"))
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	return es, err
 }

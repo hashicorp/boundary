@@ -50,13 +50,12 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c = c.clone()
 
-	plg := hostplg.NewPlugin("", "")
-	plg.PublicId = c.PluginId
-	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter), errors.WithMsg(fmt.Sprintf("can't find plugin with id: %q", c.GetPluginId())))
-		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", c.PluginId)))
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if plg == nil {
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "unable to lookup host plugin")
 	}
 
 	id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
@@ -157,10 +156,10 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	c, err := r.getCatalog(ctx, id)
+	if errors.IsNotFoundError(err) {
+		return nil, nil
+	}
 	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
 	return c, nil
@@ -234,6 +233,19 @@ func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCata
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
 	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+}
+
+func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplg.Plugin, error) {
+	const op = "plugin.(Repository).getPlugin"
+	if plgId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
+	}
+	plg := hostplg.NewPlugin("", "")
+	plg.PublicId = plgId
+	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))
+	}
+	return plg, nil
 }
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
