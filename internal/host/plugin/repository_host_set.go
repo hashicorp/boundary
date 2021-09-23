@@ -433,21 +433,23 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 		host.PublicId = hostId
 		hosts = append(hosts, host)
 	}
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			if _, err := r.writer.DeleteItems(ctx, hosts); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("couldn't delete existing hosts"))
-			}
-			if err := r.writer.CreateItems(ctx, hosts); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("can't persist hosts"))
-			}
-			return nil
-		})
-	if err != nil {
-		return nil, err
+	if len(hosts) > 0 {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(_ db.Reader, w db.Writer) error {
+				if _, err := r.writer.DeleteItems(ctx, hosts); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("couldn't delete existing hosts"))
+				}
+				if err := r.writer.CreateItems(ctx, hosts); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("can't persist hosts"))
+				}
+				return nil
+			})
+		if err != nil {
+			return nil, err
+		}
 	}
 	return es, err
 }

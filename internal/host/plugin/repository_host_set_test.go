@@ -373,9 +373,14 @@ func TestRepository_Endpoints(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "endpoints", "endpoints")
+
+	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{
-			ListHostsFn: func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
+					return &plgpb.ListHostsResponse{}, nil
+				}
 				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
 					{
 						ExternalId:  "test",
@@ -390,6 +395,8 @@ func TestRepository_Endpoints(t *testing.T) {
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet10 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
 	hostSet192 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
+	hostSet100 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
+	hostlessSet := TestSet(t, conn, kms, hostlessCatalog, plgm)
 
 	tests := []struct {
 		name      string
@@ -430,6 +437,16 @@ func TestRepository_Endpoints(t *testing.T) {
 					Address: "192.168.0.5",
 				},
 			},
+		},
+		{
+			name:  "with-all-addresses-filtered-set",
+			setId: hostSet100.GetPublicId(),
+			want: nil,
+		},
+		{
+			name:  "with-no-hosts-from-plugin",
+			setId: hostlessSet.GetPublicId(),
+			want: nil,
 		},
 	}
 
