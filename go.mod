@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4-0.20210917172429-90711333b9d0
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
