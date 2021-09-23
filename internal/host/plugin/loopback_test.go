@@ -35,14 +35,16 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(catResp)
 	require.NotNil(catResp.GetPersisted())
-	require.NotNil(catResp.GetPersisted().GetData())
-	assert.EqualValues(secretsMap, catResp.GetPersisted().GetData().AsMap())
+	require.NotNil(catResp.GetPersisted().GetSecrets())
+	assert.EqualValues(secretsMap, catResp.GetPersisted().GetSecrets().AsMap())
 
 	// Add data to some sets
 	hostInfo1 := map[string]interface{}{
 		loopbackPluginHostInfoAttrField: map[string]interface{}{
+			"set_ids":      []interface{}{"set1"},
 			"external_id":  "host1",
 			"ip_addresses": []interface{}{"1.2.3.4", "2.3.4.5"},
+			"dns_names":    []interface{}{"foo.com"},
 		},
 	}
 	attrs, err := structpb.NewStruct(hostInfo1)
@@ -56,8 +58,10 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NoError(err)
 	hostInfo2 := map[string]interface{}{
 		loopbackPluginHostInfoAttrField: map[string]interface{}{
+			"set_ids":      []interface{}{"set2"},
 			"external_id":  "host2",
 			"ip_addresses": []interface{}{"5.6.7.8", "6.7.8.9"},
+			"dns_names":    []interface{}{"bar.com"},
 		},
 	}
 	attrs, err = structpb.NewStruct(hostInfo2)
@@ -116,12 +120,26 @@ func TestLoopbackPlugin(t *testing.T) {
 				hostMap := map[string]interface{}{
 					"external_id": host.GetExternalId(),
 				}
+				var sets []interface{}
+				for _, set := range host.SetIds {
+					sets = append(sets, set)
+				}
 				var ips []interface{}
 				for _, ip := range host.GetIpAddresses() {
 					ips = append(ips, ip)
 				}
+				var names []interface{}
+				for _, name := range host.GetDnsNames() {
+					names = append(names, name)
+				}
+				if len(sets) > 0 {
+					hostMap["set_ids"] = sets
+				}
 				if len(ips) > 0 {
 					hostMap["ip_addresses"] = ips
+				}
+				if len(names) > 0 {
+					hostMap["dns_names"] = names
 				}
 				found = append(found, hostMap)
 			}
@@ -131,7 +149,7 @@ func TestLoopbackPlugin(t *testing.T) {
 
 	// Remove a set
 	_, err = plg.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{
-		CurrentSet: &hostsets.HostSet{
+		Set: &hostsets.HostSet{
 			Id: "set1",
 		},
 	})
@@ -184,12 +202,29 @@ func TestLoopbackPlugin(t *testing.T) {
 				hostMap := map[string]interface{}{
 					"external_id": host.GetExternalId(),
 				}
+				var sets []interface{}
+				for _, set := range host.SetIds {
+					sets = append(sets, set)
+				}
 				var ips []interface{}
 				for _, ip := range host.GetIpAddresses() {
 					ips = append(ips, ip)
 				}
 				if len(ips) > 0 {
 					hostMap["ip_addresses"] = ips
+				}
+				var names []interface{}
+				for _, name := range host.GetDnsNames() {
+					names = append(names, name)
+				}
+				if len(sets) > 0 {
+					hostMap["set_ids"] = sets
+				}
+				if len(ips) > 0 {
+					hostMap["ip_addresses"] = ips
+				}
+				if len(names) > 0 {
+					hostMap["dns_names"] = names
 				}
 				found = append(found, hostMap)
 			}

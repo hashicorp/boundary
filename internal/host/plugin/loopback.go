@@ -51,7 +51,7 @@ func (l *loopbackPlugin) onCreateCatalog(ctx context.Context, req *plgpb.OnCreat
 		if secrets := cat.GetSecrets(); secrets != nil {
 			return &plgpb.OnCreateCatalogResponse{
 				Persisted: &plgpb.HostCatalogPersisted{
-					Data: secrets,
+					Secrets: secrets,
 				},
 			}, nil
 		}
@@ -86,7 +86,7 @@ func (l *loopbackPlugin) onDeleteSet(ctx context.Context, req *plgpb.OnDeleteSet
 	if req == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "req is nil")
 	}
-	set := req.GetCurrentSet()
+	set := req.GetSet()
 	if set == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "set is nil")
 	}
@@ -106,8 +106,10 @@ func (l *loopbackPlugin) listHosts(ctx context.Context, req *plgpb.ListHostsRequ
 			continue
 		}
 		resp.Hosts = append(resp.Hosts, &plgpb.ListHostsResponseHost{
+			SetIds:      []string{set.GetId()},
 			ExternalId:  hostInfo.ExternalId,
 			IpAddresses: hostInfo.IpAddresses,
+			DnsNames:    hostInfo.DnsNames,
 		})
 	}
 	return resp, nil
