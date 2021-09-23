@@ -76,7 +76,12 @@
       },
       {
         "title": "Desktop",
+        "hidden": true,
         "path": "api-clients/desktop"
+      },
+      {
+        "title": "Desktop",
+        "href": "https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app"
       }
     ]
   },

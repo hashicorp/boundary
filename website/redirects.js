@@ -29,6 +29,12 @@ module.exports = [
     destination: '/docs/api-clients/desktop#connect',
     permanent: false,
   },
+  {
+    source: '/docs/api-clients/desktop',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app',
+    permanent: true,
+  },
 
   /////////////////////////////////
   // DOMAIN MODEL CONCEPTS
