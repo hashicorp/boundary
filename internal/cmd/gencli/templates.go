@@ -169,21 +169,23 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 }
 
 var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
-	{{ range $i, $action := .StdActions }}
+	{{ with $attrFlags := ", \"attributes\", \"attr\", \"string-attr\", \"bool-attr\", \"num-attr\"" }}
+	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
-	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" },
+	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "read" }}
 	"read": {"id"},
 	{{ end }}
 	{{ if eq $action "update" }}
-	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} },
+	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "delete" }}
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
 	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
+	{{ end }}
 	{{ end }}
 	{{ end }}
 }
@@ -196,6 +198,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+
+	{{ if .HasGenericAttributes }}
+	f = set.NewFlagSet("Attribute Options")
+	common.PopulateAttributeFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	{{ end }}
 
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
 
@@ -323,7 +330,22 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	if ok := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, f, &opts); !ok {
+	{{ if .HasGenericAttributes }}
+	if err := common.HandleAttributeFlags(
+		c.Command,
+		"attr",
+		func() {
+			{{ .Pkg }}.DefaultAttributes()
+		},
+		func(in map[string]interface{}) {
+			{{ .Pkg }}.WithAttributes(in)
+		}); err != nil {
+		c.PrintCliError(fmt.Errorf("Error evaluating attribute flags to: %s", err.Error()))
+		return base.CommandCliError
+	}
+	{{ end }}
+
+	if ok := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, f, &opts, ); !ok {
 		return base.CommandUserError
 	}
 

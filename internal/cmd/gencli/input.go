@@ -68,6 +68,10 @@ type cmdInfo struct {
 	// This allows the flags to be defined differently from the the attribute
 	// names in the API.
 	PrefixAttributeFieldErrorsWithSubactionPrefix bool
+
+	// HasGenericAttributes controls whether to generate flags for -attributes,
+	// -attr, -string-attr, etc.
+	HasGenericAttributes bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -253,6 +257,21 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:            "Scope",
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
+		},
+		{
+			ResourceType:         resource.HostCatalog.String(),
+			Pkg:                  "hostcatalogs",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "plugin",
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			HasGenericAttributes: true,
 		},
 	},
 	"hostsets": {
