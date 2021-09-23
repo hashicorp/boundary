@@ -74,12 +74,63 @@ func TestLoopbackPlugin(t *testing.T) {
 	})
 	require.NoError(err)
 
-	// List these and validate values
-	setTests := []struct {
+	// Define test struct and validation function
+	type testInfo struct {
 		name  string
 		sets  []string
 		found []map[string]interface{}
-	}{
+	}
+	validateSets := func(t *testing.T, tt testInfo) {
+		require, assert := tr.New(t), ta.New(t)
+		var hostSets []*hostsets.HostSet
+		for _, set := range tt.sets {
+			hostSets = append(hostSets, &hostsets.HostSet{Id: set})
+		}
+		resp, err := plg.ListHosts(ctx, &plgpb.ListHostsRequest{
+			Sets: hostSets,
+		})
+		require.NoError(err)
+		if len(tt.found) == 0 {
+			assert.Len(resp.GetHosts(), 0)
+			return
+		}
+
+		require.Greater(len(resp.GetHosts()), 0)
+
+		var found []map[string]interface{}
+		for _, host := range resp.GetHosts() {
+			hostMap := map[string]interface{}{
+				"external_id": host.GetExternalId(),
+			}
+			var sets []interface{}
+			for _, set := range host.SetIds {
+				sets = append(sets, set)
+			}
+			var ips []interface{}
+			for _, ip := range host.GetIpAddresses() {
+				ips = append(ips, ip)
+			}
+			var names []interface{}
+			for _, name := range host.GetDnsNames() {
+				names = append(names, name)
+			}
+			if len(sets) > 0 {
+				hostMap["set_ids"] = sets
+			}
+			if len(ips) > 0 {
+				hostMap["ip_addresses"] = ips
+			}
+			if len(names) > 0 {
+				hostMap["dns_names"] = names
+			}
+			found = append(found, hostMap)
+		}
+		assert.ElementsMatch(tt.found, found)
+	}
+
+	// First set of tests: check that we can look up sets individually and
+	// together
+	setTests := []testInfo{
 		{
 			name: "set 1",
 			sets: []string{"set1"},
@@ -105,45 +156,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	}
 	for _, tt := range setTests {
 		t.Run(tt.name, func(t *testing.T) {
-			require, assert := tr.New(t), ta.New(t)
-			var hostSets []*hostsets.HostSet
-			for _, set := range tt.sets {
-				hostSets = append(hostSets, &hostsets.HostSet{Id: set})
-			}
-			resp, err := plg.ListHosts(ctx, &plgpb.ListHostsRequest{
-				Sets: hostSets,
-			})
-			require.NoError(err)
-			require.Greater(len(resp.GetHosts()), 0)
-			var found []map[string]interface{}
-			for _, host := range resp.GetHosts() {
-				hostMap := map[string]interface{}{
-					"external_id": host.GetExternalId(),
-				}
-				var sets []interface{}
-				for _, set := range host.SetIds {
-					sets = append(sets, set)
-				}
-				var ips []interface{}
-				for _, ip := range host.GetIpAddresses() {
-					ips = append(ips, ip)
-				}
-				var names []interface{}
-				for _, name := range host.GetDnsNames() {
-					names = append(names, name)
-				}
-				if len(sets) > 0 {
-					hostMap["set_ids"] = sets
-				}
-				if len(ips) > 0 {
-					hostMap["ip_addresses"] = ips
-				}
-				if len(names) > 0 {
-					hostMap["dns_names"] = names
-				}
-				found = append(found, hostMap)
-			}
-			assert.ElementsMatch(tt.found, found)
+			validateSets(t, tt)
 		})
 	}
 
@@ -155,12 +168,9 @@ func TestLoopbackPlugin(t *testing.T) {
 	})
 	require.NoError(err)
 
-	// Run tests again
-	setTests = []struct {
-		name  string
-		sets  []string
-		found []map[string]interface{}
-	}{
+	// Run tests again, making sure we no longer find that host either
+	// individually or together
+	setTests = []testInfo{
 		{
 			name:  "set 1 deleted",
 			sets:  []string{"set1"},
@@ -183,52 +193,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	}
 	for _, tt := range setTests {
 		t.Run(tt.name, func(t *testing.T) {
-			require, assert := tr.New(t), ta.New(t)
-			var hostSets []*hostsets.HostSet
-			for _, set := range tt.sets {
-				hostSets = append(hostSets, &hostsets.HostSet{Id: set})
-			}
-			resp, err := plg.ListHosts(ctx, &plgpb.ListHostsRequest{
-				Sets: hostSets,
-			})
-			require.NoError(err)
-			if len(tt.found) == 0 {
-				require.Len(resp.GetHosts(), 0)
-				return
-			}
-			require.Greater(len(resp.GetHosts()), 0)
-			var found []map[string]interface{}
-			for _, host := range resp.GetHosts() {
-				hostMap := map[string]interface{}{
-					"external_id": host.GetExternalId(),
-				}
-				var sets []interface{}
-				for _, set := range host.SetIds {
-					sets = append(sets, set)
-				}
-				var ips []interface{}
-				for _, ip := range host.GetIpAddresses() {
-					ips = append(ips, ip)
-				}
-				if len(ips) > 0 {
-					hostMap["ip_addresses"] = ips
-				}
-				var names []interface{}
-				for _, name := range host.GetDnsNames() {
-					names = append(names, name)
-				}
-				if len(sets) > 0 {
-					hostMap["set_ids"] = sets
-				}
-				if len(ips) > 0 {
-					hostMap["ip_addresses"] = ips
-				}
-				if len(names) > 0 {
-					hostMap["dns_names"] = names
-				}
-				found = append(found, hostMap)
-			}
-			assert.ElementsMatch(tt.found, found)
+			validateSets(t, tt)
 		})
 	}
 }
