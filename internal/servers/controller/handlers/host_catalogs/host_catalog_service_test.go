@@ -170,11 +170,11 @@ func TestGet_Plugin(t *testing.T) {
 	}
 
 	pHostCatalog := &pb.HostCatalog{
-		Id:       hc.GetPublicId(),
-		ScopeId:  hc.GetScopeId(),
-		Scope:    &scopepb.ScopeInfo{
-			Id: proj.GetPublicId(),
-			Type: scope.Project.String(),
+		Id:      hc.GetPublicId(),
+		ScopeId: hc.GetScopeId(),
+		Scope: &scopepb.ScopeInfo{
+			Id:            proj.GetPublicId(),
+			Type:          scope.Project.String(),
 			ParentScopeId: proj.GetParentId(),
 		},
 		PluginId: plg.GetPublicId(),
@@ -287,12 +287,12 @@ func TestList(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
-			Id:                          hc.GetPublicId(),
-			ScopeId:                     hc.GetScopeId(),
-			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
-			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
-			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
-			PluginId: plg.GetPublicId(),
+			Id:          hc.GetPublicId(),
+			ScopeId:     hc.GetScopeId(),
+			CreatedTime: hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
+			PluginId:    plg.GetPublicId(),
 			Plugin: &plugins.PluginInfo{
 				Id:          plg.GetPublicId(),
 				Name:        plg.GetName(),
@@ -327,12 +327,12 @@ func TestList(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), diffPlg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
-			Id:                          hc.GetPublicId(),
-			ScopeId:                     hc.GetScopeId(),
-			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
-			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
-			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
-			PluginId: diffPlg.GetPublicId(),
+			Id:          hc.GetPublicId(),
+			ScopeId:     hc.GetScopeId(),
+			CreatedTime: hc.GetCreateTime().GetTimestamp(),
+			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
+			PluginId:    diffPlg.GetPublicId(),
 			Plugin: &plugins.PluginInfo{
 				Id:          diffPlg.GetPublicId(),
 				Name:        diffPlg.GetName(),
@@ -747,13 +747,13 @@ func TestCreate_Plugin(t *testing.T) {
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
 				Type:        plugin.Subtype.String(),
-				PluginId: plg.GetPublicId(),
+				PluginId:    plg.GetPublicId(),
 			}},
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("host-catalogs/%s_", plugin.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
-					ScopeId:                     proj.GetPublicId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
+					ScopeId:  proj.GetPublicId(),
+					Scope:    &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					PluginId: plg.GetPublicId(),
 					Plugin: &plugins.PluginInfo{
 						Id:          plg.GetPublicId(),
@@ -771,8 +771,8 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Cant create in org",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				ScopeId:     org.GetParentId(),
-				Type:        plugin.Subtype.String(),
+				ScopeId:  org.GetParentId(),
+				Type:     plugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -780,8 +780,8 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Cant create in global",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				ScopeId:     scope.Global.String(),
-				Type:        plugin.Subtype.String(),
+				ScopeId:  scope.Global.String(),
+				Type:     plugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -789,16 +789,16 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				ScopeId:     proj.GetPublicId(),
+				ScopeId:  proj.GetPublicId(),
 				PluginId: plg.GetPublicId(),
-				Type:        "thisismadeup",
+				Type:     "thisismadeup",
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with no type",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				ScopeId:     proj.GetPublicId(),
+				ScopeId:  proj.GetPublicId(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -806,9 +806,9 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				Id: "not allowed to be set",
-				ScopeId:     proj.GetPublicId(),
-				Type:        plugin.Subtype.String(),
+				Id:       "not allowed to be set",
+				ScopeId:  proj.GetPublicId(),
+				Type:     plugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
@@ -820,7 +820,7 @@ func TestCreate_Plugin(t *testing.T) {
 				CreatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
 				Type:        plugin.Subtype.String(),
-				PluginId: plg.GetPublicId(),
+				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -831,7 +831,7 @@ func TestCreate_Plugin(t *testing.T) {
 				UpdatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
 				Type:        plugin.Subtype.String(),
-				PluginId: plg.GetPublicId(),
+				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

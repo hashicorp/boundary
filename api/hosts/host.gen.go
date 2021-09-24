@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 )
 
 type Host struct {

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
@@ -136,6 +137,11 @@ var inputStructs = []*structInfo{
 	{
 		inProto:     &scopes.ScopeInfo{},
 		outFile:     "scopes/scope_info.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &plugins.PluginInfo{},
+		outFile:     "plugins/plugin_info.gen.go",
 		skipOptions: true,
 	},
 	{

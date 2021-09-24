@@ -4391,27 +4391,8 @@
           "type": "string",
           "description": "Output only. The description of the plugin in boundary, if any.",
           "readOnly": true
-        },
-        "manifest": {
-          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginManifest",
-          "description": "Output only. The information provided by the plugin about itself.",
-          "readOnly": true
         }
       }
-    },
-    "controller.api.resources.plugins.v1.PluginManifest": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the plugin as reported by the plugin."
-        },
-        "description": {
-          "type": "string",
-          "description": "The description of the plugin as reported by the plugin."
-        }
-      },
-      "description": "PluginManifest is the information provided by the plugin."
     },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
