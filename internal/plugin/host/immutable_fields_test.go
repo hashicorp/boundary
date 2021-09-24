@@ -19,7 +19,7 @@ func TestHostPlugin_ImmutableFields(t *testing.T) {
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	plg := TestPlugin(t, conn, "test", "prefix")
+	plg := TestPlugin(t, conn, "test")
 
 	newPlugin := plg
 
@@ -45,15 +45,6 @@ func TestHostPlugin_ImmutableFields(t *testing.T) {
 				return c
 			}(),
 			fieldMask: []string{"CreateTime"},
-		},
-		{
-			name: "pluginName",
-			update: func() *Plugin {
-				c := newPlugin.testClonePlugin()
-				c.PluginName = "different pluginName"
-				return c
-			}(),
-			fieldMask: []string{"PluginName"},
 		},
 	}
 	for _, tt := range tests {

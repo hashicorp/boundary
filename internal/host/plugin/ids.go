@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,24 +18,22 @@ func init() {
 // PublicId prefixes for the resources in the plugin package.
 const (
 	// TODO: Pull these out of being constants and have them derivable at run time.
-	HostCatalogPrefix = "hcplg"
-	HostSetPrefix     = "hsplg"
+	HostCatalogPrefix = "hc"
+	HostSetPrefix     = "hs"
 
 	Subtype = subtypes.Subtype("plugin")
 )
 
-func newHostCatalogId(ctx context.Context, upre string) (string, error) {
-	prefix := fmt.Sprintf("%s_%s", HostCatalogPrefix, upre)
-	id, err := db.NewPublicId(prefix)
+func newHostCatalogId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
 	}
 	return id, nil
 }
 
-func newHostSetId(ctx context.Context, upre string) (string, error) {
-	prefix := fmt.Sprintf("%s_%s", HostSetPrefix, upre)
-	id, err := db.NewPublicId(prefix)
+func newHostSetId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
 	}
