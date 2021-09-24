@@ -134,7 +134,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
-			wantIsErr: errors.RecordNotFound,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-with-name",

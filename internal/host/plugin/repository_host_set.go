@@ -355,7 +355,7 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 	if setId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set id")
 	}
-	sets, err := r.getSets(ctx, setId, "")
+	sets, plg, err := r.getSets(ctx, setId, "")
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set %s", setId)))
 	}
@@ -368,18 +368,14 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 	default:
 		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 set", setId))
 	}
+	if plg == nil {
+		return nil, nil
+	}
 	cat, err := r.getCatalog(ctx, set.GetCatalogId())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalog %s", set.GetCatalogId())))
 	}
 	if cat == nil {
-		return nil, nil
-	}
-	plg, err := r.getPlugin(ctx, cat.GetPluginId())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve plugin %s", cat.GetPluginId())))
-	}
-	if plg == nil {
 		return nil, nil
 	}
 
@@ -390,7 +386,7 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 
 	plgClient, ok := r.plugins[plg.GetPublicId()]
 	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPublicId()))
 	}
 	per, err := r.getPersistedDataForCatalog(ctx, cat)
 	if err != nil {
@@ -416,7 +412,7 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 	var hosts []interface{}
 	var es []*host.Endpoint
 	for _, h := range resp.GetHosts() {
-		hostId, err := newHostId(ctx, plg.GetIdPrefix(), cat.GetPublicId(), h.GetExternalId())
+		hostId, err := newHostId(ctx, cat.GetPublicId(), h.GetExternalId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

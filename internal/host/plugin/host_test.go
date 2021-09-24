@@ -16,7 +16,7 @@ func TestHost_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test", "prefix")
+	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
@@ -146,7 +146,7 @@ func TestHost_Create(t *testing.T) {
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
 
-			id, err := newHostId(ctx, plg.GetIdPrefix(), tt.name, tt.name)
+			id, err := newHostId(ctx, tt.name, tt.name)
 			assert.NoError(t, err)
 
 			tt.want.PublicId = id

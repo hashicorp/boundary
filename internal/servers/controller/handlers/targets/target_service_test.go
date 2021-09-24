@@ -2589,7 +2589,7 @@ func TestAuthorizeSession(t *testing.T) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): plugin.TestPluginServer{
 			ListHostsFn: func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {

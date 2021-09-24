@@ -248,7 +248,7 @@ func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.P
 	if plgId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
-	plg := hostplugin.NewPlugin("", "")
+	plg := hostplugin.NewPlugin()
 	plg.PublicId = plgId
 	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))

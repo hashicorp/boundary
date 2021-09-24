@@ -373,7 +373,7 @@ func TestRepository_Endpoints(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "endpoints", "endpoints")
+	plg := hostplg.TestPlugin(t, conn, "endpoints")
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceServer{
@@ -415,7 +415,7 @@ func TestRepository_Endpoints(t *testing.T) {
 			want: []*host.Endpoint{
 				{
 					HostId: func() string {
-						s, err := newHostId(ctx, plg.GetIdPrefix(), catalog.GetPublicId(), "test")
+						s, err := newHostId(ctx, catalog.GetPublicId(), "test")
 						require.NoError(t, err)
 						return s
 					}(),
@@ -430,7 +430,7 @@ func TestRepository_Endpoints(t *testing.T) {
 			want: []*host.Endpoint{
 				{
 					HostId: func() string {
-						s, err := newHostId(ctx, plg.GetIdPrefix(), catalog.GetPublicId(), "test")
+						s, err := newHostId(ctx, catalog.GetPublicId(), "test")
 						require.NoError(t, err)
 						return s
 					}(),
@@ -442,12 +442,12 @@ func TestRepository_Endpoints(t *testing.T) {
 		{
 			name:  "with-all-addresses-filtered-set",
 			setId: hostSet100.GetPublicId(),
-			want: nil,
+			want:  nil,
 		},
 		{
 			name:  "with-no-hosts-from-plugin",
 			setId: hostlessSet.GetPublicId(),
-			want: nil,
+			want:  nil,
 		},
 	}
 
