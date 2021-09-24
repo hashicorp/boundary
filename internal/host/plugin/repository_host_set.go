@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -30,70 +30,64 @@ import (
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (*HostSet, error) {
+func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.CatalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 	if s.PublicId != "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if s.Attributes == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
 	}
 	s = s.clone()
 
 	c, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
 	}
 	per, err := r.getPersistedDataForCatalog(ctx, c)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up persisted data"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up persisted data"))
 	}
-
-	plg := hostplg.NewPlugin("", "")
-	plg.PublicId = c.GetPluginId()
-	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get host plugin"))
-	}
-
-	id, err := newHostSetId(ctx, plg.GetIdPrefix())
+	id, err := newHostSetId(ctx)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	s.PublicId = id
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
+	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin with plugin name %q not available", plg.GetPluginName()))
+		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
+
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgHs, err := toPluginSet(ctx, s)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
 		if status.Code(err) != codes.Unimplemented {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var preferredEndpoints []interface{}
@@ -102,7 +96,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		for i, e := range s.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, s.PublicId, uint32(i+1), e)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
+				return nil, nil, errors.Wrap(ctx, err, op)
 			}
 			preferredEndpoints = append(preferredEndpoints, obj)
 		}
@@ -147,67 +141,71 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", s.CatalogId, s.Name)))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
 	}
-	return returnedHostSet, nil
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	return returnedHostSet, plg, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host
 // set. If the host set is not found, it will return nil, nil.
 // All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 
-	sets, err := r.getSets(ctx, publicId, "", opt...)
+	sets, plg, err := r.getSets(ctx, publicId, "", opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	switch {
 	case len(sets) == 0:
-		return nil, nil // not an error to return no rows for a "lookup"
+		return nil, nil, nil // not an error to return no rows for a "lookup"
 	case len(sets) > 1:
-		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
+		return nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
 	default:
-		return sets[0], nil
+		return sets[0], plg, nil
 	}
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
 // only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, error) {
+func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).ListSets"
 	if catalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
 	}
 
-	sets, err := r.getSets(ctx, "", catalogId, opt...)
+	sets, plg, err := r.getSets(ctx, "", catalogId, opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return sets, nil
+	return sets, plg, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	const aggregateDelimiter = "|"
 	const priorityDelimiter = "="
 
 	if publicId == "" && catalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
 	}
 	if publicId != "" && catalogId != "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a host set id and a catalog id is not supported")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a host set id and a catalog id is not supported")
 	}
 
 	opts, err := host.GetOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	limit := r.defaultLimit
@@ -238,12 +236,13 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 
 	var aggHostSets []*hostSetAgg
 	if err := r.reader.SearchWhere(ctx, &aggHostSets, where, args, dbArgs...); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", publicId)))
 	}
 
 	if len(aggHostSets) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
+	plgId := aggHostSets[0].PluginId
 
 	sets := make([]*HostSet, 0, len(aggHostSets))
 	for _, agg := range aggHostSets {
@@ -286,7 +285,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 					return indexi < indexj
 				})
 				if sortErr != nil {
-					return nil, sortErr
+					return nil, nil, sortErr
 				}
 				for i, ep := range eps {
 					// At this point they're in the correct order, but we still
@@ -299,8 +298,15 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		}
 		sets = append(sets, hs)
 	}
+	var plg *hostplugin.Plugin
+	if plgId != "" {
+		plg, err = r.getPlugin(ctx, plgId)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+	}
 
-	return sets, nil
+	return sets, plg, nil
 }
 
 // hostSetAgg is a view that aggregates the host set's value objects in to

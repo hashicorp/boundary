@@ -7580,20 +7580,6 @@ alter table wh_session_connection_accumulating_fact
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    plugin_name text not null
-      constraint plugin_name_must_be_not_empty
-        check(length(trim(plugin_name)) > 0)
-      constraint plugin_name_must_be_lowercase
-        check(lower(trim(plugin_name)) = plugin_name)
-      constraint plugin_host_plugin_name_uq
-        unique,
-    id_prefix text not null
-      constraint plugin_id_prefix_must_be_not_empty
-        check(length(trim(id_prefix)) > 0)
-      constraint plugin_id_prefix_must_fit_format
-        check (id_prefix ~ '^[a-z0-9]*$')
-      constraint plugin_host_id_prefix_uq
-        unique,
     constraint plugin_fkey
     foreign key (scope_id, public_id)
       references plugin(scope_id, public_id)
@@ -7613,7 +7599,7 @@ alter table wh_session_connection_accumulating_fact
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on plugin_host
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'plugin_name');
+    for each row execute procedure immutable_columns('public_id', 'create_time');
 
   create trigger insert_plugin_subtype before insert on plugin_host
     for each row execute procedure insert_plugin_subtype();
@@ -7964,6 +7950,7 @@ create view host_plugin_host_set_with_value_obj as
 select
   hs.public_id,
   hs.catalog_id,
+  hc.plugin_id,
   hs.name,
   hs.description,
   hs.create_time,
@@ -7974,8 +7961,9 @@ select
   string_agg(distinct concat_ws('=', hspe.priority, hspe.condition), '|') as preferred_endpoints
 from
   host_plugin_set hs
-  left outer join host_set_preferred_endpoint hspe on hs.public_id = hspe.host_set_id
-group by hs.public_id;
+  join host_plugin_catalog hc                        on hs.catalog_id = hc.public_id
+  left outer join host_set_preferred_endpoint hspe   on hs.public_id = hspe.host_set_id
+group by hs.public_id, hc.plugin_id;
 comment on view host_plugin_host_set_with_value_obj is
 'host plugin host set with its associated value objects';
 `),

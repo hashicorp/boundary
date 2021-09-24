@@ -71,6 +71,8 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 			globals.IdField:                          true,
 			globals.ScopeField:                       true,
 			globals.ScopeIdField:                     true,
+			globals.PluginIdField:                    true,
+			globals.PluginField:                      true,
 			globals.NameField:                        true,
 			globals.DescriptionField:                 true,
 			globals.TypeField:                        true,

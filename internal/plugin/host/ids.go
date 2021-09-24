@@ -7,7 +7,7 @@ import (
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	PluginPrefix = "plgh"
+	PluginPrefix = "pl"
 )
 
 func newPluginId() (string, error) {

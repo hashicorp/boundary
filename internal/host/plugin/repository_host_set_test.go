@@ -31,8 +31,8 @@ func TestRepository_CreateSet(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "create", "create")
-	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented", "unimplemented")
+	plg := hostplg.TestPlugin(t, conn, "create")
+	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
 
 	var pluginReceivedAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceServer{
@@ -209,7 +209,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, plgInfo, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -226,6 +226,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			wantedPluginAttributes := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(tt.want.Attributes, wantedPluginAttributes))
 			assert.Empty(cmp.Diff(wantedPluginAttributes, pluginReceivedAttrs, protocmp.Transform()))
+			assert.Empty(cmp.Diff(plgInfo, plg, protocmp.Transform()))
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
@@ -248,7 +249,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
+		got, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
@@ -257,7 +258,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(in.Description, got.GetDescription())
 		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
-		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
+		got2, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
@@ -281,7 +282,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
+		got, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
@@ -291,7 +292,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
 		in2.CatalogId = catalogB.PublicId
-		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
+		got2, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
@@ -310,7 +311,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "lookup", "lookup")
+	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{},
 	}
@@ -319,7 +320,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{},
 	})
-	hostSetId, err := newHostSetId(ctx, plg.GetIdPrefix())
+	hostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -350,7 +351,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupSet(ctx, tt.in)
+			got, _, err := repo.LookupSet(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -494,7 +495,7 @@ func TestRepository_ListSets(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "list", "list")
+	plg := hostplg.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{},
 	}
@@ -506,6 +507,8 @@ func TestRepository_ListSets(t *testing.T) {
 		TestSet(t, conn, kms, catalogA, plgm),
 		TestSet(t, conn, kms, catalogA, plgm),
 	}
+
+	printoutTable(t, rw)
 
 	tests := []struct {
 		name      string
@@ -537,7 +540,7 @@ func TestRepository_ListSets(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
+			got, gotPlg, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -549,6 +552,9 @@ func TestRepository_ListSets(t *testing.T) {
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
+			if got != nil {
+				assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
+			}
 		})
 	}
 }
@@ -561,7 +567,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "listlimit", "listlimit")
+	plg := hostplg.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{},
 	}
@@ -623,9 +629,19 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
+			got, gotPlg, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
 		})
+	}
+}
+
+func printoutTable(t *testing.T, rw *db.Db) {
+	ctx := context.Background()
+	hsas := []*hostSetAgg{}
+	require.NoError(t, rw.SearchWhere(ctx, &hsas, "", nil))
+	for _, hs := range hsas {
+		t.Logf("%#v", hs)
 	}
 }

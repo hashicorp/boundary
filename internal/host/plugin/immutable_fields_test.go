@@ -24,8 +24,8 @@ func TestPluginCatalog_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	o, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test", "prefix")
-	plg2 := host.TestPlugin(t, conn, "test2", "prefix2")
+	plg := host.TestPlugin(t, conn, "test")
+	plg2 := host.TestPlugin(t, conn, "test2")
 	new := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	tests := []struct {
@@ -100,7 +100,7 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test", "prefix")
+	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	new := TestSet(t, conn, kmsCache, cat, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &TestPluginServer{},

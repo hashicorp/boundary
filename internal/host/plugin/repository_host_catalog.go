@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -28,54 +28,45 @@ import (
 // not included in the returned *HostCatalog.
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
-func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Option) (*HostCatalog, error) {
+func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Option) (*HostCatalog, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).CreateCatalog"
 	if c == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if c.PublicId != "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 	if c.PluginId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
 	if c.Attributes == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
 	}
 	c = c.clone()
-
-	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	id, err := newHostCatalogId(ctx)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if plg == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, "unable to lookup host plugin")
-	}
-
-	id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	c.PublicId = id
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
+	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPluginName()))
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgResp, err := plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
 	if err != nil {
 		if status.Code(err) != codes.Unimplemented {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
@@ -83,20 +74,20 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
 		hcSecret, err = newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 		}
 		if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newHostCatalog *HostCatalog
@@ -141,39 +132,48 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", c.ScopeId, c.Name)))
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", c.ScopeId, c.Name)))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", c.ScopeId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", c.ScopeId)))
 	}
-	return newHostCatalog, nil
+	plg, err := r.getPlugin(ctx, newHostCatalog.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	return newHostCatalog, plg, nil
 }
 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
 // HostCatalog is found for id.
-func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) (*HostCatalog, error) {
+func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) (*HostCatalog, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupCatalog"
 	if id == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	c, err := r.getCatalog(ctx, id)
 	if errors.IsNotFoundError(err) {
-		return nil, nil
+		return nil, nil, nil
 	}
+
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
-	return c, nil
+	plg, err := r.getPlugin(ctx, c.GetPluginId())
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	return c, plg, nil
 }
 
 // ListCatalogs returns a slice of HostCatalogs for the scope IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...host.Option) ([]*HostCatalog, error) {
+func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...host.Option) ([]*HostCatalog, []*hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).ListCatalogs"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	opts, err := host.GetOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	limit := r.defaultLimit
 	if opts.WithLimit != 0 {
@@ -182,9 +182,17 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 	}
 	var hostCatalogs []*HostCatalog
 	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit)); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return hostCatalogs, nil
+	plgIds := make([]string, 0, len(hostCatalogs))
+	for _, c := range hostCatalogs {
+		plgIds = append(plgIds, c.PluginId)
+	}
+	var plgs []*hostplugin.Plugin
+	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []interface{}{plgIds}); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	return hostCatalogs, plgs, nil
 }
 
 // getCatalog retrieves the *HostCatalog with the provided id.  If it is not found or there
@@ -235,12 +243,12 @@ func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCata
 	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
 }
 
-func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplg.Plugin, error) {
+func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).getPlugin"
 	if plgId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
-	plg := hostplg.NewPlugin("", "")
+	plg := hostplugin.NewPlugin("", "")
 	plg.PublicId = plgId
 	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))

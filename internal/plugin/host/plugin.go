@@ -16,12 +16,10 @@ type Plugin struct {
 
 // NewPlugin creates a new in memory Plugin assigned to the global scope.
 // Name, Description are the only allowed option. All other options are ignored.
-func NewPlugin(pluginName, idPrefix string, opt ...Option) *Plugin {
+func NewPlugin(opt ...Option) *Plugin {
 	opts := getOpts(opt...)
 	p := &Plugin{
 		Plugin: &store.Plugin{
-			PluginName:  pluginName,
-			IdPrefix:    idPrefix,
 			ScopeId:     scope.Global.String(),
 			Name:        opts.withName,
 			Description: opts.withDescription,

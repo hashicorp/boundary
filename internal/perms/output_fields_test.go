@@ -253,6 +253,8 @@ func Test_ACLSelfOrDefault(t *testing.T) {
 				globals.IdField:                          true,
 				globals.ScopeField:                       true,
 				globals.ScopeIdField:                     true,
+				globals.PluginField:                      true,
+				globals.PluginIdField:                    true,
 				globals.NameField:                        true,
 				globals.DescriptionField:                 true,
 				globals.TypeField:                        true,

@@ -985,7 +985,7 @@ func TestAddTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -1119,7 +1119,7 @@ func TestSetTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -1247,7 +1247,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -1387,7 +1387,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -1521,7 +1521,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -1643,7 +1643,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},

@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -18,52 +17,38 @@ func init() {
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	HostCatalogPrefix = "hcplg"
-	HostSetPrefix     = "hsplg"
-	HostPrefix        = "hplg"
+	HostCatalogPrefix = "hc"
+	HostSetPrefix     = "hs"
+	HostPrefix        = "h"
 
 	Subtype = subtypes.Subtype("plugin")
 )
 
-func newHostCatalogId(ctx context.Context, upre string) (string, error) {
-	const op = "plugin.newHostCatalogId"
-	if upre == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
-	}
-	prefix := fmt.Sprintf("%s_%s", HostCatalogPrefix, upre)
-	id, err := db.NewPublicId(prefix)
+func newHostCatalogId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
+		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
 	}
 	return id, nil
 }
 
-func newHostSetId(ctx context.Context, upre string) (string, error) {
-	const op = "plugin.newHostSetId"
-	if upre == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
-	}
-	prefix := fmt.Sprintf("%s_%s", HostSetPrefix, upre)
-	id, err := db.NewPublicId(prefix)
+func newHostSetId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
+		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
 	}
 	return id, nil
 }
 
-func newHostId(ctx context.Context, upre string, catalogId, externalId string) (string, error) {
+func newHostId(ctx context.Context, catalogId, externalId string) (string, error) {
 	const op = "plugin.newHostId"
-	if upre == "" {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "missing plugin id prefix")
-	}
 	if catalogId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
 	}
 	if externalId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
 	}
-	prefix := fmt.Sprintf("%s_%s", HostPrefix, upre)
-	id, err := db.NewPublicId(prefix, db.WithPrngValues([]string{catalogId, externalId}))
+	id, err := db.NewPublicId(HostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

@@ -24,7 +24,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test", "test")
+	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 	type args struct {
@@ -126,7 +126,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test", "prefix")
+	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)

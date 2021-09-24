@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -26,6 +27,7 @@ type options struct {
 	WithUserIsAnonymous             bool
 	WithOutputFields                *perms.OutputFieldsMap
 	WithScope                       *scopes.ScopeInfo
+	WithPlugin                      *plugins.PluginInfo
 	WithAuthorizedActions           []string
 	WithAuthorizedCollectionActions map[string]*structpb.ListValue
 	WithManagedGroupIds             []string
@@ -66,6 +68,14 @@ func WithOutputFields(fields *perms.OutputFieldsMap) Option {
 func WithScope(scp *scopes.ScopeInfo) Option {
 	return func(o *options) {
 		o.WithScope = scp
+	}
+}
+
+// WithPlugin provides an option when creating responses to include the given
+// plugin if allowed
+func WithPlugin(plg *plugins.PluginInfo) Option {
+	return func(o *options) {
+		o.WithPlugin = plg
 	}
 }
 

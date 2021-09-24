@@ -25,7 +25,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -155,7 +155,7 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create", "create")
+	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},

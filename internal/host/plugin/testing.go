@@ -25,11 +25,11 @@ func TestCatalog(t *testing.T, conn *gorm.DB, scopeId, pluginId string, opt ...O
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
-	plg := host.NewPlugin("", "")
+	plg := host.NewPlugin()
 	plg.PublicId = pluginId
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
-	id, err := newHostCatalogId(ctx, plg.GetIdPrefix())
+	id, err := newHostCatalogId(ctx)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, id)
 	cat.PublicId = id
@@ -54,19 +54,21 @@ func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, pl
 	require.NoError(err)
 	require.NotNil(set)
 
-	plg := host.NewPlugin("", "")
+	plg := host.NewPlugin()
 	plg.PublicId = hc.GetPluginId()
 	require.NoError(rw.LookupByPublicId(ctx, plg))
 
-	id, err := newHostSetId(ctx, plg.GetIdPrefix())
+	id, err := newHostSetId(ctx)
 	require.NoError(err)
 	require.NotEmpty(id)
 
-	set, err = repo.CreateSet(ctx, hc.ScopeId, set, opt...)
+	set, _, err = repo.CreateSet(ctx, hc.ScopeId, set, opt...)
 	require.NoError(err)
 
 	return set
 }
+
+var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)
 
 // TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
 type TestPluginServer struct {

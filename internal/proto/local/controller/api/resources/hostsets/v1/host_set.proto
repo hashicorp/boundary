@@ -8,6 +8,7 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/api/resources/plugins/v1/plugin.proto";
 import "controller/custom_options/v1/options.proto";
 
 // HostSet is a collection of Hosts created and managed by a Host Catalog
@@ -20,6 +21,9 @@ message HostSet {
 
 	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// Output only. Plugin information for this resource.
+	resources.plugins.v1.PluginInfo plugin = 35;
 
 	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
