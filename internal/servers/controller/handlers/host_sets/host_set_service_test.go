@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -153,7 +154,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	name := "test"
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
-	plg := hostplugin.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hs := plugin.TestSet(t, conn, kms, hc, map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
@@ -162,12 +163,17 @@ func TestGet_Plugin(t *testing.T) {
 	toMerge := &pbs.GetHostSetRequest{}
 
 	pHost := &pb.HostSet{
-		HostCatalogId:      hc.GetPublicId(),
-		Id:                 hs.GetPublicId(),
-		CreatedTime:        hs.CreateTime.GetTimestamp(),
-		UpdatedTime:        hs.UpdateTime.GetTimestamp(),
-		Type:               name,
-		Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		HostCatalogId: hc.GetPublicId(),
+		Id:            hs.GetPublicId(),
+		CreatedTime:   hs.CreateTime.GetTimestamp(),
+		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
+		Type:          plugin.Subtype.String(),
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		Plugin: &plugins.PluginInfo{
+			Id:          plg.GetPublicId(),
+			Name:        plg.GetName(),
+			Description: plg.GetDescription(),
+		},
 		PreferredEndpoints: prefEndpoints,
 		AuthorizedActions:  testAuthorizedActions,
 	}
@@ -342,7 +348,7 @@ func TestList_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
 	}
@@ -357,13 +363,18 @@ func TestList_Plugin(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		h := plugin.TestSet(t, conn, kms, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
 		wantHs = append(wantHs, &pb.HostSet{
-			Id:                 h.GetPublicId(),
-			HostCatalogId:      h.GetCatalogId(),
-			Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			Id:            h.GetPublicId(),
+			HostCatalogId: h.GetCatalogId(),
+			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			Plugin: &plugins.PluginInfo{
+				Id:          plg.GetPublicId(),
+				Name:        plg.GetName(),
+				Description: plg.GetDescription(),
+			},
 			CreatedTime:        h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:        h.GetUpdateTime().GetTimestamp(),
 			Version:            h.GetVersion(),
-			Type:               name,
+			Type:               plugin.Subtype.String(),
 			AuthorizedActions:  testAuthorizedActions,
 			PreferredEndpoints: preferredEndpoints,
 		})
@@ -707,7 +718,7 @@ func TestCreate_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name, name)
+	plg := hostplugin.TestPlugin(t, conn, name)
 	plgRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{
 			plg.GetPublicId(): &plugin.TestPluginServer{
@@ -757,16 +768,21 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId: hc.GetPublicId(),
 				Name:          &wrappers.StringValue{Value: "No Attributes"},
 				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          name,
+				Type:          plugin.Subtype.String(),
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
 				Item: &pb.HostSet{
-					HostCatalogId:     hc.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Plugin: &plugins.PluginInfo{
+						Id:          plg.GetPublicId(),
+						Name:        plg.GetName(),
+						Description: plg.GetDescription(),
+					},
 					Name:              &wrappers.StringValue{Value: "No Attributes"},
 					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              name,
+					Type:              plugin.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -777,17 +793,22 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId: hc.GetPublicId(),
 				Name:          &wrappers.StringValue{Value: "With Attributes"},
 				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          name,
+				Type:          plugin.Subtype.String(),
 				Attributes:    testAttrs,
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
 				Item: &pb.HostSet{
-					HostCatalogId:     hc.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Plugin: &plugins.PluginInfo{
+						Id:          plg.GetPublicId(),
+						Name:        plg.GetName(),
+						Description: plg.GetDescription(),
+					},
 					Name:              &wrappers.StringValue{Value: "With Attributes"},
 					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              name,
+					Type:              plugin.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					Attributes:        testAttrs,
 				},
@@ -799,17 +820,22 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               name,
+				Type:               plugin.Subtype.String(),
 				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
 				Item: &pb.HostSet{
-					HostCatalogId:      hc.GetPublicId(),
-					Scope:              &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Plugin: &plugins.PluginInfo{
+						Id:          plg.GetPublicId(),
+						Name:        plg.GetName(),
+						Description: plg.GetDescription(),
+					},
 					Name:               &wrappers.StringValue{Value: "name"},
 					Description:        &wrappers.StringValue{Value: "desc"},
-					Type:               name,
+					Type:               plugin.Subtype.String(),
 					PreferredEndpoints: prefEndpoints,
 					AuthorizedActions:  testAuthorizedActions,
 				},
@@ -821,7 +847,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               name,
+				Type:               plugin.Subtype.String(),
 				PreferredEndpoints: append(prefEndpoints, "foobar:1.2.3.4"),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -844,13 +870,18 @@ func TestCreate_Plugin(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_%s_", plugin.HostSetPrefix, name),
+				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
 				Item: &pb.HostSet{
-					HostCatalogId:     hc.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					HostCatalogId: hc.GetPublicId(),
+					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Plugin: &plugins.PluginInfo{
+						Id:          plg.GetPublicId(),
+						Name:        plg.GetName(),
+						Description: plg.GetDescription(),
+					},
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
-					Type:              name,
+					Type:              plugin.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},

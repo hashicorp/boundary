@@ -1244,6 +1244,13 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
+          },
+          {
+            "name": "plugin_name",
+            "description": "As an alternative to providing the plugin id in the provided HostCatalog,\nthis field can be used to lookup the plugin using it's name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -4075,6 +4082,15 @@
           "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
+        "plugin_id": {
+          "type": "string",
+          "description": "The ID of the plugin of which this catalog is created."
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "description": "Optional name for identification purposes."
@@ -4151,6 +4167,11 @@
           "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "description": "Optional name for identification purposes."
@@ -4218,6 +4239,11 @@
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
           "readOnly": true
         },
         "name": {
@@ -4347,6 +4373,45 @@
         }
       },
       "title": "ManagedGroup contains all fields related to an ManagedGroup resource"
+    },
+    "controller.api.resources.plugins.v1.PluginInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Plugin.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Output only. The name of the plugin resource in boundary, if any.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Output only. The description of the plugin in boundary, if any.",
+          "readOnly": true
+        },
+        "manifest": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginManifest",
+          "description": "Output only. The information provided by the plugin about itself.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.plugins.v1.PluginManifest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the plugin as reported by the plugin."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the plugin as reported by the plugin."
+        }
+      },
+      "description": "PluginManifest is the information provided by the plugin."
     },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",

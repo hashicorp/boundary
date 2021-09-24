@@ -12,7 +12,7 @@ func Test_TestPlugins(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 
-	plg := TestPlugin(t, conn, "test", "prefix")
+	plg := TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 }

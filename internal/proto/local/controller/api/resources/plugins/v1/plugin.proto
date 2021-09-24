@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package controller.api.resources.plugins.v1;
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins;plugins";
+
+// PluginManifest is the information provided by the plugin.
+message PluginManifest {
+  // The name of the plugin as reported by the plugin.
+  string name = 1;
+
+  // The description of the plugin as reported by the plugin.
+  string description = 2;
+}
+
+message PluginInfo {
+  // Output only. The ID of the Plugin.
+  string id = 1;
+
+  // Output only. The name of the plugin resource in boundary, if any.
+  string name = 2;
+
+  // Output only. The description of the plugin in boundary, if any.
+  string description = 3;
+
+  // Output only. The information provided by the plugin about itself.
+  PluginManifest manifest = 4;
+}

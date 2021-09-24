@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -161,7 +162,7 @@ func TestGet_Plugin(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	name := "test"
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := host.TestPlugin(t, conn, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	toMerge := &pbs.GetHostCatalogRequest{
@@ -169,12 +170,22 @@ func TestGet_Plugin(t *testing.T) {
 	}
 
 	pHostCatalog := &pb.HostCatalog{
-		Id:                          hc.GetPublicId(),
-		ScopeId:                     hc.GetScopeId(),
-		Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
+		Id:       hc.GetPublicId(),
+		ScopeId:  hc.GetScopeId(),
+		Scope:    &scopepb.ScopeInfo{
+			Id: proj.GetPublicId(),
+			Type: scope.Project.String(),
+			ParentScopeId: proj.GetParentId(),
+		},
+		PluginId: plg.GetPublicId(),
+		Plugin: &plugins.PluginInfo{
+			Id:          plg.GetPublicId(),
+			Name:        plg.GetName(),
+			Description: plg.GetDescription(),
+		},
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
-		Type:                        name,
+		Type:                        plugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
@@ -272,7 +283,7 @@ func TestList(t *testing.T) {
 
 	var testPluginCatalogs []*pb.HostCatalog
 	name := "test"
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := host.TestPlugin(t, conn, name)
 	for i := 0; i < 3; i++ {
 		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
@@ -281,8 +292,14 @@ func TestList(t *testing.T) {
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
 			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
+			PluginId: plg.GetPublicId(),
+			Plugin: &plugins.PluginInfo{
+				Id:          plg.GetPublicId(),
+				Name:        plg.GetName(),
+				Description: plg.GetDescription(),
+			},
 			Version:                     1,
-			Type:                        name,
+			Type:                        plugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		}
@@ -306,17 +323,23 @@ func TestList(t *testing.T) {
 	}
 
 	name = "different"
-	plg = host.TestPlugin(t, conn, name, name)
+	diffPlg := host.TestPlugin(t, conn, name)
 	for i := 0; i < 3; i++ {
-		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), plg.GetPublicId())
+		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), diffPlg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
 			ScopeId:                     hc.GetScopeId(),
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
 			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
+			PluginId: diffPlg.GetPublicId(),
+			Plugin: &plugins.PluginInfo{
+				Id:          diffPlg.GetPublicId(),
+				Name:        diffPlg.GetName(),
+				Description: diffPlg.GetDescription(),
+			},
 			Version:                     1,
-			Type:                        name,
+			Type:                        plugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
@@ -369,10 +392,10 @@ func TestList(t *testing.T) {
 			res: &pbs.ListHostCatalogsResponse{Items: wantSomeCatalogs},
 		},
 		{
-			name: "Filter To Catalog Test Type",
+			name: "Filter To Catalog Using Test Plugin",
 			req: &pbs.ListHostCatalogsRequest{
 				ScopeId: scope.Global.String(), Recursive: true,
-				Filter: `"/item/type"=="test"`,
+				Filter: `"/item/plugin/name"=="test"`,
 			},
 			res: &pbs.ListHostCatalogsResponse{Items: testPluginCatalogs},
 		},
@@ -684,7 +707,7 @@ func TestCreate_Plugin(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -697,7 +720,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 
 	name := "test"
-	plg := host.TestPlugin(t, conn, name, name)
+	plg := host.TestPlugin(t, conn, name)
 	pluginHostRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{
 			plg.GetPublicId(): &plugin.TestPluginServer{
@@ -723,16 +746,23 @@ func TestCreate_Plugin(t *testing.T) {
 				ScopeId:     proj.GetPublicId(),
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        name,
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("host-catalogs/%s_%s_", plugin.HostCatalogPrefix, name),
+				Uri: fmt.Sprintf("host-catalogs/%s_", plugin.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					ScopeId:                     proj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
+					PluginId: plg.GetPublicId(),
+					Plugin: &plugins.PluginInfo{
+						Id:          plg.GetPublicId(),
+						Name:        plg.GetName(),
+						Description: plg.GetDescription(),
+					},
 					Name:                        &wrappers.StringValue{Value: "name"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
-					Type:                        name,
+					Type:                        plugin.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -741,10 +771,9 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Cant create in org",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				ScopeId:     proj.GetParentId(),
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        name,
+				ScopeId:     org.GetParentId(),
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -752,17 +781,16 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Cant create in global",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				ScopeId:     scope.Global.String(),
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        name,
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with unknown type",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				ScopeId:     proj.GetPublicId(),
+				PluginId: plg.GetPublicId(),
 				Type:        "thisismadeup",
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -770,8 +798,8 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "Create with no type",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				ScopeId:     proj.GetPublicId(),
+				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -779,6 +807,9 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Id: "not allowed to be set",
+				ScopeId:     proj.GetPublicId(),
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -787,6 +818,9 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				CreatedTime: timestamppb.Now(),
+				ScopeId:     proj.GetPublicId(),
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -795,6 +829,9 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				UpdatedTime: timestamppb.Now(),
+				ScopeId:     proj.GetPublicId(),
+				Type:        plugin.Subtype.String(),
+				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -818,7 +855,7 @@ func TestCreate_Plugin(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), fmt.Sprintf("%s_%s_", plugin.HostCatalogPrefix, name)))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), fmt.Sprintf("%s_", plugin.HostCatalogPrefix)))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()

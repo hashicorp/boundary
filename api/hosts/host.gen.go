@@ -10,12 +10,14 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 )
 
 type Host struct {
 	Id                string                 `json:"id,omitempty"`
 	HostCatalogId     string                 `json:"host_catalog_id,omitempty"`
 	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Plugin            *plugins.PluginInfo    `json:"plugin,omitempty"`
 	Name              string                 `json:"name,omitempty"`
 	Description       string                 `json:"description,omitempty"`
 	CreatedTime       time.Time              `json:"created_time,omitempty"`

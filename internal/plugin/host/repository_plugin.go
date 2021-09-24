@@ -16,9 +16,6 @@ import (
 // contain a valid ScopeID. p must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
 //
-// Both p.IdPrefix and p.PluginName are required and must match.  The
-// p.IdPrefix must contain only lower case alphanumeric characters.
-//
 // Both p.Name and p.Description are optional. If p.Name is set, it must be
 // unique within p.ScopeID.
 //
@@ -40,17 +37,6 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, _ ...Option) (
 	if p.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	if p.PluginName == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin name")
-	}
-	if p.IdPrefix == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no id prefix")
-	}
-	// TODO: remove the restriction on prefix having to be the same as plugin name
-	if p.PluginName != p.IdPrefix {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "id prefix and plugin name don't match")
-	}
-
 	p = p.clone()
 
 	id, err := newPluginId()
@@ -112,16 +98,16 @@ func (r *Repository) LookupPlugin(ctx context.Context, id string, _ ...Option) (
 	return c, nil
 }
 
-// LookupPluginByPluginName returns the Plugin for a given name. Returns nil, nil if no
+// LookupPluginByName returns the Plugin for a given name. Returns nil, nil if no
 // Plugin is found with that plugin name.
-func (r *Repository) LookupPluginByPluginName(ctx context.Context, name string, _ ...Option) (*Plugin, error) {
-	const op = "host.(Repository).LookupPluginByPluginName"
+func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...Option) (*Plugin, error) {
+	const op = "host.(Repository).LookupPluginByName"
 	if name == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin name")
 	}
 	p := allocPlugin()
 
-	if err := r.reader.LookupWhere(ctx, p, "plugin_name=?", name); err != nil {
+	if err := r.reader.LookupWhere(ctx, p, "name=?", name); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
