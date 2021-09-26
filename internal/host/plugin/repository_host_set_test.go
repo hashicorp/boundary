@@ -389,7 +389,7 @@ func TestRepository_Endpoints(t *testing.T) {
 				}
 				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
 					{
-						SetIds: setIds,
+						SetIds:      setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.5", "192.168.0.5"},
 						DnsNames:    nil,
@@ -407,7 +407,7 @@ func TestRepository_Endpoints(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		setIds     []string
+		setIds    []string
 		want      []*host.Endpoint
 		wantIsErr errors.Code
 	}{
@@ -416,7 +416,7 @@ func TestRepository_Endpoints(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name:  "with-set10",
+			name:   "with-set10",
 			setIds: []string{hostSet10.GetPublicId()},
 			want: []*host.Endpoint{
 				{
@@ -431,7 +431,7 @@ func TestRepository_Endpoints(t *testing.T) {
 			},
 		},
 		{
-			name:  "with-different-set",
+			name:   "with-different-set",
 			setIds: []string{hostSet192.GetPublicId()},
 			want: []*host.Endpoint{
 				{
@@ -446,14 +446,14 @@ func TestRepository_Endpoints(t *testing.T) {
 			},
 		},
 		{
-			name:  "with-all-addresses-filtered-set",
+			name:   "with-all-addresses-filtered-set",
 			setIds: []string{hostSet100.GetPublicId()},
-			want:  nil,
+			want:   nil,
 		},
 		{
-			name:  "with-no-hosts-from-plugin",
+			name:   "with-no-hosts-from-plugin",
 			setIds: []string{hostlessSet.GetPublicId()},
-			want:  nil,
+			want:   nil,
 		},
 	}
 

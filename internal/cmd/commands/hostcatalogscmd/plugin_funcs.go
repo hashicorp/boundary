@@ -13,7 +13,7 @@ func (c *PluginCommand) extraPluginHelpFunc(helpMap map[string]func() string) st
 			"",
 			"  Create a plugin-type host catalog. Example:",
 			"",
-			`    $ boundary host-catalogs create plugin -name prodops -description "Plugin host-catalog for ProdOps"`,
+			`    $ boundary host-catalogs create plugin -scope-id p_1234567890 -name prodops -description "Plugin host-catalog for ProdOps"`,
 			"",
 			"",
 		})
@@ -24,7 +24,7 @@ func (c *PluginCommand) extraPluginHelpFunc(helpMap map[string]func() string) st
 			"",
 			"  Update a plugin-type host catalog given its ID. Example:",
 			"",
-			`    $ boundary host-catalogs update plugin -id hcst_1234567890 -name "devops" -description "Plugin host-catalog for DevOps"`,
+			`    $ boundary host-catalogs update plugin -id hc_1234567890 -name "devops" -description "Plugin host-catalog for DevOps"`,
 			"",
 			"",
 		})

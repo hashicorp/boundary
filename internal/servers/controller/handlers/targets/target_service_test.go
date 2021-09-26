@@ -2599,12 +2599,12 @@ func TestAuthorizeSession(t *testing.T) {
 				}
 				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
 					{
-						SetIds: setIds,
+						SetIds:      setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
 					},
 					{
-						SetIds: setIds,
+						SetIds:      setIds,
 						ExternalId:  "test2",
 						IpAddresses: []string{"10.1.1.1", "192.168.1.1"},
 					},
