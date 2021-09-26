@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -360,6 +361,139 @@ func TestRepository_LookupSet(t *testing.T) {
 			require.NoError(err)
 			if tt.want != nil {
 				assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()), "LookupSet(%q) got response %q, wanted %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRepository_Endpoints(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iamRepo)
+	plg := hostplg.TestPlugin(t, conn, "endpoints")
+
+	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	plgm := map[string]plgpb.HostPluginServiceServer{
+		plg.GetPublicId(): &TestPluginServer{
+			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
+					return &plgpb.ListHostsResponse{}, nil
+				}
+				var setIds []string
+				for _, set := range req.GetSets() {
+					setIds = append(setIds, set.GetId())
+				}
+				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
+					{
+						SetIds: setIds,
+						ExternalId:  "test",
+						IpAddresses: []string{"10.0.0.5", "192.168.0.5"},
+						DnsNames:    nil,
+					},
+				}}, nil
+			},
+		},
+	}
+
+	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	hostSet10 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
+	hostSet192 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
+	hostSet100 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
+	hostlessSet := TestSet(t, conn, kms, hostlessCatalog, plgm)
+
+	tests := []struct {
+		name      string
+		setIds     []string
+		want      []*host.Endpoint
+		wantIsErr errors.Code
+	}{
+		{
+			name:      "with-no-set-id",
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name:  "with-set10",
+			setIds: []string{hostSet10.GetPublicId()},
+			want: []*host.Endpoint{
+				{
+					HostId: func() string {
+						s, err := newHostId(ctx, catalog.GetPublicId(), "test")
+						require.NoError(t, err)
+						return s
+					}(),
+					SetId:   hostSet10.GetPublicId(),
+					Address: "10.0.0.5",
+				},
+			},
+		},
+		{
+			name:  "with-different-set",
+			setIds: []string{hostSet192.GetPublicId()},
+			want: []*host.Endpoint{
+				{
+					HostId: func() string {
+						s, err := newHostId(ctx, catalog.GetPublicId(), "test")
+						require.NoError(t, err)
+						return s
+					}(),
+					SetId:   hostSet192.GetPublicId(),
+					Address: "192.168.0.5",
+				},
+			},
+		},
+		{
+			name:  "with-all-addresses-filtered-set",
+			setIds: []string{hostSet100.GetPublicId()},
+			want:  nil,
+		},
+		{
+			name:  "with-no-hosts-from-plugin",
+			setIds: []string{hostlessSet.GetPublicId()},
+			want:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms, plgm)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.Endpoints(ctx, tt.setIds)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			if tt.want == nil {
+				return
+			}
+
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i].HostId < tt.want[j].HostId
+			})
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].HostId < got[j].HostId
+			})
+			assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()))
+
+			// TODO: Remove this once we no longer persist all host lookup calls
+			//   when retrieving the endpoints.
+			for _, ep := range got {
+				h := allocHost()
+				h.PublicId = ep.HostId
+				require.NoError(rw.LookupByPublicId(ctx, h))
+
+				assert.Equal(uint32(1), h.Version)
+				assert.Equal(ep.HostId, h.PublicId)
+				assert.Equal(ep.Address, h.Address)
+				assert.Equal(catalog.GetPublicId(), h.GetCatalogId())
 			}
 		})
 	}

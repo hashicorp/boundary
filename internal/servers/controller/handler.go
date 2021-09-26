@@ -142,11 +142,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
 	}
 	ts, err := targets.NewService(
+		ctx,
 		c.kms,
 		c.TargetRepoFn,
 		c.IamRepoFn,
 		c.ServersRepoFn,
 		c.SessionRepoFn,
+		c.PluginHostRepoFn,
 		c.StaticHostRepoFn,
 		c.VaultCredentialRepoFn)
 	if err != nil {

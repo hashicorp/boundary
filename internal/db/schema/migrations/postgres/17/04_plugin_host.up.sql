@@ -154,6 +154,66 @@ begin;
   create trigger delete_host_set_subtype after delete on host_plugin_set
     for each row execute procedure delete_host_set_subtype();
 
+
+  -- TODO: Rebuild this table to appropriately cache or sync data from the
+  --   plugin'ed service.
+  -- host_plugin_host captures plugin based host data.  This is only written to
+  -- from the controller and is not mutable directly by actions from the end
+  -- user.
+  create table host_plugin_host (
+    public_id wt_public_id primary key,
+    catalog_id wt_public_id not null
+      constraint host_plugin_catalog_fkey
+        references host_plugin_catalog (public_id)
+        on delete cascade
+        on update cascade,
+    name wt_name,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+
+    -- TODO: Break out the address to match the domain model where a host
+    --   can have multiple addresses and relies on the set to select the
+    --   prefered one.
+    address text not null
+      constraint address_must_be_more_than_2_characters
+        check(length(trim(address)) > 2)
+      constraint address_must_be_less_than_256_characters
+        check(length(trim(address)) < 256),
+
+    constraint host_fkey
+      foreign key (catalog_id, public_id)
+        references host (catalog_id, public_id)
+        on delete cascade
+        on update cascade,
+
+    constraint host_plugin_host_catalog_id_name_uq
+      unique(catalog_id, name),
+
+    constraint host_plugin_host_catalog_id_public_id_uq
+      unique(catalog_id, public_id)
+  );
+
+  create trigger update_version_column after update on host_plugin_host
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on host_plugin_host
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on host_plugin_host
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on host_plugin_host
+    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_subtype before insert on host_plugin_host
+    for each row execute procedure insert_host_subtype();
+
+  create trigger delete_host_subtype after delete on host_plugin_host
+    for each row execute procedure delete_host_subtype();
+
+
   insert into oplog_ticket (name, version)
   values
     ('host_plugin_catalog', 1),
