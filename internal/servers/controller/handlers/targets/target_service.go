@@ -961,6 +961,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	var endpoints []*host.Endpoint
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
+		// FIXME: read in type from DB rather than rely on prefix
 		switch host.SubtypeFromId(hsId) {
 		case static.Subtype:
 			eps, err := staticHostRepo.Endpoints(ctx, hsId)
@@ -983,19 +984,22 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	var chosenEndpoint *host.Endpoint
-	for _, ep := range endpoints {
-		if ep.HostId == requestedId {
-			chosenEndpoint = ep
+	if requestedId != "" {
+		for _, ep := range endpoints {
+			if ep.HostId == requestedId {
+				chosenEndpoint = ep
+			}
+		}
+		if chosenEndpoint == nil {
+			// We didn't find it
+			return nil, handlers.InvalidArgumentErrorf(
+				"Errors in provided fields.",
+				map[string]string{
+					"host_id": "The requested host id is not available.",
+				})
 		}
 	}
-	if requestedId != "" && chosenEndpoint == nil {
-		// We didn't find it
-		return nil, handlers.InvalidArgumentErrorf(
-			"Errors in provided fields.",
-			map[string]string{
-				"host_id": "The requested host id is not available.",
-			})
-	}
+
 	if chosenEndpoint == nil {
 		if len(endpoints) == 0 {
 			// No hosts were found, error
