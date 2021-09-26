@@ -2592,13 +2592,19 @@ func TestAuthorizeSession(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): plugin.TestPluginServer{
-			ListHostsFn: func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+				var setIds []string
+				for _, set := range req.GetSets() {
+					setIds = append(setIds, set.GetId())
+				}
 				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
 					{
+						SetIds: setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
 					},
 					{
+						SetIds: setIds,
 						ExternalId:  "test2",
 						IpAddresses: []string{"10.1.1.1", "192.168.1.1"},
 					},

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -193,9 +194,6 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host
 
 func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
-	const aggregateDelimiter = "|"
-	const priorityDelimiter = "="
-
 	if publicId == "" && catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
 	}
@@ -246,55 +244,9 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 
 	sets := make([]*HostSet, 0, len(aggHostSets))
 	for _, agg := range aggHostSets {
-		hs := allocHostSet()
-		hs.PublicId = agg.PublicId
-		hs.CatalogId = agg.CatalogId
-		hs.Name = agg.Name
-		hs.Description = agg.Description
-		hs.CreateTime = agg.CreateTime
-		hs.UpdateTime = agg.UpdateTime
-		hs.Version = agg.Version
-		hs.Attributes = agg.Attributes
-		if agg.PreferredEndpoints != "" {
-			eps := strings.Split(agg.PreferredEndpoints, aggregateDelimiter)
-			if len(eps) > 0 {
-				// We want to protect against someone messing with the DB
-				// and not panic, so we do a bit of a dance here
-				var sortErr error
-				sort.Slice(eps, func(i, j int) bool {
-					epi := strings.Split(eps[i], priorityDelimiter)
-					if len(epi) != 2 {
-						sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[i]))
-						return false
-					}
-					epj := strings.Split(eps[j], priorityDelimiter)
-					if len(epj) != 2 {
-						sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[j]))
-						return false
-					}
-					indexi, err := strconv.Atoi(epi[0])
-					if err != nil {
-						sortErr = errors.Wrap(ctx, err, op)
-						return false
-					}
-					indexj, err := strconv.Atoi(epj[0])
-					if err != nil {
-						sortErr = errors.Wrap(ctx, err, op)
-						return false
-					}
-					return indexi < indexj
-				})
-				if sortErr != nil {
-					return nil, nil, sortErr
-				}
-				for i, ep := range eps {
-					// At this point they're in the correct order, but we still
-					// have to strip off the priority
-					eps[i] = strings.Split(ep, priorityDelimiter)[1]
-				}
-
-				hs.PreferredEndpoints = eps
-			}
+		hs, err := agg.toHostSet(ctx)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		sets = append(sets, hs)
 	}
@@ -324,6 +276,62 @@ type hostSetAgg struct {
 	PreferredEndpoints string
 }
 
+func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
+	const op = "plugin.(hostSetAgg).toHostSet"
+	const aggregateDelimiter = "|"
+	const priorityDelimiter = "="
+	hs := allocHostSet()
+	hs.PublicId = agg.PublicId
+	hs.CatalogId = agg.CatalogId
+	hs.Name = agg.Name
+	hs.Description = agg.Description
+	hs.CreateTime = agg.CreateTime
+	hs.UpdateTime = agg.UpdateTime
+	hs.Version = agg.Version
+	hs.Attributes = agg.Attributes
+	if agg.PreferredEndpoints != "" {
+		eps := strings.Split(agg.PreferredEndpoints, aggregateDelimiter)
+		if len(eps) > 0 {
+			// We want to protect against someone messing with the DB
+			// and not panic, so we do a bit of a dance here
+			var sortErr error
+			sort.Slice(eps, func(i, j int) bool {
+				epi := strings.Split(eps[i], priorityDelimiter)
+				if len(epi) != 2 {
+					sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[i]))
+					return false
+				}
+				epj := strings.Split(eps[j], priorityDelimiter)
+				if len(epj) != 2 {
+					sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[j]))
+					return false
+				}
+				indexi, err := strconv.Atoi(epi[0])
+				if err != nil {
+					sortErr = errors.Wrap(ctx, err, op)
+					return false
+				}
+				indexj, err := strconv.Atoi(epj[0])
+				if err != nil {
+					sortErr = errors.Wrap(ctx, err, op)
+					return false
+				}
+				return indexi < indexj
+			})
+			if sortErr != nil {
+				return nil, sortErr
+			}
+			for i, ep := range eps {
+				// At this point they're in the correct order, but we still
+				// have to strip off the priority
+				eps[i] = strings.Split(ep, priorityDelimiter)[1]
+			}
+			hs.PreferredEndpoints = eps
+		}
+	}
+	return hs, nil
+}
+
 // TableName returns the table name for gorm
 func (agg *hostSetAgg) TableName() string { return "host_plugin_host_set_with_value_obj" }
 
@@ -350,93 +358,163 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 // An error is returned if the set, related catalog, or related plugin are
 // unable to be retrieved.  If a host does not contain an addressible endpoint
 // it is not included in the resulting slice of endpoints.
-func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpoint, error) {
+func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.Endpoint, error) {
 	const op = "plugin.(Repository).Endpoints"
-	if setId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set id")
+	if len(setIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
-	sets, plg, err := r.getSets(ctx, setId, "")
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set %s", setId)))
+	var setAggs []*hostSetAgg
+	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []interface{}{setIds}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve sets %v", setIds)))
 	}
-	var set *HostSet
-	switch len(sets) {
-	case 0:
-		return nil, nil
-	case 1:
-		set = sets[0]
-	default:
-		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 set", setId))
-	}
-	if plg == nil {
-		return nil, nil
-	}
-	cat, err := r.getCatalog(ctx, set.GetCatalogId())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalog %s", set.GetCatalogId())))
-	}
-	if cat == nil {
+	if len(setAggs) == 0 {
 		return nil, nil
 	}
 
-	pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(set.GetPreferredEndpoints()))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	type setInfo struct {
+		preferredEndpoint endpoint.Option
+		plgSet *pb.HostSet
 	}
 
-	plgClient, ok := r.plugins[plg.GetPublicId()]
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", plg.GetPublicId()))
-	}
-	per, err := r.getPersistedDataForCatalog(ctx, cat)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	plgCat, err := toPluginCatalog(ctx, cat)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
-	}
-	plgSet, err := toPluginSet(ctx, set)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin set conversion"))
-	}
-	resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
-		Catalog:   plgCat,
-		Sets:      []*pb.HostSet{plgSet},
-		Persisted: per,
-	})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	type catalogInfo struct{
+		publicId string
+		plg plgpb.HostPluginServiceServer
+		setInfos map[string]*setInfo
+		plgCat *hcpb.HostCatalog
+		persisted *plgpb.HostCatalogPersisted
 	}
 
+	catalogInfos := make(map[string]*catalogInfo)
+	for _, ag := range setAggs {
+		ci, ok := catalogInfos[ag.CatalogId]
+		if !ok {
+			ci = &catalogInfo{
+				publicId: ag.CatalogId,
+				setInfos: make(map[string]*setInfo),
+			}
+		}
+		ci.plg, ok = r.plugins[ag.PluginId]
+		if !ok {
+			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", ag.PluginId))
+		}
+
+		s, err := ag.toHostSet(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		si, ok := ci.setInfos[s.GetPublicId()]
+		if !ok {
+			si = &setInfo{}
+		}
+		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.GetPreferredEndpoints())
+		si.plgSet, err = toPluginSet(ctx, s)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("converting set %q to plugin set", s.GetPublicId())))
+		}
+
+		ci.setInfos[s.GetPublicId()] = si
+		catalogInfos[ag.CatalogId] = ci
+	}
+
+	catIds := make([]string, 0, len(catalogInfos))
+	for k := range catalogInfos {
+		catIds = append(catIds, k)
+	}
+	var cats []*HostCatalog
+	if err := r.reader.SearchWhere(ctx, &cats, "public_id in (?)", []interface{}{catIds}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
+	}
+	if len(cats) == 0 {
+		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "no catalogs returned for retrieved sets")
+	}
+	for _, c := range cats {
+		ci, ok := catalogInfos[c.GetPublicId()]
+		if !ok {
+			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
+		}
+		plgCat, err := toPluginCatalog(ctx, c)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
+		}
+		ci.plgCat = plgCat
+
+		// TODO: Do these looksups from the DB in bulk instead of individually.
+		per, err := r.getPersistedDataForCatalog(ctx, c)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("persisted catalog lookup failed"))
+		}
+		ci.persisted = per
+		catalogInfos[c.GetPublicId()] = ci
+	}
+
+	// For writing the hosts to the db so data warehouse doesn't complain
 	var hosts []interface{}
+	hostIds := map[string]bool{}
 	var es []*host.Endpoint
-	for _, h := range resp.GetHosts() {
-		hostId, err := newHostId(ctx, cat.GetPublicId(), h.GetExternalId())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		var opts []endpoint.Option
-		opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
-		addr, err := pref.Choose(ctx, opts...)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		if addr == "" {
-			continue
-		}
-		es = append(es, &host.Endpoint{
-			HostId:  hostId,
-			SetId:   setId,
-			Address: addr,
-		})
+	for _, ci := range catalogInfos {
 
-		host := newHost(ctx, cat.GetPublicId(), addr)
-		host.PublicId = hostId
-		hosts = append(hosts, host)
+		var sets []*pb.HostSet
+		for _, si := range ci.setInfos {
+			sets = append(sets, si.plgSet)
+		}
+
+		resp, err := ci.plg.ListHosts(ctx,  &plgpb.ListHostsRequest{
+			Catalog: ci.plgCat,
+			Sets:    sets,
+			//Persisted: ci.persisted,
+		})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		for _, h := range resp.GetHosts() {
+			hostId, err := newHostId(ctx, ci.publicId, h.GetExternalId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+
+			for _, sId := range h.GetSetIds() {
+				var opts []endpoint.Option
+				if len(h.GetIpAddresses()) > 0 {
+					opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
+				}
+				if len(h.GetDnsNames()) > 0 {
+					opts = append(opts, endpoint.WithIpAddrs(h.GetDnsNames()))
+				}
+
+				si, ok := ci.setInfos[sId]
+				if !ok {
+					return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "host is reporting it's part of a set we didn't query for")
+				}
+				pref, err := endpoint.NewPreferencer(ctx, si.preferredEndpoint)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("getting preferencer for set %q", sId)))
+				}
+				addr, err := pref.Choose(ctx, opts...)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+				if addr == "" {
+					continue
+				}
+				es = append(es, &host.Endpoint{
+					HostId:  hostId,
+					SetId:   sId,
+					Address: addr,
+				})
+
+				if _, ok := hostIds[hostId]; !ok {
+					hostIds[hostId] = true
+					host := newHost(ctx, ci.publicId, addr)
+					host.PublicId = hostId
+					hosts = append(hosts, host)
+				}
+			}
+		}
 	}
+
 	if len(hosts) > 0 {
-		_, err = r.writer.DoTx(
+		_, err := r.writer.DoTx(
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
@@ -453,5 +531,5 @@ func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpo
 			return nil, err
 		}
 	}
-	return es, err
+	return es, nil
 }

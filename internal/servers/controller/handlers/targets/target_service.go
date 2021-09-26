@@ -957,6 +957,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
+	var pluginHostSetIds []string
 	var endpoints []*host.Endpoint
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
@@ -968,12 +969,17 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			}
 			endpoints = append(endpoints, eps...)
 		default:
-			eps, err := pluginHostRepo.Endpoints(ctx, hsId)
-			if err != nil {
-				return nil, err
-			}
-			endpoints = append(endpoints, eps...)
+			// Batch the plugin host set ids since each round trip to the plugin
+			// has the potential to be expensive.
+			pluginHostSetIds = append(pluginHostSetIds, hsId)
 		}
+	}
+	if len(pluginHostSetIds) > 0 {
+		eps, err := pluginHostRepo.Endpoints(ctx, pluginHostSetIds)
+		if err != nil {
+			return nil, err
+		}
+		endpoints = append(endpoints, eps...)
 	}
 
 	var chosenEndpoint *host.Endpoint

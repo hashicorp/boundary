@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -382,8 +383,13 @@ func TestRepository_Endpoints(t *testing.T) {
 				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
 					return &plgpb.ListHostsResponse{}, nil
 				}
+				var setIds []string
+				for _, set := range req.GetSets() {
+					setIds = append(setIds, set.GetId())
+				}
 				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
 					{
+						SetIds: setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.5", "192.168.0.5"},
 						DnsNames:    nil,
@@ -401,7 +407,7 @@ func TestRepository_Endpoints(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		setId     string
+		setIds     []string
 		want      []*host.Endpoint
 		wantIsErr errors.Code
 	}{
@@ -411,7 +417,7 @@ func TestRepository_Endpoints(t *testing.T) {
 		},
 		{
 			name:  "with-set10",
-			setId: hostSet10.GetPublicId(),
+			setIds: []string{hostSet10.GetPublicId()},
 			want: []*host.Endpoint{
 				{
 					HostId: func() string {
@@ -426,7 +432,7 @@ func TestRepository_Endpoints(t *testing.T) {
 		},
 		{
 			name:  "with-different-set",
-			setId: hostSet192.GetPublicId(),
+			setIds: []string{hostSet192.GetPublicId()},
 			want: []*host.Endpoint{
 				{
 					HostId: func() string {
@@ -441,12 +447,12 @@ func TestRepository_Endpoints(t *testing.T) {
 		},
 		{
 			name:  "with-all-addresses-filtered-set",
-			setId: hostSet100.GetPublicId(),
+			setIds: []string{hostSet100.GetPublicId()},
 			want:  nil,
 		},
 		{
 			name:  "with-no-hosts-from-plugin",
-			setId: hostlessSet.GetPublicId(),
+			setIds: []string{hostlessSet.GetPublicId()},
 			want:  nil,
 		},
 	}
@@ -458,7 +464,7 @@ func TestRepository_Endpoints(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.Endpoints(ctx, tt.setId)
+			got, err := repo.Endpoints(ctx, tt.setIds)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -469,6 +475,12 @@ func TestRepository_Endpoints(t *testing.T) {
 				return
 			}
 
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i].HostId < tt.want[j].HostId
+			})
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].HostId < got[j].HostId
+			})
 			assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()))
 
 			// TODO: Remove this once we no longer persist all host lookup calls
