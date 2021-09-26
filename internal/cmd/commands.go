@@ -512,6 +512,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"host-catalogs create plugin": func() (cli.Command, error) {
+			return &hostcatalogscmd.PluginCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"host-catalogs update": func() (cli.Command, error) {
 			return &hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
@@ -520,6 +526,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"host-catalogs update static": func() (cli.Command, error) {
 			return &hostcatalogscmd.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"host-catalogs update plugin": func() (cli.Command, error) {
+			return &hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

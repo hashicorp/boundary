@@ -83,6 +83,10 @@ type Command struct {
 	FlagRecursive         bool
 	FlagFilter            string
 
+	// Attribute values
+	FlagAttributes string
+	FlagAttrs      []CombinedSliceFlagValue
+
 	client *api.Client
 }
 

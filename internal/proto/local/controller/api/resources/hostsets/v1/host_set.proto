@@ -52,7 +52,7 @@ message HostSet {
 	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true];
 
 	// The attributes that are applicable for the specific Host Set type.
-	google.protobuf.Struct attributes = 110;
+	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];

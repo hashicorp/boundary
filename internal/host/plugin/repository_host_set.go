@@ -373,14 +373,14 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 	type setInfo struct {
 		preferredEndpoint endpoint.Option
-		plgSet *pb.HostSet
+		plgSet            *pb.HostSet
 	}
 
-	type catalogInfo struct{
-		publicId string
-		plg plgpb.HostPluginServiceServer
-		setInfos map[string]*setInfo
-		plgCat *hcpb.HostCatalog
+	type catalogInfo struct {
+		publicId  string
+		plg       plgpb.HostPluginServiceServer
+		setInfos  map[string]*setInfo
+		plgCat    *hcpb.HostCatalog
 		persisted *plgpb.HostCatalogPersisted
 	}
 
@@ -458,10 +458,10 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 			sets = append(sets, si.plgSet)
 		}
 
-		resp, err := ci.plg.ListHosts(ctx,  &plgpb.ListHostsRequest{
+		resp, err := ci.plg.ListHosts(ctx, &plgpb.ListHostsRequest{
 			Catalog: ci.plgCat,
 			Sets:    sets,
-			//Persisted: ci.persisted,
+			// Persisted: ci.persisted,
 		})
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)

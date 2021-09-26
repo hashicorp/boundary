@@ -74,6 +74,18 @@ func WithFilter(filter string) Option {
 	}
 }
 
+func WithAttributes(inAttributes map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["attributes"] = inAttributes
+	}
+}
+
+func DefaultAttributes() Option {
+	return func(o *options) {
+		o.postMap["attributes"] = nil
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription

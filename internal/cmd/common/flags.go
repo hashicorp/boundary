@@ -1,9 +1,16 @@
 package common
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/posener/complete"
 )
 
@@ -92,4 +99,241 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 			}
 		}
 	}
+}
+
+func PopulateAttributeFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
+	keyDelimiter := "."
+	for _, name := range flagNames[command] {
+		switch name {
+		case "attributes":
+			f.StringVar(&base.StringVar{
+				Name:   "attributes",
+				Target: &c.FlagAttributes,
+				Usage:  `A JSON map value to use as the entirety of the request's attribute map. Usually this will be soured from a file via "file://" syntax.`,
+			})
+		case "attr":
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "attr",
+				Target:         &c.FlagAttrs,
+				KvSplit:        true,
+				KeyDelimiter:   &keyDelimiter,
+				ProtoCompatKey: true,
+				Usage:          `A key=value attribute to add to the request's attribute map. The type is automatically inferred. Use -string-attr, -bool-attr, or -num-attr if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+			})
+		case "string-attr":
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "string-attr",
+				Target:         &c.FlagAttrs,
+				KvSplit:        true,
+				KeyDelimiter:   &keyDelimiter,
+				ProtoCompatKey: true,
+				Usage:          `A key=value string attribute to add to the request's attribute map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+			})
+		case "bool-attr":
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "bool-attr",
+				Target:         &c.FlagAttrs,
+				KvSplit:        true,
+				KeyDelimiter:   &keyDelimiter,
+				ProtoCompatKey: true,
+				Usage:          `A key=value bool attribute to add to the request's attribute map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+			})
+		case "num-attr":
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "num-attr",
+				Target:         &c.FlagAttrs,
+				KvSplit:        true,
+				KeyDelimiter:   &keyDelimiter,
+				ProtoCompatKey: true,
+				Usage:          `A key=value numeric attribute to add to the request's attribute map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+			})
+		}
+	}
+}
+
+// From https://stackoverflow.com/a/13340826, modified to remove exponents
+var jsonNumberRegex = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?$`)
+
+// HandleAttributeFlags takes in a command and a func to call for default (that
+// is, set to nil) and non-default values. Suffix can be used to allow this
+// logic to be used for various needs, e.g. -attr vs -secret.
+func HandleAttributeFlags(c *base.Command, suffix string, defaultFunc func(), setFunc func(map[string]interface{})) error {
+	// If we were given -attributes, use that as-is
+	switch c.FlagAttributes {
+	case "":
+		// Nothing, continue on
+	case "null":
+		defaultFunc()
+		return nil
+	default:
+		parsedString, err := parseutil.ParsePath(c.FlagAttributes)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("error parsing attributes flag as a URL: %w", err)
+		}
+		// We should be able to parse the string as a JSON object
+		var setMap map[string]interface{}
+		if err := json.Unmarshal([]byte(parsedString), &setMap); err != nil {
+			return fmt.Errorf("error parsing attributes flag as JSON: %w", err)
+		}
+		setFunc(setMap)
+		return nil
+	}
+
+	setMap := map[string]interface{}{}
+
+	for _, attr := range c.FlagAttrs {
+		if len(attr.Keys) == 0 {
+			// No idea why this would happen, but skip it
+			continue
+		}
+
+		var val interface{}
+		var err error
+
+		// First, perform any needed parsing if we are given the type
+		switch attr.Name {
+		case "num-" + suffix:
+			// JSON treats all numbers equally, however, we will try to be a
+			// little better so that we don't include decimals if we don't need
+			// to (and don't have to worry about precision if not necessary)
+			if strings.Contains(attr.Value, ".") {
+				val, err = strconv.ParseFloat(attr.Value, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing attribute %q as a float: %w", attr.Value, err)
+				}
+			} else {
+				val, err = strconv.ParseInt(attr.Value, 10, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing attribute %q as an integer: %w", attr.Value, err)
+				}
+			}
+
+		case "string-" + suffix:
+			val = strings.Trim(attr.Value, `"`)
+
+		case "bool-" + suffix:
+			switch attr.Value {
+			case "true":
+				val = true
+			case "false":
+				val = false
+			default:
+				return fmt.Errorf("error parsing attribute %q as a bool", attr.Value)
+			}
+
+		case suffix:
+			// In this case, use heuristics to just do the right thing the vast
+			// majority of the time
+			switch {
+			case attr.Value == "null": // Explicit null, we want to set to a null value to clear it
+				val = nil
+
+			case attr.Value == "true": // bool true
+				val = true
+
+			case attr.Value == "false": // bool false
+				val = false
+
+			case strings.HasPrefix(attr.Value, `"`): // explicitly quoted string
+				val = strings.Trim(attr.Value, `"`)
+
+			case jsonNumberRegex.Match([]byte(strings.Trim(attr.Value, `"`))): // number
+				// Same logic as above
+				if strings.Contains(attr.Value, ".") {
+					val, err = strconv.ParseFloat(attr.Value, 64)
+					if err != nil {
+						return fmt.Errorf("error parsing attribute %q as a float: %w", attr.Value, err)
+					}
+				} else {
+					val, err = strconv.ParseInt(attr.Value, 10, 64)
+					if err != nil {
+						return fmt.Errorf("error parsing attribute %q as an integer: %w", attr.Value, err)
+					}
+				}
+
+			case strings.HasPrefix(attr.Value, "["): // serialized JSON array
+				var s []interface{}
+				u := json.NewDecoder(bytes.NewBufferString(attr.Value))
+				u.UseNumber()
+				if err := u.Decode(&s); err != nil {
+					return fmt.Errorf("error parsing attribute %q as a json array: %w", attr.Value, err)
+				}
+				val = s
+
+			case strings.HasPrefix(attr.Value, "{"): // serialized JSON map
+				var m map[string]interface{}
+				u := json.NewDecoder(bytes.NewBufferString(attr.Value))
+				u.UseNumber()
+				if err := u.Decode(&m); err != nil {
+					return fmt.Errorf("error parsing attribute %q as a json map: %w", attr.Value, err)
+				}
+				val = m
+
+			default:
+				// Default is to treat as a string value
+				val = attr.Value
+			}
+		default:
+			return fmt.Errorf("unknown attribute flag %q", attr.Name)
+		}
+
+		// Now we have to insert it in the right position in the attribute map
+		currMap := setMap
+		for i, segment := range attr.Keys {
+			if segment == "" {
+				return fmt.Errorf("key segment %q for value %q is empty", segment, attr.Value)
+			}
+
+			switch {
+			case i == len(attr.Keys)-1:
+				// If we get an explicit "null" override whatever is currently
+				// there
+				if val == nil {
+					currMap[segment] = nil
+					break
+				}
+				// We're at the last hop, do the actual insertion
+				switch t := currMap[segment].(type) {
+				case nil:
+					// Nothing currently exists
+					currMap[segment] = val
+
+				case []interface{}:
+					// It's already a slice, so just append
+					currMap[segment] = append(t, val)
+
+				default:
+					// It's not a slice, so create a new slice with the
+					// exisitng and new values
+					currMap[segment] = []interface{}{t, val}
+				}
+
+			default:
+				// We need to keep traversing
+				switch t := currMap[segment].(type) {
+				case nil:
+					// We haven't hit this segment before, so create a new
+					// object leading off of it and set it to current
+					newMap := map[string]interface{}{}
+					currMap[segment] = newMap
+					currMap = newMap
+
+				case map[string]interface{}:
+					// We've seen this before and already have a map so just set
+					// that as our new location
+					currMap = t
+
+				default:
+					// We should only ever be seeing maps if we're not at the
+					// final location
+					return fmt.Errorf("unexpected type for key segment %q: %T", segment, t)
+				}
+			}
+		}
+	}
+
+	if len(setMap) > 0 {
+		setFunc(setMap)
+	}
+	return nil
 }
