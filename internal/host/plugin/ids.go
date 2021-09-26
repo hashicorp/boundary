@@ -17,9 +17,9 @@ func init() {
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	// TODO: Pull these out of being constants and have them derivable at run time.
 	HostCatalogPrefix = "hc"
 	HostSetPrefix     = "hs"
+	HostPrefix        = "h"
 
 	Subtype = subtypes.Subtype("plugin")
 )
@@ -36,6 +36,21 @@ func newHostSetId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
+	}
+	return id, nil
+}
+
+func newHostId(ctx context.Context, catalogId, externalId string) (string, error) {
+	const op = "plugin.newHostId"
+	if catalogId == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+	}
+	if externalId == "" {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
+	}
+	id, err := db.NewPublicId(HostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }

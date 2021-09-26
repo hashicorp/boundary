@@ -151,10 +151,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	c, err := r.getCatalog(ctx, id)
+	if errors.IsNotFoundError(err) {
+		return nil, nil, nil
+	}
+
 	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil, nil
-		}
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
@@ -206,16 +207,6 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, e
 	return c, nil
 }
 
-func (r *Repository) getPlugin(ctx context.Context, id string) (*hostplugin.Plugin, error) {
-	const op = "plugin.(Repository).getPlugin"
-	c := hostplugin.NewPlugin()
-	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
-	}
-	return c, nil
-}
-
 // getPersistedDataForCatalog returns the persisted data for a catalog if
 // present.  c must have a valid Public Id and Scope Id set.
 // TODO: consider merging the functions for getting catalog and persisted data into a view.
@@ -250,6 +241,19 @@ func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCata
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
 	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+}
+
+func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.Plugin, error) {
+	const op = "plugin.(Repository).getPlugin"
+	if plgId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
+	}
+	plg := hostplugin.NewPlugin()
+	plg.PublicId = plgId
+	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))
+	}
+	return plg, nil
 }
 
 // toPluginCatalog returns a host catalog, with it's secret if available, in the format expected

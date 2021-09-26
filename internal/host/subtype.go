@@ -1,7 +1,6 @@
 package host
 
 import (
-	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
@@ -24,23 +23,4 @@ func SubtypeFromId(id string) subtypes.Subtype {
 // prefixes are associated with another subtype.
 func Register(subtype subtypes.Subtype, prefixes ...string) error {
 	return registry.Register(subtype, prefixes...)
-}
-
-// Catalog contains the common methods across all the different types of host catalogs.
-type Catalog interface {
-	boundary.Resource
-	GetScopeId() string
-}
-
-// Set contains the common methods across all the different types of host sets.
-type Set interface {
-	boundary.Resource
-	GetCatalogId() string
-}
-
-// Host contains the common methods across all the different types of hosts.
-type Host interface {
-	boundary.Resource
-	GetCatalogId() string
-	GetAddress() string
 }
