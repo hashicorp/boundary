@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -47,36 +48,37 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagPassthroughDirectory         string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
+	flagLogLevel                        string
+	flagLogFormat                       string
+	flagCombineLogs                     bool
+	flagLoginName                       string
+	flagPassword                        string
+	flagUnprivilegedLoginName           string
+	flagUnprivilegedPassword            string
+	flagIdSuffix                        string
+	flagHostAddress                     string
+	flagTargetDefaultPort               int
+	flagTargetSessionMaxSeconds         int
+	flagTargetSessionConnectionLimit    int
+	flagControllerAPIListenAddr         string
+	flagControllerClusterListenAddr     string
+	flagControllerPublicClusterAddr     string
+	flagControllerOnly                  bool
+	flagWorkerAuthKey                   string
+	flagWorkerProxyListenAddr           string
+	flagWorkerPublicAddr                string
+	flagPassthroughDirectory            string
+	flagRecoveryKey                     string
+	flagDatabaseUrl                     string
+	flagContainerImage                  string
+	flagDisableDatabaseDestruction      bool
+	flagEventFormat                     string
+	flagAudit                           string
+	flagObservations                    string
+	flagSysEvents                       string
+	flagEveryEventAllowFilters          []string
+	flagEveryEventDenyFilters           []string
+	flagCreateLoopbackHostCatalogPlugin bool
 }
 
 func (c *Command) Synopsis() string {
@@ -306,6 +308,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "event-deny-filter",
 		Target: &c.flagEveryEventDenyFilters,
 		Usage:  `The optional every event deny filter. May be specified multiple times.`,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "create-loopback-hostcatalog-plugin",
+		Target: &c.flagCreateLoopbackHostCatalogPlugin,
+		Hidden: true,
 	})
 
 	return set
@@ -542,6 +550,9 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
+	if c.flagCreateLoopbackHostCatalogPlugin {
+		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewLoopbackPlugin()))
+	}
 	switch c.flagDatabaseUrl {
 	case "":
 		if c.flagDisableDatabaseDestruction {

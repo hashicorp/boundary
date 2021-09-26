@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -30,6 +31,17 @@ func ScopeInfoForOutput(scp *scopes.ScopeInfo, maxLength int) string {
 	}
 	if scp.ParentScopeId != "" {
 		vals["Parent Scope ID"] = scp.ParentScopeId
+	}
+	return WrapMap(4, maxLength, vals)
+}
+
+func PluginInfoForOutput(plg *plugins.PluginInfo, maxLength int) string {
+	if plg == nil {
+		return "    <not included in response>"
+	}
+	vals := map[string]interface{}{
+		"ID":   plg.Id,
+		"Name": plg.Name,
 	}
 	return WrapMap(4, maxLength, vals)
 }

@@ -20,6 +20,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDescription = "test desc"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPublicId", func(t *testing.T) {
+		opts := getOpts(WithPublicId("pl_1234567890"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "pl_1234567890"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithLimit", func(t *testing.T) {
 		opts := getOpts(WithLimit(5))
 		testOpts := getDefaultOptions()

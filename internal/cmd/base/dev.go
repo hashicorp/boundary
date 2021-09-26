@@ -100,8 +100,6 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return err
 	}
 
-	b.Database.LogMode(true)
-
 	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
 		if c != nil {
 			err = multierror.Append(err, c())
@@ -142,6 +140,14 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
 	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
 		return err
+	}
+
+	if opts.withHostPlugin != nil {
+		pluginId, plg := opts.withHostPlugin()
+		b.DevLoopbackHostCatalogPluginId = pluginId
+		if _, err = b.CreateHostPlugin(ctx, pluginId, plg); err != nil {
+			return err
+		}
 	}
 
 	if opts.withSkipHostResourcesCreation {

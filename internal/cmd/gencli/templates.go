@@ -170,21 +170,23 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 
 var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	{{ with $attrFlags := ", \"attributes\", \"attr\", \"string-attr\", \"bool-attr\", \"num-attr\"" }}
+	{{ with $secretFlags := ", \"secrets\", \"secret\", \"string-secret\", \"bool-secret\", \"num-secret\"" }}
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
-	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} },
+	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" {{ if $input.IsPluginType }} , "plugin-id", "plugin-name" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "read" }}
 	"read": {"id"},
 	{{ end }}
 	{{ if eq $action "update" }}
-	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} },
+	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "delete" }}
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
 	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
+	{{ end }}
 	{{ end }}
 	{{ end }}
 	{{ end }}
@@ -202,6 +204,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 	{{ if .HasGenericAttributes }}
 	f = set.NewFlagSet("Attribute Options")
 	common.PopulateAttributeFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	{{ end }}
+
+	{{ if .HasGenericSecrets }}
+	f = set.NewFlagSet("Secrets Options")
+	common.PopulateSecretFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
 	{{ end }}
 
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
@@ -314,6 +321,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		opts = append(opts, {{ .Pkg }}.WithScopeName(c.FlagScopeName))
 	}
 	{{ end }}
+	
+	{{ if .IsPluginType }}
+	switch c.FlagPluginId {
+	case "":
+	default:
+		opts = append(opts, {{ .Pkg }}.WithPluginId(c.FlagPluginId))
+	}
+	switch c.FlagPluginName {
+	case "":
+	default:
+		opts = append(opts, {{ .Pkg }}.WithPluginName(c.FlagPluginName))
+	}
+	{{ end }}
 
 	var version uint32
 	{{ if .VersionedActions }}
@@ -334,13 +354,32 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	if err := common.HandleAttributeFlags(
 		c.Command,
 		"attr",
+		c.FlagAttributes,
+		c.FlagAttrs,
 		func() {
-			{{ .Pkg }}.DefaultAttributes()
+			opts = append(opts, {{ .Pkg }}.DefaultAttributes())
 		},
 		func(in map[string]interface{}) {
-			{{ .Pkg }}.WithAttributes(in)
+			opts = append(opts, {{ .Pkg }}.WithAttributes(in))
 		}); err != nil {
 		c.PrintCliError(fmt.Errorf("Error evaluating attribute flags to: %s", err.Error()))
+		return base.CommandCliError
+	}
+	{{ end }}
+
+	{{ if .HasGenericSecrets }}
+	if err := common.HandleAttributeFlags(
+		c.Command,
+		"secret",
+		c.FlagSecrets,
+		c.FlagScrts,
+		func() {
+			opts = append(opts, {{ .Pkg }}.DefaultSecrets())
+		},
+		func(in map[string]interface{}) {
+			opts = append(opts, {{ .Pkg }}.WithSecrets(in))
+		}); err != nil {
+		c.PrintCliError(fmt.Errorf("Error evaluating secret flags to: %s", err.Error()))
 		return base.CommandCliError
 	}
 	{{ end }}

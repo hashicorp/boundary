@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
@@ -104,6 +104,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	if conf.HostPlugins == nil {
+		conf.HostPlugins = make(map[string]plugin.HostPluginServiceServer)
+	}
+
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
 	kmsRepo, err := kms.NewRepository(dbase, dbase)
@@ -137,7 +141,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(dbase, dbase, c.kms, map[string]plgpb.HostPluginServiceServer{})
+		return hostplugin.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)

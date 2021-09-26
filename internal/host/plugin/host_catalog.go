@@ -19,7 +19,7 @@ type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
 
-	secrets *structpb.Struct `gorm:"-"`
+	Secrets *structpb.Struct `gorm:"-"`
 }
 
 // NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
@@ -42,7 +42,7 @@ func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option
 			Description: opts.withDescription,
 			Attributes:  attrs,
 		},
-		secrets: opts.withSecrets,
+		Secrets: opts.withSecrets,
 	}
 	return hc, nil
 }
@@ -57,11 +57,11 @@ func allocHostCatalog() *HostCatalog {
 // secret.  The secret shallow copied.
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
-	newSecret := proto.Clone(c.secrets)
+	newSecret := proto.Clone(c.Secrets)
 
 	hc := &HostCatalog{
 		HostCatalog: cp.(*store.HostCatalog),
-		secrets:     newSecret.(*structpb.Struct),
+		Secrets:     newSecret.(*structpb.Struct),
 	}
 	// proto.Clone will convert slices with length and capacity of 0 to nil.
 	// Fix this since gorm treats empty slices differently than nil.

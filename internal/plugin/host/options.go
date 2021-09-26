@@ -16,6 +16,7 @@ type Option func(*options)
 type options struct {
 	withName        string
 	withDescription string
+	withPublicId    string
 	withLimit       int
 }
 
@@ -37,6 +38,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithPublicId provides an optional specific public ID
+func WithPublicId(with string) Option {
+	return func(o *options) {
+		o.withPublicId = with
 	}
 }
 

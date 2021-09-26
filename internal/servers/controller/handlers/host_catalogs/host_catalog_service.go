@@ -50,9 +50,14 @@ var (
 		action.List,
 	}
 
-	collectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.HostSet: host_sets.CollectionActions,
-		resource.Host:    hosts.CollectionActions,
+	collectionTypeMap = map[string]map[resource.Type]action.ActionSet{
+		"static": {
+			resource.HostSet: host_sets.CollectionActions,
+			resource.Host:    hosts.CollectionActions,
+		},
+		"plugin": {
+			resource.HostSet: host_sets.CollectionActions,
+		},
 	}
 )
 
@@ -121,11 +126,11 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
-	ul, pluginInfoMap, err := s.listFromRepo(ctx, scopeIds)
+	items, pluginInfoMap, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
-	if len(ul) == 0 {
+	if len(items) == 0 {
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
@@ -133,11 +138,11 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.HostCatalog, 0, len(ul))
+	finalItems := make([]*pb.HostCatalog, 0, len(items))
 	res := perms.Resource{
 		Type: resource.HostCatalog,
 	}
-	for _, item := range ul {
+	for _, item := range items {
 		res.Id = item.GetPublicId()
 		res.ScopeId = item.GetScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
@@ -155,11 +160,20 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetPublicId())
-			if err != nil {
-				return nil, err
+			var collType string
+			switch item.(type) {
+			case *static.HostCatalog:
+				collType = "static"
+			case *plugin.HostCatalog:
+				collType = "plugin"
 			}
-			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+			if collType != "" {
+				collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, item.GetPublicId())
+				if err != nil {
+					return nil, err
+				}
+				outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+			}
 		}
 		switch hc := item.(type) {
 		case *plugin.HostCatalog:
@@ -210,11 +224,20 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
-		if err != nil {
-			return nil, err
+		var collType string
+		switch hc.(type) {
+		case *static.HostCatalog:
+			collType = "static"
+		case *plugin.HostCatalog:
+			collType = "plugin"
 		}
-		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		if collType != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, hc.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
 	}
 	if plg != nil {
 		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
@@ -258,11 +281,20 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
-		if err != nil {
-			return nil, err
+		var collType string
+		switch hc.(type) {
+		case *static.HostCatalog:
+			collType = "static"
+		case *plugin.HostCatalog:
+			collType = "plugin"
 		}
-		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		if collType != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, hc.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
 	}
 	if plg != nil {
 		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
@@ -309,7 +341,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap["static"], authResults.Scope.Id, hc.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -408,7 +440,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]host.Ca
 }
 
 func (s Service) createStaticInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
-	const op = "host_catalogs.(Service).createInRepo"
+	const op = "host_catalogs.(Service).createStaticInRepo"
 	h, err := toStorageStaticCatalog(ctx, projId, item)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build catalog for creation"))
@@ -428,7 +460,7 @@ func (s Service) createStaticInRepo(ctx context.Context, projId string, item *pb
 }
 
 func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (*plugin.HostCatalog, *plugins.PluginInfo, error) {
-	const op = "host_catalogs.(Service).createInRepo"
+	const op = "host_catalogs.(Service).createPluginInRepo"
 	item := req.GetItem()
 	pluginId := item.GetPluginId()
 	if pluginId == "" {
@@ -716,13 +748,15 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		case static.Subtype:
 		case plugin.Subtype:
 			if req.GetItem().GetPlugin() != nil {
-				badFields[globals.PluginField] = fmt.Sprintf("This is a read only field.")
+				badFields[globals.PluginField] = "This is a read only field."
 			}
 			if req.GetItem().GetPluginId() == "" && req.GetPluginName() == "" {
-				badFields[globals.PluginIdField] = fmt.Sprintf("This is a required field.")
+				badFields[globals.PluginIdField] = "This or plugin name is a required field."
+				badFields[globals.PluginNameField] = "This or plugin id is a required field."
 			}
 			if req.GetItem().GetPluginId() != "" && req.GetPluginName() != "" {
-				badFields[globals.PluginIdField] = fmt.Sprintf("Can't set the plugin name field along with this field.")
+				badFields[globals.PluginIdField] = "Can't set the plugin name field along with this field."
+				badFields[globals.PluginNameField] = "Can't set the plugin id field along with this field."
 			}
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("This is a required field and must be either %q or %q.", static.Subtype.String(), plugin.Subtype.String())

@@ -61,4 +61,5 @@ const (
 	PreferredEndpointsField              = "preferred_endpoints"
 	PluginIdField                        = "plugin_id"
 	PluginField                          = "plugin"
+	PluginNameField                      = "plugin_name"
 )

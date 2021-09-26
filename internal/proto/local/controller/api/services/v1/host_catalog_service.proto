@@ -104,8 +104,8 @@ message ListHostCatalogsResponse {
 message CreateHostCatalogRequest {
   api.resources.hostcatalogs.v1.HostCatalog item = 1;
   // As an alternative to providing the plugin id in the provided HostCatalog,
-  // this field can be used to lookup the plugin using it's name.
-  string plugin_name = 2;
+  // this field can be used to lookup the plugin using its name.
+  string plugin_name = 2 [json_name="plugin_name"];
 }
 
 message CreateHostCatalogResponse {

@@ -10,9 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
@@ -583,4 +585,61 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 
 	return tt, nil
+}
+
+func (b *Server) CreateHostPlugin(ctx context.Context, pluginId string, plg plgpb.HostPluginServiceServer) (*hostplugin.Plugin, error) {
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
+	}()
+
+	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating static repository: %w", err)
+	}
+
+	if b.DevLoopbackHostCatalogPluginId == "" {
+		b.DevLoopbackHostCatalogPluginId, err = db.NewPublicId(hostplugin.PluginPrefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating initial loopback host plugin id: %w", err)
+		}
+	}
+	opts := []hostplugin.Option{
+		hostplugin.WithName("loopback"),
+		hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+		hostplugin.WithPublicId(b.DevLoopbackHostCatalogPluginId),
+	}
+	plugin := hostplugin.NewPlugin(opts...)
+	plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating in memory host plugin: %w", err)
+	}
+
+	if b.HostPlugins == nil {
+		b.HostPlugins = make(map[string]plgpb.HostPluginServiceServer)
+	}
+	b.HostPlugins[pluginId] = plg
+
+	return plugin, nil
 }

@@ -83,6 +83,11 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 				fmt.Sprintf("    Scope ID:            %s", m.ScopeId),
 			)
 		}
+		if m.PluginId != "" {
+			output = append(output,
+				fmt.Sprintf("    Plugin ID:           %s", m.PluginId),
+			)
+		}
 		if m.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", m.Version),
@@ -135,6 +140,9 @@ func printItemTable(result api.GenericResult) string {
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
 	}
+	if item.PluginId != "" {
+		nonAttributeMap["Plugin ID"] = item.PluginId
+	}
 	if item.Type != "" {
 		nonAttributeMap["Type"] = item.Type
 	}
@@ -152,6 +160,22 @@ func printItemTable(result api.GenericResult) string {
 			"",
 			"  Scope:",
 			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if item.Plugin != nil {
+		ret = append(ret,
+			"",
+			"  Plugin:",
+			base.PluginInfoForOutput(item.Plugin, maxLength),
+		)
+	}
+
+	if len(item.Attributes) > 0 {
+		ret = append(ret,
+			"",
+			"  Attributes:",
+			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 
@@ -178,14 +202,6 @@ func printItemTable(result api.GenericResult) string {
 				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
 			)
 		}
-	}
-
-	if len(item.Attributes) > 0 {
-		ret = append(ret,
-			"",
-			"  Attributes:",
-			base.WrapMap(4, maxLength, item.Attributes),
-		)
 	}
 
 	return base.WrapForHelpText(ret)
