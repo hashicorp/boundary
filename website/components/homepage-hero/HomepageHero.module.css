@@ -1,17 +1,14 @@
 .homepageHero {
-  padding: 128px 0;
   background-repeat: no-repeat;
   background-color: var(--boundary-secondary);
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
   @media (max-width: 767px) {
-    padding: 88px 0;
     background-position: bottom 0 right -130px;
   }
 
   & .hero {
     background: none;
-    padding: 0;
   }
 }
