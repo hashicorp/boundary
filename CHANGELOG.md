@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.6.2 (2021/09/27)
+
 ### Deprecations/Changes
 
 * permissions: Fix bug in _Host Sets_ service that authenticated requests  
