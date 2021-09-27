@@ -36,17 +36,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var authorizedCollectionActions = map[string]*structpb.ListValue{
-	"host-sets": {
-		Values: []*structpb.Value{
-			structpb.NewStringValue("create"),
-			structpb.NewStringValue("list"),
+var authorizedCollectionActions = map[string]map[string]*structpb.ListValue{
+	"static": {
+		"host-sets": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("create"),
+				structpb.NewStringValue("list"),
+			},
+		},
+		"hosts": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("create"),
+				structpb.NewStringValue("list"),
+			},
 		},
 	},
-	"hosts": {
-		Values: []*structpb.Value{
-			structpb.NewStringValue("create"),
-			structpb.NewStringValue("list"),
+	"plugin": {
+		"host-sets": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("create"),
+				structpb.NewStringValue("list"),
+			},
 		},
 	},
 }
@@ -86,7 +96,7 @@ func TestGet_Static(t *testing.T) {
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
 		Type:                        "static",
 		AuthorizedActions:           testAuthorizedActions,
-		AuthorizedCollectionActions: authorizedCollectionActions,
+		AuthorizedCollectionActions: authorizedCollectionActions["static"],
 	}
 
 	cases := []struct {
@@ -187,7 +197,7 @@ func TestGet_Plugin(t *testing.T) {
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
 		Type:                        plugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
-		AuthorizedCollectionActions: authorizedCollectionActions,
+		AuthorizedCollectionActions: authorizedCollectionActions["plugin"],
 	}
 
 	cases := []struct {
@@ -277,7 +287,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions,
+			AuthorizedCollectionActions: authorizedCollectionActions["static"],
 		})
 	}
 
@@ -301,7 +311,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        plugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions,
+			AuthorizedCollectionActions: authorizedCollectionActions["plugin"],
 		}
 		wantSomeCatalogs = append(wantSomeCatalogs, cat)
 		testPluginCatalogs = append(testPluginCatalogs, cat)
@@ -318,7 +328,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions,
+			AuthorizedCollectionActions: authorizedCollectionActions["static"],
 		})
 	}
 
@@ -341,7 +351,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        plugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions,
+			AuthorizedCollectionActions: authorizedCollectionActions["plugin"],
 		})
 	}
 
@@ -597,7 +607,7 @@ func TestCreate_Static(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -764,7 +774,7 @@ func TestCreate_Plugin(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					Type:                        plugin.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["plugin"],
 				},
 			},
 		},
@@ -951,7 +961,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -977,7 +987,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -1032,7 +1042,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -1055,7 +1065,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -1080,7 +1090,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
@@ -1105,7 +1115,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
+					AuthorizedCollectionActions: authorizedCollectionActions["static"],
 				},
 			},
 		},
