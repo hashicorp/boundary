@@ -9,6 +9,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
+	plugstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
@@ -422,7 +423,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		hset, hsplg, err := repo.LookupSet(ctx, id)
+		hset, hostIds, hsplg, err := repo.LookupSet(ctx, id, host.WithSetMembers(true))
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -431,6 +432,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 		}
 		hs = hset
 		plg = toPluginInfo(hsplg)
+		for _, h := range hostIds {
+			hl = append(hl, &plugin.Host{
+				Host: &plugstore.Host{
+					PublicId:  h,
+					CatalogId: hset.CatalogId,
+				},
+			})
+		}
 	}
 	return hs, hl, plg, nil
 }
@@ -668,7 +677,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			}
 			set = ss
 		case plugin.Subtype:
-			ps, _, err := pluginRepo.LookupSet(ctx, id)
+			ps, _, _, err := pluginRepo.LookupSet(ctx, id)
 			if err != nil {
 				res.Error = err
 				return nil, res

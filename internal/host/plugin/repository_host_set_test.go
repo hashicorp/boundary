@@ -352,7 +352,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, _, err := repo.LookupSet(ctx, tt.in)
+			got, _, _, err := repo.LookupSet(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
