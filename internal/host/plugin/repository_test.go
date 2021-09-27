@@ -3,7 +3,6 @@ package plugin
 import (
 	"testing"
 
-	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 )
 
 func TestRepository_New(t *testing.T) {
@@ -19,13 +19,13 @@ func TestRepository_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	plgs := map[string]plgpb.HostPluginServiceServer{}
+	plgs := new(hostplugin.PluginMap)
 
 	type args struct {
 		r       db.Reader
 		w       db.Writer
 		kms     *kms.Kms
-		plugins map[string]plgpb.HostPluginServiceServer
+		plugins *hostplugin.PluginMap
 		opts    []host.Option
 	}
 

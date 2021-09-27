@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
-	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +44,9 @@ func Test_TestSet(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, kmsCache, c, map[string]plgpb.HostPluginServiceServer{plg.GetPublicId(): &TestPluginServer{}}, WithName("foo"), WithDescription("bar"))
+	plgm := new(host.PluginMap)
+	plgm.Set(plg.GetPublicId(), &TestPluginServer{})
+	set := TestSet(t, conn, kmsCache, c, plgm, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	db.AssertPublicId(t, HostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())

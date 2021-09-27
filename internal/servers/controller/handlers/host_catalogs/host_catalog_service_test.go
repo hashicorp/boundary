@@ -64,7 +64,7 @@ func TestGet_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -153,7 +153,7 @@ func TestGet_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -252,7 +252,7 @@ func TestList(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -457,7 +457,7 @@ func TestDelete(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -527,7 +527,7 @@ func TestDelete_twice(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -562,7 +562,7 @@ func TestCreate_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)
@@ -722,13 +722,13 @@ func TestCreate_Plugin(t *testing.T) {
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{
-			plg.GetPublicId(): &plugin.TestPluginServer{
-				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-					return nil, nil
-				},
+		plgm := new(host.PluginMap)
+		plgm.Set(plg.GetPublicId(), &plugin.TestPluginServer{
+			OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+				return nil, nil
 			},
 		})
+		return plugin.NewRepository(rw, rw, kms, plgm)
 	}
 	defaultHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	defaultHcCreated := defaultHc.GetCreateTime().GetTimestamp().AsTime()
@@ -889,7 +889,7 @@ func TestUpdate(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, new(host.PluginMap))
 	}
 	pluginRepo := func() (*host.Repository, error) {
 		return host.NewRepository(rw, rw, kms)

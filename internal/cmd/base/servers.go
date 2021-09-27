@@ -25,6 +25,7 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/version"
@@ -112,6 +113,9 @@ type Server struct {
 	DevTargetDefaultPort             int
 	DevTargetSessionMaxSeconds       int
 	DevTargetSessionConnectionLimit  int
+	DevLoopbackHostCatalogPluginId   string
+
+	HostPlugins *host.PluginMap
 
 	DevOidcSetup oidcSetup
 

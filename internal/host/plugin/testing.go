@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestCatalog(t *testing.T, conn *gorm.DB, scopeId, pluginId string, opt ...O
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceServer, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm *hostplugin.PluginMap, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()

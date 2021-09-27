@@ -67,8 +67,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s.PublicId = id
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
+	plgClient := r.plugins.Get(c.GetPluginId())
+	if plgClient == nil {
 		return nil, nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 
@@ -156,25 +156,36 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // LookupSet will look up a host set in the repository and return the host
 // set. If the host set is not found, it will return nil, nil.
 // All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, []*Host, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	sets, plg, err := r.getSets(ctx, publicId, "", opt...)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	switch {
 	case len(sets) == 0:
-		return nil, nil, nil // not an error to return no rows for a "lookup"
+		return nil, nil, nil, nil // not an error to return no rows for a "lookup"
 	case len(sets) > 1:
-		return nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
-	default:
-		return sets[0], plg, nil
+		return nil, nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
 	}
+
+	setToReturn := sets[0]
+
+	if opts.WithSetMembers {
+		// FIXME
+	}
+
+	return setToReturn, nil, plg, nil
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
@@ -393,8 +404,8 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 				setInfos: make(map[string]*setInfo),
 			}
 		}
-		ci.plg, ok = r.plugins[ag.PluginId]
-		if !ok {
+		ci.plg = r.plugins.Get(ag.PluginId)
+		if ci.plg == nil {
 			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", ag.PluginId))
 		}
 

@@ -27,9 +27,9 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
-	})
+	plgm := new(hostplg.PluginMap)
+	plgm.Set(plg.GetPublicId(), &plugin.TestPluginServer{})
+	set := plugin.TestSet(t, conn, kmsCache, catalog, plgm)
 
 	type args struct {
 		hostSetId string
@@ -157,9 +157,9 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
-	})
+	plgm := new(hostplg.PluginMap)
+	plgm.Set(plg.GetPublicId(), &plgpb.UnimplementedHostPluginServiceServer{})
+	set := plugin.TestSet(t, conn, kmsCache, catalog, plgm)
 
 	peFunc := func(priority uint32, condition string) *host.PreferredEndpoint {
 		ep, err := host.NewPreferredEndpoint(ctx, set.PublicId, priority, condition)

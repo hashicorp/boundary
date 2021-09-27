@@ -55,8 +55,8 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c.PublicId = id
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
+	plgClient := r.plugins.Get(c.GetPluginId())
+	if plgClient == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 	plgHc, err := toPluginCatalog(ctx, c)

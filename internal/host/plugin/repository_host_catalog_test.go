@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -34,15 +35,15 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
 	// test against the expected values sent to the plugin.
 	var gotPluginAttrs *structpb.Struct
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{
-			OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-				gotPluginAttrs = req.GetCatalog().GetAttributes()
-				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
-			},
+	plgm := new(host.PluginMap)
+	plgm.Set(plg.GetPublicId(), &TestPluginServer{
+		OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+			gotPluginAttrs = req.GetCatalog().GetAttributes()
+			return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
 		},
-		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
-	}
+	},
+	)
+	plgm.Set(unimplementedPlugin.GetPublicId(), &plgpb.UnimplementedHostPluginServiceServer{})
 
 	tests := []struct {
 		name       string
@@ -378,9 +379,9 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{},
-	}
+	plgm := new(host.PluginMap)
+	plgm.Set(plg.GetPublicId(), &TestPluginServer{})
+
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx)
 	assert.NoError(t, err)
@@ -444,9 +445,8 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	plg := hostplg.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{},
-	}
+	plgm := new(host.PluginMap)
+	plgm.Set(plg.GetPublicId(), &TestPluginServer{})
 	repo, err := NewRepository(rw, rw, kms, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
