@@ -32,7 +32,7 @@ func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Mes
 
 	// add the outgoing resp proto.  See: common.flushGatedEvents is where the
 	// event.Response.StatusCode is added.
-	if err := event.WriteAudit(ctx, "handlers.OutgoingInterceptor", event.WithResponse(&event.Response{Details: m})); err != nil {
+	if err := event.WriteAudit(ctx, op, event.WithResponse(&event.Response{Details: m})); err != nil {
 		return fmt.Errorf("%s: unable to write audit event: %w", op, err)
 	}
 
