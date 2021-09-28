@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -20,7 +21,7 @@ var _ plgpb.HostPluginServiceServer = (*loopbackPlugin)(nil)
 type loopbackPlugin struct {
 	*TestPluginServer
 
-	hostMap map[string]*loopbackPluginHostInfo
+	hostMap map[string][]*loopbackPluginHostInfo
 }
 
 type loopbackPluginHostInfo struct {
@@ -33,7 +34,7 @@ type loopbackPluginHostInfo struct {
 func NewLoopbackPlugin() plgpb.HostPluginServiceServer {
 	ret := &loopbackPlugin{
 		TestPluginServer: new(TestPluginServer),
-		hostMap:          make(map[string]*loopbackPluginHostInfo),
+		hostMap:          make(map[string][]*loopbackPluginHostInfo),
 	}
 	ret.OnCreateCatalogFn = ret.onCreateCatalog
 	ret.OnCreateSetFn = ret.onCreateSet
@@ -71,11 +72,24 @@ func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSet
 	if attrs := set.GetAttributes(); attrs != nil {
 		attrsMap := attrs.AsMap()
 		if field := attrsMap[loopbackPluginHostInfoAttrField]; field != nil {
-			hostInfo := new(loopbackPluginHostInfo)
-			if err := mapstructure.Decode(field, hostInfo); err != nil {
-				return nil, errors.Wrap(ctx, err, op)
+			switch t := field.(type) {
+			case []interface{}:
+				for _, h := range t {
+					hostInfo := new(loopbackPluginHostInfo)
+					if err := mapstructure.Decode(h, hostInfo); err != nil {
+						return nil, errors.Wrap(ctx, err, op)
+					}
+					l.hostMap[set.GetId()] = append(l.hostMap[set.GetId()], hostInfo)
+				}
+			case map[string]interface{}:
+				hostInfo := new(loopbackPluginHostInfo)
+				if err := mapstructure.Decode(t, hostInfo); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+				l.hostMap[set.GetId()] = append(l.hostMap[set.GetId()], hostInfo)
+			default:
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown host info type %T", t))
 			}
-			l.hostMap[set.GetId()] = hostInfo
 		}
 	}
 	return nil, nil
@@ -101,16 +115,18 @@ func (l *loopbackPlugin) listHosts(ctx context.Context, req *plgpb.ListHostsRequ
 	}
 	resp := new(plgpb.ListHostsResponse)
 	for _, set := range req.GetSets() {
-		hostInfo := l.hostMap[set.GetId()]
-		if hostInfo == nil {
+		hostInfos := l.hostMap[set.GetId()]
+		if len(hostInfos) == 0 {
 			continue
 		}
-		resp.Hosts = append(resp.Hosts, &plgpb.ListHostsResponseHost{
-			SetIds:      []string{set.GetId()},
-			ExternalId:  hostInfo.ExternalId,
-			IpAddresses: hostInfo.IpAddresses,
-			DnsNames:    hostInfo.DnsNames,
-		})
+		for _, host := range hostInfos {
+			resp.Hosts = append(resp.Hosts, &plgpb.ListHostsResponseHost{
+				SetIds:      []string{set.GetId()},
+				ExternalId:  host.ExternalId,
+				IpAddresses: host.IpAddresses,
+				DnsNames:    host.DnsNames,
+			})
+		}
 	}
 	return resp, nil
 }
