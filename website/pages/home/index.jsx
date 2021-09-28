@@ -132,8 +132,17 @@ export default function HomePage() {
           },
           {
             title: 'Access',
-            description:
-              'Reduce risk of leaking credentials with dynamic secrets and just-in-time credentials. Automate credential injection to securely access services and hosts with HashiCorp Vault.',
+            description: (
+              <>
+                Reduce risk of leaking credentials with dynamic secrets and
+                just-in-time credentials. Automate credential injection to
+                securely access services and hosts with{' '}
+                <a href="https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart">
+                  HashiCorp Vault
+                </a>
+                .
+              </>
+            ),
             logos: [
               {
                 alt: 'Postgresql',
@@ -249,7 +258,7 @@ export default function HomePage() {
               link: {
                 type: 'inbound',
                 text: 'Learn more',
-                url: '/docs/getting-started/connect-to-target',
+                url: 'https://learn.hashicorp.com/tutorials/boundary/oidc-auth',
               },
             },
             {
@@ -261,7 +270,7 @@ export default function HomePage() {
                 type: 'inbound',
                 text: 'Learn more',
                 url:
-                  'https://learn.hashicorp.com/tutorials/boundary/manage-sessions?in=boundary/common-workflows',
+                  'https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart',
               },
             },
             {
@@ -284,7 +293,8 @@ export default function HomePage() {
               link: {
                 type: 'inbound',
                 text: 'Learn more',
-                url: '/docs/api-clients',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
               },
             },
           ]}

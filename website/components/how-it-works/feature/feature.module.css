@@ -6,4 +6,9 @@
   & > p {
     margin-bottom: 32px;
   }
+
+  & a {
+    color: inherit;
+    text-decoration: underline;
+  }
 }
