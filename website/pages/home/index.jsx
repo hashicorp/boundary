@@ -209,7 +209,7 @@ export default function HomePage() {
       <section className="how-boundary-works">
         <HowBoundaryWorks
           heading="How Boundary Works"
-          description="HashiCorp Boundary is a secure access management solution that provides an easy way to allow access to applications and critical systems with fine-grained authorizations based on trusted identities. Across clouds, local data centers, low-trust networks, Boundary provides an easier way to protect and safeguard access to application and critical systems by trusted identities without exposing the underlying network"
+          description="HashiCorp Boundary is a secure remote access solution that provides an easy way to allow access to applications and critical systems with fine-grained authorizations based on trusted identities. Across clouds, local data centers, low-trust networks, Boundary provides an easier way to protect and safeguard access to application and critical systems by trusted identities without exposing the underlying network"
           items={[
             'Platform-agnostic proxy for dynamic targets',
             'No SSH keys or VPN credentials to manage',
