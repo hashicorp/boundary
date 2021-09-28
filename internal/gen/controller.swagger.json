@@ -1247,7 +1247,7 @@
           },
           {
             "name": "plugin_name",
-            "description": "As an alternative to providing the plugin id in the provided HostCatalog,\nthis field can be used to lookup the plugin using it's name.",
+            "description": "As an alternative to providing the plugin id in the provided HostCatalog,\nthis field can be used to lookup the plugin using its name.",
             "in": "query",
             "required": false,
             "type": "string"

@@ -77,9 +77,9 @@ func (c *PluginCommand) Help() string {
 
 var flagsPluginMap = map[string][]string{
 
-	"create": {"scope-id", "name", "description", "attributes", "attr", "string-attr", "bool-attr", "num-attr"},
+	"create": {"scope-id", "name", "description", "plugin-id", "plugin-name", "attributes", "attr", "string-attr", "bool-attr", "num-attr", "secrets", "secret", "string-secret", "bool-secret", "num-secret"},
 
-	"update": {"id", "name", "description", "version", "attributes", "attr", "string-attr", "bool-attr", "num-attr"},
+	"update": {"id", "name", "description", "version", "attributes", "attr", "string-attr", "bool-attr", "num-attr", "secrets", "secret", "string-secret", "bool-secret", "num-secret"},
 }
 
 func (c *PluginCommand) Flags() *base.FlagSets {
@@ -93,6 +93,9 @@ func (c *PluginCommand) Flags() *base.FlagSets {
 
 	f = set.NewFlagSet("Attribute Options")
 	common.PopulateAttributeFlags(c.Command, f, flagsPluginMap, c.Func)
+
+	f = set.NewFlagSet("Secrets Options")
+	common.PopulateSecretFlags(c.Command, f, flagsPluginMap, c.Func)
 
 	extraPluginFlagsFunc(c, set, f)
 
@@ -169,6 +172,17 @@ func (c *PluginCommand) Run(args []string) int {
 		opts = append(opts, hostcatalogs.WithFilter(c.FlagFilter))
 	}
 
+	switch c.FlagPluginId {
+	case "":
+	default:
+		opts = append(opts, hostcatalogs.WithPluginId(c.FlagPluginId))
+	}
+	switch c.FlagPluginName {
+	case "":
+	default:
+		opts = append(opts, hostcatalogs.WithPluginName(c.FlagPluginName))
+	}
+
 	var version uint32
 
 	switch c.Func {
@@ -184,13 +198,30 @@ func (c *PluginCommand) Run(args []string) int {
 	if err := common.HandleAttributeFlags(
 		c.Command,
 		"attr",
+		c.FlagAttributes,
+		c.FlagAttrs,
 		func() {
-			hostcatalogs.DefaultAttributes()
+			opts = append(opts, hostcatalogs.DefaultAttributes())
 		},
 		func(in map[string]interface{}) {
-			hostcatalogs.WithAttributes(in)
+			opts = append(opts, hostcatalogs.WithAttributes(in))
 		}); err != nil {
 		c.PrintCliError(fmt.Errorf("Error evaluating attribute flags to: %s", err.Error()))
+		return base.CommandCliError
+	}
+
+	if err := common.HandleAttributeFlags(
+		c.Command,
+		"secret",
+		c.FlagSecrets,
+		c.FlagScrts,
+		func() {
+			opts = append(opts, hostcatalogs.DefaultSecrets())
+		},
+		func(in map[string]interface{}) {
+			opts = append(opts, hostcatalogs.WithSecrets(in))
+		}); err != nil {
+		c.PrintCliError(fmt.Errorf("Error evaluating secret flags to: %s", err.Error()))
 		return base.CommandCliError
 	}
 

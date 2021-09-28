@@ -44,7 +44,7 @@ type templateInput struct {
 	ResourcePath          string
 	ParentTypeName        string
 	SliceSubtypes         map[string]sliceSubtypeInfo
-	ExtraOptions          []fieldInfo
+	ExtraFields           []fieldInfo
 	VersionEnabled        bool
 	TypeOnCreate          bool
 	CreateResponseTypes   bool
@@ -63,7 +63,7 @@ func fillTemplates() {
 			Fields:              in.generatedStructure.fields,
 			PluralResourceName:  in.pluralResourceName,
 			ParentTypeName:      in.parentTypeName,
-			ExtraOptions:        in.extraOptions,
+			ExtraFields:         in.extraFields,
 			VersionEnabled:      in.versionEnabled,
 			TypeOnCreate:        in.typeOnCreate,
 			CreateResponseTypes: in.createResponseTypes,
@@ -129,13 +129,13 @@ func fillTemplates() {
 			}
 			optionsMap[input.Package] = optionMap
 		}
-		// Add in extra defined options
-		if len(in.extraOptions) > 0 {
+		// Add in extra defined fields
+		if len(in.extraFields) > 0 {
 			optionMap := optionsMap[input.Package]
 			if optionMap == nil {
 				optionMap = map[string]fieldInfo{}
 			}
-			for _, val := range in.extraOptions {
+			for _, val := range in.extraFields {
 				optionMap[val.Name] = val
 			}
 			optionsMap[input.Package] = optionMap

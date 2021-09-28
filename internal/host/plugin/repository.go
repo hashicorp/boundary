@@ -19,8 +19,9 @@ type Repository struct {
 	kms    *kms.Kms
 
 	// plugins is a map from plugin resource id to host plugin client.
-	// TODO: When we are using go-plugin change from using a plgpb.HostPluginServiceServer
-	//    to the client.
+	//
+	// TODO: When we are using go-plugin change from using a
+	// plgpb.HostPluginServiceServer to the client.
 	plugins map[string]plgpb.HostPluginServiceServer
 	// defaultLimit provides a default for limiting the number of results
 	// returned from the repo

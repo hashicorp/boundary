@@ -23,7 +23,7 @@ message HostCatalog {
 	resources.scopes.v1.ScopeInfo scope = 30;
 
 	// The ID of the plugin of which this catalog is created.
-	string plugin_id = 34 [json_name="plugin_id"];
+	string plugin_id = 34 [json_name="plugin_id", (custom_options.v1.generate_sdk_option) = true];
 
 	// Output only. Plugin information for this resource.
 	resources.plugins.v1.PluginInfo plugin = 35;

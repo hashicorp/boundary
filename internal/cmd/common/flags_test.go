@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -170,12 +171,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "strings-only",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "string-attr",
+					Name:  "string-%s",
 					Keys:  []string{"foo"},
 					Value: "bar",
 				},
 				{
-					Name:  "string-attr",
+					Name:  "string-%s",
 					Keys:  []string{"bar"},
 					Value: `"baz"`,
 				},
@@ -189,12 +190,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "nums-only",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "num-attr",
+					Name:  "num-%s",
 					Keys:  []string{"foo"},
 					Value: "-1.2",
 				},
 				{
-					Name:  "num-attr",
+					Name:  "num-%s",
 					Keys:  []string{"bar"},
 					Value: "5",
 				},
@@ -208,7 +209,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "bad-float-num",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "num-attr",
+					Name:  "num-%s",
 					Keys:  []string{"foo"},
 					Value: "-15d.2",
 				},
@@ -219,7 +220,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "bad-int-num",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "num-attr",
+					Name:  "num-%s",
 					Keys:  []string{"foo"},
 					Value: "-15d3",
 				},
@@ -230,12 +231,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "bools-only",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "bool-attr",
+					Name:  "bool-%s",
 					Keys:  []string{"foo"},
 					Value: "true",
 				},
 				{
-					Name:  "bool-attr",
+					Name:  "bool-%s",
 					Keys:  []string{"bar"},
 					Value: "false",
 				},
@@ -249,7 +250,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "bad-bool",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "bool-attr",
+					Name:  "bool-%s",
 					Keys:  []string{"foo"},
 					Value: "t",
 				},
@@ -260,47 +261,47 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "attr-only",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"b1"},
 					Value: "true",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"b2"},
 					Value: "false",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"s1"},
 					Value: "scoopde",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"s2"},
 					Value: `"woop"`,
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"n1"},
 					Value: "-1.2",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"n2"},
 					Value: "5",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"a"},
 					Value: `["foo", 1.5, true, ["bar"], {"hip": "hop"}]`,
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"nil"},
 					Value: "null",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"m"},
 					Value: `{"b": true, "n": 6, "s": "scoopde", "a": ["bar"], "m": {"hip": "hop"}}`,
 				},
@@ -333,37 +334,37 @@ func TestHandleAttributeFlags(t *testing.T) {
 			name: "map-array-structure",
 			args: []base.CombinedSliceFlagValue{
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"bools"},
 					Value: "true",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"bools"},
 					Value: "false",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"strings", "s1"},
 					Value: "scoopde",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"strings", "s2"},
 					Value: `"woop"`,
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"numbers", "reps"},
 					Value: "-1.2",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"numbers", "reps"},
 					Value: "5",
 				},
 				{
-					Name:  "attr",
+					Name:  "%s",
 					Keys:  []string{"strings", "s2"}, // This will overwrite above!
 					Value: "null",
 				},
@@ -381,25 +382,32 @@ func TestHandleAttributeFlags(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
+		for _, typ := range []string{"attr", "secret"} {
+			t.Run(fmt.Sprintf("%s-%s", tt.name, typ), func(t *testing.T) {
+				assert, require := assert.New(t), require.New(t)
 
-			// Note: we do the setup on each run to make sure we aren't carrying
-			// state over; just like in the real CLI where each run would have
-			// pristine state.
-			c := new(base.Command)
-			c.FlagAttrs = tt.args
-			var outMap map[string]interface{}
+				// Note: we do the setup on each run to make sure we aren't carrying
+				// state over; just like in the real CLI where each run would have
+				// pristine state.
+				c := new(base.Command)
+				var outMap map[string]interface{}
 
-			err := HandleAttributeFlags(c, "attr", func() {}, func(in map[string]interface{}) { outMap = in })
-			if tt.expectedErr != "" {
-				require.Error(err)
-				assert.Contains(err.Error(), tt.expectedErr)
-				return
-			}
+				args := make([]base.CombinedSliceFlagValue, 0, len(tt.args))
+				for _, arg := range tt.args {
+					arg.Name = fmt.Sprintf(arg.Name, typ)
+					args = append(args, arg)
+				}
 
-			require.NoError(err)
-			assert.Equal(tt.expectedMap, outMap)
-		})
+				err := HandleAttributeFlags(c, typ, "", args, func() {}, func(in map[string]interface{}) { outMap = in })
+				if tt.expectedErr != "" {
+					require.Error(err)
+					assert.Contains(err.Error(), tt.expectedErr)
+					return
+				}
+
+				require.NoError(err)
+				assert.Equal(tt.expectedMap, outMap)
+			})
+		}
 	}
 }

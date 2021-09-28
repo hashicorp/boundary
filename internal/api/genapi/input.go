@@ -95,13 +95,13 @@ type structInfo struct {
 	// listing
 	recursiveListing bool
 
-	// extraOptions allows specifying extra options that will be created for a
+	// extraFields allows specifying extra options that will be created for a
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
-	extraOptions []fieldInfo
+	extraFields []fieldInfo
 
 	// fieldOverrides allows overriding some field behavior without making them
-	// "new" fields like with extraOptions
+	// "new" fields like with extraFields
 	fieldOverrides []fieldInfo
 
 	// createResponseTypes controls for which structs response types are created
@@ -156,7 +156,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName: "scopes",
-		extraOptions: []fieldInfo{
+		extraFields: []fieldInfo{
 			{
 				Name:      "SkipAdminRoleCreation",
 				ProtoName: "skip_admin_role_creation",
@@ -508,9 +508,18 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "PluginName",
+				ProtoName:   "plugin_name",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
 		fieldOverrides: []fieldInfo{
 			{
-				Name:        "Secrets",
+				Name:        "PluginId",
 				SkipDefault: true,
 			},
 		},
@@ -632,7 +641,7 @@ var inputStructs = []*structInfo{
 			"CredentialLibraries": {},
 			"CredentialSources":   {},
 		},
-		extraOptions: []fieldInfo{
+		extraFields: []fieldInfo{
 			{
 				Name:        "HostId",
 				ProtoName:   "host_id",

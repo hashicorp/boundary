@@ -274,8 +274,8 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		}
 		hc.Attributes = attrs
 	}
-	if in.secrets != nil {
-		hc.Secrets = in.secrets
+	if in.Secrets != nil {
+		hc.Secrets = in.Secrets
 	}
 	return hc, nil
 }

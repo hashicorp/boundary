@@ -212,7 +212,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
-				secrets: func() *structpb.Struct {
+				Secrets: func() *structpb.Struct {
 					st, err := structpb.NewStruct(map[string]interface{}{
 						"k1": "v1",
 						"k2": 2,
@@ -276,7 +276,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			cSecret := allocHostCatalogSecret()
 			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", got.GetPublicId())
 			if tt.wantSecret == nil {
-				assert.Nil(got.secrets)
+				assert.Nil(got.Secrets)
 				require.Error(t, err)
 				require.True(t, errors.IsNotFoundError(err))
 				return

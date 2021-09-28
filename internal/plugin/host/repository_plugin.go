@@ -20,7 +20,7 @@ import (
 // unique within p.ScopeID.
 //
 // Both p.CreateTime and c.UpdateTime are ignored.
-func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, _ ...Option) (*Plugin, error) {
+func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option) (*Plugin, error) {
 	const op = "host.(Repository).CreatePlugin"
 	if p == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil Plugin")
@@ -39,11 +39,16 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, _ ...Option) (
 	}
 	p = p.clone()
 
-	id, err := newPluginId()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	opts := GetOpts(opt...)
+
+	p.PublicId = opts.withPublicId
+	if p.PublicId == "" {
+		var err error
+		p.PublicId, err = newPluginId()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
-	p.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, p.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -122,7 +127,7 @@ func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.

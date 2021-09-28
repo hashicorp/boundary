@@ -79,9 +79,9 @@ func (c *PluginCommand) Help() string {
 
 var flagsPluginMap = map[string][]string{
 
-	"create": {"host-catalog-id", "name", "description"},
+	"create": {"host-catalog-id", "name", "description", "attributes", "attr", "string-attr", "bool-attr", "num-attr"},
 
-	"update": {"id", "name", "description", "version"},
+	"update": {"id", "name", "description", "version", "attributes", "attr", "string-attr", "bool-attr", "num-attr"},
 }
 
 func (c *PluginCommand) Flags() *base.FlagSets {
@@ -92,6 +92,9 @@ func (c *PluginCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "plugin-type host set", flagsPluginMap, c.Func)
+
+	f = set.NewFlagSet("Attribute Options")
+	common.PopulateAttributeFlags(c.Command, f, flagsPluginMap, c.Func)
 
 	extraPluginFlagsFunc(c, set, f)
 
@@ -173,6 +176,21 @@ func (c *PluginCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+	}
+
+	if err := common.HandleAttributeFlags(
+		c.Command,
+		"attr",
+		c.FlagAttributes,
+		c.FlagAttrs,
+		func() {
+			opts = append(opts, hostsets.DefaultAttributes())
+		},
+		func(in map[string]interface{}) {
+			opts = append(opts, hostsets.WithAttributes(in))
+		}); err != nil {
+		c.PrintCliError(fmt.Errorf("Error evaluating attribute flags to: %s", err.Error()))
+		return base.CommandCliError
 	}
 
 	if ok := extraPluginFlagsHandlingFunc(c, f, &opts); !ok {
