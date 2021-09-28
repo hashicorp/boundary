@@ -39,7 +39,7 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 	}
 	p = p.clone()
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	p.PublicId = opts.withPublicId
 	if p.PublicId == "" {
@@ -127,7 +127,7 @@ func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.

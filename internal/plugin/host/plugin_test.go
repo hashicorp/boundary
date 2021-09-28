@@ -15,8 +15,6 @@ import (
 func TestPlugin_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
-	type args struct{}
-
 	tests := []struct {
 		name    string
 		opts    []Option
