@@ -587,7 +587,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	return tt, nil
 }
 
-func (b *Server) CreateHostPlugin(ctx context.Context, pluginId string, plg plgpb.HostPluginServiceServer) (*hostplugin.Plugin, error) {
+func (b *Server) CreateHostPlugin(ctx context.Context, plg plgpb.HostPluginServiceServer, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -616,30 +616,19 @@ func (b *Server) CreateHostPlugin(ctx context.Context, pluginId string, plg plgp
 
 	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
 	if err != nil {
-		return nil, fmt.Errorf("error creating static repository: %w", err)
+		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
 	}
 
-	if b.DevLoopbackHostCatalogPluginId == "" {
-		b.DevLoopbackHostCatalogPluginId, err = db.NewPublicId(hostplugin.PluginPrefix)
-		if err != nil {
-			return nil, fmt.Errorf("error generating initial loopback host plugin id: %w", err)
-		}
-	}
-	opts := []hostplugin.Option{
-		hostplugin.WithName("loopback"),
-		hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-		hostplugin.WithPublicId(b.DevLoopbackHostCatalogPluginId),
-	}
-	plugin := hostplugin.NewPlugin(opts...)
-	plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opts...)
+	plugin := hostplugin.NewPlugin(opt...)
+	plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error creating in memory host plugin: %w", err)
+		return nil, fmt.Errorf("error creating host plugin: %w", err)
 	}
 
 	if b.HostPlugins == nil {
 		b.HostPlugins = make(map[string]plgpb.HostPluginServiceServer)
 	}
-	b.HostPlugins[pluginId] = plg
+	b.HostPlugins[plugin.GetPublicId()] = plg
 
 	return plugin, nil
 }

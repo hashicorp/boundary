@@ -1,7 +1,7 @@
 package host
 
-// getOpts - iterate the inbound Options and return a struct
-func getOpts(opt ...Option) options {
+// GetOpts - iterate the inbound Options and return a struct
+func GetOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
