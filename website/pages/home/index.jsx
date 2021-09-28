@@ -198,7 +198,7 @@ export default function HomePage() {
             {
               icon: require('./img/icons/refresh-white.svg?url'),
               heading:
-                'Streamline secure remote access with easy-to-use CLI, API or UI',
+                'Streamline remote access with easy-to-use CLI, API or UI',
               description:
                 'Make it easy to access all applications and systems through a single workflow that works with existing tooling.',
             },
