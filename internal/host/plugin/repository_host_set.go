@@ -156,7 +156,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 // LookupSet will look up a host set in the repository and return the host set,
 // as well as host IDs that match. If the host set is not found, it will return
-// nil, nil, nil, nil. All options are ignored.
+// nil, nil, nil, nil. Supported options: WithSetMembers, which requests that
+// host IDs contained within the set are looked up and returned. (In the future
+// we may make it automatic to return this if it's coming from the database.)
 func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, []string, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
@@ -198,7 +200,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 		switch {
 		case err != nil:
 			// If it's just not implemented, e.g. for tests, don't error out, return what we have
-			if !strings.Contains(err.Error(), codes.Unimplemented.String()) {
+			if status.Code(err) != codes.Unimplemented {
 				return nil, nil, nil, errors.Wrap(ctx, err, op)
 			}
 		case resp != nil:
