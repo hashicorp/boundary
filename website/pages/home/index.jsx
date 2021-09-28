@@ -315,8 +315,7 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url:
-                    'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
+                  url: 'https://learn.hashicorp.com/boundary',
                 },
               },
               {
@@ -329,7 +328,7 @@ export default function HomePage() {
                 link: {
                   title: 'Learn more',
                   url:
-                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
                 },
               },
               {
@@ -342,7 +341,7 @@ export default function HomePage() {
                 link: {
                   title: 'Learn more',
                   url:
-                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
+                    'https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart',
                 },
               },
             ]}
