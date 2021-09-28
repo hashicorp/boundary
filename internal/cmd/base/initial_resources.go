@@ -616,7 +616,7 @@ func (b *Server) CreateHostPlugin(ctx context.Context, pluginId string, plg plgp
 
 	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
 	if err != nil {
-		return nil, fmt.Errorf("error creating static repository: %w", err)
+		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
 	}
 
 	if b.DevLoopbackHostCatalogPluginId == "" {
