@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
+	hspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -153,28 +154,69 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	return returnedHostSet, plg, nil
 }
 
-// LookupSet will look up a host set in the repository and return the host
-// set. If the host set is not found, it will return nil, nil.
-// All options are ignored.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
+// LookupSet will look up a host set in the repository and return the host set,
+// as well as host IDs that match. If the host set is not found, it will return
+// nil, nil, nil, nil. Supported options: WithSetMembers, which requests that
+// host IDs contained within the set are looked up and returned. (In the future
+// we may make it automatic to return this if it's coming from the database.)
+func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, []string, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	sets, plg, err := r.getSets(ctx, publicId, "", opt...)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	switch {
 	case len(sets) == 0:
-		return nil, nil, nil // not an error to return no rows for a "lookup"
+		return nil, nil, nil, nil // not an error to return no rows for a "lookup"
 	case len(sets) > 1:
-		return nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
-	default:
-		return sets[0], plg, nil
+		return nil, nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
 	}
+
+	setToReturn := sets[0]
+	var hostIdsToReturn []string
+
+	if plg != nil && opts.WithSetMembers {
+		plgSet, err := toPluginSet(ctx, setToReturn)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+		plgClient, ok := r.plugins[plg.GetPublicId()]
+		if !ok {
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
+		}
+		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
+			Sets: []*hspb.HostSet{plgSet},
+		})
+		switch {
+		case err != nil:
+			// If it's just not implemented, e.g. for tests, don't error out, return what we have
+			if status.Code(err) != codes.Unimplemented {
+				return nil, nil, nil, errors.Wrap(ctx, err, op)
+			}
+		case resp != nil:
+			for _, respHost := range resp.GetHosts() {
+				hostId, err := newHostId(ctx, setToReturn.GetCatalogId(), respHost.GetExternalId())
+				if err != nil {
+					return nil, nil, nil, errors.Wrap(ctx, err, op)
+				}
+				hostIdsToReturn = append(hostIdsToReturn, hostId)
+			}
+		}
+	}
+
+	sort.Strings(hostIdsToReturn)
+
+	return setToReturn, hostIdsToReturn, plg, nil
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
@@ -337,7 +379,7 @@ func (agg *hostSetAgg) TableName() string { return "host_plugin_host_set_with_va
 
 // toPluginSet returns a host set in the format expected by the host plugin system.
 func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
-	const op = "plugin.toPluginCatalog"
+	const op = "plugin.toPluginSet"
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
@@ -363,6 +405,8 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	if len(setIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
+
+	// Fist, look up the sets corresponding to the set IDs
 	var setAggs []*hostSetAgg
 	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []interface{}{setIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve sets %v", setIds)))
@@ -377,13 +421,15 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	}
 
 	type catalogInfo struct {
-		publicId  string
-		plg       plgpb.HostPluginServiceServer
-		setInfos  map[string]*setInfo
-		plgCat    *hcpb.HostCatalog
-		persisted *plgpb.HostCatalogPersisted
+		publicId  string                        // ID of the catalog
+		plg       plgpb.HostPluginServiceServer // plugin client for the catalog
+		setInfos  map[string]*setInfo           // map of set IDs to set information
+		plgCat    *hcpb.HostCatalog             // storage host catalog
+		persisted *plgpb.HostCatalogPersisted   // host catalog persisted (secret) data
 	}
 
+	// Next, look up the distinct catalog info and assign set infos to it.
+	// Notably, this does not include persisted info.
 	catalogInfos := make(map[string]*catalogInfo)
 	for _, ag := range setAggs {
 		ci, ok := catalogInfos[ag.CatalogId]
@@ -416,6 +462,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		catalogInfos[ag.CatalogId] = ci
 	}
 
+	// Now, look up the catalog persisted (secret) information
 	catIds := make([]string, 0, len(catalogInfos))
 	for k := range catalogInfos {
 		catIds = append(catIds, k)
@@ -438,7 +485,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		}
 		ci.plgCat = plgCat
 
-		// TODO: Do these looksups from the DB in bulk instead of individually.
+		// TODO: Do these lookups from the DB in bulk instead of individually.
 		per, err := r.getPersistedDataForCatalog(ctx, c)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("persisted catalog lookup failed"))
@@ -451,6 +498,8 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	var hosts []interface{}
 	hostIds := map[string]bool{}
 	var es []*host.Endpoint
+
+	// For each distinct catalog, list all sets at once
 	for _, ci := range catalogInfos {
 
 		var sets []*pb.HostSet
@@ -459,9 +508,9 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		}
 
 		resp, err := ci.plg.ListHosts(ctx, &plgpb.ListHostsRequest{
-			Catalog: ci.plgCat,
-			Sets:    sets,
-			// Persisted: ci.persisted,
+			Catalog:   ci.plgCat,
+			Sets:      sets,
+			Persisted: ci.persisted,
 		})
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
