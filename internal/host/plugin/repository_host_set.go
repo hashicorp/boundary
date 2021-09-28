@@ -188,14 +188,20 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
-		plgClient := r.plugins[plg.GetPublicId()]
+		plgClient, ok := r.plugins[plg.GetPublicId()]
+		if !ok {
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
+		}
 		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
 			Sets: []*hspb.HostSet{plgSet},
 		})
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		if resp != nil {
+		switch {
+		case err != nil:
+			// If it's just not implemented, e.g. for tests, don't error out, return what we have
+			if !strings.Contains(err.Error(), codes.Unimplemented.String()) {
+				return nil, nil, nil, errors.Wrap(ctx, err, op)
+			}
+		case resp != nil:
 			for _, respHost := range resp.GetHosts() {
 				hostId, err := newHostId(ctx, setToReturn.GetCatalogId(), respHost.GetExternalId())
 				if err != nil {
@@ -205,6 +211,8 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 			}
 		}
 	}
+
+	sort.Strings(hostIdsToReturn)
 
 	return setToReturn, hostIdsToReturn, plg, nil
 }
