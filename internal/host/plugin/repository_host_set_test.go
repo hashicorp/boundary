@@ -319,7 +319,13 @@ func TestRepository_LookupSet(t *testing.T) {
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{},
+		plg.GetPublicId(): &TestPluginServer{
+			ListHostsFn: func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+				require.NotEmpty(t, req.GetSets())
+				require.NotNil(t, req.GetCatalog())
+				return &plgpb.ListHostsResponse{}, nil
+			},
+		},
 	})
 	hostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)

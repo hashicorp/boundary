@@ -186,6 +186,18 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 	var hostIdsToReturn []string
 
 	if plg != nil && opts.WithSetMembers {
+		cat, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+		plgCat, err := toPluginCatalog(ctx, cat)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+		persisted, err := r.getPersistedDataForCatalog(ctx, cat)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
 		plgSet, err := toPluginSet(ctx, setToReturn)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
@@ -195,7 +207,9 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
 		}
 		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
+			Catalog: plgCat,
 			Sets: []*hspb.HostSet{plgSet},
+			Persisted: persisted,
 		})
 		switch {
 		case err != nil:

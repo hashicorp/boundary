@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	awsplg "github.com/hashicorp/boundary-plugin-host-aws/plugin"
+	azureplg "github.com/hashicorp/boundary-plugin-host-azure/plugin"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -106,9 +107,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	// if _, err := conf.CreateHostPlugin(ctx, "azure", &azureplg.AzurePlugin{}, hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
-	// 	return nil, fmt.Errorf("error creating azure host plugin: %w", err)
-	// }
+	if _, err := conf.CreateHostPlugin(ctx, "azure", &azureplg.AzurePlugin{}, hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
+		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+	}
 	if _, err := conf.CreateHostPlugin(ctx, "aws", &awsplg.AwsPlugin{}, hostplugin.WithDescription("Boundary provided host plugin for AWS.")); err != nil {
 		return nil, fmt.Errorf("error creating aws host plugin: %w", err)
 	}
