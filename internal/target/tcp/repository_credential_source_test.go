@@ -1,4 +1,4 @@
-package target
+package tcp_test
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -25,7 +27,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, staticProj := iam.TestScopes(t, iamRepo)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, staticProj.GetPublicId(), 1)[0]
@@ -103,7 +105,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, tt.name)
+			projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, tt.name)
 			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.credLibIds)
 			if tt.wantErr {
 				require.Error(err)
@@ -112,7 +114,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Len(gotCredSources, len(tt.wantCredLibIds))
-			gotCredSourcesMap := map[string]CredentialSource{}
+			gotCredSourcesMap := map[string]target.CredentialSource{}
 			for _, s := range gotCredSources {
 				gotCredSourcesMap[s.Id()] = s
 			}
@@ -124,26 +126,22 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 
-			foundCredSources, err := fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
+			tar, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 			require.NoError(err)
-			assert.Len(foundCredSources, len(gotCredSourcesMap))
-			for _, s := range foundCredSources {
+			assert.Equal(tt.args.targetVersion+1, tar.GetVersion())
+			assert.Equal(projTarget.GetVersion(), tar.GetVersion()-1)
+			assert.True(proto.Equal(gotTarget.(*tcp.Target), tar.(*tcp.Target)))
+			assert.Equal(gotCredSources, lookupCredSources)
+			for _, s := range lookupCredSources {
 				assert.NotEmpty(gotCredSourcesMap[s.Id()])
 				assert.Equal(projTarget.PublicId, s.TargetId())
 			}
-
-			target, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
-			require.NoError(err)
-			assert.Equal(tt.args.targetVersion+1, target.GetVersion())
-			assert.Equal(projTarget.GetVersion(), target.GetVersion()-1)
-			assert.True(proto.Equal(gotTarget.(*TcpTarget), target.(*TcpTarget)))
-			assert.Equal(gotCredSources, lookupCredSources)
 		})
 	}
 	t.Run("add-existing", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "add-existing")
+		projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, "add-existing")
 		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId})
 		require.NoError(err)
 		assert.Len(gotCredSources, 1)
@@ -160,10 +158,10 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		gotCredSources, err = fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
+		_, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 		require.NoError(err)
-		assert.Len(gotCredSources, 1)
-		assert.Equal(lib1.PublicId, gotCredSources[0].Id())
+		assert.Len(lookupCredSources, 1)
+		assert.Equal(lib1.PublicId, lookupCredSources[0].Id())
 	})
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -183,7 +181,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	type args struct {
@@ -229,7 +227,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				targetIdOverride: func() *string { id := testId(t); return &id }(),
+				targetIdOverride: func() *string { id := tcp.TestId(t); return &id }(),
 				createCnt:        5,
 				deleteCnt:        5,
 			},
@@ -277,7 +275,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			cs := css[i]
 
-			target := TestTcpTarget(t, conn, proj.PublicId, tt.name)
+			target := tcp.TestTarget(t, conn, proj.PublicId, tt.name)
 
 			clIds := make([]string, 0, tt.args.createCnt)
 			if tt.args.createCnt > 0 {
@@ -334,7 +332,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		lib2 := libs[1]
 		lib3 := libs[2]
 
-		projTarget := TestTcpTarget(t, conn, proj.PublicId, "add-existing")
+		projTarget := tcp.TestTarget(t, conn, proj.PublicId, "add-existing")
 		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId, lib2.PublicId})
 		require.NoError(err)
 		assert.Len(gotCredSources, 2)
@@ -352,9 +350,9 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		assert.Equal(0, delCount)
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		gotCredSources, err = fetchCredentialSources(context.Background(), rw, projTarget.PublicId)
+		_, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 		require.NoError(err)
-		assert.Len(gotCredSources, 2)
+		assert.Len(lookupCredSources, 2)
 	})
 }
 
@@ -364,7 +362,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -375,7 +373,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
-	setupFn := func(target Target) []CredentialSource {
+	setupFn := func(target target.Target) []target.CredentialSource {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		clIds := make([]string, 0, len(credLibs))
 		for _, cl := range credLibs {
@@ -394,7 +392,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	}
 	tests := []struct {
 		name             string
-		setup            func(Target) []CredentialSource
+		setup            func(target.Target) []target.CredentialSource
 		args             args
 		wantAffectedRows int
 		wantErr          bool
@@ -470,11 +468,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			target := TestTcpTarget(t, conn, proj.PublicId, tt.name)
+			tar := tcp.TestTarget(t, conn, proj.PublicId, tt.name)
 
-			var origCredSources []CredentialSource
+			var origCredSources []target.CredentialSource
 			if tt.setup != nil {
-				origCredSources = tt.setup(target)
+				origCredSources = tt.setup(tar)
 			}
 			if tt.args.addToOrigLibs {
 				origIds := make([]string, 0, len(origCredSources))
@@ -484,11 +482,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				tt.args.clIds = append(tt.args.clIds, origIds...)
 			}
 
-			origTarget, _, lookupCredSources, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			origTarget, _, lookupCredSources, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			require.NoError(err)
 			assert.Equal(origCredSources, lookupCredSources)
 
-			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
+			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), tar.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -514,7 +512,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
 
-			foundTarget, _, _, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

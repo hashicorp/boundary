@@ -1,4 +1,4 @@
-package target
+package tcp_test
 
 import (
 	"context"
@@ -10,24 +10,26 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestTcpTarget_Create(t *testing.T) {
+func TestTarget_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	type args struct {
 		scopeId string
-		opt     []Option
+		opt     []target.Option
 	}
 	tests := []struct {
 		name          string
 		args          args
-		want          *TcpTarget
+		want          *tcp.Target
 		wantErr       bool
 		wantIsErr     errors.Code
 		create        bool
@@ -43,15 +45,16 @@ func TestTcpTarget_Create(t *testing.T) {
 			name: "valid-proj-scope",
 			args: args{
 				scopeId: prj.PublicId,
-				opt:     []Option{WithName("valid-proj-scope")},
+				opt:     []target.Option{target.WithName("valid-proj-scope")},
 			},
-			want: func() *TcpTarget {
-				t := allocTcpTarget()
-				t.ScopeId = prj.PublicId
-				t.Name = "valid-proj-scope"
-				t.SessionMaxSeconds = uint32((8 * time.Hour).Seconds())
-				t.SessionConnectionLimit = 1
-				return &t
+			want: func() *tcp.Target {
+				t, _ := tcp.New(
+					prj.PublicId,
+					target.WithName("valid-proj-scope"),
+					target.WithSessionMaxSeconds(uint32((8 * time.Hour).Seconds())),
+					target.WithSessionConnectionLimit(1),
+				)
+				return t
 			}(),
 			create: true,
 		},
@@ -59,7 +62,7 @@ func TestTcpTarget_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewTcpTarget(tt.args.scopeId, tt.args.opt...)
+			got, err := tcp.New(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -68,22 +71,22 @@ func TestTcpTarget_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := newTcpTargetId()
+				id, err := db.NewPublicId(tcp.TargetPrefix)
 				require.NoError(err)
 				got.PublicId = id
 				err = db.New(conn).Create(context.Background(), got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return
-				} else {
-					assert.NoError(err)
 				}
+
+				assert.NoError(err)
 			}
 		})
 	}
 }
 
-func TestTcpTarget_Delete(t *testing.T) {
+func TestTarget_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -92,27 +95,27 @@ func TestTcpTarget_Delete(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		target          *TcpTarget
+		target          *tcp.Target
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
 			name:            "valid",
-			target:          TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId)),
+			target:          tcp.TestTarget(t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId)),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name: "bad-id",
-			target: func() *TcpTarget {
-				target := allocTcpTarget()
-				id, err := newTcpTargetId()
+			target: func() *tcp.Target {
+				tar, _ := tcp.New(proj.PublicId)
+
+				id, err := db.NewPublicId(tcp.TargetPrefix)
 				require.NoError(t, err)
-				target.PublicId = id
-				target.ScopeId = proj.PublicId
-				target.Name = testTargetName(t, proj.PublicId)
-				return &target
+				tar.PublicId = id
+				tar.Name = tcp.TestTargetName(t, proj.PublicId)
+				return tar
 			}(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
@@ -121,9 +124,9 @@ func TestTcpTarget_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteTarget := allocTcpTarget()
+			deleteTarget := tcp.NewTestTarget("")
 			deleteTarget.PublicId = tt.target.PublicId
-			deletedRows, err := rw.Delete(context.Background(), &deleteTarget)
+			deletedRows, err := rw.Delete(context.Background(), deleteTarget)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -134,18 +137,18 @@ func TestTcpTarget_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundTarget := allocTcpTarget()
+			foundTarget := tcp.NewTestTarget("")
 			foundTarget.PublicId = tt.target.PublicId
-			err = rw.LookupById(context.Background(), &foundTarget)
+			err = rw.LookupById(context.Background(), foundTarget)
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}
 }
 
-func TestTcpTarget_Update(t *testing.T) {
+func TestTarget_Update(t *testing.T) {
 	t.Parallel()
-	id := testId(t)
+	id := tcp.TestId(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -246,37 +249,36 @@ func TestTcpTarget_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
+				target := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
 				target.Name = tt.args.name
 				_, err := rw.Update(context.Background(), target, tt.args.fieldMaskPaths, tt.args.nullPaths)
 				require.NoError(err)
 			}
 
-			id := testId(t)
-			target := TestTcpTarget(t, conn, proj.PublicId, id, WithDescription(id))
+			id := tcp.TestId(t)
+			tar := tcp.TestTarget(t, conn, proj.PublicId, id, target.WithDescription(id))
 
-			updateTarget := allocTcpTarget()
-			updateTarget.PublicId = target.PublicId
-			updateTarget.ScopeId = tt.args.ScopeId
+			updateTarget := tcp.NewTestTarget(tt.args.ScopeId)
+			updateTarget.PublicId = tar.PublicId
 			updateTarget.Name = tt.args.name
 			updateTarget.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateTarget, tt.args.fieldMaskPaths, tt.args.nullPaths)
+			updatedRows, err := rw.Update(context.Background(), updateTarget, tt.args.fieldMaskPaths, tt.args.nullPaths)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(t, rw, target.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, tar.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
 				assert.Contains(err.Error(), "record not found")
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			assert.NotEqual(target.UpdateTime, updateTarget.UpdateTime)
-			foundTarget := allocTcpTarget()
-			foundTarget.PublicId = target.GetPublicId()
-			err = rw.LookupByPublicId(context.Background(), &foundTarget)
+			assert.NotEqual(tar.UpdateTime, updateTarget.UpdateTime)
+			foundTarget := tcp.NewTestTarget(tt.args.ScopeId)
+			foundTarget.PublicId = tar.GetPublicId()
+			err = rw.LookupByPublicId(context.Background(), foundTarget)
 			require.NoError(err)
 			assert.True(proto.Equal(updateTarget, foundTarget))
 			if len(tt.args.nullPaths) != 0 {
@@ -291,49 +293,49 @@ func TestTcpTarget_Update(t *testing.T) {
 	}
 	t.Run("update dup names in diff scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		id := testId(t)
+		id := tcp.TestId(t)
 		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		_ = TestTcpTarget(t, conn, proj2.PublicId, id, WithDescription(id))
-		projTarget := TestTcpTarget(t, conn, proj.PublicId, id)
+		_ = tcp.TestTarget(t, conn, proj2.PublicId, id, target.WithDescription(id))
+		projTarget := tcp.TestTarget(t, conn, proj.PublicId, id)
 		projTarget.Name = id
 		updatedRows, err := rw.Update(context.Background(), projTarget, []string{"Name"}, nil)
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 
-		foundTarget := allocTcpTarget()
+		foundTarget, _ := tcp.New(proj2.PublicId)
 		foundTarget.PublicId = projTarget.GetPublicId()
-		err = rw.LookupByPublicId(context.Background(), &foundTarget)
+		err = rw.LookupByPublicId(context.Background(), foundTarget)
 		require.NoError(err)
 		assert.Equal(id, projTarget.Name)
 	})
 }
 
-func TestTcpTarget_Clone(t *testing.T) {
+func TestTarget_Clone(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
-		cp := target.Clone()
-		assert.True(proto.Equal(cp.(*TcpTarget).TcpTarget, target.TcpTarget))
+		tar := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
+		cp := tar.Clone()
+		assert.True(proto.Equal(cp.(*tcp.Target).Target, tar.Target))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		target := TestTcpTarget(t, conn, proj.PublicId, testTargetName(t, proj.PublicId))
-		target2 := TestTcpTarget(t, conn, proj2.PublicId, testTargetName(t, proj2.PublicId))
+		target1 := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
+		target2 := tcp.TestTarget(t, conn, proj2.PublicId, tcp.TestTargetName(t, proj2.PublicId))
 
-		cp := target.Clone()
-		assert.True(!proto.Equal(cp.(*TcpTarget).TcpTarget, target2.TcpTarget))
+		cp := target1.Clone()
+		assert.True(!proto.Equal(cp.(*tcp.Target).Target, target2.Target))
 	})
 }
 
-func TestTcpTable_SetTableName(t *testing.T) {
+func TestTable_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultTcpTableName
+	defaultTableName := tcp.DefaultTableName
 	tests := []struct {
 		name      string
 		setNameTo string
@@ -353,30 +355,29 @@ func TestTcpTable_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocTcpTarget()
+			def, _ := tcp.New("testScope")
 			require.Equal(defaultTableName, def.TableName())
-			s := allocTcpTarget()
+			s, _ := tcp.New("testScope")
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})
 	}
 }
 
-func TestTcpTarget_oplog(t *testing.T) {
-	id := testId(t)
+func TestTarget_oplog(t *testing.T) {
+	id := tcp.TestId(t)
 	tests := []struct {
 		name   string
-		target *TcpTarget
+		target *tcp.Target
 		op     oplog.OpType
 		want   oplog.Metadata
 	}{
 		{
 			name: "simple",
-			target: func() *TcpTarget {
-				t := allocTcpTarget()
+			target: func() *tcp.Target {
+				t, _ := tcp.New(id)
 				t.PublicId = id
-				t.ScopeId = id
-				return &t
+				return t
 			}(),
 			op: oplog.OpType_OP_TYPE_CREATE,
 			want: oplog.Metadata{
@@ -390,7 +391,7 @@ func TestTcpTarget_oplog(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got := tt.target.oplog(tt.op)
+			got := tt.target.Oplog(tt.op)
 			assert.Equal(got, tt.want)
 		})
 	}

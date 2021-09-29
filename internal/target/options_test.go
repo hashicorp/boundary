@@ -11,104 +11,104 @@ func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithName", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithName("test"))
+		opts := GetOpts(WithName("test"))
 		testOpts := getDefaultOptions()
-		testOpts.withName = "test"
+		testOpts.WithName = "test"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithDescription", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithDescription("test desc"))
+		opts := GetOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
-		testOpts.withDescription = "test desc"
+		testOpts.WithDescription = "test desc"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default of 0
-		opts := getOpts()
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.withLimit = 0
+		testOpts.WithLimit = 0
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithLimit(-1))
+		opts = GetOpts(WithLimit(-1))
 		testOpts = getDefaultOptions()
-		testOpts.withLimit = -1
+		testOpts.WithLimit = -1
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithLimit(1))
+		opts = GetOpts(WithLimit(1))
 		testOpts = getDefaultOptions()
-		testOpts.withLimit = 1
+		testOpts.WithLimit = 1
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithDefaultPort", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default of 0
-		opts := getOpts()
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.withDefaultPort = 0
+		testOpts.WithDefaultPort = 0
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithDefaultPort(22))
+		opts = GetOpts(WithDefaultPort(22))
 		testOpts = getDefaultOptions()
-		testOpts.withDefaultPort = uint32(22)
+		testOpts.WithDefaultPort = uint32(22)
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithUserId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithUserId("testId"))
+		opts := GetOpts(WithUserId("testId"))
 		testOpts := getDefaultOptions()
-		testOpts.withUserId = "testId"
+		testOpts.WithUserId = "testId"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithScopeId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithScopeId("testId"))
+		opts := GetOpts(WithScopeId("testId"))
 		testOpts := getDefaultOptions()
-		testOpts.withScopeId = "testId"
+		testOpts.WithScopeId = "testId"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithScopeName", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithScopeName("testName"))
+		opts := GetOpts(WithScopeName("testName"))
 		testOpts := getDefaultOptions()
-		testOpts.withScopeName = "testName"
+		testOpts.WithScopeName = "testName"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithPublicId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithPublicId("testId"))
+		opts := GetOpts(WithPublicId("testId"))
 		testOpts := getDefaultOptions()
-		testOpts.withPublicId = "testId"
+		testOpts.WithPublicId = "testId"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithTargetType", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithTargetType(TcpTargetType))
+		opts := GetOpts(WithTargetType(TcpTargetType))
 		testOpts := getDefaultOptions()
 		target := TcpTargetType
-		testOpts.withTargetType = &target
+		testOpts.WithTargetType = &target
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithHostSources", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithHostSources([]string{"alice", "bob"}))
+		opts := GetOpts(WithHostSources([]string{"alice", "bob"}))
 		testOpts := getDefaultOptions()
-		testOpts.withHostSources = []string{"alice", "bob"}
+		testOpts.WithHostSources = []string{"alice", "bob"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithWorkerFilter", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithWorkerFilter(`"/foo" == "bar"`))
+		opts := GetOpts(WithWorkerFilter(`"/foo" == "bar"`))
 		testOpts := getDefaultOptions()
-		testOpts.withWorkerFilter = `"/foo" == "bar"`
+		testOpts.WithWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCredentialSources", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithCredentialSources([]string{"alice", "bob"}))
+		opts := GetOpts(WithCredentialSources([]string{"alice", "bob"}))
 		testOpts := getDefaultOptions()
-		testOpts.withCredentialSources = []string{"alice", "bob"}
+		testOpts.WithCredentialSources = []string{"alice", "bob"}
 		assert.Equal(opts, testOpts)
 	})
 }

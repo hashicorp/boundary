@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/target"
-	targetStore "github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/target/tcp"
+	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jackc/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -1314,8 +1315,8 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			cancelFk: func() cancelFk {
 				s := setupFn()
 
-				t := &target.TcpTarget{
-					TcpTarget: &targetStore.TcpTarget{
+				t := &tcp.Target{
+					Target: &tcpStore.Target{
 						PublicId: s.TargetId,
 					},
 				}

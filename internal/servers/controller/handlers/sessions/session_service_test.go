@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
@@ -57,7 +58,7 @@ func TestGetSession(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -86,7 +87,7 @@ func TestGetSession(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
@@ -174,7 +175,7 @@ func TestList_Self(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	// By default a user can read/cancel their own sessions.
 	session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -258,13 +259,13 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
+	tarOther := tcp.TestTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
@@ -298,7 +299,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 
@@ -333,7 +334,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 	}
@@ -469,7 +470,7 @@ func TestCancel(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -496,7 +497,7 @@ func TestCancel(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
