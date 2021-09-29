@@ -148,17 +148,19 @@ func TestGet_Plugin(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
-	}
 
 	name := "test"
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 	plg := hostplugin.TestPlugin(t, conn, name)
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, hc, map[string]plgpb.HostPluginServiceServer{
+	plgm := map[string]plgpb.HostPluginServiceServer{
 		plg.GetPublicId(): &plugin.TestPluginServer{},
-	}, plugin.WithPreferredEndpoints(prefEndpoints))
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, plgm)
+	}
+
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hs := plugin.TestSet(t, conn, kms, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
