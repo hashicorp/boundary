@@ -151,7 +151,7 @@ export default function HomePage() {
               },
               {
                 alt: 'SSH',
-                url: require('./img/logos/ssh.png?url'),
+                url: require('./img/logos/ssh.svg?url'),
                 width: 42,
               },
               {
