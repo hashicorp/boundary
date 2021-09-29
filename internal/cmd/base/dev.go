@@ -147,11 +147,10 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		pluginId, plg := opts.withHostPlugin()
 		b.DevLoopbackHostPluginId = pluginId
 		opts := []hostplugin.Option{
-			hostplugin.WithName("loopback"),
 			hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
 			hostplugin.WithPublicId(b.DevLoopbackHostPluginId),
 		}
-		if _, err = b.CreateHostPlugin(ctx, plg, opts...); err != nil {
+		if _, err = b.CreateHostPlugin(ctx, "loopback", plg, opts...); err != nil {
 			return err
 		}
 	}

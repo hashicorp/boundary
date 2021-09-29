@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"sync"
 
+	awsplg "github.com/hashicorp/boundary-plugin-host-aws/plugin"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
-	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
+	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -104,6 +106,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	// if _, err := conf.CreateHostPlugin(ctx, "azure", &azureplg.AzurePlugin{}, hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
+	// 	return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+	// }
+	if _, err := conf.CreateHostPlugin(ctx, "aws", &awsplg.AwsPlugin{}, hostplugin.WithDescription("Boundary provided host plugin for AWS.")); err != nil {
+		return nil, fmt.Errorf("error creating aws host plugin: %w", err)
+	}
 	if conf.HostPlugins == nil {
 		conf.HostPlugins = make(map[string]plugin.HostPluginServiceServer)
 	}
@@ -140,8 +148,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
-	c.PluginHostRepoFn = func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
+	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)

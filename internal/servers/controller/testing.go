@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -576,6 +577,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
+		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewLoopbackPlugin()))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}

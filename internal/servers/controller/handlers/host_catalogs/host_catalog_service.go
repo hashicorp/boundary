@@ -472,6 +472,9 @@ func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
+		if plg == nil {
+			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "plugin with provided name not found")
+		}
 		pluginId = plg.GetPublicId()
 	}
 	h, err := toStoragePluginCatalog(ctx, projId, pluginId, item)
