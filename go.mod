@@ -18,8 +18,10 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
+	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578
+	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210929210209-bb97249db88d
 	github.com/hashicorp/boundary/api v0.0.18
-	github.com/hashicorp/boundary/sdk v0.0.10
+	github.com/hashicorp/boundary/sdk v0.0.11-0.20210928201932-8b1ca4b0b8b9
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -54,7 +56,6 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.10.3
 	github.com/mattn/go-colorable v0.1.8
-	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-wordwrap v1.0.1
@@ -81,7 +82,6 @@ require (
 	google.golang.org/grpc v1.40.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )

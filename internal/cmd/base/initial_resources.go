@@ -587,7 +587,14 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	return tt, nil
 }
 
-func (b *Server) CreateHostPlugin(ctx context.Context, plg plgpb.HostPluginServiceServer, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+// CreateHostPlugin creates a host plugin in the database if not present.
+// It also registers the plugin in the shared map of running plugins.  Since
+// all boundary provided host plugins must have a name, a name is required
+// when calling CreateHostPlugin and will be used even if WithName is provided.
+func (b *Server) CreateHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceServer, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+	if name == "" {
+		return nil, fmt.Errorf("no name provided when creating plugin.")
+	}
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -619,10 +626,18 @@ func (b *Server) CreateHostPlugin(ctx context.Context, plg plgpb.HostPluginServi
 		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
 	}
 
-	plugin := hostplugin.NewPlugin(opt...)
-	plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
+	plugin, err := hpRepo.LookupPluginByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("error creating host plugin: %w", err)
+		return nil, fmt.Errorf("error looking up host plugin by name: %w", err)
+	}
+
+	if plugin == nil {
+		opt = append(opt, hostplugin.WithName(name))
+		plugin = hostplugin.NewPlugin(opt...)
+		plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating host plugin: %w", err)
+		}
 	}
 
 	if b.HostPlugins == nil {
