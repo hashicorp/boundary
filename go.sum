@@ -425,8 +425,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0/go.mod h1:qrJPVzv9YlhsrxJc3P/Q8
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578 h1:XrH7otQgHtqcYX1qbO10DypzjEBwYdtYcIEc9d1BG5w=
 github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578/go.mod h1:TbqGUjL8yDVqdoEHCiEPoE7lv5yfQRKxqPinfGUeC30=
-github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210928212334-0b468514ff2a h1:If4F1lrCpXVBCNt1r69sQm6Jf7A+UUhMNOw4LIgEZn8=
-github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210928212334-0b468514ff2a/go.mod h1:dtbUh5NNMbV9pZNncSNo3JPoG3zm9LeMBYz+lKVdv0c=
+github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210929210209-bb97249db88d h1:WPcdLfDLQVhejIbvSfNp3uV5lJ42eLktqKfUpj1NP4w=
+github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210929210209-bb97249db88d/go.mod h1:dtbUh5NNMbV9pZNncSNo3JPoG3zm9LeMBYz+lKVdv0c=
 github.com/hashicorp/cap v0.1.1 h1:GjO4+9+H0wv/89YoEsxeVc2jIizL19r5v5l2lpaH8Kg=
 github.com/hashicorp/cap v0.1.1/go.mod h1:VfBvK2ULRyqsuqAnjgZl7HJ7/CGMC7ro4H5eXiZuun8=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
