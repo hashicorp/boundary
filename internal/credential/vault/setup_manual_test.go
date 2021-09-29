@@ -3,6 +3,7 @@ package vault_test
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -22,10 +23,10 @@ import (
 )
 
 func TestSetupSleepyDevEnvironment(t *testing.T) {
-	// if os.Getenv("BOUNDARY_SLEEPY_TESTS") == "" {
-	// 	t.Skip("This test exists to make manual testing and debugging easier by setting up an environment to test against.\n" +
-	// 		"Set BOUNDARY_SLEEPY_TESTS to something non-zero to run the environment establishing test.")
-	// }
+	if os.Getenv("BOUNDARY_SLEEPY_TESTS") == "" {
+		t.Skip("This test exists to make manual testing and debugging easier by setting up an environment to test against.\n" +
+			"Set BOUNDARY_SLEEPY_TESTS to something non-zero to run the environment establishing test.")
+	}
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Info,
