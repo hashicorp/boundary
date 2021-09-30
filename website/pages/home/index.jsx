@@ -276,14 +276,8 @@ export default function HomePage() {
             {
               title: 'Dynamic service discovery',
               content:
-                'Automate service discovery and access configuration as workloads are deployed or changed.',
+                'Automate service discovery and access configuration as workloads are deployed or changed. Coming soon.',
               icon: require('./img/icons/layers.svg?url'),
-              link: {
-                type: 'inbound',
-                text: 'Learn more',
-                url:
-                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
-              },
             },
             {
               title: 'Infrastructure as code',
