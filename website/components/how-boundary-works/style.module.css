@@ -63,6 +63,7 @@
 
 .media {
   align-self: center;
+  justify-self: center;
   & img {
     max-width: 100%;
   }
