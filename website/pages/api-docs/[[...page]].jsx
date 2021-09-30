@@ -4,9 +4,8 @@ import OpenApiPage, {
   getPropsForPage,
 } from '@hashicorp/react-open-api-page'
 /* Used server-side only */
-import fs from 'fs'
 import path from 'path'
-import parseSwagger from '@hashicorp/react-open-api-page/parse-swagger'
+import { processSchemaFile } from '@hashicorp/react-open-api-page/process-schema'
 
 const targetFile = '../internal/gen/controller.swagger.json'
 const pathFromRoot = 'api-docs'
@@ -24,14 +23,14 @@ export default function OpenApiDocsPage(props) {
 
 export async function getStaticPaths() {
   const swaggerFile = path.join(process.cwd(), targetFile)
-  const schema = await parseSwagger(fs.readFileSync(swaggerFile))
+  const schema = await processSchemaFile(swaggerFile)
   const paths = getPathsFromSchema(schema)
   return { paths, fallback: false }
 }
 
 export async function getStaticProps({ params }) {
   const swaggerFile = path.join(process.cwd(), targetFile)
-  const schema = await parseSwagger(fs.readFileSync(swaggerFile))
+  const schema = await processSchemaFile(swaggerFile)
   const props = getPropsForPage(schema, params)
   return { props }
 }
