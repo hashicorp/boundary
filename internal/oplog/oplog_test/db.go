@@ -1,7 +1,7 @@
 // Package oplog_test provides some gorm helper funcs for testing oplog database integrations
 package oplog_test
 
-import "github.com/jinzhu/gorm"
+import "gorm.io/gorm"
 
 const (
 	defaultTestUserTableName   = "oplog_test_user"
@@ -18,9 +18,10 @@ func Init(db *gorm.DB) {
 
 // Reinit will use gorm to drop then init tables for test models
 func Reinit(db *gorm.DB) {
-	db.DropTableIfExists(&TestUser{})
-	db.DropTableIfExists(&TestCar{})
-	db.DropTableIfExists(&TestRental{})
+	// Migrator.DropTable is actually "drop table <name> if exists"
+	_ = db.Migrator().DropTable(&TestUser{})
+	_ = db.Migrator().DropTable(&TestCar{})
+	_ = db.Migrator().DropTable(&TestRental{})
 	Init(db)
 }
 

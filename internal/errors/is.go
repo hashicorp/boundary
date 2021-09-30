@@ -3,7 +3,7 @@ package errors
 import (
 	"errors"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 )
 
 // IsUniqueError returns a boolean indicating whether the error is known to
@@ -17,9 +17,9 @@ func IsUniqueError(err error) bool {
 		return true
 	}
 
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code == "23505" { // unique_violation
+	var pgxError *pgconn.PgError
+	if errors.As(err, &pgxError) {
+		if pgxError.Code == "23505" { // unique_violation
 			return true
 		}
 	}
@@ -38,9 +38,9 @@ func IsCheckConstraintError(err error) bool {
 		return true
 	}
 
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code == "23514" { // check_violation
+	var pgxError *pgconn.PgError
+	if errors.As(err, &pgxError) {
+		if pgxError.Code == "23514" { // check_violation
 			return true
 		}
 	}
@@ -59,9 +59,9 @@ func IsNotNullError(err error) bool {
 		return true
 	}
 
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code == "23502" { // not_null_violation
+	var pgxError *pgconn.PgError
+	if errors.As(err, &pgxError) {
+		if pgxError.Code == "23502" { // not_null_violation
 			return true
 		}
 	}
@@ -72,9 +72,9 @@ func IsNotNullError(err error) bool {
 // IsMissingTableError returns a boolean indicating whether the error is known
 // to report a undefined/missing table violation.
 func IsMissingTableError(err error) bool {
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code == "42P01" {
+	var pgxError *pgconn.PgError
+	if errors.As(err, &pgxError) {
+		if pgxError.Code == "42P01" {
 			return true
 		}
 	}

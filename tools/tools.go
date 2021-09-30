@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // This file ensures tool dependencies are kept in sync.  This is the

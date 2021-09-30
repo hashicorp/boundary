@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func Test_intersection(t *testing.T) {

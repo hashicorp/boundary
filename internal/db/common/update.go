@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // UpdateFields will create a map[string]interface of the update values to be

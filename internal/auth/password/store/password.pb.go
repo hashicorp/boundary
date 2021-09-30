@@ -56,8 +56,8 @@ type AuthMethod struct {
 	MinPasswordLength uint32 `protobuf:"varint,10,opt,name=min_password_length,json=minPasswordLength,proto3" json:"min_password_length,omitempty" gorm:"default:null"`
 	// is_primary_auth_method is a read-only output field which indicates if the
 	// auth method is set as the scope's primary auth method.
-	// @inject_tag: `gorm:"-"`
-	IsPrimaryAuthMethod bool `protobuf:"varint,20,opt,name=is_primary_auth_method,json=isPrimaryAuthMethod,proto3" json:"is_primary_auth_method,omitempty" gorm:"-"`
+	// @inject_tag: `gorm:"->"`
+	IsPrimaryAuthMethod bool `protobuf:"varint,20,opt,name=is_primary_auth_method,json=isPrimaryAuthMethod,proto3" json:"is_primary_auth_method,omitempty" gorm:"->"`
 }
 
 func (x *AuthMethod) Reset() {

@@ -199,7 +199,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -222,7 +222,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -245,7 +245,7 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -307,7 +307,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -327,7 +327,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/ListSessions", runtime.WithHTTPPathPattern("/v1/sessions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -347,7 +347,7 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSession", runtime.WithHTTPPathPattern("/v1/sessions/{id}:cancel"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

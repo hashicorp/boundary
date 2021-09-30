@@ -16,9 +16,9 @@ with not_active as (
 	where 
 		s.public_id = ss.session_id and
 		ss.state = 'pending' and 
-		ss.session_id = $1 and 
-		s.version = $2 and
-		s.public_id not in(select session_id from session_state where session_id = $1 and state = 'active') 
+		ss.session_id = @session_id and 
+		s.version = @version and
+		s.public_id not in(select session_id from session_state where session_id = @session_id and state = 'active') 
 )
 select * from not_active;
 `
@@ -29,11 +29,11 @@ select * from not_active;
 	updateSessionState = `
 insert into session_state(session_id, state) 
 select
-	$1::text, $2 
+	@session_id, @status 
 from
 	session s
 where 
-	s.public_id = $1::text and
+	s.public_id = @session_id and
 	s.public_id not in (
 		select 
 			session_id 
@@ -42,8 +42,8 @@ where
 		where 
 			-- already in the updated state
 			(
-				session_id = $1::text and 
-				state = $2
+				session_id = @session_id and 
+				state = @status
 			) or
 			-- already terminated
 			session_id in (
@@ -52,7 +52,7 @@ where
 				from 
 					session_state 
 				where 
-					session_id = $1::text and 
+					session_id = @session_id and 
 					state = 'terminated'
 			)
 	) 
@@ -65,7 +65,7 @@ with terminated as (
 	from 
 		session s
 	where 
-		s.version = $2  and
+		s.version = @version  and
 		s.public_id in (
 			-- sessions without any connections
 			select s.public_id 
@@ -74,7 +74,7 @@ with terminated as (
 			left join session_connection sc on sc.session_id = s.public_id 
 			where 
 				sc.session_id is null
-				and s.public_id = $1
+				and s.public_id = @session_id
 			union
 			-- sessions where all connections are closed
 			select s.public_id 
@@ -86,7 +86,7 @@ with terminated as (
 				s.public_id = c.session_id and
 				c.public_id = cs.connection_id and
 				cs.state = 'closed' and 
-				s.public_id = $1
+				s.public_id = @session_id
 		) 
 )
 select * from terminated;
@@ -99,9 +99,9 @@ insert into session_connection (
 )
 with active_session as ( 
 	select 
-		$1 as session_id,
-		$2 as public_id,
-		$3 as server_id
+		@session_id as session_id,
+		@public_id as public_id,
+		@worker_id as server_id
 	from
 		session s
 	where
@@ -111,7 +111,7 @@ with active_session as (
 		(
 			s.connection_limit = -1
 				or 
-			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = $1)
+			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id)
 		) and
 		-- check that there's a state of active
 		s.public_id in (
@@ -120,7 +120,7 @@ with active_session as (
 			from 
 				session_state ss
 			where 
-				ss.session_id = $1 and 
+				ss.session_id = @session_id and 
 				ss.state = 'active' and
 				-- if there's no end_time, then this is the current state.
 				ss.end_time is null 
@@ -136,7 +136,7 @@ session_connection_count(current_connection_count) as (
 	from 
 		session_connection sc
 	where
-		sc.session_id = $1
+		sc.session_id = @session_id
 ),
 session_connection_limit(expiration_time, connection_limit) as (
 	select 
@@ -145,7 +145,7 @@ session_connection_limit(expiration_time, connection_limit) as (
 	from
 		session s
 	where 
-		s.public_id = $1
+		s.public_id = @session_id
 )
 select expiration_time, connection_limit, current_connection_count 
 from  
@@ -269,7 +269,7 @@ with
       from session_connection
     where
       -- Related to the worker that just reported to us
-      server_id = $1
+      server_id = ?
         and
       -- These are connection IDs that just got reported to us by the given
       -- worker, so they should not be considered closed.
@@ -302,7 +302,7 @@ with
    dead_servers (server_id, last_update_time) as (
          select private_id, update_time
            from server
-          where update_time < wt_sub_seconds_from_now($1)
+          where update_time < wt_sub_seconds_from_now(?)
    ),
    closed_connections (connection_id, server_id) as (
          update session_connection

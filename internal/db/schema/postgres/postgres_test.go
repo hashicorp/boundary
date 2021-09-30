@@ -28,7 +28,7 @@
 
 package postgres
 
-// error codes https://github.com/lib/pq/blob/master/error.go
+// errors: https://pkg.go.dev/github.com/jackc/pgconn#PgError
 
 import (
 	"bytes"

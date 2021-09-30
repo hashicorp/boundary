@@ -2,9 +2,9 @@ package schema
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,7 +53,7 @@ func Test_MigrateStore_WithMigrationStates(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(err)
 
 	// migration to the prior migration (before the one we want to test)

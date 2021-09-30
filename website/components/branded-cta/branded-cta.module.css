@@ -1,20 +1,16 @@
 .brandedCta {
   padding: 88px 0;
+  background-image: url('/img/cta-bg.svg');
   background-color: var(--boundary-secondary);
-  background-image: url('./img/bg-pattern.svg');
-  background-position: bottom right;
+  background-position: bottom right -350px;
   background-repeat: no-repeat;
 
-  @media (--small) {
-    background-position: bottom 0 right -130px;
+  @media (--medium-up) {
+    background-position: bottom right -250px;
   }
 
-  @media (438px <= width < 600px) {
-    background-position: bottom 0 right -260px;
-  }
-
-  @media (width < 438px) {
-    background-position: bottom 0 right -170px;
+  @media (--large) {
+    background-position: bottom right -150px;
   }
 }
 

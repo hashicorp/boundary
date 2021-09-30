@@ -6,6 +6,10 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+// tmp use of local clone as we understand any required upstream PRs to
+// compatibility.
+replace gorm.io/gorm => github.com/hashicorp/gorm v0.0.2
+
 require (
 	github.com/armon/go-metrics v0.3.9
 	github.com/bufbuild/buf v0.37.0
@@ -18,13 +22,13 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
-	github.com/hashicorp/boundary/api v0.0.18
-	github.com/hashicorp/boundary/sdk v0.0.10
+	github.com/hashicorp/boundary/api v0.0.19
+	github.com/hashicorp/boundary/sdk v0.0.11
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4-0.20210928205053-80364fba97eb
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
@@ -45,16 +49,14 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.1.1
+	github.com/hashicorp/vault/sdk v0.2.1
 	github.com/iancoleman/strcase v0.2.0
+	github.com/jackc/pgconn v1.10.0
+	github.com/jackc/pgx/v4 v4.11.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
-	github.com/jinzhu/gorm v1.9.16
-	github.com/jinzhu/now v1.1.1 // indirect
-	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.10.3
 	github.com/mattn/go-colorable v0.1.8
-	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-wordwrap v1.0.1
@@ -80,7 +82,8 @@ require (
 	google.golang.org/grpc v1.40.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gorm.io/driver/postgres v1.1.0
+	gorm.io/gorm v1.21.14
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )

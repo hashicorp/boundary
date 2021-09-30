@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -827,6 +828,17 @@ func TestUpdate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = version + 1
 			}
+			if tc.res != nil {
+				sort.Slice(tc.res.GetItem().HostIds, func(i, j int) bool {
+					return tc.res.GetItem().HostIds[i] < tc.res.GetItem().HostIds[j]
+				})
+			}
+			if got != nil && got.Item != nil {
+				sort.Slice(got.GetItem().HostIds, func(i, j int) bool {
+					return got.GetItem().HostIds[i] < got.GetItem().HostIds[j]
+				})
+			}
+
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}

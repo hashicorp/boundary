@@ -37,7 +37,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
 )
@@ -119,7 +118,7 @@ type Server struct {
 	DatabaseMaxOpenConnections int
 	DevDatabaseCleanupFunc     func() error
 
-	Database *gorm.DB
+	Database *db.DB
 
 	// StatusGracePeriodDuration represents the period of time (as a
 	// duration) that the controller will wait before marking
@@ -547,21 +546,22 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
-func (b *Server) ConnectToDatabase(dialect string) error {
-	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
+func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
+	dbType, err := db.StringToDbType(dialect)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-	if b.DatabaseMaxOpenConnections == 1 {
-		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
-	} else {
-		dbase.DB().SetMaxOpenConns(b.DatabaseMaxOpenConnections)
+	opts := []db.Option{
+		db.WithMaxOpenConnections(b.DatabaseMaxOpenConnections),
+	}
+	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
+		opts = append(opts, db.WithGormFormatter(b.Logger))
+	}
+	dbase, err := db.Open(dbType, b.DatabaseUrl, opts...)
+	if err != nil {
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
 	b.Database = dbase
-	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
-		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-		b.Database.SetLogger(db.GetGormLogger(b.Logger))
-	}
 	return nil
 }
 
@@ -600,9 +600,11 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	return nil
 }
 
-func (b *Server) DestroyDevDatabase() error {
+func (b *Server) DestroyDevDatabase(ctx context.Context) error {
 	if b.Database != nil {
-		b.Database.Close()
+		if err := b.Database.Close(ctx); err != nil {
+			return err
+		}
 	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()

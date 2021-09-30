@@ -47,7 +47,8 @@ type Server struct {
 	// Last time there was an update
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	// Tags for workers
-	Tags map[string]*TagValues `protobuf:"bytes,80,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// @inject_tag: `gorm:"-"`
+	Tags map[string]*TagValues `protobuf:"bytes,80,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3" gorm:"-"`
 }
 
 func (x *Server) Reset() {

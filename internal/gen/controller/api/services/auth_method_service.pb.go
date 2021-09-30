@@ -873,14 +873,14 @@ type AuthenticateRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the Auth Method in the system that should be used for authentication.
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser.
 	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty"`
 	// Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
 	Attributes *structpb.Struct `protobuf:"bytes,4,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	// The command to perform.
-	Command string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
+	Command string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *AuthenticateRequest) Reset() {
@@ -951,7 +951,7 @@ type AuthenticateResponse struct {
 	// Valid keys and values depend on the type of Auth Method as well as the command.
 	Attributes *structpb.Struct `protobuf:"bytes,4,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	// The command that was performed.
-	Command string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
+	Command string `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *AuthenticateResponse) Reset() {

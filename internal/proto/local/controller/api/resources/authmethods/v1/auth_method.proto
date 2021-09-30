@@ -13,42 +13,43 @@ import "controller/custom_options/v1/options.proto";
 // AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
   // Output only. The ID of the Auth Method.
-  string id = 10;
+  string id = 10;  // @gotags: `class:"public"`
 
   // The ID of the Scope of which this Auth Method is a part.
-  string scope_id = 20 [json_name = "scope_id"];
+  string scope_id = 20 [json_name = "scope_id"];  // @gotags: `class:"public"`
 
   // Output only. Scope information for this Auth method.
-  resources.scopes.v1.ScopeInfo scope = 30;
+  resources.scopes.v1.ScopeInfo scope = 30;  // @gotags: `class:"public"`
 
   // Optional name for identification purposes.
-  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "Name" }];
+  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "Name" }];  // @gotags: `class:"public"`
 
   // Optional user-set description for identification purposes.
-  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "Description" }];
+  google.protobuf.StringValue description = 50
+      [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "Description" }];  // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"];
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"];  // @gotags: `class:"public"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"];
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"];  // @gotags: `class:"public"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 80;
+  uint32 version = 80;  // @gotags: `class:"public"`
 
   // The Auth Method type.
-  string type = 90;
+  string type = 90;  // @gotags: `class:"public"`
 
   // The attributes that are applicable for the specific Auth Method type.
   google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
 
   // Output only. Whether this auth method is the primary auth method for it's scope.
   // To change this value update the primary_auth_method_id field on the scope.
-  bool is_primary = 110 [json_name = "is_primary"];
+  bool is_primary = 110 [json_name = "is_primary"];  // @gotags: `class:"public"`
 
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"];
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"];  // @gotags: `class:"public"`
 
   // Output only. The authorized actions for the scope's collections.
   map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];

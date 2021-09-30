@@ -146,6 +146,7 @@ func TestTcpTarget_Delete(t *testing.T) {
 func TestTcpTarget_Update(t *testing.T) {
 	t.Parallel()
 	id := testId(t)
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -279,7 +280,9 @@ func TestTcpTarget_Update(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(updateTarget, foundTarget))
 			if len(tt.args.nullPaths) != 0 {
-				dbassert := dbassert.New(t, conn.DB())
+				underlyingDB, err := conn.SqlDB(ctx)
+				require.NoError(err)
+				dbassert := dbassert.New(t, underlyingDB)
 				for _, f := range tt.args.nullPaths {
 					dbassert.IsNull(&foundTarget, f)
 				}

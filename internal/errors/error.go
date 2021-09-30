@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 )
 
 // Op represents an operation (package.function).
@@ -192,29 +192,29 @@ func Convert(e error) *Err {
 	if err, ok := e.(*Err); ok {
 		return err
 	}
-	var pqError *pq.Error
-	if As(e, &pqError) {
-		if pqError.Code.Class() == "23" { // class of integrity constraint violations
-			switch pqError.Code {
+	var pgxError *pgconn.PgError
+	if As(e, &pgxError) {
+		if pgxError.Code[0:2] == "23" { // class of integrity constraint violations
+			switch pgxError.Code {
 			case "23505": // unique_violation
-				return E(ctx, WithoutEvent(), WithMsg(pqError.Message), WithWrap(E(ctx, WithoutEvent(), WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
+				return E(ctx, WithoutEvent(), WithMsg(pgxError.Message), WithWrap(E(ctx, WithoutEvent(), WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
 			case "23502": // not_null_violation
-				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
+				msg := fmt.Sprintf("%s must not be empty", pgxError.ColumnName)
 				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
 			case "23514": // check_violation
-				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
+				msg := fmt.Sprintf("%s constraint failed", pgxError.ConstraintName)
 				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
 			default:
-				return E(ctx, WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
+				return E(ctx, WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pgxError.Message)).(*Err)
 			}
 		}
-		switch pqError.Code {
+		switch pgxError.Code {
 		case "42P01":
-			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pgxError.Message)).(*Err)
 		case "42703":
-			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":
-			return E(ctx, WithoutEvent(), WithCode(Exception), WithMsg(pqError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(Exception), WithMsg(pgxError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

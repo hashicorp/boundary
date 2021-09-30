@@ -5,9 +5,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	dbassert "github.com/hashicorp/dbassert/gorm"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	_ "gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // Test_GormWriterCreate provides unit tests for GormWriter Create
@@ -290,7 +291,10 @@ func TestGormWriter_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require, dbassert := assert.New(t), require.New(t), dbassert.New(t, db.DB(), "postgres")
+			assert, require := assert.New(t), require.New(t)
+			underlyingDB, err := db.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB, db.Dialector.Name())
 
 			w := &GormWriter{
 				Tx: tt.Tx,
@@ -299,7 +303,7 @@ func TestGormWriter_Update(t *testing.T) {
 			u.Name = tt.args.user.Name
 			u.Email = tt.args.user.Email
 			u.PhoneNumber = tt.args.user.PhoneNumber
-			err := w.Update(tt.args.user, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
+			err = w.Update(u, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
 			if tt.wantErr {
 				require.Error(err)
 				return

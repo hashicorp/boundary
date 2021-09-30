@@ -108,8 +108,8 @@ type JobRun struct {
 	unknownFields protoimpl.UnknownFields
 
 	// private_id is used to access the job run but not intended to be available via the API
-	// @inject_tag: `gorm:"primary_key"`
-	PrivateId string `protobuf:"bytes,1,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty" gorm:"primary_key"`
+	// @inject_tag: `gorm:"primary_key;default:null"`
+	PrivateId string `protobuf:"bytes,1,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty" gorm:"primary_key;default:null"`
 	// The job_plugin_id is the id of the plugin that owns the job.
 	// @inject_tag: `gorm:"not_null"`
 	JobPluginId string `protobuf:"bytes,2,opt,name=job_plugin_id,json=jobPluginId,proto3" json:"job_plugin_id,omitempty" gorm:"not_null"`

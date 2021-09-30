@@ -521,7 +521,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/GetHostSet")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/GetHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -544,7 +544,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/ListHostSets")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/ListHostSets", runtime.WithHTTPPathPattern("/v1/host-sets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -567,7 +567,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/CreateHostSet")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/CreateHostSet", runtime.WithHTTPPathPattern("/v1/host-sets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -590,7 +590,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/UpdateHostSet")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/UpdateHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -613,7 +613,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/DeleteHostSet")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/DeleteHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -636,7 +636,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/AddHostSetHosts")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/AddHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:add-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -659,7 +659,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/SetHostSetHosts")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/SetHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:set-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -682,7 +682,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/RemoveHostSetHosts")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/RemoveHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:remove-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -744,7 +744,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/GetHostSet")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/GetHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -764,7 +764,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/ListHostSets")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/ListHostSets", runtime.WithHTTPPathPattern("/v1/host-sets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -784,7 +784,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/CreateHostSet")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/CreateHostSet", runtime.WithHTTPPathPattern("/v1/host-sets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -804,7 +804,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/UpdateHostSet")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/UpdateHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -824,7 +824,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/DeleteHostSet")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/DeleteHostSet", runtime.WithHTTPPathPattern("/v1/host-sets/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -844,7 +844,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/AddHostSetHosts")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/AddHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:add-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -864,7 +864,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/SetHostSetHosts")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/SetHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:set-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -884,7 +884,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/RemoveHostSetHosts")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.HostSetService/RemoveHostSetHosts", runtime.WithHTTPPathPattern("/v1/host-sets/{id}:remove-hosts"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

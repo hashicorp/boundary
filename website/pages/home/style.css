@@ -21,10 +21,24 @@
     }
   }
 
+  & .why-boundary {
+    padding-top: 150px;
+    padding-bottom: 130px;
+    background-color: var(--boundary-secondary);
+  }
+
+  & .how-boundary-works {
+    background-image: linear-gradient(
+      to bottom,
+      var(--boundary-secondary) 40%,
+      var(--white) 40%
+    );
+  }
+
   & .use-cases-section {
     padding-top: 128px;
     padding-bottom: 128px;
-    background-color: var(--gray-6);
+    background-color: #f9f9fa;
 
     @media (max-width: 800px) {
       padding-top: 88px;
