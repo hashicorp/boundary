@@ -197,7 +197,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, plg, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
+	hs, hosts, plg, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
 	}
 
-	item, err := toProto(ctx, hs, nil, outputOpts...)
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -444,53 +444,66 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 	return hs, hl, plg, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (host.Set, *plugins.PluginInfo, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (host.Set, []host.Host, *plugins.PluginInfo, error) {
 	const op = "host_sets.(Service).createInRepo"
 	if item == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var hSet host.Set
+	var hosts []host.Host
 	var plg *plugins.PluginInfo
 	switch host.SubtypeFromId(catalogId) {
 	case static.Subtype:
 		h, err := toStorageStaticSet(ctx, catalogId, item)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		repo, err := s.staticRepoFn()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		out, err := repo.CreateSet(ctx, scopeId, h)
 		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
 		}
 		if out == nil {
-			return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
+			return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
 		}
 		hSet = out
 	case plugin.Subtype:
-		h, err := toStoragePluginSet(ctx, catalogId, item)
+		set, err := toStoragePluginSet(ctx, catalogId, item)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		repo, err := s.pluginRepoFn()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
-		out, hsplg, err := repo.CreateSet(ctx, scopeId, h)
+		// Pre-flight to check filter, and cache hosts
+		hostIds, err := repo.FetchHostsWithGivenSet(ctx, set)
 		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to validate filter prior to creating host set"))
+		}
+		out, _, err := repo.CreateSet(ctx, scopeId, set)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
 		}
 		if out == nil {
-			return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
+			return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
+		}
+		for _, h := range hostIds {
+			hosts = append(hosts, &plugin.Host{
+				Host: &plugstore.Host{
+					PublicId:  h,
+					CatalogId: out.GetCatalogId(),
+				},
+			})
 		}
 		hSet = out
-		plg = toPluginInfo(hsplg)
 	default:
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unrecognized catalog type")
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unrecognized catalog type")
 	}
-	return hSet, plg, nil
+	return hSet, hosts, plg, nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, error) {

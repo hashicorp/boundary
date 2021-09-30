@@ -264,8 +264,9 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
 	hc := &pb.HostCatalog{
-		Id:      in.GetPublicId(),
-		ScopeId: in.GetScopeId(),
+		Id:       in.GetPublicId(),
+		ScopeId:  in.GetScopeId(),
+		PluginId: in.GetPluginId(),
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}

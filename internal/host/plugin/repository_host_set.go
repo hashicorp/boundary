@@ -186,51 +186,74 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 	var hostIdsToReturn []string
 
 	if plg != nil && opts.WithSetMembers {
-		cat, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
+		hostIdsToReturn, err = r.FetchHostsWithGivenSet(ctx, setToReturn)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
-		plgCat, err := toPluginCatalog(ctx, cat)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	return setToReturn, hostIdsToReturn, plg, nil
+}
+
+// FetchHostsWithGivenSet will do a ListHosts on a plugin using the provided set
+// information. It doesn't look up the info from the database; this allows doing
+// a dry-run before accepting a host set as valid. hostSet must contain a valid
+// host catalog ID. Returns a set of host IDs.
+func (r *Repository) FetchHostsWithGivenSet(ctx context.Context, hostSet *HostSet) ([]string, error) {
+	const op = "plugin.(Repository).FetchHostsWithGivenSet"
+	if hostSet == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no host set provided")
+	}
+	if hostSet.GetCatalogId() == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog ID provided")
+	}
+
+	var hostIdsToReturn []string
+
+	cat, err := r.getCatalog(ctx, hostSet.GetCatalogId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plgCat, err := toPluginCatalog(ctx, cat)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	persisted, err := r.getPersistedDataForCatalog(ctx, cat)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plgSet, err := toPluginSet(ctx, hostSet)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	plgClient, ok := r.plugins[plgCat.GetPluginId()]
+	if !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plgCat.GetPluginId()))
+	}
+	resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
+		Catalog:   plgCat,
+		Sets:      []*hspb.HostSet{plgSet},
+		Persisted: persisted,
+	})
+	switch {
+	case err != nil:
+		// If it's just not implemented, e.g. for tests, don't error out, return what we have
+		if status.Code(err) != codes.Unimplemented {
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		persisted, err := r.getPersistedDataForCatalog(ctx, cat)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		plgSet, err := toPluginSet(ctx, setToReturn)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		plgClient, ok := r.plugins[plg.GetPublicId()]
-		if !ok {
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
-		}
-		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
-			Catalog: plgCat,
-			Sets: []*hspb.HostSet{plgSet},
-			Persisted: persisted,
-		})
-		switch {
-		case err != nil:
-			// If it's just not implemented, e.g. for tests, don't error out, return what we have
-			if status.Code(err) != codes.Unimplemented {
-				return nil, nil, nil, errors.Wrap(ctx, err, op)
+	case resp != nil:
+		for _, respHost := range resp.GetHosts() {
+			hostId, err := newHostId(ctx, hostSet.GetCatalogId(), respHost.GetExternalId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
 			}
-		case resp != nil:
-			for _, respHost := range resp.GetHosts() {
-				hostId, err := newHostId(ctx, setToReturn.GetCatalogId(), respHost.GetExternalId())
-				if err != nil {
-					return nil, nil, nil, errors.Wrap(ctx, err, op)
-				}
-				hostIdsToReturn = append(hostIdsToReturn, hostId)
-			}
+			hostIdsToReturn = append(hostIdsToReturn, hostId)
 		}
 	}
 
 	sort.Strings(hostIdsToReturn)
 
-	return setToReturn, hostIdsToReturn, plg, nil
+	return hostIdsToReturn, nil
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
