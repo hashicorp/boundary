@@ -2,11 +2,11 @@ package migration
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -38,7 +38,7 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		t.Cleanup(func() {
 			require.NoError(c())
 		})
-		d, err := sql.Open(dialect, u)
+		d, err := common.SqlOpen(dialect, u)
 		require.NoError(err)
 
 		// migration to the prior migration (before the one we want to test)

@@ -1,10 +1,10 @@
 package dbtest_test
 
 import (
-	"database/sql"
 	"errors"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +56,7 @@ func TestStartUsingTemplate(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 
-				db, err := sql.Open(tt.dialect, u)
+				db, err := common.SqlOpen(tt.dialect, u)
 				require.NoError(t, err)
 				require.NoError(t, db.Ping())
 				db.Close()
@@ -64,7 +64,7 @@ func TestStartUsingTemplate(t *testing.T) {
 				require.NoError(t, c())
 
 				// ensure that database is gone after calling c
-				db, _ = sql.Open(tt.dialect, u)
+				db, _ = common.SqlOpen(tt.dialect, u)
 				require.Error(t, db.Ping())
 			}
 		})

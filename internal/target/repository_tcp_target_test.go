@@ -219,6 +219,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 
 func TestRepository_UpdateTcpTarget(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -491,7 +492,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			foundTarget, _, _, err := repo.LookupTarget(context.Background(), target.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*TcpTarget)), foundTarget.((*TcpTarget))))
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.description == "" {

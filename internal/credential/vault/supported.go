@@ -5,7 +5,6 @@ package vault
 
 import (
 	"crypto/tls"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,8 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 )
@@ -224,7 +225,7 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *Test
 	dburl := fmt.Sprintf(dbUrlTemplate, "postgres", "password")
 	err = pool.Retry(func() error {
 		var err error
-		db, err := sql.Open("postgres", dburl)
+		db, err := common.SqlOpen("postgres", dburl)
 		if err != nil {
 			return err
 		}
@@ -244,7 +245,7 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *Test
 		grantClosedRole = `grant select, insert, update, delete on boundary_closed to closed_role`
 	)
 
-	db, err := sql.Open("postgres", dburl)
+	db, err := common.SqlOpen("postgres", dburl)
 	require.NoError(err)
 	defer db.Close()
 

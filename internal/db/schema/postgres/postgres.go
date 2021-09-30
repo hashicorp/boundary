@@ -34,12 +34,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-multierror"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 )
 
 // schemaAccessLockId is a Lock key used to ensure a single boundary binary is operating
@@ -232,14 +231,12 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 		if rollbackErr := rollback(); rollbackErr != nil {
 			err = multierror.Append(err, rollbackErr)
 		}
-		if pgErr, ok := err.(*pq.Error); ok {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
 			var line uint
 			var col uint
 			var lineColOK bool
-			if pgErr.Position != "" {
-				if pos, err := strconv.ParseUint(pgErr.Position, 10, 64); err == nil {
-					line, col, lineColOK = computeLineFromPos(query, int(pos))
-				}
+			if pgErr.Position != 0 {
+				line, col, lineColOK = computeLineFromPos(query, int(pgErr.Position))
 			}
 			message := "migration failed"
 			if lineColOK {
@@ -308,8 +305,7 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 		defer func() { p.tx = nil }()
 		return tx.Rollback()
 	}
-
-	query := `truncate ` + pq.QuoteIdentifier(defaultMigrationsTable)
+	query := `truncate ` + quoteIdentifier(defaultMigrationsTable)
 	if _, err := tx.ExecContext(ctx, query); err != nil {
 		if errRollback := rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
@@ -321,7 +317,7 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 	// empty schema Version for failed down migration on the first migration
 	// See: https://github.com/golang-migrate/migrate/issues/330
 	if version >= 0 || (version == nilVersion && dirty) {
-		query = `insert into ` + pq.QuoteIdentifier(defaultMigrationsTable) +
+		query = `insert into ` + quoteIdentifier(defaultMigrationsTable) +
 			` (version, dirty) values ($1, $2)`
 		if _, err := tx.ExecContext(ctx, query, version, dirty); err != nil {
 			if errRollback := rollback(); errRollback != nil {
@@ -368,7 +364,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 		return nilVersion, previouslyRan, dirty, errors.New(ctx, errors.MigrationIntegrity, op, "both old and new migration tables exist")
 	}
 
-	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName)
+	query := `select version, dirty from ` + quoteIdentifier(tableName)
 	results, err := p.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nilVersion, previouslyRan, dirty, errors.Wrap(ctx, err, op)
@@ -420,7 +416,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	if len(tableNames) > 0 {
 		// delete one by one ...
 		for _, t := range tableNames {
-			query = `drop table if exists ` + pq.QuoteIdentifier(t) + ` cascade`
+			query = `drop table if exists ` + quoteIdentifier(t) + ` cascade`
 			if _, err := p.conn.ExecContext(ctx, query); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -464,7 +460,7 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (version bigint primary key, dirty boolean not null)`
+	createStmt := `create table if not exists ` + quoteIdentifier(defaultMigrationsTable) + ` (version bigint primary key, dirty boolean not null)`
 	if _, err = extr.ExecContext(ctx, createStmt); err != nil {
 		if wpErr := rollback(); wpErr != nil {
 			err = multierror.Append(err, wpErr)
@@ -473,4 +469,9 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 	}
 
 	return nil
+}
+
+func quoteIdentifier(input string) (output string) {
+	output = `"` + strings.Replace(input, `"`, `""`, -1) + `"`
+	return
 }

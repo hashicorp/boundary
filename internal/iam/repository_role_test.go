@@ -174,6 +174,7 @@ func TestRepository_CreateRole(t *testing.T) {
 
 func TestRepository_UpdateRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -447,7 +448,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {

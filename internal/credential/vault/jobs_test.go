@@ -21,7 +21,6 @@ import (
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 const testUpdateTokenStatusExpirationQuery = `
@@ -33,7 +32,7 @@ update credential_vault_token
 `
 
 func testVaultToken(t *testing.T,
-	conn *gorm.DB,
+	conn *db.DB,
 	wrapper wrapping.Wrapper,
 	v *TestVaultServer,
 	cs *CredentialStore,
@@ -87,7 +86,7 @@ func testVaultToken(t *testing.T,
 }
 
 func testVaultCred(t *testing.T,
-	conn *gorm.DB,
+	conn *db.DB,
 	v *TestVaultServer,
 	cl *CredentialLibrary,
 	sess *session.Session,

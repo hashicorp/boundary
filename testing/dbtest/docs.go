@@ -12,7 +12,7 @@
 //    require.NoError(t, c())
 //  })
 //  // use u to get a connection to the new database
-//  dBase, err := sql.Open("postgres", u)
+//  dBase, err := common.SqlOpen("postgres", u)
 //
 // By default this uses a template that already has all of the boundary
 // migrations run. If a test needs a database without any migrations, like in

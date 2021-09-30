@@ -94,7 +94,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	if err := b.ConnectToDatabase(dialect); err != nil {
+	if err := b.ConnectToDatabase(ctx, dialect); err != nil {
 		if c != nil {
 			err = multierror.Append(err, c())
 		}

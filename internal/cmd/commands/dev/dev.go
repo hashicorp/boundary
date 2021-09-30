@@ -556,7 +556,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagDisableDatabaseDestruction {
-			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(ctx) })
 		}
 	default:
 		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)

@@ -47,7 +47,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"gorm.io/gorm"
 )
 
 var testAuthorizedActions = []string{
@@ -67,7 +66,7 @@ var testAuthorizedActions = []string{
 	"authorize-session",
 }
 
-func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
+func testService(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repoFn := func() (*target.Repository, error) {

@@ -1,9 +1,9 @@
 package oplog
 
 import (
-	"database/sql"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,7 +77,7 @@ func Test_testInitStore(t *testing.T) {
 	const query = `
 select count(*) from information_schema."tables" t where table_name = 'db_test_user';
 `
-	db, err := sql.Open("postgres", url)
+	db, err := common.SqlOpen("postgres", url)
 	require.NoError(err)
 
 	var cnt int

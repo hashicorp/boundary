@@ -3,9 +3,9 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -86,7 +86,7 @@ func testInitStore(t *testing.T, cleanup func() error, url string) {
 	ctx := context.Background()
 	dialect := "postgres"
 
-	d, err := sql.Open(dialect, url)
+	d, err := common.SqlOpen(dialect, url)
 	require.NoError(t, err)
 	sm, err := schema.NewManager(ctx, dialect, d)
 	require.NoError(t, err)

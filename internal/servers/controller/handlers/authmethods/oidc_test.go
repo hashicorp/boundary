@@ -41,12 +41,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"gorm.io/gorm"
 )
 
 type setup struct {
 	ctx                         context.Context
-	conn                        *gorm.DB
+	conn                        *db.DB
 	rw                          *db.Db
 	rootWrapper                 wrapping.Wrapper
 	kmsCache                    *kms.Kms

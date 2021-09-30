@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
-	"gorm.io/gorm"
 )
 
 func TestRepository_CreateCredentialStoreResource(t *testing.T) {
@@ -756,7 +755,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {
@@ -887,7 +886,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(1, gotCount2, "count of updated records")
 		require.NotNil(got2)
 		assert.Nil(got2.CaCert)
-		underlyingDB, err := conn.DB()
+		underlyingDB, err := conn.SqlDB(ctx)
 		require.NoError(err)
 		dbassert := dbassert.New(t, underlyingDB)
 		dbassert.IsNull(got2, "CaCert")
@@ -1270,9 +1269,9 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 
 	type tokenMap map[string]*tokenCount
 
-	type setupFn func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository)
+	type setupFn func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository)
 
-	baseSetup := func(t *testing.T, conn *gorm.DB) (wrapper wrapping.Wrapper, repo *Repository, scopeId string) {
+	baseSetup := func(t *testing.T, conn *db.DB) (wrapper wrapping.Wrapper, repo *Repository, scopeId string) {
 		wrapper = db.TestWrapper(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
@@ -1286,7 +1285,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		return
 	}
 
-	testStores := func(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId string, count int) ([]*CredentialStore, tokenMap) {
+	testStores := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId string, count int) ([]*CredentialStore, tokenMap) {
 		if tokens == nil {
 			tokens = make(tokenMap)
 		}
@@ -1299,13 +1298,13 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		return css, tokens
 	}
 
-	makeMaintainingTokens := func(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
+	makeMaintainingTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
 		testTokens(t, conn, wrapper, scopeId, storeId, count)
 		tokens[storeId].maintaining = count
 		return tokens
 	}
 
-	makeRevokedTokens := func(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
+	makeRevokedTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
 		require.NotNil(t, tokens)
 		const query = `
 update credential_vault_token
@@ -1327,7 +1326,7 @@ update credential_vault_token
 		return tokens
 	}
 
-	makeExpiredTokens := func(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
+	makeExpiredTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
 		require.NotNil(t, tokens)
 		const query = `
 update credential_vault_token
@@ -1349,7 +1348,7 @@ update credential_vault_token
 		return tokens
 	}
 
-	assertTokens := func(t *testing.T, conn *gorm.DB, want tokenMap) {
+	assertTokens := func(t *testing.T, conn *db.DB, want tokenMap) {
 		const query = `
   select store_id, status, count(token_hmac)
     from credential_vault_token
@@ -1399,7 +1398,7 @@ group by store_id, status;
 	}{
 		{
 			name: "simple",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]
@@ -1409,7 +1408,7 @@ group by store_id, status;
 		},
 		{
 			name: "with-libraries",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]
@@ -1421,7 +1420,7 @@ group by store_id, status;
 		},
 		{
 			name: "with-maintaining-tokens",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]
@@ -1434,7 +1433,7 @@ group by store_id, status;
 		},
 		{
 			name: "with-revoked-tokens",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]
@@ -1447,7 +1446,7 @@ group by store_id, status;
 		},
 		{
 			name: "with-expired-tokens",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]
@@ -1460,7 +1459,7 @@ group by store_id, status;
 		},
 		{
 			name: "with-all-token-statuses",
-			setup: func(t *testing.T, conn *gorm.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
+			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
 				wrapper, repo, scopeId := baseSetup(t, conn)
 				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
 				cs := css[0]

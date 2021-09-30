@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -173,6 +174,32 @@ func Test_getOpts(t *testing.T) {
 		// try setting to false
 		opts = GetOpts(WithOrder("version desc"))
 		testOpts.withOrder = "version desc"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithGormFormatter", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		testLogger := hclog.New(&hclog.LoggerOptions{})
+
+		// try setting to false
+		opts = GetOpts(WithGormFormatter(testLogger))
+		testOpts.withGormFormatter = testLogger
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithMaxOpenConnections", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		// try setting to false
+		opts = GetOpts(WithMaxOpenConnections(22))
+		testOpts.withMaxOpenConnections = 22
 		assert.Equal(opts, testOpts)
 	})
 }

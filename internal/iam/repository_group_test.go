@@ -173,6 +173,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 
 func TestRepository_UpdateGroup(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
@@ -450,7 +451,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			foundGrp, _, err := repo.LookupGroup(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
-			underlyingDB, err := conn.DB()
+			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {
