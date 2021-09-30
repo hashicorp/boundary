@@ -135,7 +135,7 @@ export default function HomePage() {
             description: (
               <>
                 Reduce risk of leaking credentials with dynamic secrets and
-                just-in-time credentials. Automate credential injection to
+                just-in-time credentials. Automate credential brokering to
                 securely access services and hosts with{' '}
                 <a href="https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart">
                   HashiCorp Vault
