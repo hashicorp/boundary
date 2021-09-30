@@ -34,6 +34,7 @@ export default function BrandedCta({ heading, content, links }) {
                   }}
                   title={link.text}
                   url={link.url}
+                  icon={link.icon}
                 />
               )
             })}

@@ -1,5 +1,4 @@
 import s from './how-it-works.module.css'
-import classNames from 'classnames'
 import HowBoundaryWorksDiagram from './how-boundary-works-diagram'
 import Feature from './feature'
 import { useState } from 'react'
@@ -12,11 +11,11 @@ export default function HowItWorks({ title, description, features }) {
 
   return (
     <div className={s.root}>
-      <div className={classNames('g-grid-container', s.headerWrapper)}>
-        <h2 className="g-type-display-2">{title}</h2>
-        <p className="g-type-body-large">{description}</p>
+      <div className={s.intro}>
+        <h2 className={s.introTitle}>{title}</h2>
+        <div className={s.introDescription}>{description}</div>
       </div>
-      <div className={`g-grid-container ${s.contentContainer}`}>
+      <div className={s.contentContainer}>
         <div className={s.diagram}>
           <HowBoundaryWorksDiagram activeExampleIndex={activeExampleIndex} />
         </div>
