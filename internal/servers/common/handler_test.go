@@ -332,9 +332,9 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 					Id: got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
-					"id":              got.Data.(map[string]interface{})["id"].(string),
-					"timestamp":       got.Data.(map[string]interface{})["timestamp"].(string),
-					"serialized_hmac": got.Data.(map[string]interface{})["serialized_hmac"].(string),
+					"id":        got.Data.(map[string]interface{})["id"].(string),
+					"timestamp": got.Data.(map[string]interface{})["timestamp"].(string),
+					"response":  got.Data.(map[string]interface{})["response"].(map[string]interface{}),
 				}
 				wantJson := testJson(t, event.AuditType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
