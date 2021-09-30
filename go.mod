@@ -19,7 +19,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578
-	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210929210209-bb97249db88d
+	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210930043837-3542fae64d2e
 	github.com/hashicorp/boundary/api v0.0.18
 	github.com/hashicorp/boundary/sdk v0.0.11-0.20210928201932-8b1ca4b0b8b9
 	github.com/hashicorp/cap v0.1.1
