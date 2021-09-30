@@ -394,7 +394,12 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
+		underlyingDB, err := c.Database.DB()
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
+			return base.CommandCliError
+		}
+		sMan, err := schema.NewManager(c.Context, "postgres", underlyingDB)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
 			return base.CommandCliError

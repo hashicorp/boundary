@@ -447,7 +447,9 @@ func TestRepository_UpdateRole(t *testing.T) {
 			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {
 				assert.Equal(foundRole.Name, "")
 				dbassert.IsNull(foundRole, "name")

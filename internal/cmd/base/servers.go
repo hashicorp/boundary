@@ -37,9 +37,10 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const (
@@ -548,20 +549,37 @@ func (b *Server) RunShutdownFuncs() error {
 }
 
 func (b *Server) ConnectToDatabase(dialect string) error {
-	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
+	dbType, err := db.StringToDbType(dialect)
+	if err != nil {
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	dbase, err := db.Open(dbType, b.DatabaseUrl)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
 	if b.DatabaseMaxOpenConnections == 1 {
 		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
 	} else {
-		dbase.DB().SetMaxOpenConns(b.DatabaseMaxOpenConnections)
+		underlyingDB, err := dbase.DB()
+		if err != nil {
+			return fmt.Errorf("unable retreive db: %w", err)
+		}
+		underlyingDB.SetMaxOpenConns(b.DatabaseMaxOpenConnections)
 	}
 	b.Database = dbase
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
-		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-		b.Database.SetLogger(db.GetGormLogger(b.Logger))
+		newLogger := logger.New(
+			db.GetGormLogger(b.Logger),
+			logger.Config{
+				LogLevel: logger.Error, // Log level
+				Colorful: false,        // Disable color
+			},
+		)
+		dbase = dbase.Session(&gorm.Session{Logger: newLogger})
 	}
+
+	b.Database = dbase
+
 	return nil
 }
 
@@ -602,7 +620,11 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 
 func (b *Server) DestroyDevDatabase() error {
 	if b.Database != nil {
-		b.Database.Close()
+		underlyingDB, err := b.Database.DB()
+		if err != nil {
+			return err
+		}
+		underlyingDB.Close()
 	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()

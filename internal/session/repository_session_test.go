@@ -17,9 +17,9 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -1408,13 +1408,13 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 
 			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
 			if err != nil {
-				var pqError *pq.Error
+				var pqError *pgconn.PgError
 				if errors.As(err, &pqError) {
 					t.Log(pqError.Message)
 					t.Log(pqError.Detail)
 					t.Log(pqError.Where)
-					t.Log(pqError.Constraint)
-					t.Log(pqError.Table)
+					t.Log(pqError.ConstraintName)
+					t.Log(pqError.TableName)
 				}
 			}
 			require.NoError(err)

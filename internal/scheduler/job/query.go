@@ -14,15 +14,15 @@ const runJobsQuery = `
 
 const createJobQuery = `
 	insert into job (
-	  plugin_id, -- $1
-	  name, -- $2
-	  description, -- $3
-	  next_scheduled_run -- $4
+	  plugin_id, 
+	  name, 
+	  description, 
+	  next_scheduled_run 
 	) values (
-	  $1, -- plugin_id
-	  $2, -- name
-	  $3, -- description
-	  wt_add_seconds_to_now($4) -- next_scheduled_run
+	  @plugin_id, -- plugin_id
+	  @name, -- name
+	  @description, -- description
+	  wt_add_seconds_to_now(@next_scheduled_run) -- next_scheduled_run
 	)
 	returning *;
 `
@@ -100,4 +100,11 @@ const interruptRunsQuery = `
 	  and status = 'running'
       %s
 	returning *;
+`
+
+const deleteJobByName = `
+	delete 
+	from job 
+	where 
+	  name = ?
 `

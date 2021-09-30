@@ -13,7 +13,7 @@ current_hosts (host_id) as (
   -- returns the current list
   select host_id
     from static_host_set_member
-   where set_id = $1
+   where set_id = @1 -- this trailing space is needed by gorm
 ),
 keep_hosts (host_id) as (
   -- returns the KEEP list

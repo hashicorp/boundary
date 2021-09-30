@@ -14,7 +14,7 @@ type Account struct {
 
 	// CredentialId is included when Authenticate or ChangePassword is
 	// called. A new CredentialId is generated when a password is changed.
-	CredentialId string `gorm:"-"`
+	CredentialId string `gorm:"->"`
 }
 
 func allocAccount() *Account {

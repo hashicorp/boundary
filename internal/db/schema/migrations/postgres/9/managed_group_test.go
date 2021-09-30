@@ -1,10 +1,13 @@
 package migration
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,8 +18,7 @@ func Test_ManagedGroupTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	rw := db.New(tc.DbConn())
 
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
@@ -44,9 +46,12 @@ func Test_ManagedGroupTable(t *testing.T) {
 	for _, tt := range insertTests {
 		t.Run("insert: "+tt.testName, func(t *testing.T) {
 			require := require.New(t)
-			_, err = db.Exec("insert into auth_managed_group values ($1, $2)",
-				tt.publicId,
-				tt.authMethodId)
+
+			_, err := rw.Exec(context.Background(), "insert into auth_managed_group values (@public_id, @auth_method_id)",
+				[]interface{}{
+					sql.Named("public_id", tt.publicId),
+					sql.Named("auth_method_id", tt.authMethodId),
+				})
 			require.True(tt.wantErr == (err != nil))
 		})
 	}
@@ -76,7 +81,11 @@ func Test_ManagedGroupTable(t *testing.T) {
 	for _, tt := range updateTests {
 		t.Run("update: "+tt.testName, func(t *testing.T) {
 			assert := assert.New(t)
-			_, err = db.Exec(fmt.Sprintf("update auth_managed_group set %s = $1 where public_id = $2", tt.column), tt.value, tt.publicId)
+			_, err := rw.Exec(context.Background(), fmt.Sprintf("update auth_managed_group set %s = @value where public_id = @public_id", tt.column),
+				[]interface{}{
+					sql.Named("value", tt.value),
+					sql.Named("public_id", tt.publicId),
+				})
 			assert.True(tt.wantErr == (err != nil))
 		})
 	}
@@ -87,8 +96,8 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	ctx := context.Background()
+	rw := db.New(tc.DbConn())
 
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
@@ -150,18 +159,20 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 		for _, tt := range insertTests {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				require := require.New(t)
-				_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values ($1, $2, $3, $4)",
-					tt.publicId,
-					tt.authMethodId,
-					tt.name,
-					tt.filter)
+				_, err := rw.Exec(ctx, "insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values (@public_id, @auth_method_id, @name, @filter)",
+					[]interface{}{
+						sql.Named("public_id", tt.publicId),
+						sql.Named("auth_method_id", tt.authMethodId),
+						sql.Named("name", tt.name),
+						sql.Named("filter", tt.filter),
+					})
 				require.True(tt.wantErr == (err != nil))
 			})
 		}
 	}
 
 	// Read some values to validate that things were set automatically
-	rows, err := db.Query("select create_time, update_time, version from auth_oidc_managed_group")
+	rows, err := rw.Query(ctx, "select create_time, update_time, version from auth_oidc_managed_group", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var create_time, update_time time.Time
@@ -207,14 +218,17 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 		for _, tt := range updateTests {
 			t.Run("update: "+tt.testName, func(t *testing.T) {
 				require := require.New(t)
-				_, err = db.Exec(fmt.Sprintf("update auth_oidc_managed_group set %s = $1 where public_id = $2", tt.column), tt.value, managedGroupId)
+				_, err = rw.Exec(ctx, fmt.Sprintf("update auth_oidc_managed_group set %s = @value where public_id = @public_id", tt.column),
+					[]interface{}{
+						sql.Named("value", tt.value), sql.Named("public_id", managedGroupId),
+					})
 				require.True(tt.wantErr == (err != nil))
 			})
 		}
 	}
 
 	// Read values again to validate that things were updated automatically
-	rows, err = db.Query("select create_time, update_time, version from auth_oidc_managed_group")
+	rows, err = rw.Query(ctx, "select create_time, update_time, version from auth_oidc_managed_group", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var updated_create_time, updated_update_time time.Time
@@ -224,7 +238,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.Equal(t, 2, version)
 
 	// Read values from auth_managed_group to ensure it was populated automatically
-	rows, err = db.Query("select public_id, auth_method_id from auth_managed_group")
+	rows, err = rw.Query(ctx, "select public_id, auth_method_id from auth_managed_group", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var public_id, auth_method_id string
@@ -233,14 +247,11 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.Equal(t, defaultOidcAuthMethodId, auth_method_id)
 
 	// Delete the value from the subtype table
-	res, err := db.Exec("delete from auth_oidc_managed_group where public_id = $1", managedGroupId)
-	require.NoError(t, err)
-	affected, err := res.RowsAffected()
-	require.NoError(t, err)
+	affected, err := rw.Exec(ctx, "delete from auth_oidc_managed_group where public_id = @public_id", []interface{}{sql.Named("public_id", managedGroupId)})
 	require.EqualValues(t, 1, affected)
 
 	// It should no longer be in the base table
-	rows, err = db.Query("select public_id, auth_method_id from auth_managed_group")
+	rows, err = rw.Query(ctx, "select public_id, auth_method_id from auth_managed_group", nil)
 	require.NoError(t, err)
 	require.False(t, rows.Next())
 }
@@ -250,8 +261,8 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	db := tc.DbConn().DB()
-	var err error
+	ctx := context.Background()
+	rw := db.New(tc.DbConn())
 
 	managedGroupId := "a_bcdefghijk"
 	defaultOidcAuthMethodId := "amoidc_1234567890"
@@ -259,15 +270,17 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 	filter := "this is a filter"
 
 	// Insert valid data in auth_oidc_managed_group to use for the following tests
-	_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values ($1, $2, $3, $4)",
-		managedGroupId,
-		defaultOidcAuthMethodId,
-		name,
-		filter)
+	_, err := rw.Exec(ctx, "insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values (@public_id, @auth_method_id, @name, @filter)",
+		[]interface{}{
+			sql.Named("public_id", managedGroupId),
+			sql.Named("auth_method_id", defaultOidcAuthMethodId),
+			sql.Named("name", name),
+			sql.Named("filter", filter),
+		})
 	require.NoError(t, err)
 
 	// Fetch a valid (oidc) account ID to use in insertion
-	rows, err := db.Query("select public_id from auth_oidc_account limit 1")
+	rows, err := rw.Query(ctx, "select public_id from auth_oidc_account limit 1", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var accountId string
@@ -310,16 +323,18 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 		for _, tt := range insertTests {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
-				_, err = db.Exec("insert into auth_oidc_managed_group_member_account (managed_group_id, member_id) values ($1, $2)",
-					tt.managedGroupId,
-					tt.memberId)
+				_, err = rw.Exec(ctx, "insert into auth_oidc_managed_group_member_account (managed_group_id, member_id) values (@group_id, @member_id)",
+					[]interface{}{
+						sql.Named("group_id", tt.managedGroupId),
+						sql.Named("member_id", tt.memberId),
+					})
 				assert.True(tt.wantErr == (err != nil))
 			})
 		}
 	}
 
 	// Read some values to validate that things were set automatically
-	rows, err = db.Query("select create_time, managed_group_id, member_id from auth_oidc_managed_group_member_account")
+	rows, err = rw.Query(ctx, "select create_time, managed_group_id, member_id from auth_oidc_managed_group_member_account", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var create_time time.Time
@@ -357,14 +372,18 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 		for _, tt := range updateTests {
 			t.Run("update: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
-				_, err = db.Exec(fmt.Sprintf("update auth_managed_group_member_account set %s = $1 where managed_group_id = $2 and member_id = $3", tt.column), managedGroupId, accountId)
+				_, err = rw.Exec(ctx, fmt.Sprintf("update auth_managed_group_member_account set %s = ? where managed_group_id = @group_id and member_id = @member_id", tt.column),
+					[]interface{}{
+						sql.Named("group_id", managedGroupId),
+						sql.Named("member_id", accountId),
+					})
 				assert.True(tt.wantErr == (err != nil))
 			})
 		}
 	}
 
 	// Read from the view to ensure we see it there
-	rows, err = db.Query("select create_time, managed_group_id, member_id from auth_managed_group_member_account")
+	rows, err = rw.Query(ctx, "select create_time, managed_group_id, member_id from auth_managed_group_member_account", nil)
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var view_create_time time.Time

@@ -351,7 +351,9 @@ func Test_GroupUpdate(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(updateGrp, foundGrp))
 			if len(tt.args.nullPaths) != 0 {
-				dbassert := dbassert.New(t, conn.DB())
+				underlyingDB, err := conn.DB()
+				require.NoError(err)
+				dbassert := dbassert.New(t, underlyingDB)
 				for _, f := range tt.args.nullPaths {
 					dbassert.IsNull(&foundGrp, f)
 				}

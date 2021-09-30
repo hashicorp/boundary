@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -118,31 +119,31 @@ func (c *Credential) oplog(op oplog.OpType) oplog.Metadata {
 
 func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 	queryValues = []interface{}{
-		c.PublicId,
-		c.LibraryId,
-		c.SessionId,
-		c.TokenHmac,
-		c.ExternalId,
-		c.IsRenewable,
-		c.Status,
-		"now()",
+		sql.Named("public_id", c.PublicId),
+		sql.Named("library_id", c.LibraryId),
+		sql.Named("session_id", c.SessionId),
+		sql.Named("token_hmac", c.TokenHmac),
+		sql.Named("external_id", c.ExternalId),
+		sql.Named("is_renewable", c.IsRenewable),
+		sql.Named("status", c.Status),
+		sql.Named("last_renewal_time", "now()"),
 	}
 	switch {
 	case c.expiration == 0:
 		query = insertCredentialWithInfiniteExpirationQuery
 	default:
 		query = insertCredentialWithExpirationQuery
-		queryValues = append(queryValues, int(c.expiration.Round(time.Second).Seconds()))
+		queryValues = append(queryValues, sql.Named("expiration_time", int(c.expiration.Round(time.Second).Seconds())))
 	}
 	return
 }
 
 func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{}) {
 	queryValues = []interface{}{
-		c.PublicId,
-		c.LibraryId,
-		c.SessionId,
-		string(purpose),
+		sql.Named("public_id", c.PublicId),
+		sql.Named("library_id", c.LibraryId),
+		sql.Named("session_id", c.SessionId),
+		sql.Named("purpose", string(purpose)),
 	}
 	query = updateSessionCredentialQuery
 	return

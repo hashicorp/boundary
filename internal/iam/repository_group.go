@@ -497,9 +497,9 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, userIds []string) ([]interface{}, []interface{}, error) {
 	const op = "iam.groupMemberChanges"
 	var inClauseSpots []string
-	// starts at 2 because there is already a $1 in the query
+	// starts at 2 because there is already a ? in the query
 	for i := 2; i < len(userIds)+2; i++ {
-		inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+		inClauseSpots = append(inClauseSpots, "?")
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 	if inClause == "" {
@@ -508,10 +508,11 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	query := fmt.Sprintf(grpMemberChangesQuery, inClause)
 
 	var params []interface{}
-	params = append(params, groupId)
 	for _, v := range userIds {
 		params = append(params, v)
 	}
+	params = append(params, groupId)
+
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)

@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 )
 
 const (
@@ -438,16 +438,26 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
 
-	// This is not a boundary scope, but rather a gorm Scope:
-	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	scope := rw.underlying.NewScope(i)
-	if scope.PrimaryKeyZero() {
-		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
+	names, isZero, err := rw.primaryFieldsAreZero(ctx, i)
+	if err != nil {
+		return NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	if isZero {
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key is not set for: %s", names), errors.WithoutEvent())
 	}
 
-	for _, f := range scope.PrimaryFields() {
-		if contains(fieldMaskPaths, f.Name) {
-			return NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", f.Name))
+	mDb := rw.underlying.Model(i)
+	err = mDb.Statement.Parse(i)
+	if err != nil || mDb.Statement.Schema == nil {
+		return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+	}
+	reflectValue := reflect.Indirect(reflect.ValueOf(i))
+	for _, pf := range mDb.Statement.Schema.PrimaryFields {
+		if _, isZero := pf.ValueOf(reflectValue); isZero {
+			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
+		}
+		if contains(fieldMaskPaths, pf.Name) {
+			return NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", pf.Name))
 		}
 	}
 
@@ -482,8 +492,14 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			if *opts.WithVersion == 0 {
 				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "with version option is zero")
 			}
-			if _, ok := scope.FieldByName("version"); !ok {
-				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", scope.TableName()))
+			mDb := rw.underlying.Model(i)
+			err = mDb.Statement.Parse(i)
+			if err != nil && mDb.Statement.Schema == nil {
+				return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+			}
+			if !contains(mDb.Statement.Schema.DBNames, "version") {
+				// if _, ok := stmt.Schema.FieldsByName["version"]; !ok {
+				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
 			}
 			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
@@ -554,14 +570,19 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog && opts.newOplogMsg != nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
-	// This is not a boundary scope, but rather a gorm Scope:
-	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
-	scope := rw.underlying.NewScope(i)
-	if opts.withWhereClause == "" {
-		if scope.PrimaryKeyZero() {
-			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "primary key is not set")
+
+	mDb := rw.underlying.Model(i)
+	err := mDb.Statement.Parse(i)
+	if err == nil && mDb.Statement.Schema == nil {
+		return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+	}
+	reflectValue := reflect.Indirect(reflect.ValueOf(i))
+	for _, pf := range mDb.Statement.Schema.PrimaryFields {
+		if _, isZero := pf.ValueOf(reflectValue); isZero {
+			return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
 		}
 	}
+
 	if withOplog {
 		_, err := validateOplogArgs(ctx, i, opts)
 		if err != nil {
@@ -923,7 +944,8 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		}
 
 		// step one of this, start a transaction...
-		newTx := w.underlying.BeginTx(ctx, nil)
+		newTx := w.underlying.WithContext(ctx)
+		newTx = newTx.Begin()
 
 		rw := &Db{newTx}
 		if err := Handler(rw, rw); err != nil {
@@ -1036,8 +1058,10 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	var err error
-	db := rw.underlying.Order(opts.withOrder)
-
+	db := rw.underlying.WithContext(ctx)
+	if opts.withOrder != "" {
+		db = db.Order(opts.withOrder)
+	}
 	// Perform limiting
 	switch {
 	case opts.WithLimit < 0: // any negative number signals unlimited results
@@ -1058,6 +1082,23 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return nil
+}
+
+func (rw *Db) primaryFieldsAreZero(ctx context.Context, i interface{}) ([]string, bool, error) {
+	const op = "db.primaryFieldsAreZero"
+	var fieldNames []string
+	tx := rw.underlying.Model(i)
+	if err := tx.Statement.Parse(i); err != nil {
+		return nil, false, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	for _, f := range tx.Statement.Schema.PrimaryFields {
+		if f.PrimaryKey {
+			if _, isZero := f.ValueOf(reflect.ValueOf(i)); isZero {
+				fieldNames = append(fieldNames, f.Name)
+			}
+		}
+	}
+	return fieldNames, len(fieldNames) > 0, nil
 }
 
 // filterPaths will filter out non-updatable fields

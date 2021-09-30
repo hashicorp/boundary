@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/subtle"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -206,31 +207,31 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		switch len(opts.withScopeIds) {
 		case 1:
 			inClauseCnt += 1
-			where, args = append(where, fmt.Sprintf("scope_id = $%d", inClauseCnt)), append(args, opts.withScopeIds[0])
+			where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named("1", opts.withScopeIds[0]))
 		default:
 			idsInClause := make([]string, 0, len(opts.withScopeIds))
 			for _, id := range opts.withScopeIds {
 				inClauseCnt += 1
-				idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
+				idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 			}
 			where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 		}
 	}
 	if opts.withUserId != "" {
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
+		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
 	}
 	if len(opts.withSessionIds) > 0 {
 		idsInClause := make([]string, 0, len(opts.withSessionIds))
 		for _, id := range opts.withSessionIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 	if opts.withServerId != "" {
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("server_id = $%d", inClauseCnt)), append(args, opts.withServerId)
+		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withServerId))
 	}
 
 	var limit string
@@ -360,7 +361,10 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, terminateSessionCte, []interface{}{sessionId, sessionVersion})
+			rowsAffected, err := w.Exec(ctx, terminateSessionCte, []interface{}{
+				sql.Named("version", sessionVersion),
+				sql.Named("session_id", sessionId),
+			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to terminate session %s", sessionId)))
 			}
@@ -441,7 +445,11 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId, workerI
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId, workerId})
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{
+				sql.Named("session_id", sessionId),
+				sql.Named("public_id", connectionId),
+				sql.Named("worker_id", workerId),
+			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
 			}
@@ -476,7 +484,7 @@ type ConnectionAuthzSummary struct {
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).sessionAuthzSummary"
-	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sessionId})
+	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sql.Named("session_id", sessionId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -645,7 +653,10 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, activateStateCte, []interface{}{sessionId, sessionVersion})
+			rowsAffected, err := w.Exec(ctx, activateStateCte, []interface{}{
+				sql.Named("session_id", sessionId),
+				sql.Named("version", sessionVersion),
+			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to activate session %s", sessionId)))
 			}
@@ -742,7 +753,10 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				updatedSession.CtTofuToken = nil
 			}
 
-			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{sessionId, s.String()})
+			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{
+				sql.Named("session_id", sessionId),
+				sql.Named("status", s.String()),
+			})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to update session %s state to %s", sessionId, s.String())))
 			}

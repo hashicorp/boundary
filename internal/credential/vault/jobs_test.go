@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"path"
 	"strings"
 	"testing"
@@ -18,9 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 const testUpdateTokenStatusExpirationQuery = `
@@ -55,23 +56,23 @@ func testVaultToken(t *testing.T,
 
 	query := insertTokenQuery
 	queryValues := []interface{}{
-		inToken.TokenHmac,
-		inToken.CtToken,
-		inToken.StoreId,
-		inToken.KeyId,
-		inToken.Status,
+		sql.Named("1", inToken.TokenHmac),
+		sql.Named("2", inToken.CtToken),
+		sql.Named("3", inToken.StoreId),
+		sql.Named("4", inToken.KeyId),
+		sql.Named("5", inToken.Status),
 	}
 	expire := int(expiration.Seconds())
 	if expire < 0 {
 		// last_renewal_time must be before expiration_time, if we are testing a expiration
 		// in the past set last_renewal_time to 1 second before that
 		query = strings.Replace(query,
-			"$6, -- last_renewal_time",
-			"wt_add_seconds_to_now($6),  -- last_renewal_time",
+			"@6, -- last_renewal_time",
+			"wt_add_seconds_to_now(@6),  -- last_renewal_time",
 			-1)
-		queryValues = append(queryValues, expire-1, expire)
+		queryValues = append(queryValues, expire-1, sql.Named("6", expire))
 	} else {
-		queryValues = append(queryValues, "now()", expire)
+		queryValues = append(queryValues, sql.Named("6", "now()"), sql.Named("7", expire))
 	}
 
 	numRows, err := rw.Exec(context.Background(), query, queryValues)
@@ -114,25 +115,25 @@ func testVaultCred(t *testing.T,
 
 	query := insertCredentialWithExpirationQuery
 	queryValues := []interface{}{
-		id,
-		cl.GetPublicId(),
-		sess.GetPublicId(),
-		token.GetTokenHmac(),
-		secret.LeaseID,
-		true,
-		status,
+		sql.Named("public_id", id),
+		sql.Named("library_id", cl.GetPublicId()),
+		sql.Named("session_id", sess.GetPublicId()),
+		sql.Named("token_hmac", token.GetTokenHmac()),
+		sql.Named("external_id", secret.LeaseID),
+		sql.Named("is_renewable", true),
+		sql.Named("status", status),
 	}
 	expire := int(expiration.Seconds())
 	if expire < 0 {
 		// last_renewal_time must be before expiration_time, if we are testing a expiration
 		// in the past set last_renewal_time to 1 second before that
 		query = strings.Replace(query,
-			"$8, -- last_renewal_time",
-			"wt_add_seconds_to_now($8),  -- last_renewal_time",
+			"@last_renewal_time, -- last_renewal_time",
+			"wt_add_seconds_to_now(@last_renewal_time),  -- last_renewal_time",
 			-1)
-		queryValues = append(queryValues, expire-1, expire)
+		queryValues = append(queryValues, sql.Named("last_renewal_time", expire-1), sql.Named("expiration_time", expire))
 	} else {
-		queryValues = append(queryValues, "now()", expire)
+		queryValues = append(queryValues, sql.Named("last_renewal_time", "now()"), sql.Named("expiration_time", expire))
 	}
 
 	numRows, err := rw.Exec(context.Background(), query, queryValues)

@@ -450,7 +450,9 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			foundGrp, _, err := repo.LookupGroup(context.Background(), u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.DB()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.args.name == "" {
 				dbassert.IsNull(foundGrp, "name")
 			}

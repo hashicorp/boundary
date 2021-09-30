@@ -38,21 +38,21 @@ message User {
 
   // Output only. login_name is a string that maps to the user's account "login
   // name" from the scope's primary auth method
-  // @inject_tag: `gorm:"-"`
+  // @inject_tag: `gorm:"->"`
   string login_name = 90 [json_name = "login_name"];
 
   // Output only. full_name is a string that maps to the user's account name
   // from the scope's primary auth method
-  // @inject_tag: `gorm:"-"`
+  // @inject_tag: `gorm:"->"`
   string full_name = 100 [json_name = "full_name"];
 
   // Output only. email is a string that maps to the user's account email from
   // the scope's primary auth method
-  // @inject_tag: `gorm:"-"`
+  // @inject_tag: `gorm:"->"`
   string email = 110 [json_name = "email"];
 
   // Output only. primary_account_id is a string that maps to the user's account
   // public_id from the scope's primary auth method
-  // @inject_tag: `gorm:"-"`
+  // @inject_tag: `gorm:"->"`
   string primary_account_id = 120 [json_name = "primary_account_id"];
 }
