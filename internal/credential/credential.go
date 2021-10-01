@@ -87,3 +87,31 @@ type Revoker interface {
 	// Revoke revokes the dynamic credentials issued for sessionid.
 	Revoke(ctx context.Context, sessionId string) error
 }
+
+// Password represents a secret password.
+type Password string
+
+// PrivateKey represents a secret private key.
+type PrivateKey []byte
+
+// UserPassword is a credential containing a username and a password.
+type UserPassword interface {
+	Credential
+	Username() string
+	Password() Password
+}
+
+// KeyPair is a credential containing a username and a private key.
+type KeyPair interface {
+	Credential
+	Username() string
+	Private() PrivateKey
+}
+
+// Certificate is a credential containing a certificate and the private key
+// for the certificate.
+type Certificate interface {
+	Credential
+	Certificate() []byte
+	Private() PrivateKey
+}

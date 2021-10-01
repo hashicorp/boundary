@@ -18,7 +18,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -44,7 +43,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 	cnt, err := rw.Update(context.Background(), updatedTu, []string{"Name"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, cnt)
-	assert.Equal(t, "ignore", updatedTu.Email)
+	assert.Equal(t, "", updatedTu.Email)
 	assert.Equal(t, "updated", updatedTu.Name)
 }
 
@@ -1270,7 +1269,7 @@ func TestDb_Delete(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		underlying *gorm.DB
+		underlying *DB
 		wrapper    wrapping.Wrapper
 		args       args
 		want       int
@@ -1463,7 +1462,7 @@ func TestDb_ScanRows(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
@@ -1493,7 +1492,7 @@ func TestDb_Query(t *testing.T) {
 		assert.NotEmpty(user.Id)
 		assert.Equal("alice", user.Name)
 
-		where := "select * from db_test_user where name in ($1, $2)"
+		where := "select * from db_test_user where name in (?, ?)"
 		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
@@ -1540,7 +1539,7 @@ func TestDb_CreateItems(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		underlying    *gorm.DB
+		underlying    *DB
 		args          args
 		wantOplogId   string
 		wantOplogMsgs bool
@@ -1741,7 +1740,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		underlying      *gorm.DB
+		underlying      *DB
 		args            args
 		wantRowsDeleted int
 		wantOplogId     string
@@ -1914,7 +1913,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	}
 }
 
-func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
+func testUser(t *testing.T, conn *DB, name, email, phoneNumber string) *db_test.TestUser {
 	t.Helper()
 	require := require.New(t)
 
@@ -1935,7 +1934,7 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 	return u
 }
 
-func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_test.TestCar {
+func testCar(t *testing.T, conn *DB, name, model string, mpg int32) *db_test.TestCar {
 	t.Helper()
 	require := require.New(t)
 
@@ -1964,7 +1963,7 @@ func testId(t *testing.T) string {
 	return id
 }
 
-func testScooter(t *testing.T, conn *gorm.DB, model string, mpg int32) *db_test.TestScooter {
+func testScooter(t *testing.T, conn *DB, model string, mpg int32) *db_test.TestScooter {
 	t.Helper()
 	require := require.New(t)
 
@@ -1995,7 +1994,7 @@ func TestDb_LookupById(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		underlying *gorm.DB
+		underlying *DB
 		args       args
 		wantErr    bool
 		want       proto.Message
@@ -2095,7 +2094,7 @@ func TestDb_GetTicket(t *testing.T) {
 	type notReplayable struct{}
 	tests := []struct {
 		name          string
-		underlying    *gorm.DB
+		underlying    *DB
 		aggregateType interface{}
 		wantErr       bool
 		wantErrIs     errors.Code
@@ -2181,7 +2180,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		underlying      *gorm.DB
+		underlying      *DB
 		args            args
 		wantErr         bool
 		wantErrIs       errors.Code
@@ -2889,7 +2888,7 @@ func TestDb_lookupAfterWrite(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		underlying *gorm.DB
+		underlying *DB
 		args       args
 		wantErr    bool
 		want       proto.Message

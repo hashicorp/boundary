@@ -32,6 +32,7 @@ message Server {
   storage.timestamp.v1.Timestamp update_time = 70;
 
   // Tags for workers
+  // @inject_tag: `gorm:"-"`
   map<string, TagValues> tags = 80;
 }
 

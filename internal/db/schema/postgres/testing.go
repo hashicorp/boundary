@@ -31,11 +31,11 @@ package postgres
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,7 +123,7 @@ func testSetVersion(t *testing.T, d *Postgres) {
 
 func open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
 	t.Helper()
-	db, err := sql.Open("postgres", u)
+	db, err := common.SqlOpen("postgres", u)
 	require.NoError(t, err)
 
 	px, err := New(ctx, db)

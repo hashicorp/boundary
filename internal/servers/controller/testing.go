@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -26,10 +27,11 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/jinzhu/gorm"
 )
 
 const (
+	DefaultOrgId                             = "o_1234567890"
+	DefaultProjectId                         = "p_1234567890"
 	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
 	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
 	DefaultTestLoginName                     = "admin"
@@ -124,7 +126,7 @@ func (tc *TestController) ClusterAddrs() []string {
 	return tc.addrs("cluster")
 }
 
-func (tc *TestController) DbConn() *gorm.DB {
+func (tc *TestController) DbConn() *db.DB {
 	return tc.b.Database
 }
 
@@ -270,8 +272,8 @@ func (tc *TestController) Shutdown() {
 			tc.t.Error(err)
 		}
 		if !tc.opts.DisableDatabaseDestruction {
-			if tc.b.DestroyDevDatabase() != nil {
-				if err := tc.b.DestroyDevDatabase(); err != nil {
+			if tc.b.DestroyDevDatabase(tc.ctx) != nil {
+				if err := tc.b.DestroyDevDatabase(tc.ctx); err != nil {
 					tc.t.Error(err)
 				}
 			}
@@ -445,6 +447,8 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevPassword = DefaultTestPassword
 		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
+	tc.b.DevOrgId = DefaultOrgId
+	tc.b.DevProjectId = DefaultProjectId
 	tc.b.DevPasswordAccountId = DefaultTestPasswordAccountId
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
@@ -532,7 +536,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
-		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
+		if err := tc.b.ConnectToDatabase(tc.ctx, "postgres"); err != nil {
 			t.Fatal(err)
 		}
 		if !opts.DisableKmsKeyCreation {
@@ -578,6 +582,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
+		createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}

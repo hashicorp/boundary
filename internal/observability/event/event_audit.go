@@ -19,16 +19,15 @@ const (
 
 // audit defines the data of audit events
 type audit struct {
-	Id             string       `json:"id"`                     // std audit/boundary field
-	Version        string       `json:"version"`                // std audit/boundary field
-	Type           string       `json:"type"`                   // std audit field
-	Timestamp      time.Time    `json:"timestamp"`              // std audit field
-	RequestInfo    *RequestInfo `json:"request_info,omitempty"` // boundary field
-	Auth           *Auth        `json:"auth,omitempty"`         // std audit field
-	Request        *Request     `json:"request,omitempty"`      // std audit field
-	Response       *Response    `json:"response,omitempty"`     // std audit field
-	SerializedHMAC string       `json:"serialized_hmac"`        // boundary field
-	Flush          bool         `json:"-"`
+	Id          string       `json:"id"`                     // std audit/boundary field
+	Version     string       `json:"version"`                // std audit/boundary field
+	Type        string       `json:"type"`                   // std audit field
+	Timestamp   time.Time    `json:"timestamp"`              // std audit field
+	RequestInfo *RequestInfo `json:"request_info,omitempty"` // boundary field
+	Auth        *Auth        `json:"auth,omitempty"`         // std audit field
+	Request     *Request     `json:"request,omitempty"`      // std audit field
+	Response    *Response    `json:"response,omitempty"`     // std audit field
+	Flush       bool         `json:"-"`
 }
 
 func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
@@ -133,7 +132,15 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 			payload.Request = gated.Request
 		}
 		if gated.Response != nil {
-			payload.Response = gated.Response
+			if payload.Response == nil {
+				payload.Response = &Response{}
+			}
+			if gated.Response.StatusCode != 0 {
+				payload.Response.StatusCode = gated.Response.StatusCode
+			}
+			if gated.Response.Details != nil {
+				payload.Response.Details = gated.Response.Details
+			}
 		}
 		if !gated.Timestamp.IsZero() {
 			payload.Timestamp = gated.Timestamp

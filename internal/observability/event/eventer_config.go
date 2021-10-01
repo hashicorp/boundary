@@ -6,10 +6,10 @@ import (
 
 // EventerConfig supplies all the configuration needed to create/config an Eventer.
 type EventerConfig struct {
-	AuditEnabled        bool         `hcl:"audit_enabled"`        // AuditEnabled specifies if audit events should be emitted.
-	ObservationsEnabled bool         `hcl:"observations_enabled"` // ObservationsEnabled specifies if observation events should be emitted.
-	SysEventsEnabled    bool         `hcl:"sysevents_enabled"`    // SysEventsEnabled specifies if sysevents should be emitted.
-	Sinks               []SinkConfig `hcl:"-"`                    // Sinks are all the configured sinks
+	AuditEnabled        bool          `hcl:"audit_enabled"`        // AuditEnabled specifies if audit events should be emitted.
+	ObservationsEnabled bool          `hcl:"observations_enabled"` // ObservationsEnabled specifies if observation events should be emitted.
+	SysEventsEnabled    bool          `hcl:"sysevents_enabled"`    // SysEventsEnabled specifies if sysevents should be emitted.
+	Sinks               []*SinkConfig `hcl:"-"`                    // Sinks are all the configured sinks
 }
 
 // Validate will Validate the config. A config isn't required to have any

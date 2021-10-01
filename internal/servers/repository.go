@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -80,9 +81,9 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 
 	var where string
 	if liveness > 0 {
-		where = fmt.Sprintf("type = $1 and update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = fmt.Sprintf("type = ? and update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	} else {
-		where = "type = $1"
+		where = "type = ?"
 	}
 
 	var servers []*Server
@@ -148,10 +149,10 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			rowsUpdated, err = w.Exec(ctx,
 				serverUpsertQuery,
 				[]interface{}{
-					server.PrivateId,
-					server.Type,
-					server.Description,
-					server.Address,
+					sql.Named("private_id", server.PrivateId),
+					sql.Named("type", server.Type),
+					sql.Named("description", server.Description),
+					sql.Named("address", server.Address),
 				})
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")

@@ -3,25 +3,27 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func testCleanup(t *testing.T, cleanupFunc func() error, db *gorm.DB) {
 	t.Helper()
 	err := cleanupFunc()
 	assert.NoError(t, err)
-	err = db.Close()
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	err = sqlDB.Close()
 	assert.NoError(t, err)
 }
 
@@ -57,7 +59,7 @@ func testId(t *testing.T) string {
 func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
 	t.Helper()
 
-	cleanup, retURL, _, err = docker.StartDbInDocker("postgres")
+	cleanup, retURL, _, err = dbtest.StartUsingTemplate(dbtest.Postgres)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +86,7 @@ func testInitStore(t *testing.T, cleanup func() error, url string) {
 	ctx := context.Background()
 	dialect := "postgres"
 
-	d, err := sql.Open(dialect, url)
+	d, err := common.SqlOpen(dialect, url)
 	require.NoError(t, err)
 	sm, err := schema.NewManager(ctx, dialect, d)
 	require.NoError(t, err)

@@ -76,7 +76,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
 			AuditEnabled:        true,
-			Sinks: []SinkConfig{
+			Sinks: []*SinkConfig{
 				{
 					Name:       "every-type-file-sink",
 					Type:       FileSink,
@@ -86,12 +86,14 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 						Path:     "./",
 						FileName: tmpAllFile.Name(),
 					},
+					AuditConfig: DefaultAuditConfig(),
 				},
 				{
-					Name:       "stderr",
-					Type:       StderrSink,
-					EventTypes: []Type{EveryType},
-					Format:     opts.withSinkFormat,
+					Name:        "stderr",
+					Type:        StderrSink,
+					EventTypes:  []Type{EveryType},
+					Format:      opts.withSinkFormat,
+					AuditConfig: DefaultAuditConfig(),
 				},
 				{
 					Name:       "err-file-sink",
@@ -114,7 +116,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())
 		})
-		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, &SinkConfig{
 			Name:       "audit-file-sink",
 			Type:       FileSink,
 			EventTypes: []Type{AuditType},
@@ -123,6 +125,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 				Path:     "./",
 				FileName: tmpFile.Name(),
 			},
+			AuditConfig: DefaultAuditConfig(),
 		})
 		c.AuditEvents = tmpFile
 	}
@@ -132,7 +135,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())
 		})
-		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, &SinkConfig{
 			Name:       "err-observation-sink",
 			Type:       FileSink,
 			EventTypes: []Type{ObservationType},
@@ -150,7 +153,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())
 		})
-		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, &SinkConfig{
 			Name:       "err-sysevents-sink",
 			Type:       FileSink,
 			EventTypes: []Type{SystemType},

@@ -2,21 +2,20 @@ package migration
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,14 +29,14 @@ func TestMigrations_UserDimension(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
-	dialect := "postgres"
+	dialect := dbtest.Postgres
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(err)
 
 	// migration to the prior migration (before the one we want to test)
@@ -55,7 +54,9 @@ func TestMigrations_UserDimension(t *testing.T) {
 	assert.False(state.Dirty)
 
 	// okay, now we can seed the database with test data
-	conn, err := gorm.Open(dialect, u)
+	dbType, err := db.StringToDbType(dialect)
+	require.NoError(err)
+	conn, err := db.Open(dbType, u)
 	require.NoError(err)
 
 	rw := db.New(conn)
@@ -137,7 +138,7 @@ func TestMigrations_UserDimension(t *testing.T) {
 	assert.False(state.Dirty)
 }
 
-func testOidcAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
+func testOidcAuthToken(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
 	t.Helper()
 
 	authMethod := oidc.TestAuthMethod(

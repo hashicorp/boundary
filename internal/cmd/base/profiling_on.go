@@ -1,3 +1,4 @@
+//go:build memprofiler
 // +build memprofiler
 
 package base

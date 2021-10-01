@@ -132,7 +132,7 @@ func TestCredential_New(t *testing.T) {
 					SessionId:      session.GetPublicId(),
 					ExternalId:     "some/vault/credential",
 					TokenHmac:      token.GetTokenHmac(),
-					ExpirationTime: timestamp.New(db.PositiveInfinityTS),
+					ExpirationTime: timestamp.New(timestamp.PositiveInfinityTS),
 					Status:         string(ActiveCredential),
 				},
 			},

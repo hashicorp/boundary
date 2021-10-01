@@ -394,7 +394,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 		map[string]interface{}{
 			"name":                scope.Name,
 			"description":         scope.Description,
-			"primaryAuthMethodId": scope.PrimaryAuthMethodId,
+			"PrimaryAuthMethodId": scope.PrimaryAuthMethodId, // gorm: it's important that the field start with a capital letter.
 		},
 		fieldMaskPaths,
 		nil,

@@ -32,7 +32,6 @@ import (
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	capoidc "github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -46,7 +45,7 @@ import (
 
 type setup struct {
 	ctx                         context.Context
-	conn                        *gorm.DB
+	conn                        *db.DB
 	rw                          *db.Db
 	rootWrapper                 wrapping.Wrapper
 	kmsCache                    *kms.Kms

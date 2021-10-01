@@ -140,6 +140,18 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+
+	// inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
+
+
+	# these protos, services and openapi artifacts are purely for testing purposes
+	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=testing:internal/gen/testing/event/. internal/proto/local/testing/event/v1/*.proto
+
 
 	@rm -R ${TMP_DIR}
 
@@ -156,6 +168,12 @@ website-install:
 website-start:
 	@npm start --prefix website/
 
+test-database-up:
+	make -C testing/dbtest/docker database-up
+
+test-database-down:
+	make -C testing/dbtest/docker clean
+
 test-ci: install-go
 test-ci: export CI_BUILD=1
 test-ci:
@@ -165,8 +183,8 @@ test-ci:
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
-test: 
-	~/.go/bin/go test ./... -timeout 30m
+test:
+	go test ./... -timeout 30m
 
 install-go:
 	./ci/goinstall.sh
@@ -174,7 +192,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.5.1
+VERSION?=0.6.2
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -196,20 +214,21 @@ docker-multiarch-build:
 	--tag hashicorp/boundary:latest \
 	--build-arg VERSION=$(VERSION) \
 	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile .
-	
+	--file $(DOCKER_DIR)/Release.dockerfile docker/
+
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
+	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile .
+	-f $(DOCKER_DIR)/Dev.dockerfile docker/
 
 # requires appropriate permissions in dockerhub
 docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish 
+.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
 
 .NOTPARALLEL:
 

@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -41,7 +40,7 @@ const TestFakeManagedGroupFilter = `"/foo" == "bar"`
 // WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
-	conn *gorm.DB,
+	conn *db.DB,
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
 	state AuthMethodState,
@@ -158,7 +157,7 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 }
 
 // TestAccount creates a test oidc auth account.
-func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, opt ...Option) *Account {
+func TestAccount(t *testing.T, conn *db.DB, am *AuthMethod, subject string, opt ...Option) *Account {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -179,7 +178,7 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, op
 }
 
 // TestManagedGroup creates a test oidc managed group.
-func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
+func TestManagedGroup(t *testing.T, conn *db.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -197,7 +196,7 @@ func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string
 }
 
 // TestManagedGroupMember adds given account IDs to a managed group
-func TestManagedGroupMember(t *testing.T, conn *gorm.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+func TestManagedGroupMember(t *testing.T, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)

@@ -37,7 +37,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -67,7 +66,7 @@ var testAuthorizedActions = []string{
 	"authorize-session",
 }
 
-func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
+func testService(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repoFn := func() (*target.Repository, error) {
@@ -2545,11 +2544,11 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	_, err = s.AddTargetCredentialLibraries(ctx,
-		&pbs.AddTargetCredentialLibrariesRequest{
-			Id:                              tar.GetPublicId(),
-			ApplicationCredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-			Version:                         apiTar.GetItem().GetVersion(),
+	_, err = s.AddTargetCredentialSources(ctx,
+		&pbs.AddTargetCredentialSourcesRequest{
+			Id:                             tar.GetPublicId(),
+			ApplicationCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+			Version:                        apiTar.GetItem().GetVersion(),
 		})
 	require.NoError(t, err)
 
@@ -2590,6 +2589,13 @@ func TestAuthorizeSession(t *testing.T) {
 		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
 		Credentials: []*pb.SessionCredential{{
 			CredentialLibrary: &pb.CredentialLibrary{
+				Id:                clsResp.GetItem().GetId(),
+				Name:              clsResp.GetItem().GetName().GetValue(),
+				Description:       clsResp.GetItem().GetDescription().GetValue(),
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.Subtype.String(),
+			},
+			CredentialSource: &pb.CredentialSource{
 				Id:                clsResp.GetItem().GetId(),
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),

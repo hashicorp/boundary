@@ -17,8 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/jinzhu/gorm"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -1410,13 +1409,13 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 
 			rowsDeleted, err := rw.Delete(context.Background(), tt.cancelFk.fkType)
 			if err != nil {
-				var pqError *pq.Error
-				if errors.As(err, &pqError) {
-					t.Log(pqError.Message)
-					t.Log(pqError.Detail)
-					t.Log(pqError.Where)
-					t.Log(pqError.Constraint)
-					t.Log(pqError.Table)
+				var pgError *pgconn.PgError
+				if errors.As(err, &pgError) {
+					t.Log(pgError.Message)
+					t.Log(pgError.Detail)
+					t.Log(pgError.Where)
+					t.Log(pgError.ConstraintName)
+					t.Log(pgError.TableName)
 				}
 			}
 			require.NoError(err)
@@ -1644,7 +1643,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 	}
 }
 
-func testSessionCredentialParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	params := TestSessionParams(t, conn, wrapper, iamRepo)
 	require := require.New(t)

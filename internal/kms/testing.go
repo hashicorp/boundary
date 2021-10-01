@@ -7,11 +7,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
+func TestRootKey(t *testing.T, conn *db.DB, scopeId string) *RootKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -26,7 +25,7 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	return k
 }
 
-func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
+func TestRootKeyVersion(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -46,7 +45,7 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	return k, rootKeyVersionWrapper
 }
 
-func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
+func TestKms(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper) *Kms {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -59,7 +58,7 @@ func TestKms(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper) *Kms {
 	return kms
 }
 
-func TestDatabaseKey(t *testing.T, conn *gorm.DB, rootKeyId string) *DatabaseKey {
+func TestDatabaseKey(t *testing.T, conn *db.DB, rootKeyId string) *DatabaseKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -75,7 +74,7 @@ func TestDatabaseKey(t *testing.T, conn *gorm.DB, rootKeyId string) *DatabaseKey
 	return k
 }
 
-func TestDatabaseKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
+func TestDatabaseKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -95,7 +94,7 @@ func TestDatabaseKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper w
 	return k
 }
 
-func TestOplogKey(t *testing.T, conn *gorm.DB, rootKeyId string) *OplogKey {
+func TestOplogKey(t *testing.T, conn *db.DB, rootKeyId string) *OplogKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -111,7 +110,7 @@ func TestOplogKey(t *testing.T, conn *gorm.DB, rootKeyId string) *OplogKey {
 	return k
 }
 
-func TestOplogKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, oplogKeyId string, key []byte) *OplogKeyVersion {
+func TestOplogKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oplogKeyId string, key []byte) *OplogKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -131,7 +130,7 @@ func TestOplogKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	return k
 }
 
-func TestTokenKey(t *testing.T, conn *gorm.DB, rootKeyId string) *TokenKey {
+func TestTokenKey(t *testing.T, conn *db.DB, rootKeyId string) *TokenKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -147,7 +146,7 @@ func TestTokenKey(t *testing.T, conn *gorm.DB, rootKeyId string) *TokenKey {
 	return k
 }
 
-func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
+func TestTokenKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -167,7 +166,7 @@ func TestTokenKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrap
 	return k
 }
 
-func TestSessionKey(t *testing.T, conn *gorm.DB, rootKeyId string) *SessionKey {
+func TestSessionKey(t *testing.T, conn *db.DB, rootKeyId string) *SessionKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -183,7 +182,7 @@ func TestSessionKey(t *testing.T, conn *gorm.DB, rootKeyId string) *SessionKey {
 	return k
 }
 
-func TestSessionKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
+func TestSessionKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -203,7 +202,7 @@ func TestSessionKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wr
 	return k
 }
 
-func TestOidcKey(t *testing.T, conn *gorm.DB, rootKeyId string) *OidcKey {
+func TestOidcKey(t *testing.T, conn *db.DB, rootKeyId string) *OidcKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -219,7 +218,7 @@ func TestOidcKey(t *testing.T, conn *gorm.DB, rootKeyId string) *OidcKey {
 	return k
 }
 
-func TestOidcKeyVersion(t *testing.T, conn *gorm.DB, rootKeyVersionWrapper wrapping.Wrapper, oidcKeyId string, key []byte) *OidcKeyVersion {
+func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oidcKeyId string, key []byte) *OidcKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)

@@ -1,10 +1,14 @@
 package event
 
 import (
+	"encoding/base64"
+	"math/rand"
 	"net/url"
 	"testing"
 	"time"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -150,4 +154,45 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSchema = schema
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithAuditWrapper", func(t *testing.T) {
+		assert := assert.New(t)
+		w := testWrapper(t)
+		opts := getOpts(WithAuditWrapper(w))
+		testOpts := getDefaultOptions()
+		testOpts.withAuditWrapper = w
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithFilterOperations", func(t *testing.T) {
+		assert := assert.New(t)
+		overrides := DefaultAuditFilterOperations()
+		opts := getOpts(WithFilterOperations(overrides))
+		testOpts := getDefaultOptions()
+		testOpts.withFilterOperations = overrides
+		assert.Equal(opts, testOpts)
+	})
+}
+
+// testWrapper initializes an AEAD wrapping.Wrapper for testing.  Note: this
+// code was cut/pasted from internal/db to eliminate a circular dependency with
+// the internal/errors pkg
+func testWrapper(t *testing.T) wrapping.Wrapper {
+	rootKey := make([]byte, 32)
+	n, err := rand.Read(rootKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 32 {
+		t.Fatal(n)
+	}
+	root := aead.NewWrapper(nil)
+	_, err = root.SetConfig(map[string]string{
+		"key_id": base64.StdEncoding.EncodeToString(rootKey),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

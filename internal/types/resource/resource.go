@@ -25,6 +25,11 @@ const (
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
+	// NOTE: When adding a new type, be sure to update:
+	//
+	// * The Grant.validateType function and test
+	// * The perms.topLevelTypes function
+	// * The scopes service collection actions for appropriate scopes
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {
@@ -53,6 +58,15 @@ func (r Type) String() string {
 		"credential-store",
 		"credential-library",
 	}[r]
+}
+
+func (r Type) PluralString() string {
+	switch r {
+	case CredentialLibrary:
+		return "credential-libraries"
+	default:
+		return r.String() + "s"
+	}
 }
 
 var Map = map[string]Type{

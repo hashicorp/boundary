@@ -18,13 +18,12 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -44,7 +43,7 @@ func TestConnection(t *testing.T, conn *gorm.DB, sessionId, clientTcpAddr string
 }
 
 // TestConnectionState creates a test connection state for the connectionId in the repository.
-func TestConnectionState(t *testing.T, conn *gorm.DB, connectionId string, state ConnectionStatus) *ConnectionState {
+func TestConnectionState(t *testing.T, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -56,7 +55,7 @@ func TestConnectionState(t *testing.T, conn *gorm.DB, connectionId string, state
 }
 
 // TestState creates a test state for the sessionId in the repository.
-func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *State {
+func TestState(t *testing.T, conn *db.DB, sessionId string, state Status) *State {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -69,7 +68,7 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 
 // TestSession creates a test session composed of c in the repository. Options
 // are passed into New, and withServerId is handled locally.
-func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
+func TestSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	ctx := context.Background()
 	opts := getOpts(opt...)
@@ -110,7 +109,7 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 }
 
 // TestDefaultSession creates a test session in the repository using defaults.
-func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
+func TestDefaultSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 	future := timestamppb.New(time.Now().Add(time.Hour))
@@ -120,7 +119,7 @@ func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, i
 
 // TestSessionParams returns an initialized ComposedOf which can be used to
 // create a session in the repository.
-func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	ctx := context.Background()
 
@@ -176,7 +175,7 @@ func TestTofu(t *testing.T) []byte {
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
 // Supports the WithServerId option.
-func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
+func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)

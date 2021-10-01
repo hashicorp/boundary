@@ -1,13 +1,25 @@
+resource_class: large
 machine:
-  image: 'ubuntu-1604:201903-01'
+  image: 'ubuntu-2004:202107-02'
 working_directory: ~/boundary
 steps:
 - checkout
+- run:
+    name: "Initialize Test Database"
+    command: |
+      which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
+      make DOCKER_ARGS='-d' -C testing/dbtest/docker database-up
+      until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit -1; sleep 1; done
 - run:
     name: "Run Acceptance Tests"
     no_output_timeout: 15m
     command: |
       make test-ci
+- run:
+    name: "Cleanup"
+    when: always
+    command: |
+      make -C testing/dbtest/docker clean
 - slack/status:
     fail_only: true
     only_for_branches: master

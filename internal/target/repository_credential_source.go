@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -353,9 +354,9 @@ type change struct {
 func (r *Repository) changes(ctx context.Context, targetId string, clIds []string) ([]*change, error) {
 	const op = "target.(Repository).changes"
 	var inClauseSpots []string
-	// starts at 2 because there is already a $1 in the query
+	// starts at 2 because there is already a @1 in the query
 	for i := 2; i < len(clIds)+2; i++ {
-		inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", i))
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 	if inClause == "" {
@@ -364,9 +365,9 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	query := fmt.Sprintf(setChangesQuery, inClause)
 
 	var params []interface{}
-	params = append(params, targetId)
-	for _, id := range clIds {
-		params = append(params, id)
+	params = append(params, sql.Named("target_id", targetId))
+	for idx, id := range clIds {
+		params = append(params, sql.Named(fmt.Sprintf("%d", idx+2), id))
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {

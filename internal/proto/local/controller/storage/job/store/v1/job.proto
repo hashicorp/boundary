@@ -26,7 +26,7 @@ message Job {
 
 message JobRun {
   // private_id is used to access the job run but not intended to be available via the API
-  // @inject_tag: `gorm:"primary_key"`
+  // @inject_tag: `gorm:"primary_key;default:null"`
   string private_id = 1;
 
   // The job_plugin_id is the id of the plugin that owns the job.

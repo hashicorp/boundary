@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
@@ -61,7 +62,6 @@ var (
 			resource.Group:      groups.CollectionActions,
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
-			resource.Session:    sessions.CollectionActions,
 			resource.User:       users.CollectionActions,
 		},
 
@@ -71,15 +71,16 @@ var (
 			resource.Group:      groups.CollectionActions,
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
-			resource.Session:    sessions.CollectionActions,
 			resource.User:       users.CollectionActions,
 		},
 
 		scope.Project.String(): {
-			resource.Group:       groups.CollectionActions,
-			resource.HostCatalog: host_catalogs.CollectionActions,
-			resource.Role:        roles.CollectionActions,
-			resource.Target:      targets.CollectionActions,
+			resource.CredentialStore: credentialstores.CollectionActions,
+			resource.Group:           groups.CollectionActions,
+			resource.HostCatalog:     host_catalogs.CollectionActions,
+			resource.Role:            roles.CollectionActions,
+			resource.Session:         sessions.CollectionActions,
+			resource.Target:          targets.CollectionActions,
 		},
 	}
 )
@@ -121,8 +122,9 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
-		// may have authorization on downstream scopes.
-		if authResults.Error == handlers.ForbiddenError() &&
+		// may have authorization on downstream scopes. Or, if they've not
+		// authenticated, still process in case u_anon has permissions.
+		if (authResults.Error == handlers.ForbiddenError() || authResults.Error == handlers.UnauthenticatedError()) &&
 			req.GetRecursive() &&
 			authResults.AuthenticationFinished {
 		} else {

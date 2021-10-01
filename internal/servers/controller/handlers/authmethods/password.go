@@ -136,10 +136,6 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
-	if req.GetAttributes() == nil && req.GetCredentials() != nil {
-		// TODO: Eventually, remove this
-		req.Attributes = req.Credentials
-	}
 	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
 		badFields["attributes"] = "This is a required field."
 		// Return early because we need non-nil values in the rest of the check.

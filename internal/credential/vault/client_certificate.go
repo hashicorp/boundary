@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -123,11 +124,11 @@ func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapp
 func (c *ClientCertificate) insertQuery() (query string, queryValues []interface{}) {
 	query = upsertClientCertQuery
 	queryValues = []interface{}{
-		c.StoreId,
-		c.Certificate,
-		c.CtCertificateKey,
-		c.CertificateKeyHmac,
-		c.KeyId,
+		sql.Named("store_id", c.StoreId),
+		sql.Named("certificate", c.Certificate),
+		sql.Named("certificate_key", c.CtCertificateKey),
+		sql.Named("certificate_key_hmac", c.CertificateKeyHmac),
+		sql.Named("key_id", c.KeyId),
 	}
 	return
 }

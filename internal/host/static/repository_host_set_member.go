@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -121,14 +122,14 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 	const whereNoLimit = `public_id in
        ( select host_id
            from static_host_set_member
-          where set_id = $1
+          where set_id = ?
        )`
 
 	const whereLimit = `public_id in
        ( select host_id
            from static_host_set_member
-          where set_id = $1
-          limit $2
+          where set_id = ?
+          limit ?
        )`
 
 	params := []interface{}{setId}
@@ -328,9 +329,9 @@ type change struct {
 func (r *Repository) changes(ctx context.Context, setId string, hostIds []string) ([]*change, error) {
 	const op = "static.(Repository).changes"
 	var inClauseSpots []string
-	// starts at 2 because there is already a $1 in the query
+	// starts at 2 because there is already a @1 in the query
 	for i := 2; i < len(hostIds)+2; i++ {
-		inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", i))
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 	if inClause == "" {
@@ -339,9 +340,9 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	query := fmt.Sprintf(setChangesQuery, inClause)
 
 	var params []interface{}
-	params = append(params, setId)
-	for _, v := range hostIds {
-		params = append(params, v)
+	params = append(params, sql.Named("1", setId))
+	for idx, v := range hostIds {
+		params = append(params, sql.Named(fmt.Sprintf("%d", idx+2), v))
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {

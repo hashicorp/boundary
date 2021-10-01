@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -143,13 +144,13 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
 	queryValues = []interface{}{
-		t.TokenHmac,
-		t.CtToken,
-		t.StoreId,
-		t.KeyId,
-		t.Status,
-		"now()",
-		exp,
+		sql.Named("1", t.TokenHmac),
+		sql.Named("2", t.CtToken),
+		sql.Named("3", t.StoreId),
+		sql.Named("4", t.KeyId),
+		sql.Named("5", t.Status),
+		sql.Named("6", "now()"),
+		sql.Named("7", exp),
 	}
 	return
 }

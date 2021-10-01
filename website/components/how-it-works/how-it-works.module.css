@@ -1,60 +1,89 @@
 .root {
-  padding: 88px 0;
+  composes: g-grid-container from global;
+  padding-top: 88px;
+  padding-bottom: 88px;
 
-  & .headerWrapper {
-    & h2 {
-      text-align: center;
-      margin-top: 0;
-      margin-bottom: 32px;
-      @media (--small) {
-        margin-bottom: 0;
-      }
-    }
+  @media (--medium-up) {
+    padding-top: 160px;
+    padding-bottom: 160px;
+  }
+}
 
-    & p {
-      max-width: 818px;
-      text-align: center;
-      margin-left: auto;
-      margin-right: auto;
-      color: var(--gray-2);
-    }
+.intro {
+  --columns: 1;
+
+  padding-top: 88px;
+  padding-bottom: 88px;
+  border-top: 1px solid var(--gray-6);
+  display: grid;
+  column-gap: 32px;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  row-gap: 32px;
+
+  @media (--medium-up) {
+    --columns: 12;
+
+    padding-top: 140px;
+    padding-bottom: 140px;
+  }
+}
+
+.introTitle {
+  margin: 0;
+  grid-column: 1 / -1;
+  composes: g-type-display-2 from global;
+
+  @media (--medium-up) {
+    grid-column: 1 / 6;
+  }
+}
+
+.introDescription {
+  grid-column: 1 / -1;
+  composes: g-type-body-large from global;
+
+  @media (--medium-up) {
+    grid-column: 7 / -1;
+  }
+
+  & :first-child {
+    margin-top: 0;
+  }
+
+  & :last-child {
+    margin-bottom: 0;
   }
 }
 
 .contentContainer {
-  display: flex;
-  justify-content: space-between;
+  --columns: 1;
+
   position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-gap: 32px;
 
-  @media (--small) {
-    flex-direction: column;
-  }
-
-  & > ul {
-    max-width: 470px;
-    margin-left: 128px;
-    padding: 0;
-
-    @media (width < 1120px) {
-      margin-left: 64px;
-    }
-
-    @media (width < 1024px) {
-      margin-left: 40px;
-    }
-
-    @media (--small) {
-      margin-left: 0;
-    }
+  @media (--medium-up) {
+    --columns: 12;
   }
 }
 
 .diagram {
-  width: 591px;
-  max-width: 100%;
+  grid-column: 1 / -1;
+
+  @media (--medium-up) {
+    grid-column: 1 / 6;
+  }
 }
 
 .features {
+  padding: 0;
+  grid-column: 1 / -1;
+
+  @media (--medium-up) {
+    grid-column: 7 / -1;
+  }
+
   & > li {
     list-style: none;
 

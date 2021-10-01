@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	authtokenpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 
 	"google.golang.org/protobuf/proto"
@@ -21,12 +22,20 @@ const (
 )
 
 func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
+	const op = "handlers.OutgoingInterceptor"
 	m = m.ProtoReflect().Interface()
 	if !m.ProtoReflect().IsValid() {
 		// This would be the case if it's a nil pointer
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+
+	// add the outgoing resp proto.  See: common.flushGatedEvents is where the
+	// event.Response.StatusCode is added.
+	if err := event.WriteAudit(ctx, op, event.WithResponse(&event.Response{Details: m})); err != nil {
+		return fmt.Errorf("%s: unable to write audit event: %w", op, err)
+	}
+
 	switch m := m.(type) {
 	case *pbs.AuthenticateResponse:
 		if m.GetAttributes() == nil || m.GetAttributes().GetFields() == nil {
@@ -84,24 +93,6 @@ func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Mes
 				http.SetCookie(w, &jsTok)
 				http.SetCookie(w, &httpTok)
 			}
-		}
-
-	case *pbs.AuthenticateLoginResponse:
-		if strings.EqualFold(m.GetTokenType(), "cookie") {
-			tok := m.GetItem().GetToken()
-			m.GetItem().Token = ""
-			half := len(tok) / 2
-			jsTok := http.Cookie{
-				Name:  JsVisibleCookieName,
-				Value: tok[:half],
-			}
-			httpTok := http.Cookie{
-				Name:     HttpOnlyCookieName,
-				Value:    tok[half:],
-				HttpOnly: true,
-			}
-			http.SetCookie(w, &jsTok)
-			http.SetCookie(w, &httpTok)
 		}
 	}
 

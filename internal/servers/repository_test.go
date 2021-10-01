@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -12,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/recovery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,6 +102,7 @@ func TestTagUpdatingListing(t *testing.T) {
 			},
 		},
 	}
+
 	_, _, err := repo.UpsertServer(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 

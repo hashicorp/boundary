@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/eventlogger/sinks/writer"
@@ -68,11 +69,12 @@ type Eventer struct {
 }
 
 type pipeline struct {
-	eventType  Type
-	fmtId      eventlogger.NodeID
-	sinkId     eventlogger.NodeID
-	gateId     eventlogger.NodeID
-	sinkConfig SinkConfig
+	eventType       Type
+	fmtId           eventlogger.NodeID
+	sinkId          eventlogger.NodeID
+	gateId          eventlogger.NodeID
+	encryptFilterId eventlogger.NodeID
+	sinkConfig      *SinkConfig
 }
 
 var (
@@ -136,7 +138,7 @@ func SysEventer() *Eventer {
 }
 
 // NewEventer creates a new Eventer using the config.  Supports options:
-// WithNow, WithSerializationLock, WithBroker
+// WithNow, WithSerializationLock, WithBroker, WithAuditWrapper
 func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
@@ -192,7 +194,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	allSinkFilenames := map[string]bool{}
 
 	for _, s := range c.Sinks {
-		fmtId, fmtNode, err := newFmtFilterNode(serverName, s)
+		fmtId, fmtNode, err := newFmtFilterNode(serverName, *s)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -259,11 +261,38 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 			}
 		}
 		if addToAudit {
+			var fop AuditFilterOperations
+			if s.AuditConfig != nil {
+				fop = s.AuditConfig.FilterOverrides
+			}
+			s.AuditConfig, err = NewAuditConfig(WithAuditWrapper(opts.withAuditWrapper), WithFilterOperations(fop))
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
+			encryptFilter := &encrypt.Filter{
+				Wrapper: opts.withAuditWrapper,
+			}
+			if len(s.AuditConfig.FilterOverrides) > 0 {
+				overrides := encrypt.DefaultFilterOperations()
+				for k, v := range s.AuditConfig.FilterOverrides {
+					overrides[encrypt.DataClassification(k)] = encrypt.FilterOperation(v)
+				}
+				encryptFilter.FilterOperationOverrides = overrides
+			}
+			id, err := NewId("encrypt-audit")
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
+			encryptFilterId := eventlogger.NodeID(id)
+			if err := b.RegisterNode(encryptFilterId, encryptFilter); err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
 			auditPipelines = append(auditPipelines, pipeline{
-				eventType:  AuditType,
-				fmtId:      fmtId,
-				sinkId:     sinkId,
-				sinkConfig: s,
+				eventType:       AuditType,
+				fmtId:           fmtId,
+				sinkId:          sinkId,
+				encryptFilterId: encryptFilterId,
+				sinkConfig:      s,
 			})
 		}
 		if addToObservation {
@@ -322,7 +351,8 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{p.gateId, p.fmtId, p.sinkId},
+			// order of nodes is important!  gate (aggregate), then filter/format, then encrypt, then write to sink
+			NodeIDs: []eventlogger.NodeID{p.gateId, p.encryptFilterId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register audit pipeline: %w", op, err)
@@ -352,7 +382,8 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{p.gateId, p.fmtId, p.sinkId},
+			// order of nodes is important!  gate (aggregate), then filter/format, then write to sink
+			NodeIDs: []eventlogger.NodeID{p.gateId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register observation pipeline: %w", op, err)
@@ -368,7 +399,8 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+			// order of nodes is important!  filter/format, then write to sink
+			NodeIDs: []eventlogger.NodeID{p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register err pipeline: %w", op, err)
@@ -384,7 +416,8 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+			// order of nodes is important! filter/format, then write to sink
+			NodeIDs: []eventlogger.NodeID{p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register sys pipeline: %w", op, err)
@@ -469,16 +502,17 @@ func DefaultEventerConfig() *EventerConfig {
 		AuditEnabled:        false,
 		ObservationsEnabled: true,
 		SysEventsEnabled:    true,
-		Sinks:               []SinkConfig{DefaultSink()},
+		Sinks:               []*SinkConfig{DefaultSink()},
 	}
 }
 
-func DefaultSink() SinkConfig {
-	return SinkConfig{
-		Name:       "default",
-		EventTypes: []Type{EveryType},
-		Format:     JSONSinkFormat,
-		Type:       StderrSink,
+func DefaultSink() *SinkConfig {
+	return &SinkConfig{
+		Name:        "default",
+		EventTypes:  []Type{EveryType},
+		Format:      JSONSinkFormat,
+		Type:        StderrSink,
+		AuditConfig: DefaultAuditConfig(),
 	}
 }
 

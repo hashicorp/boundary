@@ -227,7 +227,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ChangePasswordRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "current_password": {
+                  "type": "string"
+                },
+                "new_password": {
+                  "type": "string"
+                }
+              }
             }
           }
         ],
@@ -260,7 +273,17 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetPasswordRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "password": {
+                  "type": "string"
+                }
+              }
             }
           }
         ],
@@ -356,41 +379,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthMethodService"
-        ]
-      }
-    },
-    "/v1/auth-methods/{auth_method_id}:authenticate:login": {
-      "post": {
-        "summary": "Deprecated: Use Authenticate instead",
-        "operationId": "AuthMethodService_AuthenticateLogin",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "auth_method_id",
-            "description": "The ID of the Auth Method in the system that should be used for authentication.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateLoginRequest"
+              "type": "object",
+              "properties": {
+                "token_type": {
+                  "type": "string",
+                  "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
+                },
+                "attributes": {
+                  "type": "object",
+                  "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+                },
+                "command": {
+                  "type": "string",
+                  "description": "The command to perform."
+                }
+              }
             }
           }
         ],
@@ -508,7 +511,18 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ChangeStateRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "attributes": {
+                  "type": "object",
+                  "description": "The attributes specific to this auth method's state."
+                }
+              }
             }
           }
         ],
@@ -1061,7 +1075,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "member_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -1094,7 +1121,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "member_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -1127,7 +1167,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "member_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -1448,7 +1501,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddHostSetHostsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
+                }
+              }
             }
           }
         ],
@@ -1481,7 +1548,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveHostSetHostsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "A list of Host IDs which will be removed from this Host Set."
+                }
+              }
             }
           }
         ],
@@ -1514,7 +1595,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetHostSetHostsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
+                }
+              }
             }
           }
         ],
@@ -1976,7 +2071,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_strings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2009,7 +2117,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "principal_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2042,7 +2163,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_strings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2075,7 +2209,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "principal_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2108,7 +2255,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_strings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2141,7 +2301,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "principal_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2395,7 +2568,13 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.CancelSessionRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
             }
           }
         ],
@@ -2575,7 +2754,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddTargetCredentialLibrariesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_library_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2608,7 +2800,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddTargetCredentialSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2641,7 +2846,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSetsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_set_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2674,7 +2892,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddTargetHostSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2708,7 +2939,25 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthorizeSessionRequest"
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The name of the target. When using this, scope_id or scope_name must be set."
+                },
+                "scope_id": {
+                  "type": "string",
+                  "description": "The scope ID containing the target, if specifying the target by name."
+                },
+                "scope_name": {
+                  "type": "string",
+                  "description": "The scope name containing the target, if specifying the target by name."
+                },
+                "host_id": {
+                  "type": "string",
+                  "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
+                }
+              }
             }
           }
         ],
@@ -2741,7 +2990,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetCredentialLibrariesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_library_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2774,7 +3036,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetCredentialSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2807,7 +3082,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSetsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_set_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2840,7 +3128,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveTargetHostSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2873,7 +3174,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetTargetCredentialLibrariesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_library_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Sets the values for application_credential_library_ids.  If any\ncredential_library_id field that is not set in the request will result in\nthose fields being cleared."
             }
           }
         ],
@@ -2906,7 +3221,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetTargetCredentialSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Sets the values for application_credential_source_ids.  If any\ncredential_source_id field that is not set in the request will result in\nthose fields being cleared."
             }
           }
         ],
@@ -2939,7 +3268,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSetsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_set_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -2972,7 +3314,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetTargetHostSourcesRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "host_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -3152,7 +3507,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddUserAccountsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+                },
+                "account_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -3185,7 +3553,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveUserAccountsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+                },
+                "account_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -3218,7 +3599,20 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetUserAccountsRequest"
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+                },
+                "account_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         ],
@@ -4775,50 +5169,11 @@
       },
       "title": "User contains all fields related to a User resource"
     },
-    "controller.api.services.v1.AddGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-        }
-      }
-    },
-    "controller.api.services.v1.AddHostSetHostsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -4830,49 +5185,11 @@
         }
       }
     },
-    "controller.api.services.v1.AddRoleGrantsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "grant_strings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-        }
-      }
-    },
-    "controller.api.services.v1.AddRolePrincipalsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "principal_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -4884,49 +5201,11 @@
         }
       }
     },
-    "controller.api.services.v1.AddTargetCredentialLibrariesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddTargetCredentialLibrariesResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.AddTargetCredentialSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -4938,49 +5217,11 @@
         }
       }
     },
-    "controller.api.services.v1.AddTargetHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddTargetHostSetsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.AddTargetHostSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -4992,83 +5233,11 @@
         }
       }
     },
-    "controller.api.services.v1.AddUserAccountsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-        },
-        "account_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddUserAccountsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
-        }
-      }
-    },
-    "controller.api.services.v1.AuthenticateLoginRequest": {
-      "type": "object",
-      "properties": {
-        "auth_method_id": {
-          "type": "string",
-          "description": "The ID of the Auth Method in the system that should be used for authentication."
-        },
-        "token_type": {
-          "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
-        },
-        "credentials": {
-          "type": "object",
-          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
-        }
-      }
-    },
-    "controller.api.services.v1.AuthenticateLoginResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-        },
-        "token_type": {
-          "type": "string"
-        }
-      }
-    },
-    "controller.api.services.v1.AuthenticateRequest": {
-      "type": "object",
-      "properties": {
-        "auth_method_id": {
-          "type": "string",
-          "description": "The ID of the Auth Method in the system that should be used for authentication."
-        },
-        "token_type": {
-          "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
-        },
-        "credentials": {
-          "type": "object",
-          "description": "Deprecated; use \"attributes\" instead."
-        },
-        "attributes": {
-          "type": "object",
-          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
-        },
-        "command": {
-          "type": "string",
-          "description": "The command to perform."
         }
       }
     },
@@ -5085,48 +5254,11 @@
         }
       }
     },
-    "controller.api.services.v1.AuthorizeSessionRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the target. Required unless some combination of scope_id/scope_name and name are set."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the target. When using this, scope_id or scope_name must be set."
-        },
-        "scope_id": {
-          "type": "string",
-          "description": "The scope ID containing the target, if specifying the target by name."
-        },
-        "scope_name": {
-          "type": "string",
-          "description": "The scope name containing the target, if specifying the target by name."
-        },
-        "host_id": {
-          "type": "string",
-          "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
-        }
-      }
-    },
     "controller.api.services.v1.AuthorizeSessionResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
-        }
-      }
-    },
-    "controller.api.services.v1.CancelSessionRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64"
         }
       }
     },
@@ -5138,47 +5270,11 @@
         }
       }
     },
-    "controller.api.services.v1.ChangePasswordRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "current_password": {
-          "type": "string"
-        },
-        "new_password": {
-          "type": "string"
-        }
-      }
-    },
     "controller.api.services.v1.ChangePasswordResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
-        }
-      }
-    },
-    "controller.api.services.v1.ChangeStateRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "attributes": {
-          "type": "object",
-          "description": "The attributes specific to this auth method's state."
         }
       }
     },
@@ -5660,50 +5756,11 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveGroupMembersResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-        }
-      }
-    },
-    "controller.api.services.v1.RemoveHostSetHostsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of Host IDs which will be removed from this Host Set."
         }
       }
     },
@@ -5715,49 +5772,11 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveRoleGrantsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "grant_strings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-        }
-      }
-    },
-    "controller.api.services.v1.RemoveRolePrincipalsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "principal_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -5769,49 +5788,11 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveTargetCredentialLibrariesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveTargetCredentialLibrariesResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.RemoveTargetCredentialSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -5823,49 +5804,11 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveTargetHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveTargetHostSetsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.RemoveTargetHostSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -5877,49 +5820,11 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveUserAccountsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-        },
-        "account_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveUserAccountsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
-        }
-      }
-    },
-    "controller.api.services.v1.SetGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -5931,47 +5836,11 @@
         }
       }
     },
-    "controller.api.services.v1.SetHostSetHostsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
-        }
-      }
-    },
     "controller.api.services.v1.SetHostSetHostsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
-        }
-      }
-    },
-    "controller.api.services.v1.SetPasswordRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "password": {
-          "type": "string"
         }
       }
     },
@@ -5983,49 +5852,11 @@
         }
       }
     },
-    "controller.api.services.v1.SetRoleGrantsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "grant_strings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.SetRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-        }
-      }
-    },
-    "controller.api.services.v1.SetRolePrincipalsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "principal_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -6037,26 +5868,6 @@
         }
       }
     },
-    "controller.api.services.v1.SetTargetCredentialLibrariesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "Sets the values for application_credential_library_ids.  If any\ncredential_library_id field that is not set in the request will result in\nthose fields being cleared."
-    },
     "controller.api.services.v1.SetTargetCredentialLibrariesResponse": {
       "type": "object",
       "properties": {
@@ -6065,50 +5876,11 @@
         }
       }
     },
-    "controller.api.services.v1.SetTargetCredentialSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "application_credential_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "Sets the values for application_credential_source_ids.  If any\ncredential_source_id field that is not set in the request will result in\nthose fields being cleared."
-    },
     "controller.api.services.v1.SetTargetCredentialSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.SetTargetHostSetsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_set_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -6120,49 +5892,11 @@
         }
       }
     },
-    "controller.api.services.v1.SetTargetHostSourcesRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "host_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.SetTargetHostSourcesResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
-    "controller.api.services.v1.SetUserAccountsRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-        },
-        "account_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },

@@ -371,9 +371,10 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				// id=*;type=<something>;actions=*
 				switch len(grant.actions) {
 				case 0:
-					// A total lack of actions is already caught elsewhere but
-					// this is here for completeness
-					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions")
+					// It's okay to have no actions if only output fields are being defined
+					if len(grant.OutputFields) == 0 {
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
+					}
 				case 1:
 					if !grant.actions[action.Create] &&
 						!grant.actions[action.List] {
@@ -421,26 +422,17 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	return grant, nil
 }
 
+// validateType ensures that we are not allowing access to disallowed resource
+// types. It does not explicitly check the resource string itself; that's the
+// job of the parsing functions to look up the string from the Map and ensure
+// it's not unknown.
 func (g Grant) validateType() error {
 	const op = "perms.(Grant).validateType"
 	switch g.typ {
-	case resource.Unknown,
-		resource.All,
-		resource.Scope,
-		resource.User,
-		resource.Group,
-		resource.Role,
-		resource.AuthMethod,
-		resource.Account,
-		resource.AuthToken,
-		resource.HostCatalog,
-		resource.HostSet,
-		resource.Host,
-		resource.Target,
-		resource.Session:
-		return nil
+	case resource.Controller, resource.Worker:
+		return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", g.typ))
 	}
-	return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", g.typ))
+	return nil
 }
 
 func (g *Grant) parseAndValidateActions() error {

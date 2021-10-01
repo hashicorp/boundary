@@ -99,8 +99,9 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
-		// may have authorization on downstream scopes.
-		if authResults.Error == handlers.ForbiddenError() &&
+		// may have authorization on downstream scopes. Or, if they've not
+		// authenticated, still process in case u_anon has permissions.
+		if (authResults.Error == handlers.ForbiddenError() || authResults.Error == handlers.UnauthenticatedError()) &&
 			req.GetRecursive() &&
 			authResults.AuthenticationFinished {
 		} else {
@@ -499,6 +500,9 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	if outputFields.Has(globals.AttributesField) {
 		switch credential.SubtypeFromId(in.GetPublicId()) {

@@ -89,11 +89,6 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
-	"sessions": {
-		Values: []*structpb.Value{
-			structpb.NewStringValue("list"),
-		},
-	},
 	"users": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -132,11 +127,6 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
-	"sessions": {
-		Values: []*structpb.Value{
-			structpb.NewStringValue("list"),
-		},
-	},
 	"users": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -146,6 +136,12 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"credential-stores": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"groups": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -161,6 +157,11 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	"roles": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"sessions": {
+		Values: []*structpb.Value{
 			structpb.NewStringValue("list"),
 		},
 	},

@@ -180,6 +180,7 @@ func topLevelType(typ resource.Type) bool {
 	switch typ {
 	case resource.AuthMethod,
 		resource.AuthToken,
+		resource.CredentialStore,
 		resource.Group,
 		resource.HostCatalog,
 		resource.Role,

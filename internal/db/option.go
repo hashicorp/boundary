@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -43,6 +44,9 @@ type Options struct {
 
 	// withPrngValues is used to switch the ID generation to a pseudo-random mode
 	withPrngValues []string
+
+	withGormFormatter      hclog.Logger
+	withMaxOpenConnections int
 }
 
 type oplogOpts struct {
@@ -163,5 +167,21 @@ func WithOrder(withOrder string) Option {
 func WithPrngValues(withPrngValues []string) Option {
 	return func(o *Options) {
 		o.withPrngValues = withPrngValues
+	}
+}
+
+// WithGormFormatter specifies an optional hclog to use for gorm's log
+// formmater
+func WithGormFormatter(l hclog.Logger) Option {
+	return func(o *Options) {
+		o.withGormFormatter = l
+	}
+}
+
+// WithMaxOpenConnections specifices and optional max open connections for the
+// database
+func WithMaxOpenConnections(max int) Option {
+	return func(o *Options) {
+		o.withMaxOpenConnections = max
 	}
 }

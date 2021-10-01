@@ -1,0 +1,70 @@
+.root {
+  composes: g-grid-container from global;
+}
+
+.inner {
+  --columns: 1;
+
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-gap: 48px 32px;
+  padding: 48px 32px;
+  background-color: var(--white);
+  box-shadow: 0 8px 12px rgba(37, 38, 45, 0.08);
+  border-radius: 1px;
+
+  @media (--medium-up) {
+    --columns: 2;
+
+    padding: 100px 75px;
+  }
+}
+
+.heading {
+  margin: 0;
+  composes: g-type-display-3 from global;
+}
+
+.description {
+  margin: 32px 0 0;
+  composes: g-type-body-small from global;
+}
+
+.items {
+  list-style: none;
+  margin: 15px 0 0;
+  padding: 0;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  color: var(--gray-2);
+  composes: g-type-display-5 from global;
+
+  &::before {
+    content: '';
+    flex-shrink: 0;
+    display: block;
+    margin-right: 20px;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background-color: #c4c4c4;
+  }
+
+  & + .item {
+    border-top: 2px solid var(--gray-6);
+  }
+}
+
+.media {
+  align-self: center;
+  justify-self: center;
+  & img {
+    max-width: 100%;
+  }
+}
