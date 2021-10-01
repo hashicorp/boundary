@@ -7543,6 +7543,10 @@ create table credential_vault_library_user_password_map (
 
   create trigger delete_credential_vault_library_map_subtype after delete on credential_vault_library_user_password_map
     for each row execute procedure delete_credential_vault_library_map_subtype();
+
+  insert into oplog_ticket (name, version)
+  values
+    ('credential_vault_library_user_password_map', 1);
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
