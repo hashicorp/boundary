@@ -41,7 +41,8 @@ func testOpen(dbType string, connectionUrl string) (*gorm.DB, error) {
 	switch dbType {
 	case "postgres":
 		dialect = postgres.New(postgres.Config{
-			DSN: connectionUrl},
+			DSN: connectionUrl,
+		},
 		)
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
