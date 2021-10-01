@@ -503,9 +503,9 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	// CloseConnectionsForDeadWorkersResult.
 	timestampPbAsUTC := func(t *testing.T, tm time.Time) time.Time {
 		t.Helper()
-		utcLoc, err := time.LoadLocation("Etc/UTC")
-		require.NoError(err)
-		return tm.In(utcLoc)
+		// utcLoc, err := time.LoadLocation("Etc/UTC")
+		// require.NoError(err)
+		return tm.In(time.Local)
 	}
 
 	// Now try some scenarios.

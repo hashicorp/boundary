@@ -769,7 +769,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(cmp.Diff(updatedAM, foundAuthMethod, protocmp.Transform()))
 
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.SqlDB(ctx)
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if amToUpdate.Name == "" && contains(tt.args.fieldMaskPaths, "name") {
 				dbassert.IsNull(foundAuthMethod, "name")
 			}

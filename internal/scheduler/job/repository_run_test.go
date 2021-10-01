@@ -542,7 +542,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			var privateId string
 			if tt.orig != nil {
 				err = rw.Create(context.Background(), tt.orig)
-				assert.NoError(err)
+				require.NoError(err)
 				assert.Empty(tt.orig.EndTime)
 				privateId = tt.orig.PrivateId
 			}
@@ -1112,7 +1112,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 	run, err = testRun(conn, job1.PluginId, job1.Name, server.PrivateId)
 	require.Error(err)
 	require.Nil(run)
-	assert.Equal("pq: duplicate key value violates unique constraint \"job_run_status_constraint\"", err.Error())
+	assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_run_status_constraint\"")
 
 	// Creating a new job with a different name, the associated run should not conflict with the previous run
 	job2 := testJob(t, conn, "job2", "description", wrapper)

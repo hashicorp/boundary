@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,8 +55,11 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	assert.Equal(priorMigration, state.DatabaseSchemaVersion)
 	assert.False(state.Dirty)
 
+	dbType, err := db.StringToDbType(dialect)
+	require.NoError(err)
+
 	// okay, now we can seed the database with test data
-	conn, err := gorm.Open(dialect, u)
+	conn, err := db.Open(dbType, u)
 	require.NoError(err)
 
 	rw := db.New(conn)
@@ -141,7 +143,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	assert.False(state.Dirty)
 }
 
-func testOidcAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
+func testOidcAuthToken(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, scopeId string) *authtoken.AuthToken {
 	t.Helper()
 
 	authMethod := oidc.TestAuthMethod(
@@ -168,7 +170,7 @@ func testOidcAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrappi
 	return at
 }
 
-func testSessionCredentialParams(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar *target.TcpTarget) []*session.DynamicCredential {
+func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar *target.TcpTarget) []*session.DynamicCredential {
 	t.Helper()
 	rw := db.New(conn)
 

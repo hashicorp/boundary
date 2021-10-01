@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -289,7 +288,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 	}
 }
 
-func testArgon2Confs(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Argon2Configuration {
+func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) []*Argon2Configuration {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)

@@ -12,13 +12,12 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
 // TestRepo creates a repo that can be used for various purposes. Crucially, it
 // ensures that the global scope contains a valid root key.
-func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
+func TestRepo(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
 	require := require.New(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
@@ -156,7 +155,7 @@ func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *Us
 }
 
 // TestRole creates a role suitable for testing.
-func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role {
+func TestRole(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -176,7 +175,7 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 	return role
 }
 
-func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
+func TestRoleGrant(t *testing.T, conn *db.DB, roleId, grant string, opt ...Option) *RoleGrant {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -189,7 +188,7 @@ func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Opt
 }
 
 // TestGroup creates a group suitable for testing.
-func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Group {
+func TestGroup(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Group {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -205,7 +204,7 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	return grp
 }
 
-func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
+func TestGroupMember(t *testing.T, conn *db.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -218,7 +217,7 @@ func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ..
 	return gm
 }
 
-func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
+func TestUserRole(t *testing.T, conn *db.DB, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -230,7 +229,7 @@ func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Opt
 	return r
 }
 
-func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Option) *GroupRole {
+func TestGroupRole(t *testing.T, conn *db.DB, roleId, grpId string, opt ...Option) *GroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -242,7 +241,7 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 	return r
 }
 
-func TestManagedGroupRole(t *testing.T, conn *gorm.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
+func TestManagedGroupRole(t *testing.T, conn *db.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -257,11 +256,13 @@ func TestManagedGroupRole(t *testing.T, conn *gorm.DB, roleId, managedGrpId stri
 // testAccount is a temporary test function.  TODO - replace with an auth
 // subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId
-func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *authAccount {
+func testAccount(t *testing.T, conn *db.DB, scopeId, authMethodId, userId string) *authAccount {
 	const (
 		accountPrefix = "aa_"
 	)
 	t.Helper()
+	ctx := context.Background()
+
 	rw := db.New(conn)
 	require := require.New(t)
 	require.NotNil(conn)
@@ -277,7 +278,9 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	}
 
 	var count int
-	err := conn.DB().QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&count)
+	underlyingDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	err = underlyingDB.QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&count)
 	require.NoError(err)
 	require.Equal(1, count)
 
@@ -297,7 +300,9 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	require.NotEmpty(acct.PublicId)
 
 	if userId == "" {
-		dbassert := dbassert.New(t, conn.DB())
+		underlyingDB, err := conn.SqlDB(ctx)
+		require.NoError(err)
+		dbassert := dbassert.New(t, underlyingDB)
 		dbassert.IsNull(acct, "IamUserId")
 	}
 	return acct
@@ -305,7 +310,7 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 
 // testAuthMethod is a temporary test function.  TODO - replace with an auth
 // subsystem testAuthMethod function.
-func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
+func testAuthMethod(t *testing.T, conn *db.DB, scopeId string) string {
 	const (
 		authMethodPrefix = "am_"
 	)
@@ -316,7 +321,8 @@ func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
 	id, err := db.NewPublicId(authMethodPrefix)
 	require.NoError(err)
 
-	_, err = conn.DB().Exec(insertAuthMethod, id, scopeId)
+	rw := db.New(conn)
+	_, err = rw.Exec(context.Background(), insertAuthMethod, []interface{}{id, scopeId})
 	require.NoError(err)
 	return id
 }

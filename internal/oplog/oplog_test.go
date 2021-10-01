@@ -8,9 +8,10 @@ import (
 	dbassert "github.com/hashicorp/dbassert/gorm"
 
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -22,10 +23,36 @@ func setup(t *testing.T) (func() error, *gorm.DB) {
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)
 	require.NoError(err)
-	db, err := gorm.Open("postgres", url)
+	db, err := testOpen("postgres", url)
+	require.NoError(err)
+	oplog_test.Init(db)
+	t.Cleanup(func() {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, sqlDB.Close(), "Got error closing gorm db.")
+	})
 	require.NoError(err)
 	oplog_test.Init(db)
 	return cleanup, db
+}
+
+func testOpen(dbType string, connectionUrl string) (*gorm.DB, error) {
+	var dialect gorm.Dialector
+	switch dbType {
+	case "postgres":
+		dialect = postgres.New(postgres.Config{
+			DSN: connectionUrl},
+		)
+	default:
+		return nil, fmt.Errorf("unable to open %s database type", dbType)
+	}
+	db, err := gorm.Open(dialect, &gorm.Config{
+		ConvertNullToZeroValues: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to open database: %w", err)
+	}
+	return db, nil
 }
 
 // Test_BasicOplog provides some basic unit tests for oplogs
@@ -228,6 +255,7 @@ func Test_UnmarshalData(t *testing.T) {
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
 	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
+	require.NoError(t, err)
 
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	require.NoError(t, err)
@@ -390,7 +418,9 @@ func Test_Replay(t *testing.T) {
 		}
 		err = tx.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309", "Name": gorm.Expr("NULL")}).Error
 		require.NoError(err)
-		dbassert := dbassert.New(t, tx.DB(), "postgres")
+		underlyingDB, err := tx.DB()
+		require.NoError(err)
+		dbassert := dbassert.New(t, underlyingDB, tx.Dialector.Name())
 		dbassert.IsNull(&userUpdate, "Name")
 
 		foundCreateUser := testFindUser(t, tx, userCreate.Id)

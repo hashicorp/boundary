@@ -136,6 +136,13 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+
+	// inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
+
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
@@ -178,7 +185,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.6.1
+VERSION?=0.6.2
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -200,13 +207,14 @@ docker-multiarch-build:
 	--tag hashicorp/boundary:latest \
 	--build-arg VERSION=$(VERSION) \
 	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile .
-	
+	--file $(DOCKER_DIR)/Release.dockerfile docker/
+
 # builds from locally generated binary in bin/
 docker-build-dev: export XC_OSARCH=linux/amd64
 docker-build-dev: dev
+	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile .
+	-f $(DOCKER_DIR)/Dev.dockerfile docker/
 
 # requires appropriate permissions in dockerhub
 docker-publish:

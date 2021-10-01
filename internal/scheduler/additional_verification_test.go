@@ -37,8 +37,13 @@ func TestSchedulerWorkflow(t *testing.T) {
 
 	job1Ch := make(chan error)
 	job1Ready := make(chan struct{})
+	testDone := make(chan struct{})
 	fn1 := func(_ context.Context) error {
-		job1Ready <- struct{}{}
+		select {
+		case <-testDone:
+			return nil
+		case job1Ready <- struct{}{}:
+		}
 		return <-job1Ch
 	}
 	tj1 := testJob{name: "name1", description: "desc", fn: fn1, nextRunIn: time.Hour}
@@ -48,7 +53,11 @@ func TestSchedulerWorkflow(t *testing.T) {
 	job2Ch := make(chan error)
 	job2Ready := make(chan struct{})
 	fn2 := func(_ context.Context) error {
-		job2Ready <- struct{}{}
+		select {
+		case <-testDone:
+			return nil
+		case job2Ready <- struct{}{}:
+		}
 		return <-job2Ch
 	}
 	tj2 := testJob{name: "name2", description: "desc", fn: fn2, nextRunIn: time.Hour}
@@ -87,6 +96,10 @@ func TestSchedulerWorkflow(t *testing.T) {
 
 	// Complete job 2
 	job2Ch <- nil
+
+	close(testDone)
+	close(job1Ch)
+	close(job2Ch)
 }
 
 func TestSchedulerCancelCtx(t *testing.T) {
@@ -264,9 +277,8 @@ func TestSchedulerJobProgress(t *testing.T) {
 		select {
 		case <-done:
 			return nil
-		default:
+		case jobReady <- struct{}{}:
 		}
-		jobReady <- struct{}{}
 		<-ctx.Done()
 		return nil
 	}
@@ -346,7 +358,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	// Close done to bypass future job run / job status requests that will block on channels
 	close(done)
 	// unblock existing goroutines waiting on channels
-	jobStatus <- JobStatus{}
+	close(jobStatus)
 }
 
 func TestSchedulerMonitorLoop(t *testing.T) {
@@ -370,8 +382,13 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
+	testDone := make(chan struct{})
 	fn := func(ctx context.Context) error {
-		jobReady <- struct{}{}
+		select {
+		case <-testDone:
+			return nil
+		case jobReady <- struct{}{}:
+		}
 		<-ctx.Done()
 		jobDone <- struct{}{}
 		return nil
@@ -404,6 +421,10 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(string(job.Interrupted), run.Status)
 	baseCnl()
+
+	// Close channels to unblock any new jobs that got started
+	close(jobDone)
+	close(testDone)
 }
 
 func TestSchedulerFinalStatusUpdate(t *testing.T) {
@@ -427,8 +448,13 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 
 	jobReady := make(chan struct{})
 	jobErr := make(chan error)
+	testDone := make(chan struct{})
 	fn := func(_ context.Context) error {
-		jobReady <- struct{}{}
+		select {
+		case <-testDone:
+			return nil
+		case jobReady <- struct{}{}:
+		}
 		return <-jobErr
 	}
 
@@ -487,6 +513,9 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	assert.Equal(uint32(20), run.CompletedCount)
 
 	baseCnl()
+	close(testDone)
+	close(jobErr)
+	close(jobStatus)
 }
 
 func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) *job.Run {

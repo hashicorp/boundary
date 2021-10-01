@@ -7,11 +7,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Option) *TcpTarget {
+func TestTcpTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...Option) *TcpTarget {
 	t.Helper()
 	opt = append(opt, WithName(name))
 	opts := getOpts(opt...)
@@ -62,7 +61,7 @@ func testId(t *testing.T) string {
 
 // TestCredentialLibrary creates a CredentialLibrary for targetId and
 // libraryId.
-func TestCredentialLibrary(t *testing.T, conn *gorm.DB, targetId, libraryId string) *CredentialLibrary {
+func TestCredentialLibrary(t *testing.T, conn *db.DB, targetId, libraryId string) *CredentialLibrary {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)

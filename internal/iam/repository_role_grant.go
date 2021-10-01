@@ -392,8 +392,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	}
 
 	const (
-		anonUser    = `where public_id in ($1)`
-		authUser    = `where public_id in ('u_anon', 'u_auth', $1)`
+		anonUser    = `where public_id in (?)`
+		authUser    = `where public_id in ('u_anon', 'u_auth', ?)`
 		grantsQuery = `
 with
 users (id) as (

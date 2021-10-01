@@ -179,6 +179,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	ctx := context.Background()
 
 	changeName := func(s string) func(*HostCatalog) *HostCatalog {
 		return func(c *HostCatalog) *HostCatalog {
@@ -461,7 +462,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.SqlDB(ctx)
+			require.NoError(t, err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {
 				dbassert.IsNull(got, "name")
 				return

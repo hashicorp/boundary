@@ -782,10 +782,12 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 // associationChanges returns two slices: accounts to associate and disassociate
 func associationChanges(ctx context.Context, reader db.Reader, userId string, accountIds []string) ([]string, []string, error) {
 	const op = "iam.associationChanges"
+
 	var inClauseSpots []string
-	// starts at 2 because there is already a $1 in the query
+	// starts at 2 because there is already a ? in the query
 	for i := 2; i < len(accountIds)+2; i++ {
-		inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+		// inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+		inClauseSpots = append(inClauseSpots, "?")
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 	if inClause == "" {
@@ -794,10 +796,11 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	query := fmt.Sprintf(accountChangesQuery, inClause)
 
 	var params []interface{}
-	params = append(params, userId)
 	for _, v := range accountIds {
 		params = append(params, v)
 	}
+	params = append(params, userId)
+
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)

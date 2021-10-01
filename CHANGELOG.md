@@ -4,8 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.6.2 (2021/09/27)
+
 ### Deprecations/Changes
 
+* permissions: Fix bug in _Host Sets_ service that authenticated requests  
+  againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_ 
+  and _RemoveHosts_ paths that do not have wildcard (`*`) action grants. 
+  If affected, please update grant actions as follows:
+* * `set-host-sets` -> `set-hosts`
+* * `add-host-sets` -> `add-hosts`
+* * `remove-host-sets` -> `remove-hosts` 
+  ([PR](https://github.com/hashicorp/boundary/pull/1549)).
 * Removes support for the `auth-methods/<id>:authenticate:login` action that was 
   deprecated in [Boundary 0.2.0](#020-20210414), please use 
   `auth-methods/<id>:authenticate` instead.

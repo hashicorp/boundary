@@ -200,14 +200,14 @@ message OidcTokenAttributes {
 
 message AuthenticateRequest {
   // The ID of the Auth Method in the system that should be used for authentication.
-  string auth_method_id = 1 [json_name = "auth_method_id"];
+  string auth_method_id = 1 [json_name = "auth_method_id"];  // @gotags: `class:"public"`
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
   string token_type = 2 [json_name = "token_type"];
   // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command to perform.
-  string command = 5 [json_name = "command"];
+  string command = 5 [json_name = "command"];  // @gotags: `class:"public"`
 
   // Deprecated fields
   reserved "credentials";
@@ -220,5 +220,5 @@ message AuthenticateResponse {
   // Valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command that was performed.
-  string command = 5 [json_name = "command"];
+  string command = 5 [json_name = "command"];  // @gotags: `class:"public"`
 }

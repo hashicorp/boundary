@@ -589,6 +589,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	ctx := context.Background()
 
 	changeLoginName := func(s string) func(*Account) *Account {
 		return func(a *Account) *Account {
@@ -949,7 +950,9 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)
-			dbassert := dbassert.New(t, conn.DB())
+			underlyingDB, err := conn.SqlDB(ctx)
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
 			if tt.want.Name == "" {
 				dbassert.IsNull(got, "name")
 				return

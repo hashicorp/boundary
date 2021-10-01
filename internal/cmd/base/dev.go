@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
+	"gorm.io/gorm/logger"
 )
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
@@ -93,14 +94,14 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	if err := b.ConnectToDatabase(dialect); err != nil {
+	if err := b.ConnectToDatabase(ctx, dialect); err != nil {
 		if c != nil {
 			err = multierror.Append(err, c())
 		}
 		return err
 	}
 
-	b.Database.LogMode(true)
+	b.Database.Config.Logger.LogMode(logger.Info)
 
 	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
 		if c != nil {
