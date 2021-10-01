@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -192,6 +193,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+			assert.Equal(tt.want.Mapping, got.Mapping)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
@@ -271,6 +273,47 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
+	})
+
+	t.Run("valid-with-user-password-mapping", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		require.NoError(err)
+		require.NotNil(repo)
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		in := &CredentialLibrary{
+			CredentialLibrary: &store.CredentialLibrary{
+				StoreId:    cs.GetPublicId(),
+				HttpMethod: "GET",
+				VaultPath:  "/some/path",
+				Name:       "test-name-repo",
+			},
+		}
+
+		mapping := credential.UserPasswordMapping{
+			Username: "me",
+			Password: "don't tell anyone",
+		}
+
+		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in, WithMapping(mapping))
+		require.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+		assert.Equal(got.CreateTime, got.UpdateTime)
+
+		up, ok := got.Mapping.(*UserPasswordMap)
+		require.True(ok)
+		assert.Equal(got.GetPublicId(), up.GetLibraryId())
+		assertPrivateId(t, usernamePasswordMapPrefix, up.GetPrivateId())
+		assert.Equal(mapping.Username, up.GetUsernameAttribute())
+		assert.Equal(mapping.Password, up.GetPasswordAttribute())
 	})
 }
 

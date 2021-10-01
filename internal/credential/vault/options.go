@@ -1,5 +1,7 @@
 package vault
 
+import "github.com/hashicorp/boundary/internal/credential"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -24,6 +26,7 @@ type options struct {
 	withClientCert    *ClientCertificate
 	withMethod        Method
 	withRequestBody   []byte
+	withMapping       *credential.Mapping
 }
 
 func getDefaultOptions() options {
@@ -107,5 +110,14 @@ func WithMethod(m Method) Option {
 func WithRequestBody(b []byte) Option {
 	return func(o *options) {
 		o.withRequestBody = b
+	}
+}
+
+// WithMapping provides an optional mapping that defines a strongly typed
+// credential the library should generate. A credential library can only
+// have one or zero mappings.
+func WithMapping(m credential.Mapping) Option {
+	return func(o *options) {
+		o.withMapping = &m
 	}
 }

@@ -22,7 +22,9 @@ import (
 // unique within l.StoreId.
 //
 // Both l.CreateTime and l.UpdateTime are ignored.
-func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, _ ...Option) (*CredentialLibrary, error) {
+//
+// WithMapping is the only supported option.
+func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, opt ...Option) (*CredentialLibrary, error) {
 	const op = "vault.(Repository).CreateCredentialLibrary"
 	if l == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil CredentialLibrary")
@@ -59,6 +61,15 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	var m Mapping
+	opts := getOpts(opt...)
+	if opts.withMapping != nil {
+		m, err = newMapping(ctx, *opts.withMapping, id)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	var newCredentialLibrary *CredentialLibrary
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
@@ -66,6 +77,13 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 			err := w.Create(ctx, newCredentialLibrary, db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+			if m != nil {
+				inner := w.Create(ctx, m, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
+				if inner != nil {
+					return errors.Wrap(ctx, inner, op, errors.WithMsg("error creating credential library mapper"))
+				}
+				newCredentialLibrary.Mapping = m
 			}
 			return nil
 		},

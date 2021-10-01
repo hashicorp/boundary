@@ -40,6 +40,7 @@ const (
 	InvalidDynamicCredential Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
 	JobAlreadyRunning        Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 	SubtypeAlreadyRegistered Code = 118 // SubtypeAlreadyRegistered represents that a value has already been registered in the subtype registry system.
+	InvalidMapping           Code = 119 // InvalidMapping represents that a provided mapping was not valid
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

@@ -20,7 +20,8 @@ const (
 // store.
 type CredentialLibrary struct {
 	*store.CredentialLibrary
-	tableName string `gorm:"-"`
+	Mapping   Mapping `gorm:"-"`
+	tableName string  `gorm:"-"`
 }
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary

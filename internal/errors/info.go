@@ -100,6 +100,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "dynamic credential for session is in an invalid state",
 		Kind:    Integrity,
 	},
+	InvalidMapping: {
+		Message: "invalid mapping",
+		Kind:    Parameter,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
