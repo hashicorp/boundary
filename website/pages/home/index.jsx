@@ -349,7 +349,7 @@ export default function HomePage() {
         links={[
           {
             text: 'Download',
-            url: '/download',
+            url: '/downloads',
             type: 'download',
             icon: { position: 'right', isAnimated: true },
           },
