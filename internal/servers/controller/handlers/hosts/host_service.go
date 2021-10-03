@@ -256,7 +256,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteHostResponse{}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*static.Host, error) {

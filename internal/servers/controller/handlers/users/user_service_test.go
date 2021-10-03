@@ -341,6 +341,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteUserRequest{
 				Id: u.GetPublicId(),
 			},
+			res: &pbs.DeleteUserResponse{},
 		},
 		{
 			name: "Delete bad user id",

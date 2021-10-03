@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
@@ -87,15 +88,15 @@ func TestGetSelf(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			// Setup the auth request information
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens/%s", tc.readId), nil)
-			requestInfo := auth.RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:        req.URL.Path,
 				Method:      req.Method,
-				TokenFormat: auth.AuthTokenTypeBearer,
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
 				PublicId:    tc.token.GetPublicId(),
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
 			got, err := a.GetAuthToken(ctx, &pbs.GetAuthTokenRequest{Id: tc.readId})
 			if tc.err != nil {
@@ -236,15 +237,15 @@ func TestList_Self(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			// Setup the auth request information
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens?scope_id=%s", o.GetPublicId()), nil)
-			requestInfo := auth.RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:        req.URL.Path,
 				Method:      req.Method,
-				TokenFormat: auth.AuthTokenTypeBearer,
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
 				PublicId:    tc.requester.GetPublicId(),
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := a.ListAuthTokens(ctx, &pbs.ListAuthTokensRequest{ScopeId: o.GetPublicId()})
 			require.NoError(err)
 			require.Len(got.Items, 1)
@@ -482,15 +483,15 @@ func TestDeleteSelf(t *testing.T) {
 			require := require.New(t)
 			// Setup the auth request information
 			req := httptest.NewRequest("DELETE", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens/%s", tc.deleteId), nil)
-			requestInfo := auth.RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:        req.URL.Path,
 				Method:      req.Method,
-				TokenFormat: auth.AuthTokenTypeBearer,
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
 				PublicId:    tc.token.GetPublicId(),
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := a.DeleteAuthToken(ctx, &pbs.DeleteAuthTokenRequest{Id: tc.deleteId})
 			if tc.err != nil {
 				require.EqualError(err, tc.err.Error())
@@ -534,6 +535,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: at.GetPublicId(),
 			},
+			res: &pbs.DeleteAuthTokenResponse{},
 		},
 		{
 			name:  "Delete bad token id",

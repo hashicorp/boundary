@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package controller.auth.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/auth;auth";
+
+// RequestInfo contains request parameters necessary for checking authn/authz
+message RequestInfo {
+  // path of the request
+  string path = 10;
+
+  // method (http verb) of the request
+  string method = 20;
+
+  // public_id for the request
+  string public_id = 30;
+
+  // encrypted_token from the request
+  string encrypted_token = 40;
+
+  // token from the request
+  string token = 50;
+
+  // token_format of the request's token
+  uint32 token_format = 60;
+
+  // scope_id_override for the request (helpful for tests)
+  string scope_id_override = 70;
+
+  // user_id_override for the request (helpful for tests)
+  string user_id_override = 80;
+
+  // disable_authz_failures for the request (helpful for tests)
+  bool disable_authz_failures = 90;
+
+  // disable_auth_entirely for the request (helpful for tests)
+  bool disable_auth_entirely = 100;
+
+  // ticket is a unique id that allows the grpc-gateway to verify that the info
+  // came from its companion http proxy
+  string ticket = 110;
+}

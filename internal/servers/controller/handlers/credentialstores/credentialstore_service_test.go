@@ -674,10 +674,12 @@ func TestDelete(t *testing.T) {
 		name string
 		id   string
 		err  error
+		res  *pbs.DeleteCredentialStoreResponse
 	}{
 		{
 			name: "success",
 			id:   store.GetPublicId(),
+			res:  &pbs.DeleteCredentialStoreResponse{},
 		},
 		{
 			name: "not found error",
@@ -693,7 +695,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, gErr := s.DeleteCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.DeleteCredentialStoreRequest{Id: tc.id})
-			assert.Nil(t, got)
+			assert.EqualValuesf(t, tc.res, got, "DeleteCredentialStore got response %q, wanted %q", got, tc.res)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err))

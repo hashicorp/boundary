@@ -306,7 +306,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteAccountResponse{}, nil
 }
 
 // ChangePassword implements the interface pbs.AccountServiceServer.

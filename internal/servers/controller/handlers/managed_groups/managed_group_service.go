@@ -269,7 +269,7 @@ func (s Service) DeleteManagedGroup(ctx context.Context, req *pbs.DeleteManagedG
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteManagedGroupResponse{}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup, []string, error) {

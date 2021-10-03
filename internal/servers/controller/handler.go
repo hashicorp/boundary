@@ -13,35 +13,36 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 )
 
 type HandlerProperties struct {
@@ -78,127 +79,169 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	// Register*ServiceHandlerServer methods ignore the passed in ctx. Using it
 	// now however in case this changes in the future.
 	ctx := props.CancelCtx
-	mux := runtime.NewServeMux(
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-			Marshaler: handlers.JSONMarshaler(),
-		}),
-		runtime.WithErrorHandler(handlers.ErrorHandler()),
-		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
-	)
-	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+
+	currentServices := c.gatewayServer.GetServiceInfo()
+	dialOptions := gatewayDialOptions(c.gatewayListener)
+
+	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
+		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+		}
+		services.RegisterHostCatalogServiceServer(c.gatewayServer, hcs)
+		if err := services.RegisterHostCatalogServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+		}
 	}
-	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
-		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
+		hss, err := host_sets.NewService(c.StaticHostRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create host set handler service: %w", err)
+		}
+		services.RegisterHostSetServiceServer(c.gatewayServer, hss)
+		if err := services.RegisterHostSetServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+		}
 	}
-	hss, err := host_sets.NewService(c.StaticHostRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create host set handler service: %w", err)
+	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
+		hs, err := hosts.NewService(c.StaticHostRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create host handler service: %w", err)
+		}
+		services.RegisterHostServiceServer(c.gatewayServer, hs)
+		if err := services.RegisterHostServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register host service handler: %w", err)
+		}
 	}
-	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, hss); err != nil {
-		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
+		accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create account handler service: %w", err)
+		}
+		services.RegisterAccountServiceServer(c.gatewayServer, accts)
+		if err := services.RegisterAccountServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register account service handler: %w", err)
+		}
 	}
-	hs, err := hosts.NewService(c.StaticHostRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create host handler service: %w", err)
+	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
+		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
+		}
+		services.RegisterAuthMethodServiceServer(c.gatewayServer, authMethods)
+		if err := services.RegisterAuthMethodServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
+		}
 	}
-	if err := services.RegisterHostServiceHandlerServer(ctx, mux, hs); err != nil {
-		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
+		authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+		}
+		services.RegisterAuthTokenServiceServer(c.gatewayServer, authtoks)
+		if err := services.RegisterAuthTokenServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
+		}
 	}
-	accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create account handler service: %w", err)
+	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
+		os, err := scopes.NewService(c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create scope handler service: %w", err)
+		}
+		services.RegisterScopeServiceServer(c.gatewayServer, os)
+		if err := services.RegisterScopeServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register scope service handler: %w", err)
+		}
 	}
-	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
-		return nil, fmt.Errorf("failed to register account service handler: %w", err)
+	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
+		us, err := users.NewService(c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create user handler service: %w", err)
+		}
+		services.RegisterUserServiceServer(c.gatewayServer, us)
+		if err := services.RegisterUserServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register user service handler: %w", err)
+		}
 	}
-	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
+	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
+		ts, err := targets.NewService(
+			c.kms,
+			c.TargetRepoFn,
+			c.IamRepoFn,
+			c.ServersRepoFn,
+			c.SessionRepoFn,
+			c.StaticHostRepoFn,
+			c.VaultCredentialRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create target handler service: %w", err)
+		}
+		services.RegisterTargetServiceServer(c.gatewayServer, ts)
+		if err := services.RegisterTargetServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register target service handler: %w", err)
+		}
 	}
-	if err := services.RegisterAuthMethodServiceHandlerServer(ctx, mux, authMethods); err != nil {
-		return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
+	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
+		gs, err := groups.NewService(c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create group handler service: %w", err)
+		}
+		services.RegisterGroupServiceServer(c.gatewayServer, gs)
+		if err := services.RegisterGroupServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register group service handler: %w", err)
+		}
 	}
-	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+	if _, ok := currentServices[services.RoleService_ServiceDesc.ServiceName]; !ok {
+		rs, err := roles.NewService(c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create role handler service: %w", err)
+		}
+		services.RegisterRoleServiceServer(c.gatewayServer, rs)
+		if err := services.RegisterRoleServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register role service handler: %w", err)
+		}
 	}
-	if err := services.RegisterAuthTokenServiceHandlerServer(ctx, mux, authtoks); err != nil {
-		return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
+	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
+		ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create session handler service: %w", err)
+		}
+		services.RegisterSessionServiceServer(c.gatewayServer, ss)
+		if err := services.RegisterSessionServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register session service handler: %w", err)
+		}
 	}
-	os, err := scopes.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scope handler service: %w", err)
+	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
+		mgs, err := managed_groups.NewService(c.OidcRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create managed groups handler service: %w", err)
+		}
+		services.RegisterManagedGroupServiceServer(c.gatewayServer, mgs)
+		if err := services.RegisterManagedGroupServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register managed groups service handler: %w", err)
+		}
 	}
-	if err := services.RegisterScopeServiceHandlerServer(ctx, mux, os); err != nil {
-		return nil, fmt.Errorf("failed to register scope service handler: %w", err)
+	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
+		cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create credential store handler service: %w", err)
+		}
+		services.RegisterCredentialStoreServiceServer(c.gatewayServer, cs)
+		if err := services.RegisterCredentialStoreServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register credential store service handler: %w", err)
+		}
 	}
-	us, err := users.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create user handler service: %w", err)
-	}
-	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
-		return nil, fmt.Errorf("failed to register user service handler: %w", err)
-	}
-	ts, err := targets.NewService(
-		c.kms,
-		c.TargetRepoFn,
-		c.IamRepoFn,
-		c.ServersRepoFn,
-		c.SessionRepoFn,
-		c.StaticHostRepoFn,
-		c.VaultCredentialRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create target handler service: %w", err)
-	}
-	if err := services.RegisterTargetServiceHandlerServer(ctx, mux, ts); err != nil {
-		return nil, fmt.Errorf("failed to register target service handler: %w", err)
-	}
-	gs, err := groups.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create group handler service: %w", err)
-	}
-	if err := services.RegisterGroupServiceHandlerServer(ctx, mux, gs); err != nil {
-		return nil, fmt.Errorf("failed to register group service handler: %w", err)
-	}
-	rs, err := roles.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create role handler service: %w", err)
-	}
-	if err := services.RegisterRoleServiceHandlerServer(ctx, mux, rs); err != nil {
-		return nil, fmt.Errorf("failed to register role service handler: %w", err)
-	}
-	ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session handler service: %w", err)
-	}
-	if err := services.RegisterSessionServiceHandlerServer(ctx, mux, ss); err != nil {
-		return nil, fmt.Errorf("failed to register session service handler: %w", err)
-	}
-	mgs, err := managed_groups.NewService(c.OidcRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create managed groups handler service: %w", err)
-	}
-	if err := services.RegisterManagedGroupServiceHandlerServer(ctx, mux, mgs); err != nil {
-		return nil, fmt.Errorf("failed to register managed groups service handler: %w", err)
-	}
-	cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create credential store handler service: %w", err)
-	}
-	if err := services.RegisterCredentialStoreServiceHandlerServer(ctx, mux, cs); err != nil {
-		return nil, fmt.Errorf("failed to register credential store service handler: %w", err)
-	}
-	cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create credential library handler service: %w", err)
-	}
-	if err := services.RegisterCredentialLibraryServiceHandlerServer(ctx, mux, cl); err != nil {
-		return nil, fmt.Errorf("failed to register credential library service handler: %w", err)
+	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
+		cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create credential library handler service: %w", err)
+		}
+		services.RegisterCredentialLibraryServiceServer(c.gatewayServer, cl)
+		if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
+			return nil, fmt.Errorf("failed to register credential library service handler: %w", err)
+		}
 	}
 
-	return mux, nil
+	return c.gatewayMux, nil
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
@@ -236,29 +279,27 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		// Add values for authn/authz checking
-		requestInfo := auth.RequestInfo{
+		requestInfo := authpb.RequestInfo{
 			Path:                 r.URL.Path,
 			Method:               r.Method,
 			DisableAuthzFailures: disableAuthzFailures,
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
-		ctx = auth.NewVerifierContext(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
-		// Add general request information to the context. The information from
-		// the auth verifier context is pretty specifically curated to
-		// authentication/authorization verification so this is more
-		// general-purpose.
-		//
-		// We could use requests.NewRequestContext but this saves an immediate
-		// lookup.
-		ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{
-			Path:   r.URL.Path,
-			Method: r.Method,
-		})
-
-		// Set the context back on the request
-		r = r.WithContext(ctx)
+		// Serialize the request info to send it across the wire to the
+		// grpc-gateway via an http header
+		requestInfo.Ticket = c.gatewayTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
+		marshalledRequestInfo, err := proto.Marshal(&requestInfo)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling request info"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Use the default grpc-gateway mapping rule to pass the request info as
+		// metadata.
+		// See: https://pkg.go.dev/github.com/grpc-ecosystem/grpc-gateway/runtime#DefaultHeaderMatcher
+		r.Header.Set("Grpc-Metadata-"+requestInfoMdKey, base58.FastBase58Encoding(marshalledRequestInfo))
 
 		h.ServeHTTP(w, r)
 	})

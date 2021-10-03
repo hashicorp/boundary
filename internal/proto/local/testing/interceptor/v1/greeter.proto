@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package testing.interceptor.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/interceptor;interceptor";
+
+// The greeting service definition.  This is just a dead simple service that can
+// be used to test interceptors. (See controller.startTestGreeterService)
+service GreeterService {
+  // Sends a greeting
+  rpc SayHello(SayHelloRequest) returns (SayHelloResponse) {}
+}
+
+// The request message containing the user's name.
+message SayHelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message SayHelloResponse {
+  string message = 1;
+}

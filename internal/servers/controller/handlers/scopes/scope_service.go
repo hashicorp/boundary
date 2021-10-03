@@ -350,7 +350,7 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteScopeResponse{}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {

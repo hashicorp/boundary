@@ -275,7 +275,7 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteUserResponse{}, nil
 }
 
 // AddUserAccounts implements the interface pbs.GroupServiceServer.

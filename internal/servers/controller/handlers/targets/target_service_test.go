@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -335,6 +336,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
+			res: &pbs.DeleteTargetResponse{},
 		},
 		{
 			name:    "Delete Not Existing Target",
@@ -2500,9 +2502,9 @@ func TestAuthorizeSession(t *testing.T) {
 		atRepoFn,
 		serversRepoFn,
 		kms,
-		auth.RequestInfo{
+		&authpb.RequestInfo{
 			Token:       at.GetToken(),
-			TokenFormat: auth.AuthTokenTypeBearer,
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
 			PublicId:    at.GetPublicId(),
 		})
 
@@ -2674,9 +2676,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		atRepoFn,
 		serversRepoFn,
 		kms,
-		auth.RequestInfo{
+		&authpb.RequestInfo{
 			Token:       at.GetToken(),
-			TokenFormat: auth.AuthTokenTypeBearer,
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
 			PublicId:    at.GetPublicId(),
 		})
 	r := iam.TestRole(t, conn, proj.GetPublicId())

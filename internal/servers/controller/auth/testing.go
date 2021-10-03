@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 )
@@ -11,16 +12,16 @@ import (
 // auth checking entirely disabled. Supported options: WithScopeId an WithUserId
 // are used directly; WithKms is passed through into the verifier context.
 func DisabledAuthTestContext(iamRepoFn common.IamRepoFactory, scopeId string, opt ...Option) context.Context {
-	reqInfo := RequestInfo{DisableAuthEntirely: true}
+	reqInfo := authpb.RequestInfo{DisableAuthEntirely: true}
 	opts := getOpts(opt...)
-	reqInfo.scopeIdOverride = opts.withScopeId
-	if reqInfo.scopeIdOverride == "" {
-		reqInfo.scopeIdOverride = scopeId
+	reqInfo.ScopeIdOverride = opts.withScopeId
+	if reqInfo.ScopeIdOverride == "" {
+		reqInfo.ScopeIdOverride = scopeId
 	}
-	reqInfo.userIdOverride = opts.withUserId
-	if reqInfo.userIdOverride == "" {
-		reqInfo.userIdOverride = "u_auth"
+	reqInfo.UserIdOverride = opts.withUserId
+	if reqInfo.UserIdOverride == "" {
+		reqInfo.UserIdOverride = "u_auth"
 	}
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
-	return NewVerifierContext(requestContext, iamRepoFn, nil, nil, opts.withKms, reqInfo)
+	return NewVerifierContext(requestContext, iamRepoFn, nil, nil, opts.withKms, &reqInfo)
 }

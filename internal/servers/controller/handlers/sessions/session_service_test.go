@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -211,15 +212,15 @@ func TestList_Self(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup the auth request information
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/sessions?scope_id=%s", pWithSessions.GetPublicId()), nil)
-			requestInfo := auth.RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:        req.URL.Path,
 				Method:      req.Method,
-				TokenFormat: auth.AuthTokenTypeBearer,
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
 				PublicId:    tc.requester.GetPublicId(),
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := s.ListSessions(ctx, &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()})
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())

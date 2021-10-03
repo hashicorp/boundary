@@ -342,7 +342,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteTargetResponse{}, nil
 }
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.
