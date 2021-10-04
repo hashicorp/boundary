@@ -9,11 +9,10 @@ require (
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/hashicorp/boundary/plugins v0.0.0-20210826145033-423a0b14037e
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.6 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20211004181108-59533a548d29
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20211004181156-d323e1064fea
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20211004181306-dd5d7c1b481a
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20211004181859-a8520a696314
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/jhump/protoreflect v1.8.1 // indirect

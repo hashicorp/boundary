@@ -3,6 +3,7 @@ package wrapper
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -20,7 +21,7 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 		t.Fatal(n)
 	}
 	root := aead.NewWrapper()
-	_, err = root.SetConfig(context.Background(), aead.WithKey(rootKey))
+	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)), aead.WithKey(rootKey))
 	if err != nil {
 		t.Fatal(err)
 	}
