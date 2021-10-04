@@ -44,6 +44,7 @@ fi
 
 # Build needed plugins first
 ORIG_PATH=$(pwd);
+echo "==> Building KMS Plugins..."
 for PLUGIN_TYPE in kms; do
     rm -f $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}*
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
