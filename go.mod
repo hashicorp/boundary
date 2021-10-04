@@ -24,25 +24,24 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
-	github.com/hashicorp/boundary/api v0.0.20-0.20211001152012-996e0cf94044
+	github.com/hashicorp/boundary/api v0.0.20-0.20211004202038-dce6eeebb904
 	github.com/hashicorp/boundary/plugins v0.0.0-20211001152012-996e0cf94044
-	github.com/hashicorp/boundary/sdk v0.0.12-0.20211001152012-996e0cf94044
+	github.com/hashicorp/boundary/sdk v0.0.12-0.20211004202038-dce6eeebb904
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4-0.20210928205053-80364fba97eb
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.6
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210820140919-c878735c9139
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20211004181108-59533a548d29
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20211004181306-dd5d7c1b481a
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210827162702-3bed4f8dfbb6
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20211004181859-a8520a696314
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1
