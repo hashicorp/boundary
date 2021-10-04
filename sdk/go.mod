@@ -11,9 +11,10 @@ require (
 	github.com/hashicorp/eventlogger v0.1.0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping v0.6.6
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210820135614-d494c9d88340
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20210827162702-3bed4f8dfbb6
+	github.com/hashicorp/go-kms-wrapping v0.6.6 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20211004181108-59533a548d29
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20211004181156-d323e1064fea
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20211004181859-a8520a696314
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/jhump/protoreflect v1.8.1 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
