@@ -11,6 +11,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 // TestCatalog creates count number of plugin host catalogs to the provided DB
@@ -41,7 +42,7 @@ func TestCatalog(t *testing.T, conn *gorm.DB, scopeId, pluginId string, opt ...O
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceServer, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -66,6 +67,45 @@ func TestSet(t *testing.T, conn *gorm.DB, kmsCache *kms.Kms, hc *HostCatalog, pl
 	require.NoError(err)
 
 	return set
+}
+
+var _ plgpb.HostPluginServiceClient = (*TestPluginClient)(nil)
+
+// TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
+type TestPluginClient struct {
+	Server plgpb.HostPluginServiceServer
+}
+
+func NewTestPluginClient(s plgpb.HostPluginServiceServer) *TestPluginClient {
+	return &TestPluginClient{Server: s}
+}
+
+func (tpc *TestPluginClient) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest, opts ...grpc.CallOption) (*plgpb.OnCreateCatalogResponse, error) {
+	return tpc.Server.OnCreateCatalog(ctx, req)
+}
+
+func (tpc *TestPluginClient) OnUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest, opts ...grpc.CallOption) (*plgpb.OnUpdateCatalogResponse, error) {
+	return tpc.Server.OnUpdateCatalog(ctx, req)
+}
+
+func (tpc *TestPluginClient) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDeleteCatalogRequest, opts ...grpc.CallOption) (*plgpb.OnDeleteCatalogResponse, error) {
+	return tpc.Server.OnDeleteCatalog(ctx, req)
+}
+
+func (tpc *TestPluginClient) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest, opts ...grpc.CallOption) (*plgpb.OnCreateSetResponse, error) {
+	return tpc.Server.OnCreateSet(ctx, req)
+}
+
+func (tpc *TestPluginClient) OnUpdateSet(ctx context.Context, req *plgpb.OnUpdateSetRequest, opts ...grpc.CallOption) (*plgpb.OnUpdateSetResponse, error) {
+	return tpc.Server.OnUpdateSet(ctx, req)
+}
+
+func (tpc *TestPluginClient) OnDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest, opts ...grpc.CallOption) (*plgpb.OnDeleteSetResponse, error) {
+	return tpc.Server.OnDeleteSet(ctx, req)
+}
+
+func (tpc *TestPluginClient) ListHosts(ctx context.Context, req *plgpb.ListHostsRequest, opts ...grpc.CallOption) (*plgpb.ListHostsResponse, error) {
+	return tpc.Server.ListHosts(ctx, req)
 }
 
 var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)

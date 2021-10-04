@@ -19,13 +19,13 @@ func TestRepository_New(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	plgs := map[string]plgpb.HostPluginServiceServer{}
+	plgs := map[string]plgpb.HostPluginServiceClient{}
 
 	type args struct {
 		r       db.Reader
 		w       db.Writer
 		kms     *kms.Kms
-		plugins map[string]plgpb.HostPluginServiceServer
+		plugins map[string]plgpb.HostPluginServiceClient
 		opts    []host.Option
 	}
 

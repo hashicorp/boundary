@@ -21,7 +21,8 @@ require (
 	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578
 	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210930043837-3542fae64d2e
 	github.com/hashicorp/boundary/api v0.0.18
-	github.com/hashicorp/boundary/sdk v0.0.11-0.20210928201932-8b1ca4b0b8b9
+	github.com/hashicorp/boundary/plugins v0.0.0-20211005185325-e1641f7293b9
+	github.com/hashicorp/boundary/sdk v0.0.11-0.20210930043937-08ce7ac8890d
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8

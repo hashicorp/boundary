@@ -2,7 +2,10 @@ package external_host_plugins
 
 import (
 	"errors"
+	"fmt"
+	"io/fs"
 
+	pb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -13,40 +16,91 @@ func getOpts(opt ...Option) (*options, error) {
 		if o == nil {
 			continue
 		}
-		iface := o()
-		switch to := iface.(type) {
-		case OptionFunc:
-			to(opts)
-		default:
-			return nil, errors.New("option passed in that does not belong to this package")
+		if err := o(opts); err != nil {
+			return nil, fmt.Errorf("error running option function: %w", err)
 		}
 	}
 	return opts, nil
 }
 
-type options struct {
-	withLogger hclog.Logger
-}
-
 // Option - a type that wraps an interface for compile-time safety but can
 // contain an option for this package or for wrappers implementing this
 // interface.
-type Option func() interface{}
+type Option func(*options) error
 
-// OptionFunc - a type for funcs that operate on the shared Options struct. The
-// options below explicitly wrap this so that we can switch on it when parsing
-// opts for various wrappers.
-type OptionFunc func(*options)
+type options struct {
+	withHostPluginsSources           []pluginSourceInfo
+	withHostPluginExecutionDirectory string
+	withLogger                       hclog.Logger
+}
 
 func getDefaultOptions() *options {
 	return &options{}
 }
 
+// pluginSourceInfo contains information about plugin sources. Each entry in the
+// final slice of withHostPluginsSources will either have the Fs/FsPrefix values
+// populated or have the map populated. The former is for loading and executing
+// a plugin via go-plugin from the filesystem; the latter is for executing it
+// directly in-memory.
+type pluginSourceInfo struct {
+	pluginMap      map[string]func() (pb.HostPluginServiceClient, error)
+	pluginFs       fs.FS
+	pluginFsPrefix string
+}
+
 // WithLogger allows passing a logger to the plugin library for debugging
 func WithLogger(logger hclog.Logger) Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) {
-			o.withLogger = logger
-		})
+	return func(o *options) error {
+		o.withLogger = logger
+		return nil
+	}
+}
+
+// WithHostPluginsFilesystem provides an fs.FS containing plugins that can be
+// executed to provide Host functionality. This can be specified multiple times;
+// all FSes will be scanned. If there are conflicts, the last one wins (this
+// property is shared with WithHostPluginsMap). The prefix will be stripped from
+// each entry when determining the plugin type.
+func WithHostPluginsFilesystem(prefix string, plugins fs.FS) Option {
+	return func(o *options) error {
+		if plugins == nil {
+			return errors.New("nil host plugin filesystem passed into option")
+		}
+		o.withHostPluginsSources = append(o.withHostPluginsSources,
+			pluginSourceInfo{
+				pluginFs:       plugins,
+				pluginFsPrefix: prefix,
+			},
+		)
+		return nil
+	}
+}
+
+// WithHostPluginsMap provides a map containing functions that can be called to
+// provide implementations of the server. This can be specified multiple times;
+// all FSes will be scanned. If there are conflicts, the last one wins (this
+// property is shared with WithHostPluginsFilesystem).
+func WithHostPluginsMap(plugins map[string]func() (pb.HostPluginServiceClient, error)) Option {
+	return func(o *options) error {
+		if len(plugins) == 0 {
+			return errors.New("no entries in host plugins map passed into option")
+		}
+		o.withHostPluginsSources = append(o.withHostPluginsSources,
+			pluginSourceInfo{
+				pluginMap: plugins,
+			},
+		)
+		return nil
+	}
+}
+
+// WithHostPluginExecutionDirectory allows setting a specific directory for
+// writing out and executing plugins; if not set, os.TempDir will be used
+// to create a suitable directory.
+func WithHostPluginExecutionDirectory(dir string) Option {
+	return func(o *options) error {
+		o.withHostPluginExecutionDirectory = dir
+		return nil
 	}
 }
