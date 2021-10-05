@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -92,9 +93,9 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 func (c *HostCatalogSecret) insertQuery() (query string, queryValues []interface{}) {
 	query = upsertHostCatalogSecretQuery
 	queryValues = []interface{}{
-		c.CatalogId,
-		c.CtSecret,
-		c.KeyId,
+		sql.Named("catalog_id", c.CatalogId),
+		sql.Named("secret", c.CtSecret),
+		sql.Named("key_id", c.KeyId),
 	}
 	return
 }
@@ -102,7 +103,7 @@ func (c *HostCatalogSecret) insertQuery() (query string, queryValues []interface
 func (c *HostCatalogSecret) deleteQuery() (query string, queryValues []interface{}) {
 	query = deleteHostCatalogSecretQuery
 	queryValues = []interface{}{
-		c.CatalogId,
+		sql.Named("catalog_id", c.CatalogId),
 	}
 	return
 }

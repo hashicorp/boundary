@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlugin(t *testing.T, conn *gorm.DB, name string) *Plugin {
+func TestPlugin(t *testing.T, conn *db.DB, name string) *Plugin {
 	t.Helper()
 	p := NewPlugin(WithName(name))
 	id, err := newPluginId()

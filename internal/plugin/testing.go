@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +41,7 @@ func (c *plugin) SetTableName(n string) {
 	c.tableName = n
 }
 
-func testPlugin(t *testing.T, conn *gorm.DB, name string) *plugin {
+func testPlugin(t *testing.T, conn *db.DB, name string) *plugin {
 	t.Helper()
 	p := newPlugin(name)
 	id, err := db.NewPublicId("plg")
