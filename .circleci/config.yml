@@ -8,13 +8,14 @@ jobs:
   test-sql-13-alpine:
     machine:
       image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
     steps:
     - checkout
     - run:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=13-alpine
         name: Run SQL PgTap Tests
-    working_directory: ~/boundary
   bundle-releases:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -250,13 +251,14 @@ jobs:
   test-sql-11-alpine:
     machine:
       image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
     steps:
     - checkout
     - run:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=11-alpine
         name: Run SQL PgTap Tests
-    working_directory: ~/boundary
   build-common-layers:
     machine:
       image: ubuntu-1604:202007-01
@@ -888,13 +890,14 @@ jobs:
   test-sql-12-alpine:
     machine:
       image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
     steps:
     - checkout
     - run:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=12-alpine
         name: Run SQL PgTap Tests
-    working_directory: ~/boundary
   solaris_amd64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -971,6 +974,7 @@ jobs:
     machine:
       image: ubuntu-2004:202107-02
     resource_class: large
+    working_directory: ~/boundary
     steps:
     - checkout
     - run:
@@ -1116,7 +1120,6 @@ jobs:
         name: Slack - Sending Status Alert
         shell: /bin/bash
         when: always
-    working_directory: ~/boundary
   netbsd_amd64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -1480,13 +1483,14 @@ jobs:
   test-sql-latest:
     machine:
       image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
     steps:
     - checkout
     - run:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
         name: Run SQL PgTap Tests
-    working_directory: ~/boundary
 workflows:
   build-645fb387fb0a87de:
     jobs:
@@ -1553,7 +1557,7 @@ workflows:
     - windows_amd64_package:
         requires:
         - build-common-layers
-  default:
+  ci:
     jobs:
     - build
     - test-sql-latest

@@ -1,6 +1,4 @@
-machine:
-  image: 'ubuntu-2004:202107-02'
-working_directory: ~/boundary
+executor: go-machine-medium
 parameters:
   postgres-version:
     type: string
