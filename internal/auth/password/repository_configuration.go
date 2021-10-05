@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -143,7 +144,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 	const op = "password.(Repository).currentConfigForAccount"
 	var confs []currentConfig
 
-	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})
+	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{sql.Named("public_id", accountId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

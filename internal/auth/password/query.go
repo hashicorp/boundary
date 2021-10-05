@@ -25,8 +25,8 @@ select acct.name,                        -- Account.Name
        auth_password_argon2_conf conf,
        auth_password_account acct,
        auth_password_method meth
- where acct.auth_method_id = $1
-   and acct.login_name = $2
+ where acct.auth_method_id = @auth_method_id
+   and acct.login_name = @login_name
    and cred.password_conf_id = conf.private_id
    and cred.password_account_id = acct.public_id
    and acct.auth_method_id = meth.public_id ;
@@ -38,7 +38,7 @@ select *
     in (
        select auth_method_id
          from auth_password_account
-        where public_id = $1
+        where public_id = @public_id
     );
 `
 )

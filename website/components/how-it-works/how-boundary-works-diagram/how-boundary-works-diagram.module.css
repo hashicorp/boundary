@@ -1,190 +1,32 @@
 .root {
-  --transition-time: 0.7s;
+  display: grid;
 
   @media (--medium-up) {
     position: sticky;
     top: calc(50vh - (249px));
   }
 
+  & > * {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity ease-in 0.5s;
+
+  &:last-child {
+    opacity: 1;
+  }
+  }
+
+  @media (--medium-up) {
+    & > *:last-child {
+      opacity: 0;
+    }
+
+    & > *.active {
+      opacity: 1;
+    }
+  }
+
   & > svg {
     width: 100%;
-  }
-
-  & .boundaryLetter,
-  & .spacer,
-  & .iconBg {
-    fill: var(--white);
-  }
-
-  & .iconLines,
-  & .iconBg {
-    stroke-linecap: round;
-    stroke-width: 1.5px;
-    stroke-linejoin: round;
-  }
-
-  & .boundaryFill,
-  & .arrowHead {
-    fill: var(--boundary, #ec585d);
-  }
-
-  & .arrowHead,
-  & .arrowSegment,
-  & .spacer {
-    transition: var(--transition-time) ease;
-    transition-property: opacity;
-  }
-
-  & .arrowSegment {
-    stroke-width: 2px;
-    stroke: var(--boundary, #ec585d);
-    stroke-miterlimit: 10;
-    stroke-linecap: round;
-    fill: none;
-  }
-
-  & .dropShadow {
-    opacity: 0.08;
-    mix-blend-mode: multiply;
-  }
-
-  & .iconLines {
-    stroke: var(--white);
-    fill: none;
-    transition: var(--transition-time) ease;
-    transition-property: stroke;
-  }
-
-  & .subtitle {
-    fill: #b6b8c3;
-  }
-
-  & .iconBg {
-    stroke: #e5e6ec;
-    stroke-width: 1px;
-    transition: var(--transition-time) ease;
-    transition-property: fill, stroke;
-  }
-
-  & .authenticate {
-    & .iconBg {
-      fill: var(--white);
-    }
-
-    & .iconLines {
-      stroke: #e5e6ec;
-      stroke-width: 1px;
-    }
-  }
-
-  & .authorize {
-    & .spacer {
-      opacity: 0;
-    }
-
-    & .iconBg {
-      fill: var(--black);
-      stroke: var(--black);
-    }
-
-    & .iconLines {
-      stroke: #e5e6ec;
-    }
-  }
-
-  & .access {
-    & .spacer {
-      opacity: 0;
-    }
-
-    & .iconBg {
-      fill: var(--black);
-      stroke: var(--black);
-    }
-
-    & .vaultIcon {
-      fill: var(--white);
-    }
-  }
-
-  & .hostsAndServices {
-    opacity: 1;
-    transform: translate(0, 0);
-    transition: var(--transition-time) ease;
-    transition-property: opacity, transform;
-
-    & .leadingLine {
-      fill: none;
-      stroke-linecap: round;
-      stroke-miterlimit: 10;
-      stroke-width: 1.5px;
-      stroke: var(--black);
-    }
-  }
-
-  & .arrowOne .arrowHead,
-  & .arrowTwo .arrowHead {
-    @media (--small) {
-      opacity: 0;
-    }
-  }
-
-  & .inactive {
-    & .arrowHead,
-    & .arrowSegment,
-    & .spacer {
-      @media (--medium-up) {
-        opacity: 0;
-      }
-    }
-
-    &.authorize {
-      & .spacer {
-        @media (--medium-up) {
-          opacity: 1;
-        }
-      }
-
-      & .iconBg {
-        @media (--medium-up) {
-          fill: var(--white);
-          stroke: #e5e6ec;
-        }
-      }
-
-      & .iconLines {
-        @media (--medium-up) {
-          stroke: #b6b8c3;
-        }
-      }
-    }
-
-    &.access {
-      & .spacer {
-        @media (--medium-up) {
-          opacity: 1;
-        }
-      }
-
-      & .iconBg {
-        @media (--medium-up) {
-          fill: var(--white);
-          stroke: var(--white);
-        }
-      }
-
-      & .vaultIcon {
-        @media (--medium-up) {
-          fill: var(--black);
-        }
-      }
-    }
-
-    &.hostsAndServices {
-      @media (--medium-up) {
-        opacity: 0;
-        transform: translate(0, 10px);
-      }
-    }
   }
 }

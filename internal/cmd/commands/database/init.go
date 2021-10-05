@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -164,6 +165,7 @@ func (c *InitCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *InitCommand) Run(args []string) (retCode int) {
+	ctx := context.Background()
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -277,11 +279,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 	// Everything after is done with normal database URL and is affecting actual data
-	if err := c.srv.ConnectToDatabase(dialect); err != nil {
+	if err := c.srv.ConnectToDatabase(ctx, dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return base.CommandCliError
 	}
-	if err := c.verifyOplogIsEmpty(); err != nil {
+	if err := c.verifyOplogIsEmpty(ctx); err != nil {
 		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
 		return base.CommandCliError
 	}
@@ -491,9 +493,13 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *InitCommand) verifyOplogIsEmpty() error {
+func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
-	r := c.srv.Database.DB().QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
+	underlyingDB, err := c.srv.Database.SqlDB(ctx)
+	if err != nil {
+		return errors.NewDeprecated(errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
+	}
+	r := underlyingDB.QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
 	if r.Err() != nil {
 		return r.Err()
 	}

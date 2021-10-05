@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -100,24 +101,24 @@ func TestPlugin(t *testing.T) {
 		rw := db.New(conn)
 
 		rows, err := rw.Query(context.Background(), createJobQuery, []interface{}{
-			defaultPluginId,
-			"same-job-name",
-			"description",
-			0,
+			sql.Named("plugin_id", defaultPluginId),
+			sql.Named("name", "same-job-name"),
+			sql.Named("description", "description"),
+			sql.Named("next_scheduled_run", 0),
 		})
 		require.NoError(err)
 		_ = rows.Close()
 
 		// Creating a job with same name and pluginId should return a unique constraint error
 		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-			defaultPluginId,
-			"same-job-name",
-			"description",
-			0,
+			sql.Named("plugin_id", defaultPluginId),
+			sql.Named("name", "same-job-name"),
+			sql.Named("description", "description"),
+			sql.Named("next_scheduled_run", 0),
 		})
 		require.Error(err)
 		assert.Nil(rows)
-		assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
+		assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_pkey\"")
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
@@ -127,24 +128,24 @@ func TestPlugin(t *testing.T) {
 
 		// Creating the a job with the same name and different pluginId should succeed
 		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-			testPluginId,
-			"same-job-name",
-			"description",
-			0,
+			sql.Named("plugin_id", testPluginId),
+			sql.Named("name", "same-job-name"),
+			sql.Named("description", "description"),
+			sql.Named("next_scheduled_run", 0),
 		})
 		assert.NoError(err)
 		_ = rows.Close()
 
 		// Creating a job with same name and pluginId should again return a unique constraint error
 		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-			testPluginId,
-			"same-job-name",
-			"description",
-			0,
+			sql.Named("plugin_id", testPluginId),
+			sql.Named("name", "same-job-name"),
+			sql.Named("description", "description"),
+			sql.Named("next_scheduled_run", 0),
 		})
 		require.Error(err)
 		assert.Nil(rows)
-		assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
+		assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_pkey\"")
 	})
 	t.Run("plugin-id-immutable", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

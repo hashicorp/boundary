@@ -291,7 +291,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -329,7 +329,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -366,7 +366,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHosts)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}

@@ -1,13 +1,16 @@
 package dbassert
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/dbassert"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_FieldDomain(t *testing.T) {
@@ -56,23 +59,19 @@ func Test_FieldNullable(t *testing.T) {
 
 func Test_FieldIsNull(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := dbassert.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	ctx := context.Background()
 	assert := assert.New(t)
-	gormDb, err := gorm.Open("postgres", conn)
+	conn, _ := db.TestSetup(t, "postgres")
+	initStore(t, conn)
+	require := require.New(t)
+	underlyingDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
 	assert.NoError(err)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, conn)
+	dbassert := New(mockery, underlyingDB)
 
 	v := 1
-	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)
+	m := createTestModel(t, conn, nil, &v)
 
 	dbassert.IsNull(&m, "Nullable")
 	mockery.AssertNoError(t)
@@ -84,23 +83,17 @@ func Test_FieldIsNull(t *testing.T) {
 
 func Test_FieldNotNull(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := dbassert.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	gormDb, err := gorm.Open("postgres", conn)
-	assert.NoError(err)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	initStore(t, conn)
+	require := require.New(t)
+	underlyingDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
 	mockery := new(dbassert.MockTesting)
-	dbassert := New(mockery, conn)
+	dbassert := New(mockery, underlyingDB)
 
 	v := 1
-	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)
+	m := createTestModel(t, conn, nil, &v)
 
 	dbassert.NotNull(&m, "Nullable")
 	mockery.AssertError(t)
@@ -108,4 +101,55 @@ func Test_FieldNotNull(t *testing.T) {
 	mockery.Reset()
 	dbassert.NotNull(&m, "typeint")
 	mockery.AssertNoError(t)
+}
+
+type testModel struct {
+	Id       int `gorm:"primary_key"`
+	PublicId string
+	Nullable *string
+	TypeInt  *int
+}
+
+// TableName is required by Gorm to define the model's table name when it
+// doesn't match the model's Go type name.
+func (*testModel) TableName() string { return "test_table_dbasserts" }
+
+// CreateTestModel is a helper that creates a testModel in the DB.
+func createTestModel(t dbassert.TestingT, db *db.DB, nullable *string, typeInt *int) *testModel {
+	publicId, err := base62.Random(12)
+	assert.NoError(t, err)
+	m := testModel{
+		PublicId: publicId,
+		Nullable: nullable,
+		TypeInt:  typeInt,
+	}
+	err = db.Create(&m).Error
+	assert.NoError(t, err)
+	return &m
+}
+
+func initStore(t *testing.T, db *db.DB) {
+	t.Helper()
+	const (
+		createDomainType = `
+create domain dbasserts_public_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain dbasserts_public_id is
+'dbasserts test domain type';
+`
+		createTable = `
+create table if not exists test_table_dbasserts (
+  id bigint generated always as identity primary key,
+  public_id dbasserts_public_id not null,
+  nullable text,
+  type_int int
+);
+comment on table test_table_dbasserts is
+'dbasserts test table'
+`
+	)
+	require.NoError(t, db.Exec(createDomainType).Error)
+	require.NoError(t, db.Exec(createTable).Error)
 }

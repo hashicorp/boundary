@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -25,8 +26,11 @@ returning id;
 `
 	)
 
+	ctx := context.Background()
+
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	for _, typ := range []string{"public", "private", "role", "scope"} {
 		createTable := strings.Replace(createTableBase, "{{rep}}", typ, -1)
@@ -106,9 +110,10 @@ insert into test_table
 values ($1);
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -177,9 +182,10 @@ insert into test_table
 values ($1);
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -253,8 +259,10 @@ returning id;
 `
 	)
 
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
 	}
@@ -318,10 +326,11 @@ update test_update_time_column
 set update_time = null;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	_, err = db.Exec(createTable)
 	assert.NoError(err)
 
 	_, err = db.Exec(addTriggers)
@@ -391,9 +400,11 @@ returning public_id;
 	)
 	conn, _ := TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(err)
 
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	_, err = db.Exec(createTable)
 	require.NoError(err)
 
 	_, err = db.Exec(addTrigger)
@@ -450,9 +461,11 @@ returning private_id;
 	)
 	conn, _ := TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(err)
 
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	_, err = db.Exec(createTable)
 	require.NoError(err)
 
 	_, err = db.Exec(addTrigger)
@@ -482,9 +495,10 @@ returning private_id;
 }
 
 func TestDomain_DefaultUsersExist(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	for _, val := range []string{"u_anon", "u_auth"} {
 		rows, err := db.Query(`select from iam_user where public_id = $1`, val)
 		require.NoError(t, err)
@@ -570,10 +584,11 @@ set id = null;
 		Name       string
 		Updatable  string
 	}
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	_, err = db.Exec(createTable)
 	assert.NoError(t, err)
 
 	_, err = db.Exec(addTriggers)
@@ -658,7 +673,7 @@ set id = null;
 
 		_, err = db.Exec(update_updatable)
 		require.Error(err)
-		assert.Containsf(err.Error(), `pq: column "bad_column_name" not found`, "unexpected error msg: %s", err.Error())
+		assert.Containsf(err.Error(), `SQLSTATE 42703`, "unexpected error msg: %s", err.Error())
 
 		var found rowData
 		err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
@@ -683,9 +698,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -730,9 +746,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -776,9 +793,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -822,9 +840,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -868,9 +887,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -914,9 +934,10 @@ values ($1)
 returning id;
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -964,9 +985,10 @@ func TestDomain_wt_is_sentinel(t *testing.T) {
 select wt_is_sentinel($1);
 `
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
+	db, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name  string
@@ -1026,10 +1048,12 @@ insert on test_not_null_columns
 `
 		dropTriggers = `drop trigger test_insert_not_null_columns on test_not_null_columns`
 	)
-
+	ctx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-	_, err := db.Exec(createTable)
+	db, err := conn.SqlDB(ctx)
+	assert.NoError(t, err)
+
+	_, err = db.Exec(createTable)
 	assert.NoError(t, err)
 
 	tests := []struct {

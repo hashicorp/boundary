@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -22,7 +23,7 @@ func TestNewManager(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -47,7 +48,7 @@ func TestCurrentState(t *testing.T) {
 	})
 	require.NoError(t, err)
 	ctx := context.Background()
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	m, err := NewManager(ctx, dialect, d)
@@ -83,7 +84,7 @@ func TestRollForward(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -112,7 +113,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	// Initialize the DB with only a portion of the current sql scripts.
@@ -146,7 +147,7 @@ func TestRunMigration_canceledContext(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -174,7 +175,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 
 	// Initialize the DB with only a portion of the current sql scripts.
@@ -198,12 +199,12 @@ func TestManager_ExclusiveLock(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d1, err := sql.Open(dialect, u)
+	d1, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 	m1, err := NewManager(ctx, dialect, d1)
 	require.NoError(t, err)
 
-	d2, err := sql.Open(dialect, u)
+	d2, err := common.SqlOpen(dialect, u)
 	require.NoError(t, err)
 	m2, err := NewManager(ctx, dialect, d2)
 	require.NoError(t, err)
@@ -223,12 +224,12 @@ func TestManager_SharedLock(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d1, err := sql.Open("postgres", u)
+	d1, err := common.SqlOpen("postgres", u)
 	require.NoError(t, err)
 	m1, err := NewManager(ctx, "postgres", d1)
 	require.NoError(t, err)
 
-	d2, err := sql.Open("postgres", u)
+	d2, err := common.SqlOpen("postgres", u)
 	require.NoError(t, err)
 	m2, err := NewManager(ctx, "postgres", d2)
 	require.NoError(t, err)
@@ -252,7 +253,7 @@ func Test_GetMigrationLog(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d, err := sql.Open("postgres", u)
+	d, err := common.SqlOpen("postgres", u)
 	require.NoError(t, err)
 	m, err := NewManager(ctx, "postgres", d)
 	require.NoError(t, err)

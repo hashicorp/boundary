@@ -2,8 +2,8 @@ package schema
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -13,7 +13,7 @@ import (
 func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option) (bool, error) {
 	const op = "schema.MigrateStore"
 
-	d, err := sql.Open(dialect, url)
+	d, err := common.SqlOpen(dialect, url)
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}

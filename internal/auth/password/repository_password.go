@@ -3,6 +3,7 @@ package password
 import (
 	"context"
 	"crypto/subtle"
+	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -213,7 +214,8 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	const op = "password.(Repository).authenticate"
 	var accts []authAccount
 
-	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{authMethodId, loginName})
+	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
+
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

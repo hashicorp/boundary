@@ -1,0 +1,33 @@
+.root {
+  composes: g-grid-container from global;
+}
+
+.heading {
+  margin: 0;
+  composes: g-type-display-2 from global;
+}
+
+.items {
+  --columns: 1;
+
+  list-style: none;
+  padding: 0;
+  margin: 90px 0 0;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-gap: 48px 32px;
+
+  @media (--medium-up) {
+    --columns: 3;
+  }
+}
+
+.itemHeading {
+  margin: 38px 0 0;
+  composes: g-type-display-4 from global;
+}
+
+.itemDescription {
+  margin: 12px 0 0;
+  composes: g-type-body from global;
+}
