@@ -1,4 +1,4 @@
-package external_host_plugins
+package host_plugin_assets 
 
 import (
 	"embed"
