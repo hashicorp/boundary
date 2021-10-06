@@ -106,7 +106,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(ctx, "azure", external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", external_host_plugins.FileSystem()))
+	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
+		ctx,
+		"azure",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", external_host_plugins.FileSystem()),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure host plugin")
 	}

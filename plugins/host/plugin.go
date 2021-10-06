@@ -21,9 +21,9 @@ var HandshakeConfig = plugin.HandshakeConfig{
 	MagicCookieValue: hostServicePluginSetName,
 }
 
-// ServePlugin is a generic function to start serving a host plugin service as a
+// ServeHostPlugin is a generic function to start serving a host plugin service as a
 // plugin
-func ServePlugin(svc pb.HostPluginServiceServer, opt ...Option) error {
+func ServeHostPlugin(svc pb.HostPluginServiceServer, opt ...Option) error {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return err
