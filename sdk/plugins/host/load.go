@@ -144,8 +144,11 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 		return nil, nil, fmt.Errorf("reading host plugin expected %d bytes, read %d", expLen, readLen)
 	}
 
+	executedFileName := plugin.filename
+
 	// If it's compressed, uncompress it
 	if strings.HasSuffix(plugin.filename, ".gz") {
+		executedFileName = strings.TrimSuffix(plugin.filename, ".gz")
 		gzipReader, err := gzip.NewReader(bytes.NewReader(buf))
 		if err != nil {
 			return nil, nil, fmt.Errorf("error creating gzip decompression reader: %w", err)
@@ -175,7 +178,7 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 		}
 		dir = tmpDir
 	}
-	pluginPath := filepath.Join(dir, plugin.filename)
+	pluginPath := filepath.Join(dir, executedFileName)
 	if runtime.GOOS == "windows" {
 		pluginPath += ".exe"
 	}
