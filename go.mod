@@ -6,6 +6,8 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+replace github.com/hashicorp/boundary/plugins => ./plugins
+
 // tmp use of local clone as we understand any required upstream PRs to
 // compatibility.
 replace gorm.io/gorm => github.com/hashicorp/gorm v0.0.2
