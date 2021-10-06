@@ -25,8 +25,9 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	external_host_plugins "github.com/hashicorp/boundary/plugins/host"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
@@ -109,7 +110,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
 		ctx,
 		"azure",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", external_host_plugins.FileSystem()),
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure host plugin")
