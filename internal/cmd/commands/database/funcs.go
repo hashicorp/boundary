@@ -2,10 +2,10 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
@@ -20,7 +20,7 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
-	dBase, err := sql.Open(dialect, u)
+	dBase, err := common.SqlOpen(dialect, u)
 	if err != nil {
 		ui.Error(fmt.Errorf("Error establishing db connection: %w", err).Error())
 		return noop, 2

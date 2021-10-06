@@ -18,7 +18,7 @@ export default function Feature({
 
   return (
     <div className={s.root} ref={ref}>
-      <h4 className="g-type-display-4">{title}</h4>
+      <h3 className="g-type-display-4">{title}</h3>
       <p className="g-type-body">{description}</p>
       {logos ? <LogoList logos={logos} /> : null}
     </div>

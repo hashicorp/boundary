@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
@@ -14,8 +15,8 @@ import (
 const (
 	insertServerQuery         = "insert into server (private_id, type, address) values ($1, $2, $3)"
 	selectServerQuery         = "select * from server where private_id = $1"
-	expectEnumConstraintErr   = `pq: new row for relation "server_type_enm" violates check constraint "only_predefined_server_types_allowed"`
-	expectServerConstraintErr = `pq: insert or update on table "server" violates foreign key constraint "server_type_enm_fkey"`
+	expectEnumConstraintErr   = `ERROR: new row for relation "server_type_enm" violates check constraint "only_predefined_server_types_allowed" (SQLSTATE 23514)`
+	expectServerConstraintErr = `ERROR: insert or update on table "server" violates foreign key constraint "server_type_enm_fkey" (SQLSTATE 23503)`
 )
 
 type testServer struct {
@@ -48,7 +49,7 @@ func Test_ServerEnumChanges(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(c())
 	})
-	d, err := sql.Open(dialect, u)
+	d, err := common.SqlOpen(dialect, u)
 	require.NoError(err)
 
 	// migration to the prior migration (before the one we want to test)

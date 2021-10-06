@@ -11,11 +11,10 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
-func testJob(t *testing.T, conn *gorm.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
+func testJob(t *testing.T, conn *db.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -31,7 +30,7 @@ func testJob(t *testing.T, conn *gorm.DB, name, description string, wrapper wrap
 	return job
 }
 
-func testRun(conn *gorm.DB, pluginId, name, cId string) (*Run, error) {
+func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 	query := `
 		insert into job_run (
 			job_plugin_id, job_name, server_id
@@ -59,7 +58,7 @@ func testRun(conn *gorm.DB, pluginId, name, cId string) (*Run, error) {
 	return run, nil
 }
 
-func testRunWithUpdateTime(conn *gorm.DB, pluginId, name, cId string, updateTime time.Time) (*Run, error) {
+func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime time.Time) (*Run, error) {
 	query := `
 		insert into job_run (
 		  job_plugin_id, job_name, server_id, update_time
@@ -87,7 +86,7 @@ func testRunWithUpdateTime(conn *gorm.DB, pluginId, name, cId string, updateTime
 	return run, nil
 }
 
-func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)

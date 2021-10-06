@@ -389,12 +389,17 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
 
-		if err := c.ConnectToDatabase("postgres"); err != nil {
+		if err := c.ConnectToDatabase(ctx, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
 
-		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
+		underlyingDB, err := c.Database.SqlDB(ctx)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
+			return base.CommandCliError
+		}
+		sMan, err := schema.NewManager(c.Context, "postgres", underlyingDB)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
 			return base.CommandCliError

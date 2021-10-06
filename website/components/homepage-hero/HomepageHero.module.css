@@ -3,11 +3,11 @@
   background-repeat: no-repeat;
   background-color: var(--boundary-secondary);
   background-image: url(/img/hero-pattern.svg);
-  background-position: bottom right;
+  background-position: bottom -50px right -100px;
 
   @media (max-width: 767px) {
     padding: 88px 0;
-    background-position: bottom 0 right -130px;
+    background-position: bottom -130px right -130px;
   }
 
   & :global(.g-hero) {

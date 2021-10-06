@@ -1,7 +1,4 @@
-resource_class: large
-machine:
-  image: 'ubuntu-2004:202107-02'
-working_directory: ~/boundary
+executor: go-machine
 steps:
 - checkout
 - run:

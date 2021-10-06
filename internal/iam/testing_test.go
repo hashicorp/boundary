@@ -216,3 +216,14 @@ func Test_TestGroupMember(t *testing.T) {
 	require.Equal(pg.PublicId, gm.GroupId)
 	require.Equal(u.PublicId, gm.MemberId)
 }
+
+func Test_testAccount(t *testing.T) {
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	acct := testAccount(t, conn, org.PublicId, authMethodId, "")
+	require.Equal(acct.ScopeId, org.PublicId)
+}

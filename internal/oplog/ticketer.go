@@ -3,7 +3,7 @@ package oplog
 import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const DefaultAggregateName = "global"
@@ -53,7 +53,7 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 	}
 	ticket := store.Ticket{}
 	if err := ticketer.tx.First(&ticket, store.Ticket{Name: name}).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.NewDeprecated(errors.TicketNotFound, op, "ticket not found")
 		}
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error retrieving ticket from storage"))

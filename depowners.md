@@ -86,6 +86,9 @@ the first place.
 * github.com/kr/pretty
     * Jeff
 * github.com/lib/pq
+  * Jim
+  * Mike
+* github.com/jackc/pgx
     * Jim
     * Mike
 * github.com/mattn/go-colorable

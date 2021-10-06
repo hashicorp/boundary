@@ -43,15 +43,15 @@ message AuthToken {
   string auth_account_id = 10;
 
   // scope_id is not stored in the backing DB but it derived from the linked to auth account.
-  // @inject_tag: gorm:"-"
+  // @inject_tag: gorm:"->"
   string scope_id = 11;
 
   // auth_method_id is not stored in the backing DB but it derived from the linked to auth account.
-  // @inject_tag: gorm:"-"
+  // @inject_tag: gorm:"->"
   string auth_method_id = 12;
 
   // iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
-  // @inject_tag: gorm:"-"
+  // @inject_tag: gorm:"->"
   string iam_user_id = 13;
 
   // key_id is the key ID that was used for the encryption operation. It can be

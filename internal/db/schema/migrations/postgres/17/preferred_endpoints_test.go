@@ -77,7 +77,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 					condition: "dns:abcd",
 				},
 			},
-			wantErrContains: "priority must not be empty",
+			wantErrContains: "priority_must_be_greater_than_zero",
 		},
 		{
 			testName:  "duplicate priority",

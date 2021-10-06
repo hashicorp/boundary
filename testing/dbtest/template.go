@@ -1,14 +1,15 @@
 package dbtest
 
 import (
-	"database/sql"
 	"fmt"
 	"math/rand"
 	"os"
 	"time"
 
 	// postgres dialect
-	_ "github.com/lib/pq"
+
+	"github.com/hashicorp/boundary/internal/db/common"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 var testDBPort = "5432"
@@ -75,7 +76,10 @@ func startUsingTemplate(dialect string, opt ...Option) (cleanup func() error, re
 		return func() error { return nil }, "", "", fmt.Errorf("unsupported dialect: %s", dialect)
 	}
 
-	db, err := sql.Open(dialect, fmt.Sprintf("postgres://boundary:boundary@127.0.0.1:%s/boundary?sslmode=disable", testDBPort))
+	if dialect == "postgres" {
+		dialect = "pgx"
+	}
+	db, err := common.SqlOpen(dialect, fmt.Sprintf("postgres://boundary:boundary@127.0.0.1:%s/boundary?sslmode=disable", testDBPort))
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not connect to source database: %w", err)
 	}
@@ -103,7 +107,7 @@ func startUsingTemplate(dialect string, opt ...Option) (cleanup func() error, re
 		return dropDatabase(dialect, dbname)
 	}
 
-	tdb, err := sql.Open(dialect, url)
+	tdb, err := common.SqlOpen(dialect, url)
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not create test database: %w", err)
 	}
@@ -130,7 +134,7 @@ func dropDatabase(dialect, dbname string) error {
 		return fmt.Errorf("empty dbname")
 	}
 
-	db, err := sql.Open(dialect, fmt.Sprintf("postgres://boundary:boundary@127.0.0.1:%s/boundary?sslmode=disable", testDBPort))
+	db, err := common.SqlOpen(dialect, fmt.Sprintf("postgres://boundary:boundary@127.0.0.1:%s/boundary?sslmode=disable", testDBPort))
 	if err != nil {
 		return err
 	}

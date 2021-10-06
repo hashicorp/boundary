@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
-	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,8 +28,8 @@ type Message struct {
 // Entry represents an oplog entry
 type Entry struct {
 	*store.Entry
-	Cipherer wrapping.Wrapper `sql:"-"`
-	Ticketer Ticketer         `sql:"-"`
+	Cipherer wrapping.Wrapper `gorm:"-"`
+	Ticketer Ticketer         `gorm:"-"`
 }
 
 // Metadata provides meta information about the Entry

@@ -2,15 +2,15 @@ package migration
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/testing/dbtest"
-	"github.com/jinzhu/gorm"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		t.Cleanup(func() {
 			require.NoError(c())
 		})
-		d, err := sql.Open(dialect, u)
+		d, err := common.SqlOpen(dialect, u)
 		require.NoError(err)
 
 		// migration to the prior migration (before the one we want to test)
@@ -56,7 +56,9 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		assert.False(state.Dirty)
 
 		// okay, now we can seed the database with test data
-		conn, err := gorm.Open(dialect, u)
+		dbType, err := db.StringToDbType(dialect)
+		require.NoError(err)
+		conn, err := db.Open(dbType, u)
 		require.NoError(err)
 		rootWrapper := db.TestWrapper(t)
 		iamRepo := iam.TestRepo(t, conn, rootWrapper)
