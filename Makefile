@@ -28,11 +28,6 @@ dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-
-bin: BUILD_TAGS+=ui
-bin: build-ui
-	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 fmt:
@@ -174,6 +169,9 @@ test-database-down:
 	make -C testing/dbtest/docker clean
 
 test-ci: install-go
+test-ci: export CI_BUILD=1
+test-ci:
+	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
