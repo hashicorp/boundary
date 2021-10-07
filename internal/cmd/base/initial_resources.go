@@ -591,7 +591,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 // It also registers the plugin in the shared map of running plugins.  Since
 // all boundary provided host plugins must have a name, a name is required
 // when calling CreateHostPlugin and will be used even if WithName is provided.
-func (b *Server) CreateHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceServer, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+func (b *Server) CreateHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
 	if name == "" {
 		return nil, fmt.Errorf("no name provided when creating plugin.")
 	}
@@ -641,7 +641,7 @@ func (b *Server) CreateHostPlugin(ctx context.Context, name string, plg plgpb.Ho
 	}
 
 	if b.HostPlugins == nil {
-		b.HostPlugins = make(map[string]plgpb.HostPluginServiceServer)
+		b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
 	}
 	b.HostPlugins[plugin.GetPublicId()] = plg
 

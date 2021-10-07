@@ -34,14 +34,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
 	// test against the expected values sent to the plugin.
 	var gotPluginAttrs *structpb.Struct
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{
-			OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-				gotPluginAttrs = req.GetCatalog().GetAttributes()
-				return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &WrappingPluginClient{
+			Server: &TestPluginServer{
+				OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+					gotPluginAttrs = req.GetCatalog().GetAttributes()
+					return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+				},
 			},
 		},
-		unimplementedPlugin.GetPublicId(): &plgpb.UnimplementedHostPluginServiceServer{},
+		unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	tests := []struct {
@@ -378,8 +380,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{},
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx)
@@ -444,8 +446,8 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	plg := hostplg.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &TestPluginServer{},
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
 	repo, err := NewRepository(rw, rw, kms, plgm)
 	assert.NoError(t, err)

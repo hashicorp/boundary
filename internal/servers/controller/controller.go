@@ -107,14 +107,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	if _, err := conf.CreateHostPlugin(ctx, "azure", &azureplg.AzurePlugin{}, hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
+	if _, err := conf.CreateHostPlugin(ctx, "azure", pluginhost.NewWrappingPluginClient(&azureplg.AzurePlugin{}), hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
 		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
 	}
-	if _, err := conf.CreateHostPlugin(ctx, "aws", &awsplg.AwsPlugin{}, hostplugin.WithDescription("Boundary provided host plugin for AWS.")); err != nil {
+	if _, err := conf.CreateHostPlugin(ctx, "aws", pluginhost.NewWrappingPluginClient(&awsplg.AwsPlugin{}), hostplugin.WithDescription("Boundary provided host plugin for AWS.")); err != nil {
 		return nil, fmt.Errorf("error creating aws host plugin: %w", err)
 	}
 	if conf.HostPlugins == nil {
-		conf.HostPlugins = make(map[string]plugin.HostPluginServiceServer)
+		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
 	}
 
 	// Set up repo stuff

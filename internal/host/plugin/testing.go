@@ -40,7 +40,7 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceServer, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
