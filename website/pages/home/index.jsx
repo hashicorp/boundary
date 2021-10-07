@@ -34,12 +34,14 @@ export default function HomePage() {
         cliVideo={{
           url: 'https://www.datocms-assets.com/2885/1614100038-hero-cli.mp4',
           srcType: 'mp4',
+          aspectRatio: 0.62295082,
           playbackRate: 1,
         }}
         desktopVideo={{
           url:
             'https://www.datocms-assets.com/2885/1614100044-hero-desktop.mp4',
           srcType: 'mp4',
+          aspectRatio: 0.59968354,
           playbackRate: 1,
         }}
       />

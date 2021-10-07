@@ -17,6 +17,8 @@ export default function HomepageHero({
   return (
     <div className={styles.homepageHero}>
       <Hero
+        videoControlsTop
+        className={styles.hero}
         data={{
           product: 'boundary',
           title: title,
@@ -28,6 +30,7 @@ export default function HomepageHero({
             {
               name: 'UI',
               playbackRate: uiVideo.playbackRate,
+              aspectRatio: uiVideo.aspectRatio,
               src: [
                 {
                   srcType: uiVideo.srcType,
@@ -38,6 +41,7 @@ export default function HomepageHero({
             {
               name: 'CLI',
               playbackRate: cliVideo.playbackRate,
+              aspectRatio: cliVideo.aspectRatio,
               src: [
                 {
                   srcType: cliVideo.srcType,
@@ -48,6 +52,7 @@ export default function HomepageHero({
             {
               name: 'Desktop',
               playbackRate: desktopVideo.playbackRate,
+              aspectRatio: desktopVideo.aspectRatio,
               src: [
                 {
                   srcType: desktopVideo.srcType,
