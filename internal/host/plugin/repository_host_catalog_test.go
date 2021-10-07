@@ -35,7 +35,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	// test against the expected values sent to the plugin.
 	var gotPluginAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &TestPluginClient{
+		plg.GetPublicId(): &WrappingPluginClient{
 			Server: &TestPluginServer{
 				OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 					gotPluginAttrs = req.GetCatalog().GetAttributes()
@@ -43,7 +43,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 		},
-		unimplementedPlugin.GetPublicId(): &TestPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+		unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	tests := []struct {
@@ -381,7 +381,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &TestPluginClient{Server: &TestPluginServer{}},
+		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx)
@@ -447,7 +447,7 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	plg := hostplg.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &TestPluginClient{Server: &TestPluginServer{}},
+		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
 	repo, err := NewRepository(rw, rw, kms, plgm)
 	assert.NoError(t, err)

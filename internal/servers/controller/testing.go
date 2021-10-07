@@ -577,7 +577,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
-		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewTestPluginClient(plugin.NewLoopbackPlugin())))
+		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}

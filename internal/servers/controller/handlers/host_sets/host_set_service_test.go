@@ -154,7 +154,7 @@ func TestGet_Plugin(t *testing.T) {
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, plgm)
@@ -353,7 +353,7 @@ func TestList_Plugin(t *testing.T) {
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, plgm)
@@ -724,7 +724,7 @@ func TestCreate_Plugin(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{
+			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
 				},

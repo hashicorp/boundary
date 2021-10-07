@@ -45,7 +45,7 @@ func Test_TestSet(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, kmsCache, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
+	set := TestSet(t, conn, kmsCache, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	db.AssertPublicId(t, HostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())

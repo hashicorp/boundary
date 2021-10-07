@@ -37,11 +37,11 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	var pluginReceivedAttrs *structpb.Struct
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+		plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 			pluginReceivedAttrs = req.GetSet().GetAttributes()
 			return &plgpb.OnCreateSetResponse{}, nil
 		}}),
-		unimplementedPlugin.GetPublicId(): NewTestPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
+		unimplementedPlugin.GetPublicId(): NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -314,12 +314,12 @@ func TestRepository_LookupSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
 			ListHostsFn: func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				require.NotEmpty(t, req.GetSets())
 				require.NotNil(t, req.GetCatalog())
@@ -384,7 +384,7 @@ func TestRepository_Endpoints(t *testing.T) {
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
 					return &plgpb.ListHostsResponse{}, nil
@@ -515,7 +515,7 @@ func TestRepository_ListSets(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -587,7 +587,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewTestPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
