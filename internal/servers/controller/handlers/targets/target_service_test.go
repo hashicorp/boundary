@@ -88,7 +88,7 @@ func testService(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapp
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
 	}
 	credentialRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
@@ -986,8 +986,8 @@ func TestAddTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	addCases := []struct {
@@ -1120,8 +1120,8 @@ func TestSetTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	setCases := []struct {
@@ -1248,8 +1248,8 @@ func TestRemoveTargetHostSets(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	removeCases := []struct {
@@ -1388,8 +1388,8 @@ func TestAddTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	addCases := []struct {
@@ -1522,8 +1522,8 @@ func TestSetTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	setCases := []struct {
@@ -1644,8 +1644,8 @@ func TestRemoveTargetHostSources(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): &plugin.TestPluginServer{},
+	pluginHs := plugin.TestSet(t, conn, kms, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(&plugin.TestPluginServer{}),
 	})
 
 	removeCases := []struct {
@@ -2589,8 +2589,8 @@ func TestAuthorizeSession(t *testing.T) {
 	}
 
 	plg := host.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceServer{
-		plg.GetPublicId(): plugin.TestPluginServer{
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewTestPluginClient(plugin.TestPluginServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				var setIds []string
 				for _, set := range req.GetSets() {
@@ -2609,7 +2609,7 @@ func TestAuthorizeSession(t *testing.T) {
 					},
 				}}, nil
 			},
-		},
+		}),
 	}
 	pluginHostRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, plgm)
@@ -2814,7 +2814,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceServer{})
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
 	}
 	credentialRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
