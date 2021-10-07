@@ -551,7 +551,7 @@ func (c *Command) Run(args []string) int {
 
 	var opts []base.Option
 	if c.flagCreateLoopbackHostCatalogPlugin {
-		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewLoopbackPlugin()))
+		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 	}
 	switch c.flagDatabaseUrl {
 	case "":

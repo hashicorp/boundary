@@ -207,8 +207,8 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
 		}
 		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
-			Catalog: plgCat,
-			Sets: []*hspb.HostSet{plgSet},
+			Catalog:   plgCat,
+			Sets:      []*hspb.HostSet{plgSet},
 			Persisted: persisted,
 		})
 		switch {
@@ -436,7 +436,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 	type catalogInfo struct {
 		publicId  string                        // ID of the catalog
-		plg       plgpb.HostPluginServiceServer // plugin client for the catalog
+		plg       plgpb.HostPluginServiceClient // plugin client for the catalog
 		setInfos  map[string]*setInfo           // map of set IDs to set information
 		plgCat    *hcpb.HostCatalog             // storage host catalog
 		persisted *plgpb.HostCatalogPersisted   // host catalog persisted (secret) data
