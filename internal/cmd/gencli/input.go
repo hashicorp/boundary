@@ -68,6 +68,17 @@ type cmdInfo struct {
 	// This allows the flags to be defined differently from the the attribute
 	// names in the API.
 	PrefixAttributeFieldErrorsWithSubactionPrefix bool
+
+	// HasGenericAttributes controls whether to generate flags for -attributes,
+	// -attr, -string-attr, etc.
+	HasGenericAttributes bool
+
+	// HasGenericSecrets controls whether to generate flags for -secrets,
+	// -secret, -string-secret, etc.
+	HasGenericSecrets bool
+
+	// IsPluginType controls whether standard plugin flags are generated
+	IsPluginType bool
 }
 
 var inputStructs = map[string][]*cmdInfo{

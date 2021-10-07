@@ -4,11 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/kr/pretty"
 	"github.com/posener/complete"
 )
 
@@ -748,3 +751,118 @@ func (f *FlagSet) Var(value flag.Value, name, usage string) {
 	f.mainSet.Var(value, name, usage)
 	f.flagSet.Var(value, name, usage)
 }
+
+// CombinationSliceVar uses a wrapped value to allow storing values from
+// different flags in one slice. This is useful if you need ordering to be
+// maintained across flags. It does not currently support env vars.
+//
+// If KvSplit is set true, each value will be split on the first = into Key and
+// Value parts so that validation can happen at parsing time. If you don't want
+// this kind of behavior, simply combine them, or set KvSplit to false.
+//
+// If KeyDelimiter is non-nil (along with KvSplit being true), the string will
+// be used to split the key. Otherwise, the Keys will be a single-element slice
+// containing the full value.
+//
+// If ProtoCompat is true, the key will be validated against proto3 syntax
+// requirements for identifiers. If the string is split via KeyDelimiter, each
+// segment will be evaluated independently.
+type CombinationSliceVar struct {
+	Name           string
+	Aliases        []string
+	Usage          string
+	Hidden         bool
+	Target         *[]CombinedSliceFlagValue
+	Completion     complete.Predictor
+	KvSplit        bool
+	KeyDelimiter   *string
+	ProtoCompatKey bool
+}
+
+func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
+	f.VarFlag(&VarFlag{
+		Name:       i.Name,
+		Aliases:    i.Aliases,
+		Usage:      i.Usage,
+		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyDelimiter, i.ProtoCompatKey),
+		Completion: i.Completion,
+	})
+}
+
+// CombinedSliceValue holds the raw value (as a string) and the name of the flag
+// that added it.
+type CombinedSliceFlagValue struct {
+	Name  string
+	Keys  []string
+	Value string
+}
+
+type combinedSliceValue struct {
+	name           string
+	hidden         bool
+	kvSplit        bool
+	keyDelimiter   *string
+	protoCompatKey bool
+	target         *[]CombinedSliceFlagValue
+}
+
+func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
+	return &combinedSliceValue{
+		name:           name,
+		hidden:         hidden,
+		kvSplit:        kvSplit,
+		keyDelimiter:   keyDelimiter,
+		protoCompatKey: protoCompatKey,
+		target:         target,
+	}
+}
+
+var protoIdentifierRegex = regexp.MustCompile("^[a-zA-Z][A-Za-z0-9_]*$")
+
+func (c *combinedSliceValue) Set(val string) error {
+	ret := CombinedSliceFlagValue{
+		Name:  c.name,
+		Value: strings.TrimSpace(val),
+	}
+
+	if c.kvSplit {
+		kv := strings.SplitN(ret.Value, "=", 2)
+		switch len(kv) {
+		case 0:
+		case 1:
+			ret.Value = strings.TrimSpace(kv[0])
+		default:
+			ret.Keys = []string{kv[0]}
+			if c.keyDelimiter != nil {
+				ret.Keys = strings.Split(kv[0], *c.keyDelimiter)
+			}
+			ret.Value = strings.TrimSpace(kv[1])
+		}
+	}
+
+	// Trim keys
+	for i, key := range ret.Keys {
+		ret.Keys[i] = strings.TrimSpace(key)
+	}
+
+	if c.protoCompatKey {
+		for _, key := range ret.Keys {
+			if !protoIdentifierRegex.Match([]byte(key)) {
+				return fmt.Errorf("key segment %q is invalid", key)
+			}
+		}
+	}
+
+	var err error
+	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && err != parseutil.ErrNotAUrl {
+		return fmt.Errorf("error checking if value is a path: %w", err)
+	}
+
+	*c.target = append(*c.target, ret)
+	return nil
+}
+
+func (c *combinedSliceValue) Get() interface{} { return *c.target }
+func (c *combinedSliceValue) String() string   { return pretty.Sprint(*c.target) }
+func (c *combinedSliceValue) Example() string  { return "" }
+func (c *combinedSliceValue) Hidden() bool     { return c.hidden }

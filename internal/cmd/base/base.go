@@ -73,6 +73,8 @@ type Command struct {
 
 	FlagScopeId           string
 	FlagScopeName         string
+	FlagPluginId          string
+	FlagPluginName        string
 	FlagId                string
 	FlagName              string
 	FlagDescription       string
@@ -82,6 +84,14 @@ type Command struct {
 	FlagVersion           int
 	FlagRecursive         bool
 	FlagFilter            string
+
+	// Attribute values
+	FlagAttributes string
+	FlagAttrs      []CombinedSliceFlagValue
+
+	// Secret values
+	FlagSecrets string
+	FlagScrts   []CombinedSliceFlagValue
 
 	client *api.Client
 }
