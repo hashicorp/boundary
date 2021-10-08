@@ -26,4 +26,16 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withPreferredEndpoints = []string{"foo"}
 		assert.EqualValues(t, opts, testOpts)
 	})
+	t.Run("withDnsAddresses", func(t *testing.T) {
+		opts := getOpts(withDnsAddresses([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withDnsAddresses = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
+	t.Run("withIpAddresses", func(t *testing.T) {
+		opts := getOpts(withIpAddresses([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withIpAddresses = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
 }

@@ -21,6 +21,8 @@ type options struct {
 	withAttributes         *structpb.Struct
 	withSecrets            *structpb.Struct
 	withPreferredEndpoints []string
+	withIpAddresses        []string
+	withDnsAddresses       []string
 }
 
 func getDefaultOptions() options {
@@ -61,5 +63,19 @@ func WithSecrets(secrets *structpb.Struct) Option {
 func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
 		o.withPreferredEndpoints = with
+	}
+}
+
+// withIpAddresses provides an optional list of ip addresses.
+func withIpAddresses(with []string) Option {
+	return func(o *options) {
+		o.withIpAddresses = with
+	}
+}
+
+// withDnsAddresses provides an optional list of dns addresses.
+func withDnsAddresses(with []string) Option {
+	return func(o *options) {
+		o.withDnsAddresses = with
 	}
 }
