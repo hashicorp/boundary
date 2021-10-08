@@ -179,9 +179,6 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 		dir = tmpDir
 	}
 	pluginPath := filepath.Join(dir, executedFileName)
-	if runtime.GOOS == "windows" {
-		pluginPath += ".exe"
-	}
 	if err := ioutil.WriteFile(pluginPath, buf, fs.FileMode(0700)); err != nil {
 		return nil, cleanup, fmt.Errorf("error writing out host plugin for execution: %w", err)
 	}
