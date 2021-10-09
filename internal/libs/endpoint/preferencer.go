@@ -2,8 +2,7 @@ package endpoint
 
 import (
 	"context"
-	"math/rand"
-	"time"
+	"net"
 
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -47,10 +46,52 @@ func (p *preferencer) Choose(ctx context.Context, opt ...Option) (string, error)
 
 	switch len(p.matchers) {
 	case 0:
-		// We have no matchers, so pick one at random
-		allAddrs := append(opts.withIpAddrs, opts.withDnsNames...)
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-		return allAddrs[rng.Intn(len(allAddrs))], nil
+		// We have no matchers, so pick a private address if we have one (since
+		// those are most likely to be what the user is trying to gain access to
+		// via a worker). If we don't have one, pick any IP address, as that's
+		// also more likely desired than a DNS name. Otherwise, pick a DNS name.
+		// IPv6 follows same rules as 4, but least preferenced.
+		nonPrivateIp4s := make([]string, 0, len(opts.withIpAddrs))
+		nonPrivateIp6s := make([]string, 0, len(opts.withIpAddrs))
+		privateIp6s := make([]string, 0, len(opts.withIpAddrs))
+
+		for _, ipStr := range opts.withIpAddrs {
+			ipVal := net.ParseIP(ipStr)
+			if ipVal != nil {
+				switch ipVal.To4() {
+				case nil: // it's v6
+					if ipVal.IsPrivate() {
+						privateIp6s = append(privateIp6s, ipStr)
+					} else {
+						nonPrivateIp6s = append(nonPrivateIp6s, ipStr)
+					}
+				default:
+					if ipVal.IsPrivate() {
+						// private IPv4 is most highly preferenced, so return it directly
+						return ipStr, nil
+					}
+					nonPrivateIp4s = append(nonPrivateIp4s, ipStr)
+				}
+			}
+		}
+
+		switch {
+		case len(nonPrivateIp4s) > 0:
+			return nonPrivateIp4s[0], nil
+
+		case len(opts.withDnsNames) > 0:
+			return opts.withDnsNames[0], nil
+
+		case len(privateIp6s) > 0:
+			return privateIp6s[0], nil
+
+		case len(nonPrivateIp6s) > 0:
+			return nonPrivateIp6s[0], nil
+
+		default:
+			// We literally have nothing if we get here, so return nothing
+			return "", nil
+		}
 
 	default:
 		for _, m := range p.matchers {
