@@ -77,10 +77,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api cli migrations perms-table fmt
-
-migrations:
-	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
+gen: cleangen proto api cli perms-table fmt
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -224,7 +221,7 @@ docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
+.PHONY: api cli tools gen proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
 
 .NOTPARALLEL:
 

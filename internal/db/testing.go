@@ -42,7 +42,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 		url = opts.withTestDatabaseUrl
 	}
 
-	_, err = schema.MigrateStore(ctx, dialect, url)
+	_, err = schema.MigrateStore(ctx, schema.Dialect(dialect), url)
 	if err != nil {
 		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}

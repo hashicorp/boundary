@@ -9,15 +9,12 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
-	t.Run("WithMigrationStates", func(t *testing.T) {
+
+	t.Run("WithEditions", func(t *testing.T) {
 		assert := assert.New(t)
-		oState := TestCloneMigrationStates(t)
-		nState := TestCreatePartialMigrationState(oState["postgres"], 8)
-		oState["postgres"] = nState
-		opts := getOpts(WithMigrationStates(oState))
-		testOpts := getDefaultOptions()
-		testOpts.withMigrationStates = oState
-		assert.Equal(opts, testOpts)
+		editions := TestCreatePartialEditions(Postgres, PartialEditions{"oss": 1})
+		opts := getOpts(WithEditions(editions))
+		assert.Equal(opts.withEditions, editions)
 	})
 	t.Run("WithDeleteLog", func(t *testing.T) {
 		assert := assert.New(t)

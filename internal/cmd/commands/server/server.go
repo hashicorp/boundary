@@ -425,22 +425,20 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
 			return base.CommandCliError
 		}
-		if !ckState.InitializationStarted {
+		if !ckState.Initialized {
 			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
 			return base.CommandCliError
 		}
-		if ckState.Dirty {
-			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
-			return base.CommandCliError
-		}
-		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
+		if !ckState.MigrationsApplied() {
+			for _, e := range ckState.Editions {
+				if e.DatabaseSchemaState == schema.Ahead {
+					c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%s %d) "+
+						"than this binary expects. Please use a newer version of the boundary "+
+						"binary.", e.Name, e.DatabaseSchemaVersion)))
+					return base.CommandCliError
+				}
+			}
 			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
-			return base.CommandCliError
-		}
-		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
-				"than this binary expects. Please use a newer version of the boundary "+
-				"binary.", ckState.DatabaseSchemaVersion)))
 			return base.CommandCliError
 		}
 		if err := c.verifyKmsSetup(); err != nil {

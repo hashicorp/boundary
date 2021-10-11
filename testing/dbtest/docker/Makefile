@@ -36,7 +36,7 @@ database-up:
 		-e POSTGRES_DB=boundary \
 		-e PGDATA=/pgdata \
 		--mount type=tmpfs,destination=/pgdata \
-		-v "$(CWD)/../../../internal/db/schema/migrations/postgres":/migrations \
+		-v "$(CWD)/../../../internal/db/schema/migrations":/migrations \
 		$(IMAGE_TAG) \
 		-c 'config_file=/etc/postgresql/postgresql.conf' \
 		$(PG_OPTS) 1> /dev/null
