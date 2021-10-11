@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -166,6 +167,71 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-user-password-credential-type",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+		},
+		{
+			name: "unknown-mapping-override-type",
+			in: &CredentialLibrary{
+				mapOverride: unknownMapper(1),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "invalid-mapping-override-type",
+			in: &CredentialLibrary{
+				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:    cs.GetPublicId(),
+					HttpMethod: "GET",
+					VaultPath:  "/some/path",
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "valid-user-password-credential-type-with-override",
+			in: &CredentialLibrary{
+				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			want: &CredentialLibrary{
+				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -191,8 +257,15 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(tt.want.CredentialType(), got.CredentialType())
 			assert.Equal(got.CreateTime, got.UpdateTime)
+
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+			if tt.in.mapOverride != nil {
+				override := allocUserPasswordOverride()
+				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", got.GetPublicId()))
+			}
 		})
 	}
 

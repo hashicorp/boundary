@@ -1,8 +1,11 @@
 package vault
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,17 +24,20 @@ const (
 type CredentialLibrary struct {
 	*store.CredentialLibrary
 	tableName string `gorm:"-"`
+
+	mapOverride MappingOverride `gorm:"-"`
 }
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
 // for a Vault backend at vaultPath assigned to storeId.
-// Name, description, method, and request body are the only valid options.
-// All other options are ignored.
+// Name, description, method, request body, credential type, and mapping
+// override are the only valid options. All other options are ignored.
 func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*CredentialLibrary, error) {
 	const op = "vault.NewCredentialLibrary"
 	opts := getOpts(opt...)
 
 	l := &CredentialLibrary{
+		mapOverride: opts.withMappingOverride,
 		CredentialLibrary: &store.CredentialLibrary{
 			StoreId:         storeId,
 			Name:            opts.withName,
@@ -39,10 +45,19 @@ func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*Cre
 			VaultPath:       vaultPath,
 			HttpRequestBody: opts.withRequestBody,
 			HttpMethod:      string(opts.withMethod),
+			CredentialType:  string(opts.withCredentialType),
 		},
 	}
 
 	return l, nil
+}
+
+func (l *CredentialLibrary) validate(ctx context.Context, caller errors.Op) error {
+	switch {
+	case !validMappingOverride(l.mapOverride, l.CredentialType()):
+		return errors.New(ctx, errors.VaultInvalidMappingOverride, caller, "invalid credential type for mapping override")
+	}
+	return nil
 }
 
 func allocCredentialLibrary() *CredentialLibrary {
@@ -52,9 +67,22 @@ func allocCredentialLibrary() *CredentialLibrary {
 }
 
 func (l *CredentialLibrary) clone() *CredentialLibrary {
+	var m MappingOverride
+	if l.mapOverride != nil {
+		m = l.mapOverride.clone()
+	}
+
 	cp := proto.Clone(l.CredentialLibrary)
 	return &CredentialLibrary{
+		mapOverride:       m,
 		CredentialLibrary: cp.(*store.CredentialLibrary),
+	}
+}
+
+func (l *CredentialLibrary) id(i string) {
+	l.PublicId = i
+	if l.mapOverride != nil {
+		l.mapOverride.libraryId(i)
 	}
 }
 
@@ -81,6 +109,16 @@ func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["store-id"] = []string{l.StoreId}
 	}
 	return metadata
+}
+
+// CredentialType returns the type of credential the library retrieves.
+func (l *CredentialLibrary) CredentialType() credential.Type {
+	switch ct := l.GetCredentialType(); ct {
+	case "":
+		return credential.UnspecifiedType
+	default:
+		return credential.Type(ct)
+	}
 }
 
 var _ credential.Library = (*CredentialLibrary)(nil)
