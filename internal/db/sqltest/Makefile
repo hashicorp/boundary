@@ -12,7 +12,9 @@ PG_TAP_DOCKER_TAG ?= pg13
 PROVE_OPTS ?=
 
 TESTS ?= tests/setup/*.sql \
-		 tests/wh/*/*.sql
+		 tests/wh/*/*.sql \
+		 tests/sentinel/*.sql \
+		 tests/credential/*/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
