@@ -288,6 +288,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: VaultEmptySecret,
 		},
 		{
+			name: "VaultInvalidMappingOverride",
+			c:    VaultInvalidMappingOverride,
+			want: VaultInvalidMappingOverride,
+		},
+		{
 			name: "OidcProviderCallbackError",
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,

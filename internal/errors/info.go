@@ -232,6 +232,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "vault secret is empty",
 		Kind:    Integrity,
 	},
+	VaultInvalidMappingOverride: {
+		Message: "invalid credential mapping override",
+		Kind:    Parameter,
+	},
 	OidcProviderCallbackError: {
 		Message: "oidc provider callback error",
 		Kind:    External,

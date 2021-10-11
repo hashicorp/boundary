@@ -108,6 +108,7 @@ const (
 	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
 	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
 	VaultEmptySecret              Code = 3015 // VaultEmptySecret represents a empty secret was returned from Vault without error
+	VaultInvalidMappingOverride   Code = 3016 // VaultInvalidMappingOverride represents an error returned when a credential mapping is unknown or does not match a credential type
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
