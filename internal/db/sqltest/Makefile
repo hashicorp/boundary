@@ -33,7 +33,7 @@ test:
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
-		-v "$(CWD)/../schema/migrations/postgres":/migrations \
+		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
 	@docker run -it --rm \
@@ -56,7 +56,7 @@ database-up:
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
-		-v "$(CWD)/../schema/migrations/postgres":/migrations \
+		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
 

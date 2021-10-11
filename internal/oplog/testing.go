@@ -88,7 +88,7 @@ func testInitStore(t *testing.T, cleanup func() error, url string) {
 
 	d, err := common.SqlOpen(dialect, url)
 	require.NoError(t, err)
-	sm, err := schema.NewManager(ctx, dialect, d)
+	sm, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
-	require.NoError(t, sm.RollForward(ctx))
+	require.NoError(t, sm.ApplyMigrations(ctx))
 }
