@@ -1,4 +1,4 @@
-package migration
+package oss_test
 
 import (
 	"context"
