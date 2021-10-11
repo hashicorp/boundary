@@ -48,11 +48,15 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 		l.HttpMethod = string(MethodGet)
 	}
 
+	if err := l.validate(ctx, op); err != nil {
+		return nil, err // intentionally not wrapped.
+	}
+
 	id, err := newCredentialLibraryId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	l.PublicId = id
+	l.setId(id)
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -62,10 +66,32 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 	var newCredentialLibrary *CredentialLibrary
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			newCredentialLibrary = l.clone()
-			err := w.Create(ctx, newCredentialLibrary, db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			var msgs []*oplog.Message
+			ticket, err := w.GetTicket(l)
 			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+
+			// insert credential library
+			newCredentialLibrary = l.clone()
+			var lOplogMsg oplog.Message
+			if err := w.Create(ctx, newCredentialLibrary, db.NewOplogMsg(&lOplogMsg)); err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+			msgs = append(msgs, &lOplogMsg)
+
+			// insert mapper override (if exists)
+			if l.mappingOverride != nil {
+				var msg oplog.Message
+				if err := w.Create(ctx, newCredentialLibrary.mappingOverride, db.NewOplogMsg(&msg)); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				msgs = append(msgs, &msg)
+			}
+
+			metadata := l.oplog(oplog.OpType_OP_TYPE_CREATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
 		},

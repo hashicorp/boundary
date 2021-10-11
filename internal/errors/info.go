@@ -224,6 +224,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "request for a new credential from vault failed",
 		Kind:    External,
 	},
+	VaultInvalidMappingOverride: {
+		Message: "invalid credential mapping override",
+		Kind:    Parameter,
+	},
 	OidcProviderCallbackError: {
 		Message: "oidc provider callback error",
 		Kind:    External,
