@@ -29,6 +29,7 @@ func (db DbType) String() string {
 		"postgres",
 	}[db]
 }
+
 func StringToDbType(dialect string) (DbType, error) {
 	switch dialect {
 	case "postgres":
@@ -80,7 +81,8 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 	switch dbType {
 	case Postgres:
 		dialect = postgres.New(postgres.Config{
-			DSN: connectionUrl},
+			DSN: connectionUrl,
+		},
 		)
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)

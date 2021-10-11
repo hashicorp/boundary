@@ -155,5 +155,4 @@ func TestProvider(t *testing.T) {
 			assert.Nil(t, p.Statements(), tt.name)
 		})
 	}
-
 }
