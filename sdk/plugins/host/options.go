@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 
 	pb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
@@ -29,9 +30,9 @@ func getOpts(opt ...Option) (*options, error) {
 type Option func(*options) error
 
 type options struct {
-	withHostPluginsSources           []pluginSourceInfo
-	withHostPluginExecutionDirectory string
-	withLogger                       hclog.Logger
+	withHostPluginsSources      []pluginSourceInfo
+	withHostPluginExecutionPath string
+	withLogger                  hclog.Logger
 }
 
 func getDefaultOptions() *options {
@@ -95,12 +96,24 @@ func WithHostPluginsMap(plugins map[string]func() (pb.HostPluginServiceClient, e
 	}
 }
 
-// WithHostPluginExecutionDirectory allows setting a specific directory for
+// WithHostPluginExecutionPath allows setting a specific directory for
 // writing out and executing plugins; if not set, os.TempDir will be used
 // to create a suitable directory.
-func WithHostPluginExecutionDirectory(dir string) Option {
+func WithHostPluginExecutionPath(dir string) Option {
 	return func(o *options) error {
-		o.withHostPluginExecutionDirectory = dir
+		if dir == "" {
+			// We always call this with the option, so if it's not actually set,
+			// don't error
+			return nil
+		}
+		fi, err := os.Stat(dir)
+		if err != nil {
+			return fmt.Errorf("error while performing stat to validate path %q is a directory: %w", dir, err)
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("given plugin execution path %q is not a directory", dir)
+		}
+		o.withHostPluginExecutionPath = dir
 		return nil
 	}
 }

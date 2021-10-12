@@ -167,7 +167,7 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 	}
 
 	// Now, create a temp dir and write out the plugin bytes
-	dir := opts.withHostPluginExecutionDirectory
+	dir := opts.withHostPluginExecutionPath
 	if dir == "" {
 		tmpDir, err := ioutil.TempDir("", "*")
 		if err != nil {

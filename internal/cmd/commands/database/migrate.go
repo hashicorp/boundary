@@ -135,6 +135,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.Context,
 		"aws",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionPath(c.Config.Plugins.ExecutionPath),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())

@@ -79,6 +79,7 @@ type Command struct {
 	flagEveryEventAllowFilters          []string
 	flagEveryEventDenyFilters           []string
 	flagCreateLoopbackHostCatalogPlugin bool
+	flagPluginExecutionPath             string
 }
 
 func (c *Command) Synopsis() string {
@@ -351,6 +352,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return base.CommandUserError
 	}
+
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
@@ -359,6 +361,13 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
+
+	c.DevLoginName = c.flagLoginName
+	c.DevPassword = c.flagPassword
+	c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
+	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
+	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+	c.Config.Plugins.ExecutionPath = c.flagPluginExecutionPath
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -383,19 +392,7 @@ func (c *Command) Run(args []string) int {
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
 		c.DevTargetId = fmt.Sprintf("%s_%s", target.TcpTargetPrefix, c.flagIdSuffix)
 	}
-	if c.flagLoginName != "" {
-		c.DevLoginName = c.flagLoginName
-	}
-	if c.flagPassword != "" {
-		c.DevPassword = c.flagPassword
-	}
-	if c.flagUnprivilegedLoginName != "" {
-		c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
-	}
-	if c.flagUnprivilegedPassword != "" {
-		c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
-	}
-	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+
 	host, port, err := net.SplitHostPort(c.flagHostAddress)
 	if err != nil {
 		if !strings.Contains(err.Error(), "missing port") {

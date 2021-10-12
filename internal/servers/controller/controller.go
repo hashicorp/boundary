@@ -111,12 +111,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		ctx,
 		"azure",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionPath(conf.RawConfig.Plugins.ExecutionPath),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure host plugin")
 	}
 	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
-	if _, err := conf.CreateHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
+	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
 		return nil, fmt.Errorf("error registering azure host plugin: %w", err)
 	}
 
@@ -124,12 +125,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		ctx,
 		"aws",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionPath(conf.RawConfig.Plugins.ExecutionPath),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating aws host plugin")
 	}
 	conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
-	if _, err := conf.CreateHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
+	if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
 		return nil, fmt.Errorf("error registering aws host plugin: %w", err)
 	}
 
