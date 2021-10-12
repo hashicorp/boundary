@@ -30,9 +30,9 @@ func getOpts(opt ...Option) (*options, error) {
 type Option func(*options) error
 
 type options struct {
-	withHostPluginsSources      []pluginSourceInfo
-	withHostPluginExecutionPath string
-	withLogger                  hclog.Logger
+	withHostPluginsSources     []pluginSourceInfo
+	withHostPluginExecutionDir string
+	withLogger                 hclog.Logger
 }
 
 func getDefaultOptions() *options {
@@ -96,10 +96,10 @@ func WithHostPluginsMap(plugins map[string]func() (pb.HostPluginServiceClient, e
 	}
 }
 
-// WithHostPluginExecutionPath allows setting a specific directory for
+// WithHostPluginExecutionDir allows setting a specific directory for
 // writing out and executing plugins; if not set, os.TempDir will be used
 // to create a suitable directory.
-func WithHostPluginExecutionPath(dir string) Option {
+func WithHostPluginExecutionDir(dir string) Option {
 	return func(o *options) error {
 		if dir == "" {
 			// We always call this with the option, so if it's not actually set,
@@ -113,7 +113,7 @@ func WithHostPluginExecutionPath(dir string) Option {
 		if !fi.IsDir() {
 			return fmt.Errorf("given plugin execution path %q is not a directory", dir)
 		}
-		o.withHostPluginExecutionPath = dir
+		o.withHostPluginExecutionDir = dir
 		return nil
 	}
 }

@@ -79,7 +79,7 @@ type Command struct {
 	flagEveryEventAllowFilters          []string
 	flagEveryEventDenyFilters           []string
 	flagCreateLoopbackHostCatalogPlugin bool
-	flagPluginExecutionPath             string
+	flagPluginExecutionDir              string
 }
 
 func (c *Command) Synopsis() string {
@@ -367,7 +367,7 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
-	c.Config.Plugins.ExecutionPath = c.flagPluginExecutionPath
+	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")

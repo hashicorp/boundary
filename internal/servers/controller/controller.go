@@ -111,7 +111,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		ctx,
 		"azure",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionPath(conf.RawConfig.Plugins.ExecutionPath),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure host plugin")
@@ -125,7 +125,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		ctx,
 		"aws",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionPath(conf.RawConfig.Plugins.ExecutionPath),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating aws host plugin")

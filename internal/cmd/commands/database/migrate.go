@@ -135,7 +135,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.Context,
 		"aws",
 		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionPath(c.Config.Plugins.ExecutionPath),
+		external_host_plugins.WithHostPluginExecutionDir(c.Config.Plugins.ExecutionDir),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
@@ -150,10 +150,10 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 				"database to the new version of Boundary that requires this capability. " +
 				"If your temporary directory is not writable and/or you cannot execute " +
 				"binaries in that directory, try setting the field " +
-				`"execution_path" in the "plugins" block in the configuration file:
+				`"execution_dir" in the "plugins" block in the configuration file:
 			
 plugins {
-	execution_path = <dir>
+	execution_dir = <dir>
 }
 
 ` +

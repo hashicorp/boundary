@@ -190,7 +190,7 @@ type Database struct {
 }
 
 type Plugins struct {
-	ExecutionPath string `hcl:"execution_path"`
+	ExecutionDir string `hcl:"execution_dir"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
