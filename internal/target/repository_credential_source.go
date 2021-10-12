@@ -74,6 +74,14 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
+	vetCredentialLibraries, ok := subtypeRegistry.vetCredentialLibrariesFunc(t.Subtype())
+	if !ok {
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+	}
+	if err := vetCredentialLibraries(ctx, cls); err != nil {
+		return nil, nil, nil, err
+	}
+
 	target := alloc()
 	target.SetPublicId(ctx, t.PublicId)
 	target.SetVersion(targetVersion + 1)
@@ -284,6 +292,15 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	if !ok {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
+
+	vetCredentialLibraries, ok := subtypeRegistry.vetCredentialLibrariesFunc(t.Subtype())
+	if !ok {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+	}
+	if err := vetCredentialLibraries(ctx, cls); err != nil {
+		return nil, nil, db.NoRowsAffected, err
+	}
+
 	target := alloc()
 	target.SetPublicId(ctx, t.PublicId)
 	target.SetVersion(targetVersion + 1)

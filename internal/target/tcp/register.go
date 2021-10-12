@@ -2,13 +2,15 @@ package tcp
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/target"
 )
 
 func init() {
-	target.Register(Subtype, allocTarget, vet, TargetPrefix)
+	target.Register(Subtype, allocTarget, vet, vetCredentialLibraries, TargetPrefix)
 }
 
 const (
@@ -32,6 +34,19 @@ func vet(ctx context.Context, t target.Target) error {
 
 	if tt.Target == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing target store")
+	}
+	return nil
+}
+
+// vetCredentialLibraries checks that all of the provided credential libriaries have a CredentialPurpose
+// of ApplicationPurpose. Any other CredentialPurpose will result in an error.
+func vetCredentialLibraries(ctx context.Context, cls []*target.CredentialLibrary) error {
+	const op = "tcp.vetCredentialLibraries"
+
+	for _, cl := range cls {
+		if cl.CredentialPurpose != string(credential.ApplicationPurpose) {
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
+		}
 	}
 	return nil
 }

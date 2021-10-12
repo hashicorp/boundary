@@ -17,7 +17,7 @@ import (
 )
 
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	target.Register(targettest.Subtype, targettest.Alloc, targettest.Vet, targettest.TargetPrefix)
+	target.Register(targettest.Subtype, targettest.Alloc, targettest.Vet, targettest.VetCredentialLibraries, targettest.TargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -189,15 +189,19 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				origCredSources, origCredLibraries = tt.setup(tar)
 			}
 
-			wantCredSources := make(map[string]*target.CredentialLibrary)
+			wantCredSources := make(map[string]target.CredentialSource)
 			for _, cl := range tt.args.cls {
 				cl.TargetId = tar.GetPublicId()
-				wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = cl
+				wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
+					CredentialLibrary: cl.CredentialLibrary,
+				}
 			}
 			if tt.args.addToOrigLibs {
 				tt.args.cls = append(tt.args.cls, origCredLibraries...)
 				for _, cl := range origCredLibraries {
-					wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = cl
+					wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
+						CredentialLibrary: cl.CredentialLibrary,
+					}
 				}
 			}
 
@@ -221,8 +225,8 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			for _, cs := range got {
 				w, ok := wantCredSources[cs.Id()+"_"+string(cs.CredentialPurpose())]
 				assert.True(ok, "got unexpected credentialsource %v", cs)
-				assert.Equal(w.CredentialLibraryId, cs.Id())
-				assert.Equal(w.CredentialPurpose, string(cs.CredentialPurpose()))
+				assert.Equal(w.Id(), cs.Id())
+				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
 			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())

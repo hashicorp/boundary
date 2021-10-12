@@ -2,7 +2,6 @@ package tcp_test
 
 import (
 	"context"
-	"sort"
 	"testing"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,14 +40,14 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 
 	type args struct {
 		targetVersion uint32
-		credLibIds    []string
+		cls           []*target.CredentialLibrary
 	}
 	tests := []struct {
-		name           string
-		args           args
-		wantCredLibIds []string
-		wantErr        bool
-		wantErrCode    errors.Code
+		name            string
+		args            args
+		wantCredSources map[string]target.CredentialSource
+		wantErr         bool
+		wantErrCode     errors.Code
 	}{
 		{
 			name: "zero-version",
@@ -69,34 +69,95 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "valid-single-source",
 			args: args{
 				targetVersion: 1,
-				credLibIds:    []string{lib1.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+				},
 			},
-			wantCredLibIds: []string{lib1.PublicId},
-			wantErr:        false,
+			wantCredSources: map[string]target.CredentialSource{
+				lib1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						CredentialLibraryId: lib1.PublicId,
+						CredentialPurpose:   string(credential.ApplicationPurpose),
+					},
+				},
+			},
+			wantErr: false,
 		},
 		{
 			name: "valid-multiple-sources",
 			args: args{
 				targetVersion: 1,
-				credLibIds:    []string{lib1.PublicId, lib2.PublicId, lib3.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib3.PublicId, credential.ApplicationPurpose),
+				},
 			},
-			wantCredLibIds: []string{lib1.PublicId, lib2.PublicId, lib3.PublicId},
-			wantErr:        false,
+			wantCredSources: map[string]target.CredentialSource{
+				lib1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						CredentialLibraryId: lib1.PublicId,
+						CredentialPurpose:   string(credential.ApplicationPurpose),
+					},
+				},
+				lib2.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						CredentialLibraryId: lib2.PublicId,
+						CredentialPurpose:   string(credential.ApplicationPurpose),
+					},
+				},
+				lib3.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						CredentialLibraryId: lib3.PublicId,
+						CredentialPurpose:   string(credential.ApplicationPurpose),
+					},
+				},
+			},
+			wantErr: false,
 		},
 		{
 			name: "invalid-source-id",
 			args: args{
 				targetVersion: 1,
-				credLibIds:    []string{lib1.PublicId, lib2.PublicId, lib3.PublicId, "invalid-source-id"},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib3.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", "invalid-source-id", credential.ApplicationPurpose),
+				},
 			},
 			wantErr:     true,
 			wantErrCode: errors.NotSpecificIntegrity,
 		},
 		{
+			name: "egress-credential-purpose",
+			args: args{
+				targetVersion: 1,
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.EgressPurpose),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "ingress-credential-purpose",
+			args: args{
+				targetVersion: 1,
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.IngressPurpose),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
 			name: "bad-version",
 			args: args{
 				targetVersion: 1000,
-				credLibIds:    []string{lib1.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+				},
 			},
 			wantErr:     true,
 			wantErrCode: errors.VersionMismatch,
@@ -107,25 +168,25 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, tt.name)
-			credLibs := make([]*target.CredentialLibrary, 0, len(tt.args.credLibIds))
-			for _, clid := range tt.args.credLibIds {
-				credLibs = append(credLibs, target.TestNewCredentialLibrary(projTarget.PublicId, clid, credential.ApplicationPurpose))
+
+			for _, cl := range tt.args.cls {
+				cl.TargetId = projTarget.PublicId
 			}
 
-			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, credLibs)
+			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.cls)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
-			assert.Len(gotCredSources, len(tt.wantCredLibIds))
-			gotCredSourcesMap := map[string]target.CredentialSource{}
-			for _, s := range gotCredSources {
-				gotCredSourcesMap[s.Id()] = s
-			}
-			for _, id := range tt.wantCredLibIds {
-				assert.NotEmpty(gotCredSourcesMap[id])
+			assert.Len(gotCredSources, len(tt.wantCredSources))
+
+			for _, cs := range gotCredSources {
+				w, ok := tt.wantCredSources[cs.Id()+"_"+string(cs.CredentialPurpose())]
+				assert.True(ok, "got unexpected credentialsource %v", cs)
+				assert.Equal(w.Id(), cs.Id())
+				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
 			// test to see of the target version update oplog was created
@@ -138,9 +199,13 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			assert.Equal(projTarget.GetVersion(), tar.GetVersion()-1)
 			assert.True(proto.Equal(gotTarget.(*tcp.Target), tar.(*tcp.Target)))
 			assert.Equal(gotCredSources, lookupCredSources)
-			for _, s := range lookupCredSources {
-				assert.NotEmpty(gotCredSourcesMap[s.Id()])
-				assert.Equal(projTarget.PublicId, s.TargetId())
+
+			for _, cs := range lookupCredSources {
+				w, ok := tt.wantCredSources[cs.Id()+"_"+string(cs.CredentialPurpose())]
+				assert.True(ok, "got unexpected credentialsource %v", cs)
+				assert.Equal(w.Id(), cs.Id())
+				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
+				assert.Equal(projTarget.PublicId, cs.TargetId())
 			}
 		})
 	}
@@ -402,7 +467,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	}
 	type args struct {
 		targetVersion uint32
-		clIds         []string
+		cls           []*target.CredentialLibrary
 		addToOrigLibs bool
 	}
 	tests := []struct {
@@ -418,7 +483,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
-				clIds:         []string{},
+				cls:           []*target.CredentialLibrary{},
 			},
 			wantErr:          false,
 			wantAffectedRows: 10,
@@ -428,7 +493,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
-				clIds:         []string{},
+				cls:           []*target.CredentialLibrary{},
 				addToOrigLibs: true,
 			},
 			wantErr:          false,
@@ -439,7 +504,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
-				clIds:         []string{lib1.PublicId, lib2.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+				},
 				addToOrigLibs: true,
 			},
 			wantErr:          false,
@@ -450,7 +518,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 0,
-				clIds:         []string{lib1.PublicId, lib2.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+				},
 				addToOrigLibs: true,
 			},
 			wantErr:     true,
@@ -461,7 +532,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 1000,
-				clIds:         []string{lib1.PublicId, lib2.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+				},
 				addToOrigLibs: true,
 			},
 			wantErr:     true,
@@ -472,11 +546,38 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
-				clIds:         []string{lib1.PublicId, lib2.PublicId},
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", lib2.PublicId, credential.ApplicationPurpose),
+				},
 				addToOrigLibs: false,
 			},
 			wantErr:          false,
 			wantAffectedRows: 12,
+		},
+		{
+			name:  "egress-credential-purpose",
+			setup: setupFn,
+			args: args{
+				targetVersion: 1,
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.EgressPurpose),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:  "ingress-credential-purpose",
+			setup: setupFn,
+			args: args{
+				targetVersion: 1,
+				cls: []*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", lib1.PublicId, credential.IngressPurpose),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -491,16 +592,19 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				origCredSources, origCredLibraries = tt.setup(tar)
 			}
 
-			cls := make([]*target.CredentialLibrary, 0, len(tt.args.clIds))
-			for _, clid := range tt.args.clIds {
-				cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), clid, credential.ApplicationPurpose))
+			wantCredSources := make(map[string]target.CredentialSource)
+			for _, cl := range tt.args.cls {
+				cl.TargetId = tar.GetPublicId()
+				wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
+					CredentialLibrary: cl.CredentialLibrary,
+				}
 			}
-			var wantIds []string
-			wantIds = append(wantIds, tt.args.clIds...)
 			if tt.args.addToOrigLibs {
-				cls = append(cls, origCredLibraries...)
+				tt.args.cls = append(tt.args.cls, origCredLibraries...)
 				for _, cl := range origCredLibraries {
-					wantIds = append(wantIds, cl.CredentialLibraryId)
+					wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
+						CredentialLibrary: cl.CredentialLibrary,
+					}
 				}
 			}
 
@@ -508,7 +612,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(origCredSources, lookupCredSources)
 
-			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), tar.GetPublicId(), tt.args.targetVersion, cls)
+			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), tar.GetPublicId(), tt.args.targetVersion, tt.args.cls)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -519,18 +623,14 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantAffectedRows, affectedRows)
 
-			assert.Equal(len(wantIds), len(got))
-			sort.Strings(wantIds)
+			assert.Equal(len(wantCredSources), len(got))
 
-			var gotIds []string
-			if len(got) > 0 {
-				gotIds = make([]string, 0, len(got))
-				for _, s := range got {
-					gotIds = append(gotIds, s.Id())
-				}
+			for _, cs := range got {
+				w, ok := wantCredSources[cs.Id()+"_"+string(cs.CredentialPurpose())]
+				assert.True(ok, "got unexpected credentialsource %v", cs)
+				assert.Equal(w.Id(), cs.Id())
+				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
-			sort.Strings(gotIds)
-			assert.Equal(wantIds, gotIds)
 
 			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			require.NoError(err)

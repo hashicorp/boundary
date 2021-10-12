@@ -203,6 +203,11 @@ func Vet(ctx context.Context, t target.Target) error {
 	return nil
 }
 
+// VetCredentialLibraries allows for any CredentialLibraries.
+func VetCredentialLibraries(_ context.Context, _ []*target.CredentialLibrary) error {
+	return nil
+}
+
 // New creates a targettest.Target.
 func New(scopeId string, opt ...target.Option) (*Target, error) {
 	const op = "target_test.New"

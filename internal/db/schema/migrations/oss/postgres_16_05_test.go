@@ -168,8 +168,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrappe
 	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 	libs := []*target.CredentialLibrary{
 		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), credential.ApplicationPurpose),
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), credential.IngressPurpose),
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), credential.EgressPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), credential.ApplicationPurpose),
 	}
 
 	targetRepo, err := target.NewRepository(rw, rw, kms)
@@ -178,8 +177,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrappe
 	require.NoError(t, err)
 	creds := []*session.DynamicCredential{
 		session.NewDynamicCredential(libIds[0].GetPublicId(), credential.ApplicationPurpose),
-		session.NewDynamicCredential(libIds[0].GetPublicId(), credential.IngressPurpose),
-		session.NewDynamicCredential(libIds[1].GetPublicId(), credential.EgressPurpose),
+		session.NewDynamicCredential(libIds[1].GetPublicId(), credential.ApplicationPurpose),
 	}
 	return creds
 }
