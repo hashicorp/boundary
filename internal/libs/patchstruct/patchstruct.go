@@ -1,9 +1,14 @@
 package patchstruct
 
-import "google.golang.org/protobuf/types/known/structpb"
+import (
+	"encoding/json"
+	"fmt"
 
-// Patch updates the struct found in dst with the values found in src. The
-// intent of this helper is to provide a fallback mechanism for subtype
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+// PatchStruct updates the struct found in dst with the values found in src.
+// The intent of this helper is to provide a fallback mechanism for subtype
 // attributes when the actual schema of the subtype attributes are unknown. As
 // such, it's preferred to use other methods (such as mask mapping) when an
 // actual message for the subtype is known.
@@ -25,8 +30,8 @@ import "google.golang.org/protobuf/types/known/structpb"
 //   and a non-map in the destination is overwritten by a map in the
 //   source.
 //
-// Patch returns the updated map as a copy, dst and src are not altered.
-func Patch(dst, src *structpb.Struct) *structpb.Struct {
+// PatchStruct returns the updated map as a copy, dst and src are not altered.
+func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {
 	result, err := structpb.NewStruct(patchM(dst.AsMap(), src.AsMap()))
 	if err != nil {
 		// Should never error as values are source from structpb values
@@ -34,6 +39,27 @@ func Patch(dst, src *structpb.Struct) *structpb.Struct {
 	}
 
 	return result
+}
+
+// PatchJSON follows the same rule as above with PatchStruct, but instead of
+// patching structs, it patches JSON. An error is returned if there are issues
+// working with the JSON.
+func PatchJSON(dst, src []byte) ([]byte, error) {
+	var srcM, dstM map[string]interface{}
+	if err := json.Unmarshal(dst, &dstM); err != nil {
+		return nil, fmt.Errorf("error reading destination json: %w", err)
+	}
+
+	if err := json.Unmarshal(src, &srcM); err != nil {
+		return nil, fmt.Errorf("error reading source json: %w", err)
+	}
+
+	result, err := json.Marshal(patchM(dstM, srcM))
+	if err != nil {
+		return nil, fmt.Errorf("error writing result JSON: %w", err)
+	}
+
+	return result, nil
 }
 
 func patchM(dst, src map[string]interface{}) map[string]interface{} {
