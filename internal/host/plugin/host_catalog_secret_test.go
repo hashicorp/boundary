@@ -135,7 +135,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 		&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}})
 	require.NoError(t, err)
 	assert.NoError(t, hcs.encrypt(ctx, databaseWrapper))
-	q, v := hcs.insertQuery()
+	q, v := hcs.upsertQuery()
 	_, err = rw.Exec(ctx, q, v)
 	assert.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
 		&structpb.Struct{Fields: map[string]*structpb.Value{"updated": structpb.NewStringValue("value")}})
 	require.NoError(t, err)
 	assert.NoError(t, updated.encrypt(ctx, databaseWrapper))
-	q, v = updated.insertQuery()
+	q, v = updated.upsertQuery()
 	_, err = rw.Exec(ctx, q, v)
 	assert.NoError(t, err)
 

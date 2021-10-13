@@ -90,7 +90,7 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	return nil
 }
 
-func (c *HostCatalogSecret) insertQuery() (query string, queryValues []interface{}) {
+func (c *HostCatalogSecret) upsertQuery() (query string, queryValues []interface{}) {
 	query = upsertHostCatalogSecretQuery
 	queryValues = []interface{}{
 		sql.Named("catalog_id", c.CatalogId),
@@ -118,6 +118,7 @@ func (c *HostCatalogSecret) oplogMessage(opType db.OpType) *oplog.Message {
 		msg.OpType = oplog.OpType_OP_TYPE_CREATE
 	case db.UpdateOp:
 		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+		msg.FieldMaskPaths = []string{"secret", "key_id"}
 	case db.DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	}
