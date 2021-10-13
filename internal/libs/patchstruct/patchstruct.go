@@ -41,9 +41,9 @@ func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {
 	return result
 }
 
-// PatchJSON follows the same rule as above with PatchStruct, but instead of
-// patching structs, it patches JSON. An error is returned if there are issues
-// working with the JSON.
+// PatchJSON follows the same rules as above with PatchStruct, but instead of
+// patching structpb.Structs, it patches JSON. An error is returned if there
+// are issues working with the JSON.
 func PatchJSON(dst, src []byte) ([]byte, error) {
 	var srcM, dstM map[string]interface{}
 	if err := json.Unmarshal(dst, &dstM); err != nil {
