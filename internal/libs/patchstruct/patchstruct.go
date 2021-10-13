@@ -12,7 +12,7 @@ import "google.golang.org/protobuf/types/known/structpb"
 //
 // * The source (src) map is merged into the destination map (dst).
 //
-// * Values are overwritten by the source map if they exist in both.a
+// * Values are overwritten by the source map if they exist in both.
 //
 // * Values are deleted from the destination if they are set to null in the
 //   source.
