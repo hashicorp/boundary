@@ -1,0 +1,6 @@
+jobs:
+  - trigger-merge-to-ent:
+      filters:
+        branches:
+          only:
+            - main
