@@ -10,7 +10,7 @@ description: |-
 The file sink configures Boundary to send events to a file.
 
 ```hcl
-sink = {
+sink {
     name = "obs-sink"
     description = "Observations sent to a file"
     event_types = ["observation"]
@@ -24,7 +24,6 @@ sink = {
 The `sink` stanza may be specified more than once to make Boundary send events
 to multiple sinks; however, each file sink must have a unique `path` +
 `file_name`.
-
 
 ## common parameters
 
