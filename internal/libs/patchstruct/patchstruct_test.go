@@ -89,6 +89,26 @@ func TestPatch(t *testing.T) {
 				},
 			}),
 		},
+		{
+			name: "nil src",
+			dst: mustStruct(map[string]interface{}{
+				"foo": "bar",
+			}),
+			src: nil,
+			expected: mustStruct(map[string]interface{}{
+				"foo": "bar",
+			}),
+		},
+		{
+			name: "nil dst",
+			dst:  nil,
+			src: mustStruct(map[string]interface{}{
+				"foo": "bar",
+			}),
+			expected: mustStruct(map[string]interface{}{
+				"foo": "bar",
+			}),
+		},
 	}
 
 	for _, tc := range cases {
