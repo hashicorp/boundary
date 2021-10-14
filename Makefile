@@ -28,11 +28,6 @@ dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-
-bin: BUILD_TAGS+=ui
-bin: build-ui
-	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 fmt:
@@ -77,10 +72,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api cli migrations perms-table fmt
-
-migrations:
-	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
+gen: cleangen proto api cli perms-table fmt
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -174,6 +166,9 @@ test-database-down:
 	make -C testing/dbtest/docker clean
 
 test-ci: install-go
+test-ci: export CI_BUILD=1
+test-ci:
+	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
@@ -224,7 +219,7 @@ docker-publish:
 	docker push $(IMAGE_TAG)
 	docker push hashicorp/boundary:latest
 
-.PHONY: api cli tools gen migrations proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
+.PHONY: api cli tools gen proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
 
 .NOTPARALLEL:
 

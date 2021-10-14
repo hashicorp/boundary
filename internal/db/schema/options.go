@@ -1,5 +1,7 @@
 package schema
 
+import "github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,18 +16,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withMigrationStates map[string]migrationState
-	withDeleteLog       bool
+	withEditions  edition.Editions
+	withDeleteLog bool
 }
 
 func getDefaultOptions() options {
 	return options{}
 }
 
-// WithMigrationStates provides an optional migration states.
-func WithMigrationStates(states map[string]migrationState) Option {
+// WithEditions provides an optional migration states.
+func WithEditions(editions edition.Editions) Option {
 	return func(o *options) {
-		o.withMigrationStates = states
+		o.withEditions = editions
 	}
 }
 

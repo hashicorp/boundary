@@ -6,7 +6,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/boundary/sdk/wrapper"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -126,6 +129,43 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
 			}
 		}()
+	}
+
+	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+		c.Context,
+		"aws",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionDir(c.Config.Plugins.ExecutionDir),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
+		c.UI.Warn(base.WrapAtLength(
+			"Starting in Boundary 0.7.0, plugins are being introduced for " +
+				"various parts of the system. These plugins are created by writing " +
+				"out and executing plugin binaries. The migration function performed " +
+				"a check to ensure this system is capable of running plugins and " +
+				"encountered an error. The ability to run plugins will eventually " +
+				"become mandatory (for instance, for KMS implementations), so we are " +
+				"ensuring that it's feasible on a given system before migrating the " +
+				"database to the new version of Boundary that requires this capability. " +
+				"If your temporary directory is not writable and/or you cannot execute " +
+				"binaries in that directory, try setting the field " +
+				`"execution_dir" in the "plugins" block in the configuration file:`))
+		c.UI.Warn(`
+plugins {
+	execution_dir = <dir>
+}
+`)
+		c.UI.Warn(base.WrapAtLength(
+			"Otherwise, please file a bug at " +
+				"https://github.com/hashicorp/boundary/issues/new/choose and tell us " +
+				"what the error message is, along with details about your environment. " +
+				"We are committed to resolving any issues as quickly as possible."))
+		return base.CommandCliError
+	}
+	if err := awsCleanup(); err != nil {
+		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	dialect := "postgres"

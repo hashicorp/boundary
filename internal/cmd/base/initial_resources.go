@@ -587,11 +587,11 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	return tt, nil
 }
 
-// CreateHostPlugin creates a host plugin in the database if not present.
+// RegisterHostPlugin creates a host plugin in the database if not present.
 // It also registers the plugin in the shared map of running plugins.  Since
 // all boundary provided host plugins must have a name, a name is required
-// when calling CreateHostPlugin and will be used even if WithName is provided.
-func (b *Server) CreateHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+// when calling RegisterHostPlugin and will be used even if WithName is provided.
+func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
 	if name == "" {
 		return nil, fmt.Errorf("no name provided when creating plugin.")
 	}

@@ -6,12 +6,14 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
-// tmp use of local clone as we understand any required upstream PRs to
-// compatibility.
-replace gorm.io/gorm => github.com/hashicorp/gorm v0.0.2
-
 require (
+	github.com/Azure/azure-sdk-for-go v57.4.0+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.11.21 // indirect
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8 // indirect
+	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
+	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/armon/go-metrics v0.3.9
+	github.com/aws/aws-sdk-go v1.40.44 // indirect
 	github.com/bufbuild/buf v0.37.0
 	github.com/dhui/dktest v0.3.4 // indirect
 	github.com/fatih/color v1.12.0
@@ -22,10 +24,8 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
-	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20210928175609-6345faccf578
-	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20210930043837-3542fae64d2e
 	github.com/hashicorp/boundary/api v0.0.19
-	github.com/hashicorp/boundary/sdk v0.0.12-0.20211005202728-158ab09952ba
+	github.com/hashicorp/boundary/sdk v0.0.12-0.20211007161358-65f3725bf3e1
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -38,6 +38,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
@@ -49,6 +50,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/hashicorp/go-uuid v1.0.2
+	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/hashicorp/vault/sdk v0.2.1
@@ -81,12 +83,13 @@ require (
 	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
 	golang.org/x/term v0.0.0-20210916214954-140adaaadfaf
 	golang.org/x/tools v0.1.6
+	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
 	google.golang.org/grpc v1.40.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	gorm.io/driver/postgres v1.1.0
-	gorm.io/gorm v1.21.14
+	gorm.io/gorm v1.21.17-0.20211013130203-9a5ba3760424
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )

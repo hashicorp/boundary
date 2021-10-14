@@ -91,20 +91,62 @@ func TestPreferencer(t *testing.T) {
 			})
 		}
 	})
-	t.Run("noPrefRandom", func(t *testing.T) {
+	t.Run("noPrefReturnsPrivate", func(t *testing.T) {
+		const privAddr = "192.168.4.3"
 		p, err := NewPreferencer(ctx)
 		require.NoError(t, err)
-		checkMap := map[string]int{}
-		for i := 0; i < 200; i++ {
-			out, err := p.Choose(
-				ctx,
-				WithIpAddrs([]string{"48.134.5.1", "1.2.7.56"}),
-				WithDnsNames([]string{"foo.bar.com", "bar.baz.com"}),
-			)
-			require.NoError(t, err)
-			checkMap[out] = checkMap[out] + 1
-		}
-		// Ensure that we've inserted all four keys
-		assert.Len(t, checkMap, 4)
+		out, err := p.Choose(
+			ctx,
+			WithIpAddrs([]string{"48.134.5.1", "2001::1", privAddr}),
+			WithDnsNames([]string{"foo.bar.com", "bar.baz.com"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, privAddr, out)
+	})
+	t.Run("noPrefNoPrivateReturnsIp4", func(t *testing.T) {
+		const exp = "48.134.5.1"
+		p, err := NewPreferencer(ctx)
+		require.NoError(t, err)
+		out, err := p.Choose(
+			ctx,
+			WithIpAddrs([]string{"2001::1", exp}),
+			WithDnsNames([]string{"foo.bar.com", "bar.baz.com"}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, exp, out)
+	})
+	t.Run("noPrefNoIp4ReturnsDns", func(t *testing.T) {
+		const exp = "foo.bar.com"
+		p, err := NewPreferencer(ctx)
+		require.NoError(t, err)
+		out, err := p.Choose(
+			ctx,
+			WithIpAddrs([]string{"2001::1"}),
+			WithDnsNames([]string{exp}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, exp, out)
+	})
+	t.Run("ip6OnlyReturnsPrivate", func(t *testing.T) {
+		const exp = "fc00::1"
+		p, err := NewPreferencer(ctx)
+		require.NoError(t, err)
+		out, err := p.Choose(
+			ctx,
+			WithIpAddrs([]string{"2001::1", exp}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, exp, out)
+	})
+	t.Run("ip6OnlyPublic", func(t *testing.T) {
+		const exp = "2001::1"
+		p, err := NewPreferencer(ctx)
+		require.NoError(t, err)
+		out, err := p.Choose(
+			ctx,
+			WithIpAddrs([]string{exp}),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, exp, out)
 	})
 }

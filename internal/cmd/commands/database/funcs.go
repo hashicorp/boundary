@@ -29,7 +29,7 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 		ui.Error(fmt.Sprintf("Unable to connect to the database at %q", u))
 		return noop, 2
 	}
-	man, err := schema.NewManager(ctx, dialect, dBase)
+	man, err := schema.NewManager(ctx, schema.Dialect(dialect), dBase)
 	if err != nil {
 		if errors.Match(errors.T(errors.MigrationLock), err) {
 			ui.Error("Unable to capture a lock on the database.")
@@ -53,26 +53,22 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
 		return unlock, 2
 	}
-	if initialized && !st.InitializationStarted {
+	if initialized && !st.Initialized {
 		ui.Output(base.WrapAtLength("Database has not been initialized. Please use 'boundary database init' to initialize the boundary database."))
 		return unlock, -1
 	}
-	if !initialized && st.InitializationStarted {
+	if !initialized && st.Initialized {
 		ui.Output(base.WrapAtLength("Database has already been initialized. Please use 'boundary database migrate' for any upgrade needs."))
 		return unlock, -1
 	}
-	if st.Dirty {
-		ui.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))
-		return unlock, 2
-	}
-	if err := man.RollForward(ctx); err != nil {
+	if err := man.ApplyMigrations(ctx); err != nil {
 		ui.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
 		return unlock, 2
 	}
 	if base.Format(ui) == "table" {
 		ui.Info("Migrations successfully run.")
 	}
-	migrationLogs, err := schema.GetMigrationLog(ctx, dBase)
+	migrationLogs, err := man.GetMigrationLog(ctx)
 	if err != nil {
 		ui.Error(fmt.Errorf("Error retrieving database migration logs: %w", err).Error())
 		return unlock, 2

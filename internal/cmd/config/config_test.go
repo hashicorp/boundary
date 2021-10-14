@@ -140,6 +140,19 @@ func TestDevController(t *testing.T) {
 		assert.Empty(t, l0.CorsAllowedOrigins)
 		assert.True(t, *l0.CorsDisableDefaultAllowedOriginValues)
 	}
+
+	// Test plugins block
+	{
+		// CORS disabled
+		conf := `
+		plugins {
+			execution_dir = "/tmp/foobar"
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		assert.Equal(t, actual.Plugins.ExecutionDir, "/tmp/foobar")
+	}
 }
 
 func TestDevWorker(t *testing.T) {

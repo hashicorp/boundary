@@ -1,58 +1,66 @@
 package schema
 
+import "github.com/hashicorp/boundary/internal/db/schema/internal/provider"
+
 const nilVersion = -1
 
-// migrationState is meant to be populated by the generated migration code and
-// contains the internal representation of a schema in the current binary.
-type migrationState struct {
-	// binarySchemaVersion provides the database schema version supported by
-	// this binary.
-	binarySchemaVersion int
-
-	upMigrations map[int][]byte
+// State contains information regarding the current state of a boundary database's schema.
+type State struct {
+	// Initialized indicates if the current database has been previously initialized.
+	Initialized bool
+	Editions    []EditionState
 }
 
-// migrationStates is populated by the generated migration code with the key being the dialect.
-var migrationStates = make(map[string]migrationState)
-
-func getUpMigration(dialect string, opt ...Option) map[int][]byte {
-	opts := getOpts(opt...)
-	var ms migrationState
-	var ok bool
-	if opts.withMigrationStates != nil {
-		ms, ok = opts.withMigrationStates[dialect]
-	} else {
-		ms, ok = migrationStates[dialect]
-	}
-	if !ok {
-		return nil
-	}
-	return ms.upMigrations
-}
-
-// BinarySchemaVersion provides the schema version that this binary supports for the provided dialect.
-// If the binary doesn't support this dialect -1 is returned.
-func BinarySchemaVersion(dialect string) int {
-	ms, ok := migrationStates[dialect]
-	if !ok {
-		return nilVersion
-	}
-	return ms.binarySchemaVersion
-}
-
-func cloneMigrationStates(states map[string]migrationState) map[string]migrationState {
-	nStates := map[string]migrationState{}
-	for k, s := range states {
-		newState := migrationState{
-			binarySchemaVersion: s.binarySchemaVersion,
-			upMigrations:        map[int][]byte{},
+// MigrationsApplied checks to see that all Editions are in the Equal SchemaState.
+func (s State) MigrationsApplied() bool {
+	for _, e := range s.Editions {
+		if e.DatabaseSchemaState != Equal {
+			return false
 		}
-		for v, up := range s.upMigrations {
-			cp := make([]byte, len(up))
-			copy(cp, up)
-			newState.upMigrations[v] = cp
-		}
-		nStates[k] = newState
 	}
-	return nStates
+	return true
+}
+
+func (s State) databaseState() provider.DatabaseState {
+	dbState := make(provider.DatabaseState)
+	for _, e := range s.Editions {
+		dbState[e.Name] = e.DatabaseSchemaVersion
+	}
+	return dbState
+}
+
+// DatabaseState defines the state of the Database schema as compared to the
+// latest version for the binary.
+type DatabaseState int
+
+// Valid states.
+const (
+	Behind DatabaseState = iota // Database schema version is older then latest for the binary, so it needs migrations applied.
+	Ahead                       // Database schema version is newer then latest for the binary, so binary needs to be updated.
+	Equal                       // Database schema version matches latest version for the binary.
+)
+
+// EditionState is the current state of a schema Edition.
+type EditionState struct {
+	// Name is the identifier of the Edition.
+	Name string
+
+	// DatabaseSchemaVersion is the schema version that is currently running in the database.
+	DatabaseSchemaVersion int
+	// BinarySchemaVersion is the schema version which this boundary binary supports.
+	BinarySchemaVersion int
+
+	DatabaseSchemaState DatabaseState
+}
+
+func compareVersions(d int, b int) DatabaseState {
+	if d == b {
+		return Equal
+	}
+
+	if d < b {
+		return Behind
+	}
+
+	return Ahead
 }
