@@ -211,7 +211,7 @@ begin;
         on delete cascade
         on update cascade,
     priority wt_priority,
-    address wt_name,
+    address inet,
     create_time wt_timestamp,
     primary key (host_id, priority),
     constraint host_id_ip_address_condition_uq
