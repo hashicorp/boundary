@@ -189,7 +189,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "unknown-mapping-override-type",
 			in: &CredentialLibrary{
-				mapOverride: unknownMapper(1),
+				mappingOverride: unknownMapper(1),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -202,7 +202,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "invalid-mapping-override-type",
 			in: &CredentialLibrary{
-				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:    cs.GetPublicId(),
 					HttpMethod: "GET",
@@ -214,7 +214,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "valid-user-password-credential-type-with-override",
 			in: &CredentialLibrary{
-				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -223,7 +223,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 			want: &CredentialLibrary{
-				mapOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -262,7 +262,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
-			if tt.in.mapOverride != nil {
+			if tt.in.mappingOverride != nil {
 				override := allocUserPasswordOverride()
 				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", got.GetPublicId()))
 			}

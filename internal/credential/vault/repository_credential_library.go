@@ -56,7 +56,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	l.id(id)
+	l.setId(id)
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -81,9 +81,9 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 			msgs = append(msgs, &lOplogMsg)
 
 			// insert mapper override (if exists)
-			if l.mapOverride != nil {
+			if l.mappingOverride != nil {
 				var msg oplog.Message
-				if err := w.Create(ctx, newCredentialLibrary.mapOverride, db.NewOplogMsg(&msg)); err != nil {
+				if err := w.Create(ctx, newCredentialLibrary.mappingOverride, db.NewOplogMsg(&msg)); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				msgs = append(msgs, &msg)

@@ -24,7 +24,7 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 // types: UserPasswordOverride.
 type MappingOverride interface {
 	clone() MappingOverride
-	libraryId(i string)
+	setLibraryId(i string)
 }
 
 // A UserPasswordOverride contains optional values for overriding the
@@ -64,7 +64,7 @@ func (o *UserPasswordOverride) clone() MappingOverride {
 	}
 }
 
-func (o *UserPasswordOverride) libraryId(i string) {
+func (o *UserPasswordOverride) setLibraryId(i string) {
 	o.LibraryId = i
 }
 

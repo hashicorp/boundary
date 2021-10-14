@@ -11,7 +11,7 @@ import (
 type unknownMapper int
 
 func (u unknownMapper) clone() MappingOverride { return u }
-func (u unknownMapper) libraryId(_ string)     {}
+func (u unknownMapper) setLibraryId(_ string)  {}
 
 var _ MappingOverride = unknownMapper(0)
 
@@ -21,11 +21,6 @@ func TestValidMappingOverrides(t *testing.T) {
 		ct   credential.Type
 		want bool
 	}{
-		{
-			m:    nil,
-			ct:   "invalid",
-			want: true,
-		},
 		{
 			m:    nil,
 			ct:   "invalid",
