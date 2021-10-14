@@ -41,7 +41,7 @@ func TestUiRouting(t *testing.T) {
 
 	c := NewTestController(t, &TestControllerOpts{DisableAutoStart: true})
 
-	c.c.conf.RawConfig.PassthroughDirectory = tempDir
+	c.c.conf.RawConfig.DevUiPassthroughDir = tempDir
 	require.NoError(t, c.c.Start())
 	defer c.Shutdown()
 
