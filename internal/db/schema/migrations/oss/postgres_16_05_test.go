@@ -2,6 +2,7 @@ package oss_test
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -163,16 +164,48 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrappe
 
 	ctx := context.Background()
 	stores := vault.TestCredentialStores(t, conn, wrapper, tar.ScopeId, 1)
-	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+	libs := createVaultLibraries(t, conn, stores[0].GetPublicId())
 
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), []string{libs[0], libs[1]})
 	require.NoError(t, err)
 	creds := []*session.DynamicCredential{
-		session.NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
-		session.NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
-		session.NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+		session.NewDynamicCredential(libs[0], credential.ApplicationPurpose),
+		session.NewDynamicCredential(libs[0], credential.IngressPurpose),
+		session.NewDynamicCredential(libs[1], credential.EgressPurpose),
 	}
 	return creds
+}
+
+func createVaultLibraries(t *testing.T, conn *db.DB, storeId string) []string {
+	// This helper replaces a call made in an earlier version to
+	// vault.TestCredentialLibraries. A new column was added to
+	// credential_vault_library in a migration that was added after this
+	// test was created. That new column causes the call to
+	// vault.TestCredentialLibraries to fail because the column doesn't
+	// exist in the version of the migrations to test runs against.
+
+	t.Helper()
+	require := require.New(t)
+	const query = `
+    insert into credential_vault_library
+      (store_id, public_id, vault_path, http_method)
+    values
+      (@store_id, @library_id1, '/path1', 'GET'),
+      (@store_id, @library_id2, '/path2', 'GET');
+`
+	libraryIds := []string{"vl______wvl1", "vl______wvl2"}
+
+	queryValues := []interface{}{
+		sql.Named("store_id", storeId),
+		sql.Named("library_id1", libraryIds[0]),
+		sql.Named("library_id2", libraryIds[1]),
+	}
+
+	w := db.New(conn)
+	n, err := w.Exec(context.Background(), query, queryValues)
+	require.NoError(err)
+	require.Equal(n, 2)
+	return libraryIds
 }
