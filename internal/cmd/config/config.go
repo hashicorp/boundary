@@ -105,6 +105,9 @@ type Config struct {
 
 	// Eventing configuration for the controller
 	Eventing *event.EventerConfig `hcl:"events"`
+
+	// Plugin-related options
+	Plugins Plugins `hcl:"plugins"`
 }
 
 type Controller struct {
@@ -184,6 +187,10 @@ type Database struct {
 	Url                string `hcl:"url"`
 	MigrationUrl       string `hcl:"migration_url"`
 	MaxOpenConnections int    `hcl:"max_open_connections"`
+}
+
+type Plugins struct {
+	ExecutionDir string `hcl:"execution_dir"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary

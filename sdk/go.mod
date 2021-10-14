@@ -9,7 +9,9 @@ require (
 	github.com/hashicorp/eventlogger v0.1.0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-kms-wrapping v0.6.6
+	github.com/hashicorp/go-plugin v1.0.1
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	awsplg "github.com/hashicorp/boundary-plugin-host-aws/plugin"
-	azureplg "github.com/hashicorp/boundary-plugin-host-azure/plugin"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -27,7 +25,9 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
@@ -107,12 +107,34 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	if _, err := conf.CreateHostPlugin(ctx, "azure", pluginhost.NewWrappingPluginClient(&azureplg.AzurePlugin{}), hostplugin.WithDescription("Boundary provided host plugin for Azure.")); err != nil {
-		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
+		ctx,
+		"azure",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+	if err != nil {
+		return nil, fmt.Errorf("error creating azure host plugin")
 	}
-	if _, err := conf.CreateHostPlugin(ctx, "aws", pluginhost.NewWrappingPluginClient(&awsplg.AwsPlugin{}), hostplugin.WithDescription("Boundary provided host plugin for AWS.")); err != nil {
-		return nil, fmt.Errorf("error creating aws host plugin: %w", err)
+	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
+	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
+		return nil, fmt.Errorf("error registering azure host plugin: %w", err)
 	}
+
+	awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+		ctx,
+		"aws",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+	if err != nil {
+		return nil, fmt.Errorf("error creating aws host plugin")
+	}
+	conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
+	if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
+		return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+	}
+
 	if conf.HostPlugins == nil {
 		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
 	}

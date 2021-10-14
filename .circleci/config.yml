@@ -30,49 +30,52 @@ jobs:
         command: mkdir -p .buildcache && echo "*" > .buildcache/.gitignore
         name: Ignore .buildcache
     - restore_cache:
-        key: package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f-{{checksum ".buildcache/cache-keys/package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f"}}
+        key: package-fa8840f2e78bfa9c58d242426d80f4e30464516f-{{checksum ".buildcache/cache-keys/package-fa8840f2e78bfa9c58d242426d80f4e30464516f"}}
         name: Restore package cache
     - restore_cache:
-        key: package-51de04f17d8bd90f98ee7e90d29f7196114e9312-{{checksum ".buildcache/cache-keys/package-51de04f17d8bd90f98ee7e90d29f7196114e9312"}}
+        key: package-110a848ce5db07e7fc389430350c45261d2d7baa-{{checksum ".buildcache/cache-keys/package-110a848ce5db07e7fc389430350c45261d2d7baa"}}
         name: Restore package cache
     - restore_cache:
-        key: package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96-{{checksum ".buildcache/cache-keys/package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96"}}
+        key: package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d-{{checksum ".buildcache/cache-keys/package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d"}}
         name: Restore package cache
     - restore_cache:
-        key: package-dfa2d7800b4d38d601ef4b977bc9256814b248bd-{{checksum ".buildcache/cache-keys/package-dfa2d7800b4d38d601ef4b977bc9256814b248bd"}}
+        key: package-0922d907d014ef141526a2a3b9d54a3940adcbf3-{{checksum ".buildcache/cache-keys/package-0922d907d014ef141526a2a3b9d54a3940adcbf3"}}
         name: Restore package cache
     - restore_cache:
-        key: package-41b52d0b959e71aaac5d843b6329d0e762b29dd9-{{checksum ".buildcache/cache-keys/package-41b52d0b959e71aaac5d843b6329d0e762b29dd9"}}
+        key: package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d-{{checksum ".buildcache/cache-keys/package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d"}}
         name: Restore package cache
     - restore_cache:
-        key: package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e-{{checksum ".buildcache/cache-keys/package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e"}}
+        key: package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d-{{checksum ".buildcache/cache-keys/package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d"}}
         name: Restore package cache
     - restore_cache:
-        key: package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e-{{checksum ".buildcache/cache-keys/package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e"}}
+        key: package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f-{{checksum ".buildcache/cache-keys/package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f"}}
         name: Restore package cache
     - restore_cache:
-        key: package-c249aa18d9172af5dee394ffc56f6d5afc9b9470-{{checksum ".buildcache/cache-keys/package-c249aa18d9172af5dee394ffc56f6d5afc9b9470"}}
+        key: package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4-{{checksum ".buildcache/cache-keys/package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4"}}
         name: Restore package cache
     - restore_cache:
-        key: package-771602be638d83ed5ccdf6efab336e8ca5170cbf-{{checksum ".buildcache/cache-keys/package-771602be638d83ed5ccdf6efab336e8ca5170cbf"}}
+        key: package-276415ef2d0ac06fb080dd55910bb71613f9c049-{{checksum ".buildcache/cache-keys/package-276415ef2d0ac06fb080dd55910bb71613f9c049"}}
         name: Restore package cache
     - restore_cache:
-        key: package-65eca516163e4f0e2862988d2e4305d97e1a4cb4-{{checksum ".buildcache/cache-keys/package-65eca516163e4f0e2862988d2e4305d97e1a4cb4"}}
+        key: package-224e22a10a66af47d1f9468e0ca6c68f2a252599-{{checksum ".buildcache/cache-keys/package-224e22a10a66af47d1f9468e0ca6c68f2a252599"}}
         name: Restore package cache
     - restore_cache:
-        key: package-89b451e85a285500ed558e0fbc7f1838ae50c040-{{checksum ".buildcache/cache-keys/package-89b451e85a285500ed558e0fbc7f1838ae50c040"}}
+        key: package-b971c9df855df00922afb57baeda53f399318c79-{{checksum ".buildcache/cache-keys/package-b971c9df855df00922afb57baeda53f399318c79"}}
         name: Restore package cache
     - restore_cache:
-        key: package-761320ecae414d2a19b61e704d5f5883d5c6286e-{{checksum ".buildcache/cache-keys/package-761320ecae414d2a19b61e704d5f5883d5c6286e"}}
+        key: package-1c8250fee830f8fac2364e7d3e3f82ee5832983e-{{checksum ".buildcache/cache-keys/package-1c8250fee830f8fac2364e7d3e3f82ee5832983e"}}
         name: Restore package cache
     - restore_cache:
-        key: package-505ce51e7cd78758af5b578825ba3395630bb1cf-{{checksum ".buildcache/cache-keys/package-505ce51e7cd78758af5b578825ba3395630bb1cf"}}
+        key: package-a8981b00f8f6bce3fb156f73b58c4e33fe077876-{{checksum ".buildcache/cache-keys/package-a8981b00f8f6bce3fb156f73b58c4e33fe077876"}}
         name: Restore package cache
     - restore_cache:
-        key: package-4a9e88daa25103b845842c687fd8f6900e70f9a7-{{checksum ".buildcache/cache-keys/package-4a9e88daa25103b845842c687fd8f6900e70f9a7"}}
+        key: package-ee6ae4147a76888401e2032a2fee0926ef36ad00-{{checksum ".buildcache/cache-keys/package-ee6ae4147a76888401e2032a2fee0926ef36ad00"}}
         name: Restore package cache
     - restore_cache:
-        key: package-05943f4935af9c2c169f437d6b6d97f06e8d44fb-{{checksum ".buildcache/cache-keys/package-05943f4935af9c2c169f437d6b6d97f06e8d44fb"}}
+        key: package-e3454f0b7ee22d489b83f6daf78d545f4878a79c-{{checksum ".buildcache/cache-keys/package-e3454f0b7ee22d489b83f6daf78d545f4878a79c"}}
+        name: Restore package cache
+    - restore_cache:
+        key: package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5-{{checksum ".buildcache/cache-keys/package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5"}}
         name: Restore package cache
     - run:
         command: make package-meta-all
@@ -84,20 +87,20 @@ jobs:
         command: ls -lahR .buildcache
         name: List Build Cache
     - run:
-        command: cp packages*.lock/pkgs.yml lockfile-d1ed8558d55be3da.yml
+        command: cp packages*.lock/pkgs.yml lockfile-87386c0c55d5c61a.yml
         name: Update Lockfile Name
     - run:
-        command: tar -czf packages-d1ed8558d55be3da.tar.gz .buildcache/packages lockfile-d1ed8558d55be3da.yml
+        command: tar -czf packages-87386c0c55d5c61a.tar.gz .buildcache/packages lockfile-87386c0c55d5c61a.yml
         name: Create Raw Package Tarball
     - run:
-        command: tar -czf meta-d1ed8558d55be3da.tar.gz .buildcache/packages/store/*.json lockfile-d1ed8558d55be3da.yml
+        command: tar -czf meta-87386c0c55d5c61a.tar.gz .buildcache/packages/store/*.json lockfile-87386c0c55d5c61a.yml
         name: Create Metadata Tarball
     - store_artifacts:
-        path: lockfile-d1ed8558d55be3da.yml
+        path: lockfile-87386c0c55d5c61a.yml
     - store_artifacts:
-        path: packages-d1ed8558d55be3da.tar.gz
+        path: packages-87386c0c55d5c61a.tar.gz
     - store_artifacts:
-        path: meta-d1ed8558d55be3da.tar.gz
+        path: meta-87386c0c55d5c61a.tar.gz
     - store_artifacts:
         path: .buildcache/packages
     environment:
@@ -112,7 +115,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: a7184da6d6c92fdd0f1b0f68cb133f0b2325623f
+    - PACKAGE_SPEC_ID: fa8840f2e78bfa9c58d242426d80f4e30464516f
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -126,7 +129,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f-{{checksum ".buildcache/cache-keys/package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f"}}
+        key: package-fa8840f2e78bfa9c58d242426d80f4e30464516f-{{checksum ".buildcache/cache-keys/package-fa8840f2e78bfa9c58d242426d80f4e30464516f"}}
         name: Restore package cache
     - run:
         command: |2
@@ -172,7 +175,79 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f-{{checksum ".buildcache/cache-keys/package-a7184da6d6c92fdd0f1b0f68cb133f0b2325623f"}}
+        key: package-fa8840f2e78bfa9c58d242426d80f4e30464516f-{{checksum ".buildcache/cache-keys/package-fa8840f2e78bfa9c58d242426d80f4e30464516f"}}
+        name: Save package cache
+        paths:
+        - .buildcache/packages/store
+  darwin_arm64_package:
+    docker:
+    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
+    shell: /usr/bin/env bash -euo pipefail -c
+    environment:
+    - AUTO_INSTALL_TOOLS: 'YES'
+    - BUILDKIT_PROGRESS: plain
+    - PRODUCT_REVISION: ''
+    - PACKAGE_SPEC_ID: 110a848ce5db07e7fc389430350c45261d2d7baa
+    steps:
+    - setup_remote_docker:
+        docker_layer_caching: false
+        version: 19.03.12
+    - add_ssh_keys:
+        fingerprints:
+        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
+    - checkout:
+        path: .
+    - run:
+        command: make -C packages*.lock write-package-cache-key
+        name: Write package cache key
+    - restore_cache:
+        key: package-110a848ce5db07e7fc389430350c45261d2d7baa-{{checksum ".buildcache/cache-keys/package-110a848ce5db07e7fc389430350c45261d2d7baa"}}
+        name: Restore package cache
+    - run:
+        command: |2
+
+          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
+            echo "No package found, continuing with build."
+            exit 0
+          fi
+          echo "Package already cached, skipping build."
+          circleci-agent step halt
+        name: Check cache status
+    - run:
+        command: make -C packages*.lock write-builder-cache-keys
+        name: Write builder layer cache keys
+    - restore_cache:
+        key: copy-source_5c01_{{checksum ".buildcache/cache-keys/copy-source-5c01da64a31c9bfe7ba38f51d95e8bf99c0842f5"}}
+        keys:
+        - go-modules_a25c_{{checksum ".buildcache/cache-keys/go-modules-a25cdf16b83859e7e53c8fd5272e4c6b8366e2be"}}
+        - ui_7d0e_{{checksum ".buildcache/cache-keys/ui-7d0eb4b8e23fd3d22cf70da1dff7e4359673ce05"}}
+        - base_849b_{{checksum ".buildcache/cache-keys/base-849b90f357ec2b0e340c99c0a49e883d36073bd9"}}
+        name: 'Restore Builder Image Cache: copy-source'
+    - run:
+        command: make -C packages*.lock load-builder-cache
+        name: Load whatever builder cache we have (if any) into the Docker daemon
+        no_output_timeout: 30m
+    - run:
+        command: |2-
+
+          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
+          eval "$(ssh-agent -s)"
+          if [ -f "$KEYFILE" ]; then
+            ssh-add "$KEYFILE"
+          else
+            echo "==> INFO: SSH key for github.com not found"
+            echo "    Attempts to access private repositories from within"
+            echo "    the build will fail, e.g. for private go modules, or"
+            echo "    attempts to directly clone private repositories."
+          fi
+
+          make -C packages*.lock package
+        name: Compile Package
+    - run:
+        command: ls -lahR .buildcache/packages
+        name: List packages
+    - save_cache:
+        key: package-110a848ce5db07e7fc389430350c45261d2d7baa-{{checksum ".buildcache/cache-keys/package-110a848ce5db07e7fc389430350c45261d2d7baa"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -184,7 +259,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 4a9e88daa25103b845842c687fd8f6900e70f9a7
+    - PACKAGE_SPEC_ID: e3454f0b7ee22d489b83f6daf78d545f4878a79c
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -198,7 +273,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-4a9e88daa25103b845842c687fd8f6900e70f9a7-{{checksum ".buildcache/cache-keys/package-4a9e88daa25103b845842c687fd8f6900e70f9a7"}}
+        key: package-e3454f0b7ee22d489b83f6daf78d545f4878a79c-{{checksum ".buildcache/cache-keys/package-e3454f0b7ee22d489b83f6daf78d545f4878a79c"}}
         name: Restore package cache
     - run:
         command: |2
@@ -244,7 +319,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-4a9e88daa25103b845842c687fd8f6900e70f9a7-{{checksum ".buildcache/cache-keys/package-4a9e88daa25103b845842c687fd8f6900e70f9a7"}}
+        key: package-e3454f0b7ee22d489b83f6daf78d545f4878a79c-{{checksum ".buildcache/cache-keys/package-e3454f0b7ee22d489b83f6daf78d545f4878a79c"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -380,7 +455,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: c249aa18d9172af5dee394ffc56f6d5afc9b9470
+    - PACKAGE_SPEC_ID: 276415ef2d0ac06fb080dd55910bb71613f9c049
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -394,7 +469,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-c249aa18d9172af5dee394ffc56f6d5afc9b9470-{{checksum ".buildcache/cache-keys/package-c249aa18d9172af5dee394ffc56f6d5afc9b9470"}}
+        key: package-276415ef2d0ac06fb080dd55910bb71613f9c049-{{checksum ".buildcache/cache-keys/package-276415ef2d0ac06fb080dd55910bb71613f9c049"}}
         name: Restore package cache
     - run:
         command: |2
@@ -440,7 +515,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-c249aa18d9172af5dee394ffc56f6d5afc9b9470-{{checksum ".buildcache/cache-keys/package-c249aa18d9172af5dee394ffc56f6d5afc9b9470"}}
+        key: package-276415ef2d0ac06fb080dd55910bb71613f9c049-{{checksum ".buildcache/cache-keys/package-276415ef2d0ac06fb080dd55910bb71613f9c049"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -452,7 +527,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e
+    - PACKAGE_SPEC_ID: 6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -466,7 +541,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e-{{checksum ".buildcache/cache-keys/package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e"}}
+        key: package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4-{{checksum ".buildcache/cache-keys/package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4"}}
         name: Restore package cache
     - run:
         command: |2
@@ -512,7 +587,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e-{{checksum ".buildcache/cache-keys/package-63d6f7ef20e846b9c2eac3c7a63d2b48b4f0499e"}}
+        key: package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4-{{checksum ".buildcache/cache-keys/package-6c8214c1a10a7f53964bfb8d2688cadbe8c6b9e4"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -535,7 +610,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 41b52d0b959e71aaac5d843b6329d0e762b29dd9
+    - PACKAGE_SPEC_ID: bced2a380b5354bba95ec9da4a54d06bc0a9b56d
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -549,7 +624,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-41b52d0b959e71aaac5d843b6329d0e762b29dd9-{{checksum ".buildcache/cache-keys/package-41b52d0b959e71aaac5d843b6329d0e762b29dd9"}}
+        key: package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d-{{checksum ".buildcache/cache-keys/package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d"}}
         name: Restore package cache
     - run:
         command: |2
@@ -595,7 +670,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-41b52d0b959e71aaac5d843b6329d0e762b29dd9-{{checksum ".buildcache/cache-keys/package-41b52d0b959e71aaac5d843b6329d0e762b29dd9"}}
+        key: package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d-{{checksum ".buildcache/cache-keys/package-bced2a380b5354bba95ec9da4a54d06bc0a9b56d"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -607,7 +682,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 51de04f17d8bd90f98ee7e90d29f7196114e9312
+    - PACKAGE_SPEC_ID: 36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -621,7 +696,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-51de04f17d8bd90f98ee7e90d29f7196114e9312-{{checksum ".buildcache/cache-keys/package-51de04f17d8bd90f98ee7e90d29f7196114e9312"}}
+        key: package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d-{{checksum ".buildcache/cache-keys/package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d"}}
         name: Restore package cache
     - run:
         command: |2
@@ -667,7 +742,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-51de04f17d8bd90f98ee7e90d29f7196114e9312-{{checksum ".buildcache/cache-keys/package-51de04f17d8bd90f98ee7e90d29f7196114e9312"}}
+        key: package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d-{{checksum ".buildcache/cache-keys/package-36032b26f94d618cdc87dcb7ac3b4eb820a4ab6d"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -679,7 +754,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: a5b1302c80e9d70de2b213f330bf0ad0055c8b96
+    - PACKAGE_SPEC_ID: 0922d907d014ef141526a2a3b9d54a3940adcbf3
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -693,7 +768,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96-{{checksum ".buildcache/cache-keys/package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96"}}
+        key: package-0922d907d014ef141526a2a3b9d54a3940adcbf3-{{checksum ".buildcache/cache-keys/package-0922d907d014ef141526a2a3b9d54a3940adcbf3"}}
         name: Restore package cache
     - run:
         command: |2
@@ -739,7 +814,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96-{{checksum ".buildcache/cache-keys/package-a5b1302c80e9d70de2b213f330bf0ad0055c8b96"}}
+        key: package-0922d907d014ef141526a2a3b9d54a3940adcbf3-{{checksum ".buildcache/cache-keys/package-0922d907d014ef141526a2a3b9d54a3940adcbf3"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -751,7 +826,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 89b451e85a285500ed558e0fbc7f1838ae50c040
+    - PACKAGE_SPEC_ID: 1c8250fee830f8fac2364e7d3e3f82ee5832983e
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -765,7 +840,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-89b451e85a285500ed558e0fbc7f1838ae50c040-{{checksum ".buildcache/cache-keys/package-89b451e85a285500ed558e0fbc7f1838ae50c040"}}
+        key: package-1c8250fee830f8fac2364e7d3e3f82ee5832983e-{{checksum ".buildcache/cache-keys/package-1c8250fee830f8fac2364e7d3e3f82ee5832983e"}}
         name: Restore package cache
     - run:
         command: |2
@@ -811,7 +886,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-89b451e85a285500ed558e0fbc7f1838ae50c040-{{checksum ".buildcache/cache-keys/package-89b451e85a285500ed558e0fbc7f1838ae50c040"}}
+        key: package-1c8250fee830f8fac2364e7d3e3f82ee5832983e-{{checksum ".buildcache/cache-keys/package-1c8250fee830f8fac2364e7d3e3f82ee5832983e"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -823,7 +898,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: a9f7f1be2569aac16eeb21967c3a47f4a04a118e
+    - PACKAGE_SPEC_ID: 9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -837,7 +912,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e-{{checksum ".buildcache/cache-keys/package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e"}}
+        key: package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f-{{checksum ".buildcache/cache-keys/package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f"}}
         name: Restore package cache
     - run:
         command: |2
@@ -883,7 +958,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e-{{checksum ".buildcache/cache-keys/package-a9f7f1be2569aac16eeb21967c3a47f4a04a118e"}}
+        key: package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f-{{checksum ".buildcache/cache-keys/package-9cdfa7cc4f940bdb711b3e4c05e23a771d7ce29f"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -906,7 +981,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 505ce51e7cd78758af5b578825ba3395630bb1cf
+    - PACKAGE_SPEC_ID: ee6ae4147a76888401e2032a2fee0926ef36ad00
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -920,7 +995,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-505ce51e7cd78758af5b578825ba3395630bb1cf-{{checksum ".buildcache/cache-keys/package-505ce51e7cd78758af5b578825ba3395630bb1cf"}}
+        key: package-ee6ae4147a76888401e2032a2fee0926ef36ad00-{{checksum ".buildcache/cache-keys/package-ee6ae4147a76888401e2032a2fee0926ef36ad00"}}
         name: Restore package cache
     - run:
         command: |2
@@ -966,7 +1041,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-505ce51e7cd78758af5b578825ba3395630bb1cf-{{checksum ".buildcache/cache-keys/package-505ce51e7cd78758af5b578825ba3395630bb1cf"}}
+        key: package-ee6ae4147a76888401e2032a2fee0926ef36ad00-{{checksum ".buildcache/cache-keys/package-ee6ae4147a76888401e2032a2fee0926ef36ad00"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1128,7 +1203,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 65eca516163e4f0e2862988d2e4305d97e1a4cb4
+    - PACKAGE_SPEC_ID: b971c9df855df00922afb57baeda53f399318c79
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -1142,7 +1217,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-65eca516163e4f0e2862988d2e4305d97e1a4cb4-{{checksum ".buildcache/cache-keys/package-65eca516163e4f0e2862988d2e4305d97e1a4cb4"}}
+        key: package-b971c9df855df00922afb57baeda53f399318c79-{{checksum ".buildcache/cache-keys/package-b971c9df855df00922afb57baeda53f399318c79"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1188,7 +1263,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-65eca516163e4f0e2862988d2e4305d97e1a4cb4-{{checksum ".buildcache/cache-keys/package-65eca516163e4f0e2862988d2e4305d97e1a4cb4"}}
+        key: package-b971c9df855df00922afb57baeda53f399318c79-{{checksum ".buildcache/cache-keys/package-b971c9df855df00922afb57baeda53f399318c79"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1200,7 +1275,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 761320ecae414d2a19b61e704d5f5883d5c6286e
+    - PACKAGE_SPEC_ID: a8981b00f8f6bce3fb156f73b58c4e33fe077876
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -1214,7 +1289,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-761320ecae414d2a19b61e704d5f5883d5c6286e-{{checksum ".buildcache/cache-keys/package-761320ecae414d2a19b61e704d5f5883d5c6286e"}}
+        key: package-a8981b00f8f6bce3fb156f73b58c4e33fe077876-{{checksum ".buildcache/cache-keys/package-a8981b00f8f6bce3fb156f73b58c4e33fe077876"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1260,7 +1335,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-761320ecae414d2a19b61e704d5f5883d5c6286e-{{checksum ".buildcache/cache-keys/package-761320ecae414d2a19b61e704d5f5883d5c6286e"}}
+        key: package-a8981b00f8f6bce3fb156f73b58c4e33fe077876-{{checksum ".buildcache/cache-keys/package-a8981b00f8f6bce3fb156f73b58c4e33fe077876"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1272,7 +1347,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 771602be638d83ed5ccdf6efab336e8ca5170cbf
+    - PACKAGE_SPEC_ID: 224e22a10a66af47d1f9468e0ca6c68f2a252599
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -1286,7 +1361,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-771602be638d83ed5ccdf6efab336e8ca5170cbf-{{checksum ".buildcache/cache-keys/package-771602be638d83ed5ccdf6efab336e8ca5170cbf"}}
+        key: package-224e22a10a66af47d1f9468e0ca6c68f2a252599-{{checksum ".buildcache/cache-keys/package-224e22a10a66af47d1f9468e0ca6c68f2a252599"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1332,7 +1407,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-771602be638d83ed5ccdf6efab336e8ca5170cbf-{{checksum ".buildcache/cache-keys/package-771602be638d83ed5ccdf6efab336e8ca5170cbf"}}
+        key: package-224e22a10a66af47d1f9468e0ca6c68f2a252599-{{checksum ".buildcache/cache-keys/package-224e22a10a66af47d1f9468e0ca6c68f2a252599"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1344,7 +1419,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: dfa2d7800b4d38d601ef4b977bc9256814b248bd
+    - PACKAGE_SPEC_ID: ccb0599d3f5653d5bf75173f87d906156ebf1e3d
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -1358,7 +1433,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-dfa2d7800b4d38d601ef4b977bc9256814b248bd-{{checksum ".buildcache/cache-keys/package-dfa2d7800b4d38d601ef4b977bc9256814b248bd"}}
+        key: package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d-{{checksum ".buildcache/cache-keys/package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1404,7 +1479,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-dfa2d7800b4d38d601ef4b977bc9256814b248bd-{{checksum ".buildcache/cache-keys/package-dfa2d7800b4d38d601ef4b977bc9256814b248bd"}}
+        key: package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d-{{checksum ".buildcache/cache-keys/package-ccb0599d3f5653d5bf75173f87d906156ebf1e3d"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1416,7 +1491,7 @@ jobs:
     - AUTO_INSTALL_TOOLS: 'YES'
     - BUILDKIT_PROGRESS: plain
     - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 05943f4935af9c2c169f437d6b6d97f06e8d44fb
+    - PACKAGE_SPEC_ID: d92fb1003c4ac9e95b86d700d64bf54b76e6fef5
     steps:
     - setup_remote_docker:
         docker_layer_caching: false
@@ -1430,7 +1505,7 @@ jobs:
         command: make -C packages*.lock write-package-cache-key
         name: Write package cache key
     - restore_cache:
-        key: package-05943f4935af9c2c169f437d6b6d97f06e8d44fb-{{checksum ".buildcache/cache-keys/package-05943f4935af9c2c169f437d6b6d97f06e8d44fb"}}
+        key: package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5-{{checksum ".buildcache/cache-keys/package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5"}}
         name: Restore package cache
     - run:
         command: |2
@@ -1476,7 +1551,7 @@ jobs:
         command: ls -lahR .buildcache/packages
         name: List packages
     - save_cache:
-        key: package-05943f4935af9c2c169f437d6b6d97f06e8d44fb-{{checksum ".buildcache/cache-keys/package-05943f4935af9c2c169f437d6b6d97f06e8d44fb"}}
+        key: package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5-{{checksum ".buildcache/cache-keys/package-d92fb1003c4ac9e95b86d700d64bf54b76e6fef5"}}
         name: Save package cache
         paths:
         - .buildcache/packages/store
@@ -1492,7 +1567,7 @@ jobs:
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
         name: Run SQL PgTap Tests
 workflows:
-  build-d1ed8558d55be3da:
+  build-87386c0c55d5c61a:
     jobs:
     - build-common-layers
     - darwin_amd64_package:
@@ -1501,6 +1576,7 @@ workflows:
     - bundle-releases:
         requires:
         - darwin_amd64_package
+        - darwin_arm64_package
         - freebsd_386_package
         - freebsd_amd64_package
         - freebsd_arm_package
@@ -1515,6 +1591,9 @@ workflows:
         - solaris_amd64_package
         - windows_386_package
         - windows_amd64_package
+    - darwin_arm64_package:
+        requires:
+        - build-common-layers
     - freebsd_386_package:
         requires:
         - build-common-layers
