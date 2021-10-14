@@ -66,7 +66,7 @@ type Command struct {
 	flagWorkerAuthKey                string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
-	flagPassthroughDirectory         string
+	flagUiPassthroughDir             string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
 	flagContainerImage               string
@@ -250,9 +250,9 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "passthrough-directory",
-		Target: &c.flagPassthroughDirectory,
-		EnvVar: "BOUNDARY_DEV_PASSTHROUGH_DIRECTORY",
+		Name:   "ui-passthrough-dir",
+		Target: &c.flagUiPassthroughDir,
+		EnvVar: "BOUNDARY_DEV_UI_PASSTHROUGH_DIR",
 		Usage:  "Enables a passthrough directory in the webserver at /",
 	})
 
@@ -408,7 +408,7 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetSessionConnectionLimit = c.flagTargetSessionConnectionLimit
 	c.DevHostAddress = host
 
-	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
+	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
