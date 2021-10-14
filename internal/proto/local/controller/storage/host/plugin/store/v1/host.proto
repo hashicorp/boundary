@@ -156,17 +156,10 @@ message Host {
   // @inject_tag: `gorm:"-"`
   repeated string ip_addresses = 9;
 
-  // dns_addresses are the dns addresses associated with this host and will
+  // dns_names are the dns names associated with this host and will
   // be persisted in the db through the HostAddress message.
   // @inject_tag: `gorm:"-"`
-  repeated string dns_addresses = 10;
-}
-
-message HostAddress {
-  // @inject_tag: `gorm:"primary_key"`
-  string host_id = 1;
-  // @inject_tag: `gorm:"primary_key"`
-  string address = 2;
+  repeated string dns_names = 10;
 }
 
 message HostSetMember {

@@ -22,7 +22,7 @@ type options struct {
 	withSecrets            *structpb.Struct
 	withPreferredEndpoints []string
 	withIpAddresses        []string
-	withDnsAddresses       []string
+	withDnsNames           []string
 }
 
 func getDefaultOptions() options {
@@ -73,9 +73,9 @@ func withIpAddresses(with []string) Option {
 	}
 }
 
-// withDnsAddresses provides an optional list of dns addresses.
-func withDnsAddresses(with []string) Option {
+// withDnsNames provides an optional list of dns names.
+func withDnsNames(with []string) Option {
 	return func(o *options) {
-		o.withDnsAddresses = with
+		o.withDnsNames = with
 	}
 }

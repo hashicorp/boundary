@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +20,7 @@ type Host struct {
 }
 
 // newHost creates a new in memory Host assigned to catalogId with an address.
-// Name and description are the only valid options. All other options are
+// Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames
 // ignored.
 func newHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
 	opts := getOpts(opt...)
@@ -36,25 +37,28 @@ func newHost(ctx context.Context, catalogId, externalId string, opt ...Option) *
 		h.IpAddresses = make([]string, 0, len(opts.withIpAddresses))
 		h.IpAddresses = append(h.IpAddresses, opts.withIpAddresses...)
 	}
-	if len(opts.withDnsAddresses) > 0 {
-		h.DnsAddresses = make([]string, 0, len(opts.withDnsAddresses))
-		h.DnsAddresses = append(h.DnsAddresses, opts.withDnsAddresses...)
+	if len(opts.withDnsNames) > 0 {
+		h.DnsNames = make([]string, 0, len(opts.withDnsNames))
+		h.DnsNames = append(h.DnsNames, opts.withDnsNames...)
 	}
 
 	return h
 }
 
-// convertDnsAddresses converts the embedded dns addresses from []string to
-// []interface{} where each slice element is a *HostDnsAddress. It will return
+// convertDnsNames converts the embedded dns names from []string to
+// []interface{} where each slice element is a *HostDnsName. It will return
 // an error if the Host's public id is not set.
-func (s *Host) convertDnsAddresses(ctx context.Context) ([]interface{}, error) {
-	const op = "plugin.(Host).convertDnsAddresses"
+func (s *Host) convertDnsNames(ctx context.Context) ([]interface{}, error) {
+	const op = "plugin.(Host).convertDnsNames"
 	if s.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(s.DnsAddresses))
-	for _, a := range s.DnsAddresses {
-		obj := newHostDnsAddress(ctx, s.PublicId, a)
+	newInterfaces := make([]interface{}, 0, len(s.DnsNames))
+	for i, a := range s.DnsNames {
+		obj, err := host.NewDnsName(ctx, s.PublicId, a, uint32(i+1))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 		newInterfaces = append(newInterfaces, obj)
 	}
 	return newInterfaces, nil
@@ -69,11 +73,19 @@ func (s *Host) convertIpAddresses(ctx context.Context) ([]interface{}, error) {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(s.IpAddresses))
-	for _, a := range s.IpAddresses {
-		obj := newHostIpAddress(ctx, s.PublicId, a)
+	for i, a := range s.IpAddresses {
+		obj, err := host.NewIpAddress(ctx, s.PublicId, a, uint32(i+1))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 		newInterfaces = append(newInterfaces, obj)
 	}
 	return newInterfaces, nil
+}
+
+// For compatibility with the general Host type
+func (h *Host) GetAddress() string {
+	return ""
 }
 
 // TableName returns the table name for the host set.

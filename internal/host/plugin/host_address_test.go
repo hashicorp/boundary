@@ -5,97 +5,186 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestHostDnsAddress_Create(t *testing.T) {
+func TestHostDnsName_Create(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
-		hostId string
-		address string
+		hostId   string
+		name     string
+		priority uint32
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *HostDnsAddress
-		wantErr bool
+		name        string
+		args        args
+		want        *host.DnsName
+		wantNewErr  bool
+		skipNewFunc bool
+		wantDbErr   bool
 	}{
 		{
-			name: "blank-host-id",
+			name: "blank-host-id-validate",
 			args: args{
-				hostId: "",
-				address:   "foo.bar.com",
+				hostId:   "",
+				name:     "foo.bar.com",
+				priority: 1,
 			},
-			want: &HostDnsAddress{HostAddress: &store.HostAddress{
-				Address: "foo.bar.com",
-			}},
-			wantErr: true,
+			wantNewErr: true,
 		},
 		{
-			name: "blank-address",
+			name: "blank-name-validate",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				name:     "",
+				priority: 1,
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "blank-priority-validate",
 			args: args{
 				hostId: host1.GetPublicId(),
+				name:   "foo.bar.com",
 			},
-			want: &HostDnsAddress{HostAddress: &store.HostAddress{
-				HostId: host1.GetPublicId(),
-			}},
-			wantErr: true,
+			wantNewErr: true,
+		},
+		{
+			name: "blank-host-id-db",
+			args: args{
+				name:     "foo.bar.com",
+				priority: 1,
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
+		},
+		{
+			name: "blank-name-db",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				priority: 1,
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
+		},
+		{
+			name: "blank-priority-db",
+			args: args{
+				hostId: host1.GetPublicId(),
+				name:   "foo.bar.com",
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId: host1.GetPublicId(),
-				address:   "valid.bar.com",
+				hostId:   host1.GetPublicId(),
+				name:     "foo.bar.com",
+				priority: 1,
 			},
-			want: &HostDnsAddress{
-				HostAddress: &store.HostAddress{
-					HostId: host1.GetPublicId(),
-					Address:   "valid.bar.com",
+			want: &host.DnsName{
+				DnsName: &store.DnsName{
+					HostId:   host1.GetPublicId(),
+					Name:     "foo.bar.com",
+					Priority: 1,
 				},
 			},
 		},
 		{
-			name: "dupicate",
+			name: "duplicate-name",
 			args: args{
-				hostId: host1.GetPublicId(),
-				address:   "valid.bar.com",
+				hostId:   host1.GetPublicId(),
+				name:     "foo.bar.com",
+				priority: 2,
 			},
-			want: &HostDnsAddress{
-				HostAddress: &store.HostAddress{
-					HostId: host1.GetPublicId(),
-					Address:   "valid.bar.com",
+			want: &host.DnsName{
+				DnsName: &store.DnsName{
+					HostId:   host1.GetPublicId(),
+					Name:     "foo.bar.com",
+					Priority: 2,
 				},
 			},
-			wantErr: true,
+			wantDbErr: true,
+		},
+		{
+			name: "duplicate-priority",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				name:     "baz.bar.com",
+				priority: 1,
+			},
+			want: &host.DnsName{
+				DnsName: &store.DnsName{
+					HostId:   host1.GetPublicId(),
+					Name:     "baz.bar.com",
+					Priority: 1,
+				},
+			},
+			wantDbErr: true,
+		},
+		{
+			name: "valid-second",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				name:     "baz.bar.com",
+				priority: 2,
+			},
+			want: &host.DnsName{
+				DnsName: &store.DnsName{
+					HostId:   host1.GetPublicId(),
+					Name:     "baz.bar.com",
+					Priority: 2,
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got := newHostDnsAddress(ctx, tt.args.hostId, tt.args.address)
-			require.NotNil(t, got)
-			assert.Equal(t, tt.want, got)
-
-			err := w.Create(ctx, got)
-			if tt.wantErr {
-				assert.Error(t, err)
+			require := require.New(t)
+			var got *host.DnsName
+			var err error
+			if !tt.skipNewFunc {
+				got, err = host.NewDnsName(ctx, tt.args.hostId, tt.args.name, tt.args.priority)
+				if tt.wantNewErr {
+					require.Error(err)
+					return
+				}
+				require.NoError(err)
+				require.Equal(tt.want, got)
 			} else {
-				assert.NoError(t, err)
+				got = &host.DnsName{
+					DnsName: &store.DnsName{
+						HostId:   tt.args.hostId,
+						Name:     tt.args.name,
+						Priority: tt.args.priority,
+					},
+				}
 			}
+
+			require.NotNil(got)
+			err = w.Create(ctx, got)
+			if tt.wantDbErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
 		})
 	}
 }
@@ -106,142 +195,239 @@ func TestHostIpAddress_Create(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
-		hostId string
-		address string
+		hostId   string
+		address  string
+		priority uint32
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *HostIpAddress
-		wantErr bool
+		name        string
+		args        args
+		want        *host.IpAddress
+		wantNewErr  bool
+		skipNewFunc bool
+		wantDbErr   bool
 	}{
 		{
-			name: "blank-host-id",
+			name: "blank-host-id-validate",
 			args: args{
-				hostId: "",
-				address:   "10.0.0.4",
+				hostId:   "",
+				address:  "1.2.3.4",
+				priority: 1,
 			},
-			want: &HostIpAddress{HostAddress: &store.HostAddress{
-				Address: "10.0.0.4",
-			}},
-			wantErr: true,
+			wantNewErr: true,
 		},
 		{
-			name: "blank-address",
+			name: "blank-name-validate",
 			args: args{
-				hostId: host1.GetPublicId(),
+				hostId:   host1.GetPublicId(),
+				address:  "",
+				priority: 1,
 			},
-			want: &HostIpAddress{HostAddress: &store.HostAddress{
-				HostId: host1.GetPublicId(),
-			}},
-			wantErr: true,
+			wantNewErr: true,
 		},
 		{
-			name: "not-ip-address",
+			name: "blank-priority-validate",
 			args: args{
-				hostId: host1.GetPublicId(),
-				address: "not an ip address",
+				hostId:  host1.GetPublicId(),
+				address: "1.2.3.4",
 			},
-			want: &HostIpAddress{HostAddress: &store.HostAddress{
-				HostId: host1.GetPublicId(),
-				Address: "not an ip address",
-			}},
-			wantErr: true,
+			wantNewErr: true,
+		},
+		{
+			name: "bad-address-validate",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "foo.bar.com",
+			},
+			wantNewErr: true,
+		},
+		{
+			name: "blank-host-id-db",
+			args: args{
+				address:  "1.2.3.4",
+				priority: 1,
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
+		},
+		{
+			name: "blank-address-db",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				priority: 1,
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
+		},
+		{
+			name: "blank-priority-db",
+			args: args{
+				hostId:  host1.GetPublicId(),
+				address: "1.2.3.4",
+			},
+			skipNewFunc: true,
+			wantDbErr:   true,
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId: host1.GetPublicId(),
-				address:   "10.0.0.4",
+				hostId:   host1.GetPublicId(),
+				address:  "1.2.3.4",
+				priority: 1,
 			},
-			want: &HostIpAddress{
-				HostAddress: &store.HostAddress{
-					HostId: host1.GetPublicId(),
-					Address:   "10.0.0.4",
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:   host1.GetPublicId(),
+					Address:  "1.2.3.4",
+					Priority: 1,
 				},
 			},
 		},
 		{
-			name: "dupicate",
+			name: "duplicate-name",
 			args: args{
-				hostId: host1.GetPublicId(),
-				address:   "10.0.0.4",
+				hostId:   host1.GetPublicId(),
+				address:  "1.2.3.4",
+				priority: 2,
 			},
-			want: &HostIpAddress{
-				HostAddress: &store.HostAddress{
-					HostId: host1.GetPublicId(),
-					Address:   "10.0.0.4",
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:   host1.GetPublicId(),
+					Address:  "1.2.3.4",
+					Priority: 2,
 				},
 			},
-			wantErr: true,
+			wantDbErr: true,
+		},
+		{
+			name: "duplicate-priority",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				address:  "2.3.4.5",
+				priority: 1,
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:   host1.GetPublicId(),
+					Address:  "2.3.4.5",
+					Priority: 1,
+				},
+			},
+			wantDbErr: true,
+		},
+		{
+			name: "valid-second",
+			args: args{
+				hostId:   host1.GetPublicId(),
+				address:  "2.3.4.5",
+				priority: 2,
+			},
+			want: &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:   host1.GetPublicId(),
+					Address:  "2.3.4.5",
+					Priority: 2,
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got := newHostIpAddress(ctx, tt.args.hostId, tt.args.address)
-			require.NotNil(t, got)
-			assert.Equal(t, tt.want, got)
-
-			err := w.Create(ctx, got)
-			if tt.wantErr {
-				assert.Error(t, err)
+			require := require.New(t)
+			var got *host.IpAddress
+			var err error
+			if !tt.skipNewFunc {
+				got, err = host.NewIpAddress(ctx, tt.args.hostId, tt.args.address, tt.args.priority)
+				if tt.wantNewErr {
+					require.Error(err)
+					return
+				}
+				require.NoError(err)
+				require.Equal(tt.want, got)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.want, got)
+				got = &host.IpAddress{
+					IpAddress: &store.IpAddress{
+						HostId:   tt.args.hostId,
+						Address:  tt.args.address,
+						Priority: tt.args.priority,
+					},
+				}
 			}
+
+			require.NotNil(got)
+			err = w.Create(ctx, got)
+			if tt.wantDbErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
 		})
 	}
 }
 
-func TestHostDnsAddress_Delete(t *testing.T) {
+func TestHostDnsName_Delete(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1 := newHostDnsAddress(ctx, host1.GetPublicId(), "addr1.foo.com")
+	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com", 1)
+	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 
 	type args struct {
-		hostId string
-		address string
+		hostId   string
+		name     string
+		priority uint32
 	}
 
 	tests := []struct {
-		name    string
+		name       string
 		args       args
 		wantDelete bool
+		wantError  bool
 	}{
 		{
 			name: "wrong_host_id",
 			args: args{
-				hostId: "something",
-				address:   addr1.GetAddress(),
+				hostId:   "something",
+				name:     addr1.GetName(),
+				priority: 1,
 			},
 		},
 		{
-			name: "wrong_address",
+			name: "missing_priority",
 			args: args{
 				hostId: addr1.GetHostId(),
-				address: "wrong.foo.bar",
+				name:   addr1.GetName(),
+			},
+			wantError: true,
+		},
+		{
+			name: "wrong_priority",
+			args: args{
+				hostId:   addr1.GetHostId(),
+				name:     addr1.GetName(),
+				priority: 2,
 			},
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId: addr1.GetHostId(),
-				address:   addr1.GetAddress(),
+				hostId:   addr1.GetHostId(),
+				name:     addr1.GetName(),
+				priority: 1,
 			},
 			wantDelete: true,
 		},
@@ -250,9 +436,20 @@ func TestHostDnsAddress_Delete(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got := newHostDnsAddress(ctx, tt.args.hostId, tt.args.address)
+			got := &host.DnsName{
+				DnsName: &store.DnsName{
+					HostId:   tt.args.hostId,
+					Name:     tt.args.name,
+					Priority: tt.args.priority,
+				},
+			}
+			require.NoError(t, err)
 			require.NotNil(t, got)
 			k, err := w.Delete(ctx, got)
+			if tt.wantError {
+				assert.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			if tt.wantDelete {
 				assert.Equal(t, 1, k)
@@ -269,41 +466,55 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1 := newHostIpAddress(ctx, host1.GetPublicId(), "10.0.0.1")
+	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4", 1)
+	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 
 	type args struct {
-		hostId string
-		address string
+		hostId   string
+		address  string
+		priority uint32
 	}
 
 	tests := []struct {
-		name    string
+		name       string
 		args       args
 		wantDelete bool
+		wantError  bool
 	}{
 		{
 			name: "wrong_host_id",
 			args: args{
-				hostId: "something",
-				address:   addr1.GetAddress(),
+				hostId:   "something",
+				address:  addr1.GetAddress(),
+				priority: 1,
 			},
 		},
 		{
-			name: "wrong_address",
+			name: "missing_priority",
 			args: args{
-				hostId: addr1.GetHostId(),
-				address: "192.168.1.1",
+				hostId:  addr1.GetHostId(),
+				address: addr1.GetAddress(),
+			},
+			wantError: true,
+		},
+		{
+			name: "wrong_priority",
+			args: args{
+				hostId:   addr1.GetHostId(),
+				address:  addr1.GetAddress(),
+				priority: 2,
 			},
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId: addr1.GetHostId(),
-				address:   addr1.GetAddress(),
+				hostId:   addr1.GetHostId(),
+				address:  addr1.GetAddress(),
+				priority: 1,
 			},
 			wantDelete: true,
 		},
@@ -312,87 +523,26 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got := newHostIpAddress(ctx, tt.args.hostId, tt.args.address)
+			got := &host.IpAddress{
+				IpAddress: &store.IpAddress{
+					HostId:   tt.args.hostId,
+					Address:  tt.args.address,
+					Priority: tt.args.priority,
+				},
+			}
+			require.NoError(t, err)
 			require.NotNil(t, got)
 			k, err := w.Delete(ctx, got)
+			if tt.wantError {
+				assert.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			if tt.wantDelete {
 				assert.Equal(t, 1, k)
 			} else {
 				assert.Equal(t, 0, k)
 			}
-		})
-	}
-}
-
-func TestHostDnsAddress_SetTableName(t *testing.T) {
-	defaultTableName := "host_plugin_host_dns_address"
-	tests := []struct {
-		name        string
-		initialName string
-		setNameTo   string
-		want        string
-	}{
-		{
-			name:        "new-name",
-			initialName: "",
-			setNameTo:   "new-name",
-			want:        "new-name",
-		},
-		{
-			name:        "reset to default",
-			initialName: "initial",
-			setNameTo:   "",
-			want:        defaultTableName,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			def := allocHostDnsAddress()
-			require.Equal(defaultTableName, def.TableName())
-			s := &HostDnsAddress{
-				HostAddress:      &store.HostAddress{},
-				tableName: tt.initialName,
-			}
-			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
-		})
-	}
-}
-
-func TestHostIpAddress_SetTableName(t *testing.T) {
-	defaultTableName := "host_plugin_host_ip_address"
-	tests := []struct {
-		name        string
-		initialName string
-		setNameTo   string
-		want        string
-	}{
-		{
-			name:        "new-name",
-			initialName: "",
-			setNameTo:   "new-name",
-			want:        "new-name",
-		},
-		{
-			name:        "reset to default",
-			initialName: "initial",
-			setNameTo:   "",
-			want:        defaultTableName,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			def := allocHostIpAddress()
-			require.Equal(defaultTableName, def.TableName())
-			s := &HostIpAddress{
-				HostAddress: &store.HostAddress{},
-				tableName:   tt.initialName,
-			}
-			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
 		})
 	}
 }

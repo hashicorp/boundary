@@ -154,7 +154,6 @@ begin;
   create trigger delete_host_set_subtype after delete on host_plugin_set
     for each row execute procedure delete_host_set_subtype();
 
-
 -- host_plugin_host captures plugin based host data.  This is only written to
   -- from the controller and is not mutable directly by actions from the end
   -- user.
@@ -203,56 +202,76 @@ begin;
   create trigger delete_host_subtype after delete on host_plugin_host
     for each row execute procedure delete_host_subtype();
 
-  -- host_plugin_host_ip_address contains all the dns addresses associated with
-  -- a host.
-  -- TODO: Track the order these addresses should appear in to have
-  --  deterministic selection of addresses for a specific set.
-  create table host_plugin_host_ip_address (
+  -- host_ip_address contains the IP addresses associated with
+  -- a host, one per row.
+  create table host_ip_address (
     host_id wt_public_id
-      constraint host_plugin_host_fkey
-        references host_plugin_host(public_id)
+      constraint host_fkey
+        references host(public_id)
         on delete cascade
         on update cascade,
-    -- TODO DO NOT MERGE: Figure out how to convert from a proto string to a inet in gorm.
-    address inet,
+    priority wt_priority,
+    address wt_name,
     create_time wt_timestamp,
-    primary key (host_id, address)
+    primary key (host_id, priority),
+    constraint host_id_ip_address_condition_uq
+      unique(host_id, address)
   );
-  comment on table host_plugin_host_ip_address is
-    'host_plugin_host_ip_address entries are the ip addresses on a host.';
+  comment on table host_ip_address is
+    'host_ip_address entries are ip addresses set on a host with a preserved order.';
 
-  create trigger default_create_time_column before insert on host_plugin_host_ip_address
+  create trigger default_create_time_column before insert on host_ip_address
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on host_plugin_host_ip_address
-    for each row execute procedure immutable_columns('host_id', 'address', 'create_time');
+  -- host_immutable_ip_address() ensures that ip addresses assigned to hosts are
+  -- immutable.
+  create function
+    host_immutable_ip_address()
+    returns trigger
+  as $$
+  begin
+    raise exception 'host ip addresses are immutable';
+  end;
+  $$ language plpgsql;
+  
+  create trigger immutable_ip_address
+    before update on host_ip_address
+    for each row execute procedure host_immutable_ip_address();
 
-  -- host_plugin_host_dns_address contains all the dns addresses associated with
-  -- a host.
-  -- TODO: Track the order these addresses should appear in to have
-  --  deterministic selection of addresses for a specific set.
-  create table host_plugin_host_dns_address (
+  -- host_dns_name contains the DNS names associated with a host, one per row.
+  create table host_dns_name (
     host_id wt_public_id
-      constraint host_plugin_host_fkey
-        references host_plugin_host(public_id)
+      constraint host_fkey
+        references host(public_id)
         on delete cascade
         on update cascade,
-    address text
-      constraint address_must_be_more_than_2_characters
-        check(length(trim(address)) > 2)
-      constraint address_must_be_less_than_256_characters
-        check(length(trim(address)) < 256),
+    priority wt_priority,
+    name wt_dns_name,
     create_time wt_timestamp,
-    primary key (host_id, address)
+    primary key (host_id, priority),
+    constraint host_id_dns_name_condition_uq
+      unique(host_id, name)
   );
-  comment on table host_plugin_host_dns_address is
-    'host_plugin_host_dns_address entries are the dns addresses on a host.';
+  comment on table host_dns_name is
+    'host_dns_name entries are dns names set on a host with a preserved order.';
 
-  create trigger default_create_time_column before insert on host_plugin_host_dns_address
+  create trigger default_create_time_column before insert on host_dns_name
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on host_plugin_host_dns_address
-    for each row execute procedure immutable_columns('host_id', 'address', 'create_time');
+  -- host_immutable_dns_name() ensures that dns names assigned to hosts are
+  -- immutable.
+  create function
+    host_immutable_dns_name()
+    returns trigger
+  as $$
+  begin
+    raise exception 'host dns names are immutable';
+  end;
+  $$ language plpgsql;
+
+  create trigger immutable_dns_name
+    before update on host_dns_name
+    for each row execute procedure host_immutable_dns_name();
 
   create table host_plugin_set_member (
     host_id wt_public_id not null,
