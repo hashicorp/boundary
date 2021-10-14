@@ -215,7 +215,6 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	var accts []authAccount
 
 	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
-
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

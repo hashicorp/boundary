@@ -17,7 +17,7 @@ const (
 )
 
 var supportedDialects = map[Dialect]struct{}{
-	Postgres: struct{}{},
+	Postgres: {},
 }
 
 // type dialects map[Dialect]edition.Editions
