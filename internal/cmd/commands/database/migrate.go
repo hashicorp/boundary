@@ -150,14 +150,14 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 				"database to the new version of Boundary that requires this capability. " +
 				"If your temporary directory is not writable and/or you cannot execute " +
 				"binaries in that directory, try setting the field " +
-				`"execution_dir" in the "plugins" block in the configuration file:
-			
+				`"execution_dir" in the "plugins" block in the configuration file:`))
+		c.UI.Warn(`
 plugins {
 	execution_dir = <dir>
 }
-
-` +
-				"Otherwise, please file a bug at " +
+`)
+		c.UI.Warn(base.WrapAtLength(
+			"Otherwise, please file a bug at " +
 				"https://github.com/hashicorp/boundary/issues/new/choose and tell us " +
 				"what the error message is, along with details about your environment. " +
 				"We are committed to resolving any issues as quickly as possible."))
