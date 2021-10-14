@@ -45,7 +45,7 @@ func newGatewayMux() *runtime.ServeMux {
 			Marshaler: handlers.JSONMarshaler(),
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
-		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
+		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
 	)
 }
 

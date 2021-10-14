@@ -21,8 +21,11 @@ const (
 	statusField           = "status"
 )
 
-func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
-	const op = "handlers.OutgoingInterceptor"
+// OutgoingResponseFilter is a gRPC gateway WithForwardResponseOption.  It's
+// basically a filter that can manipulate the http response and has acesss to
+// the outgoing proto msg
+func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
+	const op = "handlers.OutgoingResponseFilter"
 	m = m.ProtoReflect().Interface()
 	if !m.ProtoReflect().IsValid() {
 		// This would be the case if it's a nil pointer
