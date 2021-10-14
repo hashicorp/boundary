@@ -6,10 +6,6 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
-// tmp use of local clone as we understand any required upstream PRs to
-// compatibility.
-replace gorm.io/gorm => github.com/hashicorp/gorm v0.0.2
-
 require (
 	github.com/Azure/azure-sdk-for-go v57.4.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.21 // indirect
@@ -93,7 +89,7 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	gorm.io/driver/postgres v1.1.0
-	gorm.io/gorm v1.21.14
+	gorm.io/gorm v1.21.17-0.20211013130203-9a5ba3760424
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )
