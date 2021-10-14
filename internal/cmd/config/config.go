@@ -97,11 +97,11 @@ type Config struct {
 	Controller *Controller `hcl:"controller"`
 
 	// Dev-related options
-	DevController        bool   `hcl:"-"`
-	PassthroughDirectory string `hcl:"-"`
-	DevControllerKey     string `hcl:"-"`
-	DevWorkerAuthKey     string `hcl:"-"`
-	DevRecoveryKey       string `hcl:"-"`
+	DevController       bool   `hcl:"-"`
+	DevUiPassthroughDir string `hcl:"-"`
+	DevControllerKey    string `hcl:"-"`
+	DevWorkerAuthKey    string `hcl:"-"`
+	DevRecoveryKey      string `hcl:"-"`
 
 	// Eventing configuration for the controller
 	Eventing *event.EventerConfig `hcl:"events"`

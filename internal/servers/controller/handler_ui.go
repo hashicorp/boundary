@@ -16,8 +16,8 @@ func init() {
 
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler = devPassthroughHandler(c.conf.RawConfig.PassthroughDirectory)
+	if c.conf.RawConfig.DevUiPassthroughDir != "" {
+		nextHandler = devUiPassthroughHandler(c.conf.RawConfig.DevUiPassthroughDir)
 	} else {
 		nextHandler = ui.Handler()
 	}

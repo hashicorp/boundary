@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
-func devPassthroughHandler(passthroughDir string) http.Handler {
+func devUiPassthroughHandler(uiPassthroughDir string) http.Handler {
 	const op = "controller.devPassthroughHandler"
 	ctx := context.TODO()
 	// Panic may not be ideal but this is never a production call and it'll
 	// panic on startup. We could also just change the function to return
 	// an error.
-	abs, err := filepath.Abs(passthroughDir)
+	abs, err := filepath.Abs(uiPassthroughDir)
 	if err != nil {
 		panic(err)
 	}
@@ -26,8 +26,8 @@ func devPassthroughHandler(passthroughDir string) http.Handler {
 }
 
 var handleUi = func(c *Controller) http.Handler {
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		return devPassthroughHandler(c.conf.RawConfig.PassthroughDirectory)
+	if c.conf.RawConfig.DevUiPassthroughDir != "" {
+		return devUiPassthroughHandler(c.conf.RawConfig.DevUiPassthroughDir)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
