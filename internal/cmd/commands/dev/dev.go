@@ -311,6 +311,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  `The optional every event deny filter. May be specified multiple times.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "plugin-execution-dir",
+		Target: &c.flagPluginExecutionDir,
+		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
+		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-hostcatalog-plugin",
 		Target: &c.flagCreateLoopbackHostCatalogPlugin,
