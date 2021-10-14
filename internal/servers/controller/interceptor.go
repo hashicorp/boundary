@@ -3,8 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"reflect"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -165,4 +168,40 @@ func errorInterceptor(
 		}
 		return h, handlerErr
 	}
+}
+
+func statusCodeInterceptor(
+	_ context.Context,
+) grpc.UnaryServerInterceptor {
+	const op = "controller.statusCodeInterceptor"
+	return func(interceptorCtx context.Context,
+		req interface{},
+		_ *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler) (interface{}, error) {
+
+		// call the handler...
+		h, handlerErr := handler(interceptorCtx, req)
+
+		// if a service handler returns nil, nil then we want to single a 204
+		// response to the proxy with no resp msg
+		if isNil(h) && handlerErr == nil {
+			if err := handlers.SetStatusCode(interceptorCtx, http.StatusNoContent); err != nil {
+				return &pb.EmptyResponse{}, err
+			}
+			return &pb.EmptyResponse{}, nil
+		}
+
+		return h, handlerErr
+	}
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }

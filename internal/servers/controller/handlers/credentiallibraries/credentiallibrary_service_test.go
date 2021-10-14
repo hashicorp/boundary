@@ -560,7 +560,6 @@ func TestDelete(t *testing.T) {
 		{
 			name: "success",
 			id:   vl.GetPublicId(),
-			res:  &pbs.DeleteCredentialLibraryResponse{},
 		},
 		{
 			name: "not found error",

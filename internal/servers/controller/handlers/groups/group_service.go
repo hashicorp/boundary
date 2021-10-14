@@ -274,7 +274,7 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteGroupResponse{}, nil
+	return nil, nil
 }
 
 // AddGroupMembers implements the interface pbs.GroupServiceServer.

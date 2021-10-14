@@ -370,7 +370,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteManagedGroupRequest{
 				Id: oidcMg.GetPublicId(),
 			},
-			res: &pbs.DeleteManagedGroupResponse{},
 		},
 		{
 			name: "Delete bad oidc managed group id",

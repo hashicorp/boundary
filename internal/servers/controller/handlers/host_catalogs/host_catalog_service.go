@@ -312,7 +312,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostCatalogResponse{}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*static.HostCatalog, error) {

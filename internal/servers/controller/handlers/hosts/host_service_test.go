@@ -247,7 +247,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostResponse{},
 		},
 		{
 			name:    "Delete bad id Host",

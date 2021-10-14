@@ -62,6 +62,6 @@ func newGatewayServer(ctx context.Context, iamRepoFn common.IamRepoFactory, auth
 	return grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(requestCtxInterceptor, errorInterceptor(ctx))),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(requestCtxInterceptor, errorInterceptor(ctx), statusCodeInterceptor(ctx))),
 	), ticket, nil
 }

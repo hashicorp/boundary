@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -378,6 +379,54 @@ func Test_errorInterceptor(t *testing.T) {
 
 }
 
+func Test_statusCodeInterceptor(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name           string
+		wantStatusCode int
+		wantErr        bool
+	}{
+		{
+			name:           "nil-nil",
+			wantStatusCode: http.StatusNoContent,
+		},
+		{
+			name:    "nil-err",
+			wantErr: true,
+		},
+		{
+			name: "hello",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			statusInterceptor := statusCodeInterceptor(ctx)
+			client := startTestGreeterService(t, &testGreeter{}, statusInterceptor)
+			var header metadata.MD
+			_, err := client.SayHello(
+				context.Background(),
+				&interceptor.SayHelloRequest{Name: tt.name},
+				grpc.Header(&header),
+			)
+
+			if tt.wantErr {
+				assert.Error(err)
+			}
+			statusHdr := header.Get(handlers.StatusCodeHeader)
+			if tt.wantStatusCode > 0 {
+				require.Len(statusHdr, 1)
+				code, err := strconv.Atoi(statusHdr[0])
+				require.NoError(err)
+				assert.Equal(tt.wantStatusCode, code)
+			} else {
+				require.Len(statusHdr, 0)
+			}
+		})
+	}
+
+}
+
 type testGreeter struct {
 	interceptor.UnimplementedGreeterServiceServer
 }
@@ -396,6 +445,10 @@ func (g *testGreeter) SayHello(ctx context.Context, req *interceptor.SayHelloReq
 		}
 	case "domain-error":
 		return &interceptor.SayHelloResponse{Message: "hello"}, errors.New(ctx, errors.Internal, op, "domain error msg")
+	case "nil-nil":
+		return nil, nil
+	case "nil-err":
+		return nil, errors.New(ctx, errors.Internal, op, "nil response error msg")
 	default:
 		return &interceptor.SayHelloResponse{Message: "hello"}, nil
 	}

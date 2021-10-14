@@ -679,7 +679,6 @@ func TestDelete(t *testing.T) {
 		{
 			name: "success",
 			id:   store.GetPublicId(),
-			res:  &pbs.DeleteCredentialStoreResponse{},
 		},
 		{
 			name: "not found error",

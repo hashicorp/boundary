@@ -323,7 +323,7 @@ func (s Service) DeleteCredentialStore(ctx context.Context, req *pbs.DeleteCrede
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteCredentialStoreResponse{}, nil
+	return nil, nil
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.CredentialStore, error) {

@@ -257,7 +257,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostSetResponse{}, nil
+	return nil, nil
 }
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.

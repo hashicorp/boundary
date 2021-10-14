@@ -577,14 +577,12 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{},
 		},
 		{
 			name: "Delete an existing oidc account",
 			req: &pbs.DeleteAccountRequest{
 				Id: oidcA.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{},
 		},
 		{
 			name: "Delete bad old pw account id",
