@@ -1192,6 +1192,17 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  trigger-merge-to-ent:
+    machine:
+      image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
+    steps:
+    - checkout
+    - run:
+        command: |
+          ./scripts/trigger-merge-to-ent
+        name: Trigger Merge to Enterprise
   openbsd_amd64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -1569,4 +1580,11 @@ workflows:
           branches:
             only:
             - stable-website
+  trigger-merge-to-ent:
+    jobs:
+    - trigger-merge-to-ent:
+        filters:
+          branches:
+            only:
+            - main
   version: 2

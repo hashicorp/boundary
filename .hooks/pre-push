@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+remote="$1"
+remote_url=$(git remote get-url $remote)
+
+if [[ $remote_url == *"boundary-enterprise"* ]]; then
+    exit 0
+fi
+
+if [ -f cmd/boundary/package_registration_ent.go ]; then
+    echo "Found enterprise file while pushing to oss remote"
+    exit 1
+fi
+
+exit 0
