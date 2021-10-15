@@ -56,10 +56,10 @@ begin;
     version wt_version,
     attributes bytea not null,
     constraint host_catalog_fkey
-    foreign key (scope_id, public_id)
-      references host_catalog (scope_id, public_id)
-      on delete cascade
-      on update cascade,
+      foreign key (scope_id, public_id)
+        references host_catalog (scope_id, public_id)
+        on delete cascade
+        on update cascade,
     constraint host_plugin_catalog_scope_id_name_uq
     unique(scope_id, name)
   );
@@ -128,10 +128,10 @@ begin;
     constraint host_plugin_set_catalog_id_name_uq
     unique(catalog_id, name),
     constraint host_set_fkey
-    foreign key (catalog_id, public_id)
-      references host_set (catalog_id, public_id)
-      on delete cascade
-      on update cascade,
+      foreign key (catalog_id, public_id)
+        references host_set (catalog_id, public_id)
+        on delete cascade
+        on update cascade,
     constraint host_plugin_set_catalog_id_public_id_uq
     unique(catalog_id, public_id)
   );
@@ -178,7 +178,6 @@ begin;
         references host (catalog_id, public_id)
         on delete cascade
         on update cascade,
-
     constraint host_plugin_host_catalog_id_name_uq
       unique(catalog_id, name),
     constraint host_plugin_host_catalog_id_external_id_uq
@@ -211,7 +210,7 @@ begin;
         on delete cascade
         on update cascade,
     priority wt_priority,
-    address inet,
+    address inet not null,
     create_time wt_timestamp,
     primary key (host_id, priority),
     constraint host_id_ip_address_condition_uq
@@ -279,14 +278,16 @@ begin;
     catalog_id wt_public_id not null,
     create_time wt_timestamp,
     primary key(host_id, set_id),
-    foreign key (catalog_id, host_id)
-      references host_plugin_host (catalog_id, public_id)
-      on delete cascade
-      on update cascade,
-    foreign key (catalog_id, set_id)
-      references host_plugin_set (catalog_id, public_id)
-      on delete cascade
-      on update cascade
+    constraint host_plugin_host_fkey
+      foreign key (catalog_id, host_id)
+        references host_plugin_host (catalog_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint host_plugin_set_fkey
+      foreign key (catalog_id, set_id)
+        references host_plugin_set (catalog_id, public_id)
+        on delete cascade
+        on update cascade
   );
   comment on table host_plugin_set_member is
     'host_plugin_set_member entries are the membership relationships from plugin hosts in plugin sets.';
