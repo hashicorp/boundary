@@ -95,7 +95,7 @@ begin;
     update_time wt_timestamp,
     secret bytea not null  -- encrypted value
       constraint secret_must_not_be_empty
-        check(length(trim(secret)) > 0),
+        check(length(secret) > 0),
     key_id wt_private_id not null
       constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
