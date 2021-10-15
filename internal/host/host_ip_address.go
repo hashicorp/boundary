@@ -18,7 +18,7 @@ type IpAddress struct {
 	tableName string `gorm:"-"`
 }
 
-func NewIpAddress(ctx context.Context, hostId, address string, priority uint32) (*IpAddress, error) {
+func NewIpAddress(ctx context.Context, hostId string, priority uint32, address string) (*IpAddress, error) {
 	const op = "host.NewIpAddress"
 
 	ia := &IpAddress{

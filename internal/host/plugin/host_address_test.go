@@ -161,7 +161,7 @@ func TestHostDnsName_Create(t *testing.T) {
 			var got *host.DnsName
 			var err error
 			if !tt.skipNewFunc {
-				got, err = host.NewDnsName(ctx, tt.args.hostId, tt.args.name, tt.args.priority)
+				got, err = host.NewDnsName(ctx, tt.args.hostId, tt.args.priority, tt.args.name)
 				if tt.wantNewErr {
 					require.Error(err)
 					return
@@ -345,7 +345,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 			var got *host.IpAddress
 			var err error
 			if !tt.skipNewFunc {
-				got, err = host.NewIpAddress(ctx, tt.args.hostId, tt.args.address, tt.args.priority)
+				got, err = host.NewIpAddress(ctx, tt.args.hostId, tt.args.priority, tt.args.address)
 				if tt.wantNewErr {
 					require.Error(err)
 					return
@@ -382,7 +382,7 @@ func TestHostDnsName_Delete(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com", 1)
+	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), 1, "addr1.foo.com")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 
@@ -469,7 +469,7 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4", 1)
+	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), 1, "1.2.3.4")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 

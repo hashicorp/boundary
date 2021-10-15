@@ -17,7 +17,7 @@ type DnsName struct {
 	tableName string `gorm:"-"`
 }
 
-func NewDnsName(ctx context.Context, hostId, name string, priority uint32) (*DnsName, error) {
+func NewDnsName(ctx context.Context, hostId string, priority uint32, name string) (*DnsName, error) {
 	const op = "host.NewDnsName"
 	dn := &DnsName{
 		DnsName: &store.DnsName{
