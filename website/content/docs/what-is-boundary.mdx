@@ -1,0 +1,54 @@
+---
+layout: docs
+page_title: What is Boundary?
+description: And introduction to Boundary
+---
+
+# What is Boundary?
+
+Welcome to Boundary! This introduction section covers what Boundary is, the problem Boundary intends to solve, and how Boundary compares to other software. If you want to dive into using Boundary, head over to the [Getting Started](/docs/getting-started) section.
+
+Boundary is an intelligent proxy that creates granular, identity-based access controls for dynamic infrastructure. Boundary’s workflow layers security controls and integrations at multiple levels to monitor and manage user access through:
+
+- Tightly scoped identity-based permissions
+- Just-in-time network and credential access for sessions via [HashiCorp Vault](https://vaultproject.io/)
+- Single sign-on to target services and applications via external identity providers
+- Access-as-code to automate the configuration of user permissions
+- Automated discovery of target systems
+- Session monitoring and management for access created via Boundary.
+
+## Boundary Goals
+
+**Zero Trust Security**: The foundation of Boundary is an identity-based, “Zero-Trust”, access model. Zero-Trust means user access is continuously authenticated and only authorized when rules and policies tied to the user’s identity are verified.
+
+**A Consistent Workflow for Access**: Boundary connects the user securely to their infrastructure regardless of cloud platform, target environment, or identity provider. Boundary creates a consistent workflow for user authentication and authorization to create secure, ephemeral sessions that can be monitored and managed by administrators.
+
+![Boundary workflow](/img/boundary.png)
+
+**Extensibility with the Ecosystem**: Modern organizations have a multilayered matrix of identity providers, policy engines, secrets management tools, target types, and cloud providers that must integrate and reside within the access workflow. Boundary's extensible ecosystem supports the user's vendor-of-choice in this access workflow.
+
+## Why Boundary?
+
+With the many varying infrastructure services and tooling used in increasingly dynamic environments, organizations must have secure access to all targets within and beyond their perimeter.
+
+Boundary provides a simple way for verified users to have secure access to cloud and self-managed infrastructures without exposing your network or the use of managing credentials. Boundary is an open source workflow that enables just-in-time, role-based access for dynamic infrastructure.
+
+## Boundary Use-Cases
+
+### Zero Trust access
+
+Boundary’s access-on-demand workflow securely connects trusted identities to infrastructure services based on granular, admin-defined permission grants. Boundary removes the need to create or store credentials when accessing services. In this way, Boundary can be used to extend or replace many traditional access solutions like VPNs.
+
+Traditional access solutions do not employ the the Zero-Trust philosophy - meaning they fail to authenticate and authorize users’ access and actions continuously, and often lack granular access controls.
+
+### Multi-Cloud Access
+
+Having different access workflows for various infrastructure and identity providers doesn’t scale well for administrators or users. Multi-cloud organizations have a growing need to standardize access through a single workflow. Boundary creates a centralized layer of identity-based authentication and authorization to manage access to the infrastructure, regardless of the platform on which it resides.
+
+### Single Sign-on with Integrated Secrets Management
+
+Boundary enables a single sign-on access model with authentication from trusted identity providers, such as Azure Active Directory, Auth0, and Okta. Once authenticated, users may create sessions with integrated credential management from HashiCorp Vault without the need to re-authenticate.
+
+### Session Monitoring
+
+Boundary provides session monitoring capabilities that give security administrators visibility into user access. Sessions are logged and consumable via the Boundary administrator UI as well as business intelligence (BI) and security information and event management (SIEM) tools.
