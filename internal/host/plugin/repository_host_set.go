@@ -87,11 +87,6 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	var preferredEndpoints []interface{}
 	if s.PreferredEndpoints != nil {
 		preferredEndpoints = make([]interface{}, 0, len(s.PreferredEndpoints))
@@ -102,6 +97,11 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 			}
 			preferredEndpoints = append(preferredEndpoints, obj)
 		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var returnedHostSet *HostSet
@@ -185,6 +185,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 	setToReturn := sets[0]
 	var hostIdsToReturn []string
 
+	// FIXME: change to use the database
 	if plg != nil && opts.WithSetMembers {
 		cat, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
 		if err != nil {

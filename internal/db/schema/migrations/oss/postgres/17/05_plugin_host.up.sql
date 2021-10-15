@@ -343,4 +343,32 @@ begin;
     ('host_plugin_catalog_secret', 1),
     ('host_plugin_set', 1);
 
+
+  -- host_plugin_host_with_value_obj is useful for reading a plugin host with
+  -- its associated value objects (ip addresses, dns names, set membership) as
+  -- columns with delimited values. The delimiter depends on the value objects
+  -- (e.g. if they need ordering).
+  create view host_plugin_host_with_value_obj as
+  select
+    h.public_id,
+    h.catalog_id,
+    h.external_id,
+    hc.plugin_id,
+    h.name,
+    h.description,
+    h.create_time,
+    h.update_time,
+    -- the string_agg(..) column will be null if there are no associated value objects
+    string_agg(distinct concat_ws('=', hip.priority, hip.address), '|') as ip_addresses,
+    string_agg(distinct concat_ws('=', hdns.priority, hdns.name), '|') as dns_names
+  from
+    host_plugin_host h
+    join host_plugin_catalog hc           on h.catalog_id = hc.public_id
+    left outer join host_ip_address hip   on h.public_id = hip.host_id
+    left outer join host_dns_name hdns    on h.public_id = hdns.host_id
+    -- FIXME: add set membership once that's shaken out
+  group by h.public_id, hc.plugin_id;
+  comment on view host_plugin_host_with_value_obj is
+  'host plugin host with its associated value objects';
+
 commit;
