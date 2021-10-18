@@ -1,9 +1,9 @@
 package patchstruct
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -41,22 +41,23 @@ func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {
 	return result
 }
 
-// PatchJSON follows the same rules as above with PatchStruct, but instead of
-// patching structpb.Structs, it patches JSON. An error is returned if there
-// are issues working with the JSON.
-func PatchJSON(dst, src []byte) ([]byte, error) {
-	var srcM, dstM map[string]interface{}
-	if err := json.Unmarshal(dst, &dstM); err != nil {
-		return nil, fmt.Errorf("error reading destination json: %w", err)
+// PatchBytes follows the same rules as above with PatchStruct, but
+// instead of patching structpb.Structs, it patches the protobuf
+// encoding. An error is returned if there are issues working with
+// the data.
+func PatchBytes(dst, src []byte) ([]byte, error) {
+	srcpb, dstpb := new(structpb.Struct), new(structpb.Struct)
+	if err := proto.Unmarshal(dst, dstpb); err != nil {
+		return nil, fmt.Errorf("error reading destination data: %w", err)
 	}
 
-	if err := json.Unmarshal(src, &srcM); err != nil {
-		return nil, fmt.Errorf("error reading source json: %w", err)
+	if err := proto.Unmarshal(src, srcpb); err != nil {
+		return nil, fmt.Errorf("error reading source data: %w", err)
 	}
 
-	result, err := json.Marshal(patchM(dstM, srcM))
+	result, err := proto.Marshal(PatchStruct(dstpb, srcpb))
 	if err != nil {
-		return nil, fmt.Errorf("error writing result JSON: %w", err)
+		return nil, fmt.Errorf("error writing result data: %w", err)
 	}
 
 	return result, nil

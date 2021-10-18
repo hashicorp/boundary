@@ -1,19 +1,18 @@
 package patchstruct
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testCase struct {
-	name            string
-	dst             map[string]interface{}
-	src             map[string]interface{}
-	expected        map[string]interface{}
-	expectedJSONErr string
+	name     string
+	dst      map[string]interface{}
+	src      map[string]interface{}
+	expected map[string]interface{}
 }
 
 var testCases = []testCase{
@@ -101,7 +100,6 @@ var testCases = []testCase{
 		expected: map[string]interface{}{
 			"foo": "bar",
 		},
-		expectedJSONErr: "error reading source json: unexpected end of JSON input",
 	},
 	{
 		name: "nil dst",
@@ -112,7 +110,6 @@ var testCases = []testCase{
 		expected: map[string]interface{}{
 			"foo": "bar",
 		},
-		expectedJSONErr: "error reading destination json: unexpected end of JSON input",
 	},
 }
 
@@ -140,13 +137,13 @@ func TestPatchStruct(t *testing.T) {
 	}
 }
 
-func TestPatchJSON(t *testing.T) {
+func TestPatchBytes(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			dst, src := mustMarshalJSON(tc.dst), mustMarshalJSON(tc.src)
-			dstOrig, srcOrig := mustMarshalJSON(tc.dst), mustMarshalJSON(tc.src)
+			dst, src := mustMarshal(tc.dst), mustMarshal(tc.src)
+			dstOrig, srcOrig := mustMarshal(tc.dst), mustMarshal(tc.src)
 			if tc.dst == nil {
 				dst = nil
 				dstOrig = nil
@@ -156,18 +153,26 @@ func TestPatchJSON(t *testing.T) {
 				srcOrig = nil
 			}
 
-			actual, err := PatchJSON(dst, src)
-			if tc.expectedJSONErr != "" {
-				require.EqualError(err, tc.expectedJSONErr)
-				return
-			}
-
+			actual, err := PatchBytes(dst, src)
 			require.NoError(err)
-			require.Equal(mustMarshalJSON(tc.expected), actual)
+			requireEqualEncoded(t, mustMarshal(tc.expected), actual)
 			require.Equal(dstOrig, dst)
 			require.Equal(srcOrig, src)
 		})
 	}
+}
+
+func TestPatchBytesErr(t *testing.T) {
+	t.Run("dst", func(t *testing.T) {
+		require := require.New(t)
+		_, err := PatchBytes([]byte("foo"), nil)
+		require.EqualError(err, "error reading destination data: proto: cannot parse invalid wire-format data")
+	})
+	t.Run("src", func(t *testing.T) {
+		require := require.New(t)
+		_, err := PatchBytes(nil, []byte("foo"))
+		require.EqualError(err, "error reading source data: proto: cannot parse invalid wire-format data")
+	})
 }
 
 func mustStruct(in map[string]interface{}) *structpb.Struct {
@@ -179,11 +184,26 @@ func mustStruct(in map[string]interface{}) *structpb.Struct {
 	return out
 }
 
-func mustMarshalJSON(in map[string]interface{}) []byte {
-	b, err := json.Marshal(in)
+func mustMarshal(in map[string]interface{}) []byte {
+	b, err := proto.Marshal(mustStruct(in))
 	if err != nil {
 		panic(err)
 	}
 
 	return b
+}
+
+func requireEqualEncoded(t *testing.T, expected, actual []byte) {
+	t.Helper()
+	require := require.New(t)
+
+	expectedpb, actualpb := new(structpb.Struct), new(structpb.Struct)
+
+	err := proto.Unmarshal(expected, expectedpb)
+	require.NoError(err)
+
+	err = proto.Unmarshal(actual, actualpb)
+	require.NoError(err)
+
+	require.Equal(expectedpb, actualpb)
 }
