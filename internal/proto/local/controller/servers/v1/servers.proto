@@ -17,6 +17,7 @@ message Server {
   // private ID and name to be identical, and there is currently no reason we
   // can think of to allow a given server's name to match another within the
   // same cluster. So we simply use the private ID and deprecate this.
+  // @inject_tag: `gorm:"-"`
   string name = 30 [deprecated = true];
 
   // Description of the resource
