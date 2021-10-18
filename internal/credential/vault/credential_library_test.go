@@ -226,6 +226,27 @@ func TestCredentialLibrary_New(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "credential-type-with-userpass-mapping",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+					WithCredentialType(credential.UserPasswordType),
+					WithMappingOverride(NewUserPasswordOverride(WithOverrideUsernameAttribute("test"))),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.PublicId,
+					VaultPath:      "vault/path",
+					HttpMethod:     string(MethodGet),
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

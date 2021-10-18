@@ -21,6 +21,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -28,6 +29,12 @@ const (
 	vaultPathField       = "attributes.path"
 	httpMethodField      = "attributes.http_method"
 	httpRequestBodyField = "attributes.http_request_body"
+)
+
+// Credential mapping override attributes
+const (
+	usernameAttribute string = "username"
+	passwordAttribute string = "password"
 )
 
 var (
@@ -463,13 +470,36 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	if outputFields.Has(globals.AttributesField) {
-		switch credential.SubtypeFromId(in.GetPublicId()) {
-		case vault.Subtype:
-			vaultIn, ok := in.(*vault.CredentialLibrary)
-			if !ok {
-				return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential library")
+	switch credential.SubtypeFromId(in.GetPublicId()) {
+	case vault.Subtype:
+		vaultIn, ok := in.(*vault.CredentialLibrary)
+		if !ok {
+			return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential library")
+		}
+
+		if outputFields.Has(globals.CredentialTypeField) && vaultIn.GetCredentialType() != string(credential.UnspecifiedType) {
+			out.CredentialType = vaultIn.GetCredentialType()
+			if outputFields.Has(globals.CredentialMappingOverridesField) && vaultIn.MappingOverride != nil {
+				m := make(map[string]interface{})
+				switch mapping := vaultIn.MappingOverride.(type) {
+				case *vault.UserPasswordOverride:
+					if mapping.UsernameAttribute != "" {
+						m[usernameAttribute] = mapping.UsernameAttribute
+					}
+					if mapping.PasswordAttribute != "" {
+						m[passwordAttribute] = mapping.PasswordAttribute
+					}
+				}
+				if len(m) > 0 {
+					mp, err := structpb.NewStruct(m)
+					if err != nil {
+						return nil, errors.NewDeprecated(errors.Internal, op, "creating proto struct for mapping override")
+					}
+					out.CredentialMappingOverrides = mp
+				}
 			}
+		}
+		if outputFields.Has(globals.AttributesField) {
 			attrs := &pb.VaultCredentialLibraryAttributes{
 				Path: wrapperspb.String(vaultIn.GetVaultPath()),
 			}
@@ -511,6 +541,23 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithRequestBody([]byte(attrs.GetHttpRequestBody().GetValue())))
 	}
 
+	credentialType := credential.Type(in.GetCredentialType())
+	switch credentialType {
+	case credential.UserPasswordType:
+		opts = append(opts, vault.WithCredentialType(credentialType))
+		overrides := in.CredentialMappingOverrides.AsMap()
+		var mapOpts []vault.Option
+		if username := overrides[usernameAttribute]; username != nil {
+			mapOpts = append(mapOpts, vault.WithOverrideUsernameAttribute(username.(string)))
+		}
+		if password := overrides[passwordAttribute]; password != nil {
+			mapOpts = append(mapOpts, vault.WithOverridePasswordAttribute(password.(string)))
+		}
+		if len(mapOpts) > 0 {
+			opts = append(opts, vault.WithMappingOverride(vault.NewUserPasswordOverride(mapOpts...)))
+		}
+	}
+
 	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetPath().GetValue(), opts...)
 	if err != nil {
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential library"))
@@ -549,6 +596,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
 				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
+			validateMapping(badFields, req.GetItem().GetCredentialType(), req.GetItem().CredentialMappingOverrides.AsMap())
 		default:
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
@@ -599,4 +647,31 @@ func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
+}
+
+func validateMapping(badFields map[string]string, credentialType string, overrides map[string]interface{}) {
+	validFields := make(map[string]bool)
+	switch credential.Type(credentialType) {
+	case "":
+		if len(overrides) > 0 {
+			badFields[globals.CredentialMappingOverridesField] = fmt.Sprintf("This field can only be set if %q is set", globals.CredentialTypeField)
+		}
+		return
+	case credential.UserPasswordType:
+		validFields[usernameAttribute] = true
+		validFields[passwordAttribute] = true
+	default:
+		badFields[globals.CredentialTypeField] = fmt.Sprintf("Unknown credential type %q", credentialType)
+		return
+	}
+
+	for k, v := range overrides {
+		if ok := validFields[k]; !ok {
+			badFields[globals.CredentialMappingOverridesField+"."+k] = fmt.Sprintf("Invalid mapping override for credential type %q", credentialType)
+			continue
+		}
+		if _, ok := v.(string); v != nil && !ok {
+			badFields[globals.CredentialMappingOverridesField+"."+k] = fmt.Sprintf("Mapping value must be a string or a null to clear, got %T", v)
+		}
+	}
 }
