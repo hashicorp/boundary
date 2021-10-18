@@ -121,4 +121,12 @@ func (l *CredentialLibrary) CredentialType() credential.Type {
 	}
 }
 
+// GetMapping returns the mapping overrides of the credential library.
+func (l *CredentialLibrary) GetMapping() map[credential.OverrideField]string {
+	if l.mappingOverride == nil {
+		return nil
+	}
+	return l.mappingOverride.asMap()
+}
+
 var _ credential.Library = (*CredentialLibrary)(nil)

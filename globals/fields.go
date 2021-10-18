@@ -58,4 +58,6 @@ const (
 	ApplicationCredentialLibrariesField  = "application_credential_libraries"
 	ApplicationCredentialSourceIdsField  = "application_credential_source_ids"
 	ApplicationCredentialSourcesField    = "application_credential_sources"
+	CredentialTypeField                  = "credential_type"
+	CredentialMappingOverridesField      = "credential_mapping_overrides"
 )

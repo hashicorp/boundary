@@ -14,6 +14,10 @@ const (
 	// ExternalIdNone is a Boundary sentinel indicating that no id was provided by an
 	// external system.
 	ExternalIdNone = "\ufffenone\uffff"
+
+	// NoOverride is a Boundary sentinel indicating that no mapping override was provided
+	// for the field.
+	NoOverride = "\ufffeno override\uffff"
 )
 
 // Is returns true if s is a valid sentinel.

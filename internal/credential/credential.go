@@ -27,6 +27,15 @@ const (
 	UserPasswordType Type = "user_password"
 )
 
+// OverrideField is the field name of the mapping override.
+type OverrideField string
+
+// Credential mapping override fields
+const (
+	UsernameField OverrideField = "username"
+	PasswordField OverrideField = "password"
+)
+
 // A Library is a resource that provides credentials that are of the same
 // type and access level from a single store.
 type Library interface {

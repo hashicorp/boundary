@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db/sanitize"
+	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,6 +26,7 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 type MappingOverride interface {
 	clone() MappingOverride
 	setLibraryId(i string)
+	asMap() map[credential.OverrideField]string
 }
 
 // A UserPasswordOverride contains optional values for overriding the
@@ -66,6 +68,20 @@ func (o *UserPasswordOverride) clone() MappingOverride {
 
 func (o *UserPasswordOverride) setLibraryId(i string) {
 	o.LibraryId = i
+}
+
+func (o *UserPasswordOverride) asMap() map[credential.OverrideField]string {
+	ret := make(map[credential.OverrideField]string)
+	if o.UsernameAttribute != "" && o.UsernameAttribute != sentinel.NoOverride {
+		ret[credential.UsernameField] = o.UsernameAttribute
+	}
+	if o.PasswordAttribute != "" && o.PasswordAttribute != sentinel.NoOverride {
+		ret[credential.PasswordField] = o.PasswordAttribute
+	}
+	if len(ret) == 0 {
+		return nil
+	}
+	return ret
 }
 
 // TableName returns the table name.

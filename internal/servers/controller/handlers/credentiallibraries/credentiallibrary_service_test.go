@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -327,6 +328,47 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Invalid credential type",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+				CredentialType: "fake-type",
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid user_password mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+				CredentialType: string(credential.UserPasswordType),
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]interface{}{
+						"username": "username-field",
+						"invalid":  "invalid-field",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Using POST method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
@@ -398,6 +440,151 @@ func TestCreate(t *testing.T) {
 						})
 						require.NoError(t, err)
 						return attrs
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary user_password type",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+				CredentialType: string(credential.UserPasswordType),
+			}},
+			idPrefix: vault.CredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.Subtype.String(),
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+					CredentialType:    string(credential.UserPasswordType),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary user_password type with username mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]interface{}{
+						"username": "username-field",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(credential.UserPasswordType),
+			}},
+			idPrefix: vault.CredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.Subtype.String(),
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+					CredentialType: string(credential.UserPasswordType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							"username": "username-field",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary user_password type with username mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]interface{}{
+						"username": "username-field",
+						"password": "password-field",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(credential.UserPasswordType),
+			}},
+			idPrefix: vault.CredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.Subtype.String(),
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+					CredentialType: string(credential.UserPasswordType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							"username": "username-field",
+							"password": "password-field",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
 					}(),
 					AuthorizedActions: testAuthorizedActions,
 				},

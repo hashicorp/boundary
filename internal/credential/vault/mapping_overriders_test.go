@@ -10,8 +10,9 @@ import (
 
 type unknownMapper int
 
-func (u unknownMapper) clone() MappingOverride { return u }
-func (u unknownMapper) setLibraryId(_ string)  {}
+func (u unknownMapper) clone() MappingOverride                     { return u }
+func (u unknownMapper) setLibraryId(_ string)                      {}
+func (u unknownMapper) asMap() map[credential.OverrideField]string { return nil }
 
 var _ MappingOverride = unknownMapper(0)
 
