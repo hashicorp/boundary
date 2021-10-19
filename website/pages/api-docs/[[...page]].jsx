@@ -1,10 +1,11 @@
 import { productName, productSlug } from 'data/metadata'
-import OpenApiPage, {
-  getPathsFromSchema,
-  getPropsForPage,
-} from '@hashicorp/react-open-api-page'
+import OpenApiPage from '@hashicorp/react-open-api-page'
 /* Used server-side only */
 import path from 'path'
+import {
+  getPathsFromSchema,
+  getPropsForPage,
+} from '@hashicorp/react-open-api-page/server'
 import { processSchemaFile } from '@hashicorp/react-open-api-page/process-schema'
 
 const targetFile = '../internal/gen/controller.swagger.json'
@@ -16,7 +17,7 @@ export default function OpenApiDocsPage(props) {
       {...props}
       productName={productName}
       productSlug={productSlug}
-      pathFromRoot={pathFromRoot}
+      baseRoute={pathFromRoot}
     />
   )
 }
