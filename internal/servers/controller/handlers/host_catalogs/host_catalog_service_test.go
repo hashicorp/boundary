@@ -455,7 +455,7 @@ func TestList(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDelete_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -507,6 +507,76 @@ func TestDelete(t *testing.T) {
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: static.HostCatalogPrefix + "_bad_format",
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteHostCatalog(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			assert.EqualValuesf(tc.res, got, "DeleteHostCatalog(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestDelete_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	repo := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginHostRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+	}
+	pluginRepo := func() (*host.Repository, error) {
+		return host.NewRepository(rw, rw, kms)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	plg := host.TestPlugin(t, conn, "test")
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+
+	s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
+	require.NoError(t, err, "Couldn't create a new host catalog service.")
+
+	cases := []struct {
+		name    string
+		scopeId string
+		req     *pbs.DeleteHostCatalogRequest
+		res     *pbs.DeleteHostCatalogResponse
+		err     error
+	}{
+		{
+			name:    "Delete an Existing HostCatalog",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostCatalogRequest{
+				Id: hc.GetPublicId(),
+			},
+		},
+		{
+			name:    "Delete bad id HostCatalog",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostCatalogRequest{
+				Id: plugin.HostCatalogPrefix + "_doesntexis",
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "Bad HostCatalog Id formatting",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostCatalogRequest{
+				Id: plugin.HostCatalogPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

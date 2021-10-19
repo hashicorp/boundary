@@ -195,6 +195,78 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 	return hostCatalogs, plgs, nil
 }
 
+// DeleteCatalog deletes id from the repository returning a count of the
+// number of records deleted.
+func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) (int, error) {
+	const op = "plugin.(Repository).DeleteCatalog"
+	if id == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+
+	c := allocHostCatalog()
+	c.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+		if errors.IsNotFoundError(err) {
+			return db.NoRowsAffected, nil
+		}
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
+	}
+	if c.ScopeId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	plgClient, ok := r.plugins[c.GetPluginId()]
+	if !ok || plgClient == nil {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	}
+	plgHc, err := toPluginCatalog(ctx, c)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
+	// TODO: include all the sets for this catalog in the delete catalog request.
+	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{Catalog: plgHc})
+	if err != nil {
+		// Even if the plugin returns an error, we ignore it and proceed
+		// with deleting the catalog.
+	}
+
+	metadata := c.oplog(oplog.OpType_OP_TYPE_DELETE)
+
+	var rowsDeleted int
+	var deleteCatalog *HostCatalog
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			deleteCatalog = c.clone()
+			var err error
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteCatalog,
+				db.WithOplog(oplogWrapper, metadata),
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", c.PublicId)))
+	}
+
+	return rowsDeleted, nil
+}
+
 // getCatalog retrieves the *HostCatalog with the provided id.  If it is not found or there
 // is an problem getting it from the database an error is returned instead.
 func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, error) {

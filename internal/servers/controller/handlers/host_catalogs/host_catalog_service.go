@@ -534,13 +534,26 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return false, errors.Wrap(ctx, err, op)
-	}
-	rows, err := repo.DeleteCatalog(ctx, id)
-	if err != nil {
-		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+	rows := 0
+	switch host.SubtypeFromId(id) {
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		rows, err = repo.DeleteCatalog(ctx, id)
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+		}
+	case plugin.Subtype:
+		repo, err := s.pluginHostRepoFn()
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		rows, err = repo.DeleteCatalog(ctx, id)
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+		}
 	}
 	return rows > 0, nil
 }

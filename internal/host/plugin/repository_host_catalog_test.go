@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -469,4 +470,156 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 	assert.Contains(t, plgs, plg)
+}
+
+func TestRepository_DeleteCatalog(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	plg := hostplg.TestPlugin(t, conn, "test")
+	pluginInstance := &TestPluginServer{}
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &WrappingPluginClient{Server: pluginInstance},
+	}
+	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	badId, err := newHostCatalogId(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, badId)
+
+	assert := assert.New(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms, plgm)
+	assert.NoError(err)
+	assert.NotNil(repo)
+
+	tests := []struct {
+		name    string
+		id      string
+		pluginResponse func(*plgpb.OnDeleteCatalogRequest) error
+		want    int
+		wantErr errors.Code
+	}{
+		{
+			name: "found",
+			id:   cat.GetPublicId(),
+			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Equal(cat.GetPublicId(), req.GetCatalog().GetId())
+				return nil
+			},
+			want: 1,
+		},
+		{
+			name: "ignore error",
+			id:   cat2.GetPublicId(),
+			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Equal(cat2.GetPublicId(), req.GetCatalog().GetId())
+				return fmt.Errorf("This is a test error")
+			},
+			want: 1,
+		},
+		{
+			name: "not-found",
+			id:   badId,
+			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Fail("Should not call the plugin when catalog isn't found")
+				return nil
+			},
+			want: 0,
+		},
+		{
+			name:    "bad-public-id",
+			id:      "",
+			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Fail("Should not call the plugin for a bad id")
+				return nil
+			},
+			want:    0,
+			wantErr: errors.InvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			pluginInstance.OnDeleteCatalogFn = func(_ context.Context, request *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
+				return nil, tt.pluginResponse(request)
+			}
+			got, err := repo.DeleteCatalog(context.Background(), tt.id)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.want, got, "row count")
+		})
+	}
+}
+
+func TestRepository_DeleteCatalogX(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	plg := hostplg.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
+	}
+	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	badId, err := newHostCatalogId(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, badId)
+
+	tests := []struct {
+		name    string
+		id      string
+		want    *HostCatalog
+		wantErr errors.Code
+	}{
+		{
+			name: "found",
+			id:   cat.GetPublicId(),
+			want: cat,
+		},
+		{
+			name: "not-found",
+			id:   badId,
+			want: nil,
+		},
+		{
+			name:    "bad-public-id",
+			id:      "",
+			want:    nil,
+			wantErr: errors.InvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, plgm)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			got, _, err := repo.LookupCatalog(ctx, tt.id)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+
+			switch {
+			case tt.want == nil:
+				assert.Nil(got)
+			case tt.want != nil:
+				assert.NotNil(got)
+				assert.Equal(got, tt.want)
+			}
+		})
+	}
 }
