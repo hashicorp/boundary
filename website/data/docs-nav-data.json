@@ -1,5 +1,9 @@
 [
   {
+    "title": "What is Boundary?",
+    "path": "what-is-boundary"
+  },
+  {
     "title": "Getting Started",
     "routes": [
       {
