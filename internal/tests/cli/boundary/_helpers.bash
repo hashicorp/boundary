@@ -22,3 +22,11 @@ function strip_all() {
   echo "$1" | tr -d '"' | tr -d '\'\'
 }
 
+function has_status_code() {
+  local json=$1
+  local code=$2
+  if [ echo "$json"|jq -c ".status_code == $code" ]; then
+    return 1
+  fi
+
+}

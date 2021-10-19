@@ -555,6 +555,7 @@ func TestDelete(t *testing.T) {
 		name string
 		id   string
 		err  error
+		res  *pbs.DeleteCredentialLibraryResponse
 	}{
 		{
 			name: "success",
@@ -574,7 +575,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, gErr := s.DeleteCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.DeleteCredentialLibraryRequest{Id: tc.id})
-			assert.Nil(t, got)
+			assert.EqualValuesf(t, tc.res, got, "DeleteCredentialLibrary got response %q, wanted %q", got, tc.res)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err))

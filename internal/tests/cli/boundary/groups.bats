@@ -59,6 +59,7 @@ export NEW_GROUP='test'
   local gid=$(group_id $NEW_GROUP)
   run delete_group $gid 
   echo "$output"
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
 
