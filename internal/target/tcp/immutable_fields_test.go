@@ -1,4 +1,4 @@
-package target
+package tcp_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -24,17 +26,17 @@ func TestTarget_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	new := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	new := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
 
 	tests := []struct {
 		name      string
-		update    *TcpTarget
+		update    *tcp.Target
 		fieldMask []string
 	}{
 		{
 			name: "public_id",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.PublicId = "p_thisIsNotAValidId"
 				return target
 			}(),
@@ -42,8 +44,8 @@ func TestTarget_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.CreateTime = &ts
 				return target
 			}(),
@@ -51,8 +53,8 @@ func TestTarget_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "scope_id",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.ScopeId = "o_thisIsNotAValidId"
 				return target
 			}(),
@@ -65,7 +67,7 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.(*TcpTarget).SetTableName("target")
+			orig.(*tcp.Target).SetTableName("target")
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
@@ -75,11 +77,11 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.(*TcpTarget).SetTableName("target")
+			after.(*tcp.Target).SetTableName("target")
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
-			assert.True(proto.Equal(orig.(*TcpTarget), after.(*TcpTarget)))
+			assert.True(proto.Equal(orig.(*tcp.Target), after.(*tcp.Target)))
 		})
 	}
 }
@@ -93,17 +95,17 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	new := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	new := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
 
 	tests := []struct {
 		name      string
-		update    *TcpTarget
+		update    *tcp.Target
 		fieldMask []string
 	}{
 		{
 			name: "public_id",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.PublicId = "p_thisIsNotAValidId"
 				return target
 			}(),
@@ -111,8 +113,8 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.CreateTime = &ts
 				return target
 			}(),
@@ -120,8 +122,8 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "scope_id",
-			update: func() *TcpTarget {
-				target := new.Clone().(*TcpTarget)
+			update: func() *tcp.Target {
+				target := new.Clone().(*tcp.Target)
 				target.ScopeId = "o_thisIsNotAValidId"
 				return target
 			}(),
@@ -144,7 +146,7 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
-			assert.True(proto.Equal(orig.(*TcpTarget), after.(*TcpTarget)))
+			assert.True(proto.Equal(orig.(*tcp.Target), after.(*tcp.Target)))
 		})
 	}
 }
@@ -155,35 +157,35 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	projTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	projTarget := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
 	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 2)
 	require.Equal(t, 2, len(hsets))
 
-	updateTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	updateTarget := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
 	updateHset := hsets[1]
 
 	_, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSources))
-	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSources[0].Id())
+	new, err := target.NewTargetHostSet(projTarget.PublicId, gotHostSources[0].Id())
 	require.NoError(t, err)
 
 	tests := []struct {
 		name      string
-		update    *TargetHostSet
+		update    *target.TargetHostSet
 		fieldMask []string
 	}{
 		{
 			name: "target_id",
-			update: func() *TargetHostSet {
-				target := new.Clone().(*TargetHostSet)
+			update: func() *target.TargetHostSet {
+				target := new.Clone().(*target.TargetHostSet)
 				target.TargetId = updateTarget.PublicId
 				return target
 			}(),
@@ -191,8 +193,8 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *TargetHostSet {
-				target := new.Clone().(*TargetHostSet)
+			update: func() *target.TargetHostSet {
+				target := new.Clone().(*target.TargetHostSet)
 				target.CreateTime = &ts
 				return target
 			}(),
@@ -200,8 +202,8 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "host_set_id",
-			update: func() *TargetHostSet {
-				target := new.Clone().(*TargetHostSet)
+			update: func() *target.TargetHostSet {
+				target := new.Clone().(*target.TargetHostSet)
 				target.HostSetId = updateHset.PublicId
 				return target
 			}(),
@@ -223,7 +225,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			after := new.Clone()
 			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", new.TargetId, new.HostSetId)
 			require.NoError(err)
-			assert.True(proto.Equal(orig.(*TargetHostSet), after.(*TargetHostSet)))
+			assert.True(proto.Equal(orig.(*target.TargetHostSet), after.(*target.TargetHostSet)))
 		})
 	}
 }

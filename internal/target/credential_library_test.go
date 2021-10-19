@@ -1,10 +1,11 @@
-package target
+package target_test
 
 import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *CredentialLibrary
+		want    *target.CredentialLibrary
 		wantErr errors.Code
 	}{
 		{
@@ -41,7 +42,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				targetId:  "targ_0000000",
 				libraryId: "lib_0000000",
 			},
-			want: &CredentialLibrary{
+			want: &target.CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					TargetId:            "targ_0000000",
 					CredentialLibraryId: "lib_0000000",
@@ -54,7 +55,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCredentialLibrary(tt.args.targetId, tt.args.libraryId)
+			got, err := target.NewCredentialLibrary(tt.args.targetId, tt.args.libraryId)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
