@@ -56,10 +56,10 @@ func (r *Repository) UpsertHosts(
 	// hostInfo stores the info we need for the transaction below as well as
 	// which sets they matched
 	type hostInfo struct {
-		h     *Host
-		ips   []interface{}
-		names []interface{}
-		sets  map[string]struct{}
+		h        *Host
+		ips      []interface{}
+		dnsNames []interface{}
+		sets     map[string]struct{}
 	}
 	hostMapping := make(map[string]hostInfo, len(phs))
 	var err error
@@ -106,9 +106,9 @@ func (r *Repository) UpsertHosts(
 		}
 
 		hi := hostInfo{
-			h:     h,
-			ips:   ipAddresses,
-			names: dnsNames,
+			h:        h,
+			ips:      ipAddresses,
+			dnsNames: dnsNames,
 		}
 
 		for _, id := range ph.GetSetIds() {
@@ -189,9 +189,9 @@ func (r *Repository) UpsertHosts(
 					msgs = append(msgs, ipOplogMsgs...)
 				}
 
-				if len(hi.names) > 0 {
-					dnsOplogMsgs := make([]*oplog.Message, 0, len(hi.names))
-					if err := w.CreateItems(ctx, hi.names, db.NewOplogMsgs(&dnsOplogMsgs)); err != nil {
+				if len(hi.dnsNames) > 0 {
+					dnsOplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNames))
+					if err := w.CreateItems(ctx, hi.dnsNames, db.NewOplogMsgs(&dnsOplogMsgs)); err != nil {
 						return err
 					}
 					msgs = append(msgs, dnsOplogMsgs...)
