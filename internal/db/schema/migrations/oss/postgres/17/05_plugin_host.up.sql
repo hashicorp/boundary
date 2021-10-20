@@ -213,7 +213,7 @@ begin;
     address inet not null,
     create_time wt_timestamp,
     primary key (host_id, priority),
-    constraint host_id_ip_address_condition_uq
+    constraint host_ip_address_host_id_address_uq
       unique(host_id, address)
   );
   comment on table host_ip_address is
