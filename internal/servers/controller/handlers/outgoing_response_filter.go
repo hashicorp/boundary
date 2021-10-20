@@ -11,7 +11,6 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	authtokenpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 
 	"google.golang.org/grpc"
@@ -64,12 +63,6 @@ func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.
 			w.WriteHeader(lastStatus)
 			return nil
 		}
-	}
-
-	// add the outgoing resp proto.  See: common.flushGatedEvents is where the
-	// event.Response.StatusCode is added.
-	if err := event.WriteAudit(ctx, op, event.WithResponse(&event.Response{Details: m})); err != nil {
-		return fmt.Errorf("%s: unable to write audit event: %w", op, err)
 	}
 
 	switch m := m.(type) {

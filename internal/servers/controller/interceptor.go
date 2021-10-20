@@ -11,6 +11,7 @@ import (
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -48,6 +49,7 @@ func requestCtxInterceptor(
 	serversRepoFn common.ServersRepoFactory,
 	kms *kms.Kms,
 	ticket string,
+	eventer *event.Eventer,
 ) (grpc.UnaryServerInterceptor, error) {
 	const op = "controller.requestCtxInterceptor"
 	if iamRepoFn == nil {
@@ -64,6 +66,9 @@ func requestCtxInterceptor(
 	}
 	if ticket == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing ticket")
+	}
+	if eventer == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
 	}
 	// Authorization unary interceptor function to handle authorize per RPC call
 	return func(interceptorCtx context.Context,
@@ -111,6 +116,23 @@ func requestCtxInterceptor(
 			Path:   requestInfo.Path,
 			Method: requestInfo.Method,
 		})
+
+		// This event request info is required by downstream handlers
+		info := &event.RequestInfo{
+			EventId:  requestInfo.EventId,
+			Id:       requestInfo.TraceId,
+			PublicId: requestInfo.PublicId,
+			Method:   requestInfo.Method,
+			Path:     requestInfo.Path,
+		}
+		interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
+		if err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with request info"))
+		}
+		interceptorCtx, err = event.NewEventerContext(interceptorCtx, eventer)
+		if err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with eventer"))
+		}
 
 		// Calls the handler
 		h, err := handler(interceptorCtx, req)
@@ -204,4 +226,45 @@ func isNil(i interface{}) bool {
 		return reflect.ValueOf(i).IsNil()
 	}
 	return false
+}
+
+func auditRequestInterceptor(
+	_ context.Context,
+) grpc.UnaryServerInterceptor {
+	const op = "controller.auditRequestInterceptor"
+	return func(interceptorCtx context.Context,
+		req interface{},
+		_ *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler) (interface{}, error) {
+
+		if msg, ok := req.(proto.Message); ok {
+			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: msg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
+			}
+		}
+
+		return handler(interceptorCtx, req)
+	}
+}
+
+func auditResponseInterceptor(
+	_ context.Context,
+) grpc.UnaryServerInterceptor {
+	const op = "controller.auditRequestInterceptor"
+	return func(interceptorCtx context.Context,
+		req interface{},
+		_ *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler) (interface{}, error) {
+
+		// call the handler...
+		resp, err := handler(interceptorCtx, req)
+
+		if msg, ok := resp.(proto.Message); ok {
+			if err := event.WriteAudit(interceptorCtx, op, event.WithResponse(&event.Response{Details: msg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write response msg audit: %s", err)
+			}
+		}
+
+		return resp, err
+	}
 }
