@@ -153,36 +153,36 @@ message OidcAuthMethodAttributes {
 // The structure of the OIDC authenticate start response, in the JSON object
 message OidcAuthMethodAuthenticateStartResponse {
   // The returned authentication URL
-  string auth_url = 10 [json_name = "auth_url"];
+  string auth_url = 10 [json_name = "auth_url"];  // @gotags: `class:"public"`
 
   // The returned token ID
-  string token_id = 30 [json_name = "token_id"];
+  string token_id = 30 [json_name = "token_id"];  // @gotags: `class:"public"`
 }
 
 // The structure of OIDC callback request parameters
 message OidcAuthMethodAuthenticateCallbackRequest {
   // The returned code
-  string code = 10 [json_name = "code"];
+  string code = 10 [json_name = "code"];  // @gotags: `class:"secret"`
 
   // The returned state
-  string state = 20 [json_name = "state"];
+  string state = 20 [json_name = "state"];  // @gotags: `class:"public"`
 
   // Error parameters, if they are returned
-  string error = 30 [json_name = "error"];
-  string error_description = 40 [json_name = "error_description"];
-  string error_uri = 50 [json_name = "error_uri"];
+  string error = 30 [json_name = "error"];                          // @gotags: `class:"public"`
+  string error_description = 40 [json_name = "error_description"];  // @gotags: `class:"public"`
+  string error_uri = 50 [json_name = "error_uri"];                  // @gotags: `class:"public"`
 }
 
 // The structure of OIDC callback response parameters
 message OidcAuthMethodAuthenticateCallbackResponse {
   // The final redirection URL
-  string final_redirect_url = 10 [json_name = "final_redirect_url"];
+  string final_redirect_url = 10 [json_name = "final_redirect_url"];  // @gotags: `class:"public"`
 }
 
 // The structure of OIDC token request parameters
 message OidcAuthMethodAuthenticateTokenRequest {
   // The ID of the pending token
-  string token_id = 10 [json_name = "token_id"];
+  string token_id = 10 [json_name = "token_id"];  // @gotags: `class:"private"`
 }
 
 // Internal only: the structure of a token response if it _does not_ contain a
@@ -190,5 +190,5 @@ message OidcAuthMethodAuthenticateTokenRequest {
 message OidcAuthMethodAuthenticateTokenResponse {
   // The status. This will always be "unknown". It will never be forwarded to
   // the consumer.
-  string status = 10;
+  string status = 10;  // @gotags: `class:"public"`
 }

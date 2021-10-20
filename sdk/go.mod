@@ -7,7 +7,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.3
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.5
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-kms-wrapping v0.6.6
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
