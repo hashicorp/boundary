@@ -461,7 +461,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	b.Info["generated host set id"] = b.DevHostSetId
 
 	// Associate members
-	if err := hostRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
+	if err := hostRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, []string{h.GetPublicId()}); err != nil {
 		return nil, nil, nil, fmt.Errorf("error associating host set to host in the db: %w", err)
 	}
 

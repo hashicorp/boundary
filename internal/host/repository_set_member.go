@@ -20,16 +20,13 @@ import (
 // added. The version must match the current version of the setId in the
 // repository. retHosts must be a pointer to a slice of the desired type to be
 // returned.
-func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) error {
+func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, hostIds []string, opt ...Option) error {
 	const op = "host.(Repository).AddSetMembers"
 	if scopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "no set id")
-	}
-	if version == 0 {
-		return errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no host ids")
@@ -47,7 +44,11 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 	}
 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
-		set := newSetForMembers(setId, version)
+		set := newSetForMembers(setId)
+		if err := getVersion(ctx, r.reader, set); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
 		metadata := set.oplog(oplog.OpType_OP_TYPE_CREATE)
 
 		// Create host set members
@@ -56,7 +57,7 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 			return errors.Wrap(ctx, err, op)
 		}
 		// Update host set version
-		if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
+		if err := updateVersion(ctx, w, wrapper, metadata, msgs, set); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 
@@ -90,10 +91,23 @@ func createMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 	return msgs, nil
 }
 
-func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, metadata oplog.Metadata, msgs []*oplog.Message, set *SetWrapper, version uint32) error {
+// getVersion will read the current version into the given set
+func getVersion(ctx context.Context, r db.Reader, set *SetWrapper) error {
+	const op = "host.getVersion"
+	if set.GetPublicId() == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	}
+	if err := r.LookupById(ctx, set); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	return nil
+}
+
+func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, metadata oplog.Metadata, msgs []*oplog.Message, set *SetWrapper) error {
 	const op = "host.updateVersion"
 	setMsg := new(oplog.Message)
-	rowsUpdated, err := w.Update(ctx, set, []string{"Version"}, nil, db.NewOplogMsg(setMsg), db.WithVersion(&version))
+	rowsUpdated, err := w.Update(ctx, set, []string{"Version"}, nil, db.NewOplogMsg(setMsg), db.WithVersion(&set.Version))
 	switch {
 	case err != nil:
 		return errors.Wrap(ctx, err, op)
@@ -157,16 +171,13 @@ func GetHosts(ctx context.Context, reader db.Reader, returnedItems interface{}, 
 // DeleteSetMembers deletes hostIds from setId in the repository. It
 // returns the number of hosts deleted from the set. The version must match
 // the current version of the setId in the repository.
-func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, hostIds []string, opt ...Option) (int, error) {
 	const op = "host.(Repository).DeleteSetMembers"
 	if scopeId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
-	}
-	if version == 0 {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no host ids")
@@ -184,7 +195,11 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 	}
 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		set := newSetForMembers(setId, version)
+		set := newSetForMembers(setId)
+		if err := getVersion(ctx, r.reader, set); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
 		metadata := set.oplog(oplog.OpType_OP_TYPE_DELETE)
 
 		// Delete host set members
@@ -194,7 +209,7 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 		}
 
 		// Update host set version
-		err = updateVersion(ctx, w, wrapper, metadata, msgs, set, version)
+		err = updateVersion(ctx, w, wrapper, metadata, msgs, set)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -225,16 +240,13 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 // hosts added or deleted. A host must belong to the same catalog as the
 // set to be added. The version must match the current version of the setId
 // in the repository. If hostIds is empty, all hosts will be removed setId.
-func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
+func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, hostIds []string, opt ...Option) (int, error) {
 	const op = "host.(Repository).SetSetMembers"
 	if scopeId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
-	}
-	if version == 0 {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 
 	// TODO(mgaffney) 08/2020: Oplog does not currently support bulk
@@ -275,7 +287,11 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 		}
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
-			set := newSetForMembers(setId, version)
+			set := newSetForMembers(setId)
+			if err := getVersion(ctx, r.reader, set); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
 			metadata := set.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			var msgs []*oplog.Message
 
@@ -300,7 +316,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 			}
 
 			// Update host set version
-			if err := updateVersion(ctx, w, wrapper, metadata, msgs, set, version); err != nil {
+			if err := updateVersion(ctx, w, wrapper, metadata, msgs, set); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 
@@ -354,11 +370,10 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	return changes, nil
 }
 
-func newSetForMembers(setId string, version uint32) *SetWrapper {
+func newSetForMembers(setId string) *SetWrapper {
 	return &SetWrapper{
 		Set: &store.Set{
 			PublicId: setId,
-			Version:  version + 1,
 		},
 	}
 }

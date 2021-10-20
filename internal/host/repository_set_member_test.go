@@ -35,12 +35,9 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		hostIds = append(hostIds, h.PublicId)
 	}
 
-	badVersion := uint32(12345)
-
 	type args struct {
 		scopeId string
 		setId   string
-		version uint32
 		hostIds []string
 		opt     []host.Option
 	}
@@ -56,7 +53,6 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			name: "empty-scope-id",
 			args: args{
 				setId:   set.PublicId,
-				version: set.Version,
 				hostIds: hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -65,16 +61,6 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			name: "empty-set-id",
 			args: args{
 				scopeId: prj.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
-			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "zero-version",
-			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -84,26 +70,14 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			args: args{
 				scopeId: prj.PublicId,
 				setId:   set.PublicId,
-				version: set.Version,
 			},
 			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "invalid-version",
-			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: badVersion,
-				hostIds: hostIds,
-			},
-			wantErr: true,
 		},
 		{
 			name: "valid",
 			args: args{
 				scopeId: prj.PublicId,
 				setId:   set.PublicId,
-				version: set.Version,
 				hostIds: hostIds,
 			},
 			want: hosts,
@@ -120,7 +94,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			hostRepo, err := repo.GetHostRepo()
 			require.NoError(err)
 			require.NotNil(hostRepo)
-			err = hostRepo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			err = hostRepo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -172,7 +146,7 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	hostRepo, err := repo.GetHostRepo()
 	require.NoError(err)
 	require.NotNil(hostRepo)
-	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds))
+	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, hostIds))
 
 	_, got, err := repo.LookupSet(context.Background(), set.PublicId)
 	require.NoError(err)
@@ -191,7 +165,7 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	for _, h := range Hosts {
 		hostIds2 = append(hostIds2, h.PublicId)
 	}
-	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2))
+	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, hostIds2))
 	_, got2, err2 := repo.LookupSet(context.Background(), set.PublicId)
 	require.NoError(err2)
 	require.NotNil(got2)
@@ -209,7 +183,7 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 		hostIds3 = append(hostIds2, h.PublicId)
 	}
 	hostIds3 = append(hostIds3, hostIds2...)
-	require.Error(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds3))
+	require.Error(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, hostIds3))
 	_, got3, err3 := repo.LookupSet(context.Background(), set.PublicId)
 	require.NoError(err3)
 	require.NotNil(got3)
@@ -235,12 +209,9 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		hostIds = append(hostIds, h.PublicId)
 	}
 
-	badVersion := uint32(12345)
-
 	type args struct {
 		scopeId string
 		setId   string
-		version uint32
 		hostIds []string
 		opt     []host.Option
 	}
@@ -256,7 +227,6 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			name: "empty-scope-id",
 			args: args{
 				setId:   set.PublicId,
-				version: set.Version,
 				hostIds: hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -265,16 +235,6 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			name: "empty-set-id",
 			args: args{
 				scopeId: prj.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
-			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "zero-version",
-			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
 				hostIds: hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -284,26 +244,14 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			args: args{
 				scopeId: prj.PublicId,
 				setId:   set.PublicId,
-				version: set.Version,
 			},
 			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "invalid-version",
-			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: badVersion,
-				hostIds: hostIds,
-			},
-			wantErr: true,
 		},
 		{
 			name: "valid",
 			args: args{
 				scopeId: prj.PublicId,
 				setId:   set.PublicId,
-				version: set.Version,
 				hostIds: hostIds,
 			},
 			want:    count,
@@ -321,7 +269,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			hostRepo, err := repo.GetHostRepo()
 			require.NoError(err)
 			require.NotNil(hostRepo)
-			got, err := hostRepo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, err := hostRepo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -374,7 +322,7 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	hostRepo, err := repo.GetHostRepo()
 	require.NoError(err)
 	require.NotNil(hostRepo)
-	got, err := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	got, err := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, idsA)
 	assert.NoError(err)
 	require.Equal(len(idsA), got)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
@@ -391,18 +339,17 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	assert.Empty(cmp.Diff(hostsB, members, opts...))
 
 	// second call - delete first half of hosts again - should fail
-	set.Version = set.Version + 1
-	got2, err2 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	got2, err2 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, idsA)
 	require.Error(err2)
 	assert.Zero(got2)
 
 	// third call - delete first half and second half - should fail
-	got3, err3 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
+	got3, err3 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, hostIds)
 	require.Error(err3)
 	assert.Zero(got3)
 
 	// fourth call - delete second half of hosts - should succeed
-	got4, err4 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsB)
+	got4, err4 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, idsB)
 	assert.NoError(err4)
 	require.Equal(len(idsB), got4)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))

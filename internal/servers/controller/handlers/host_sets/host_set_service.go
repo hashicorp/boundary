@@ -295,7 +295,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, hosts, err := s.addInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.addInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds())
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, hosts, err := s.setInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.setInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds())
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, hosts, err := s.removeInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.removeInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds())
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +570,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 	return sets, plg, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).addInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -580,7 +580,7 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
 	}
-	err = hostRepo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	err = hostRepo.AddSetMembers(ctx, scopeId, setId, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to add hosts to host set"))
 	}
@@ -598,7 +598,7 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	return out, hl, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).setInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -608,7 +608,7 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
 	}
-	_, err = hostRepo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	_, err = hostRepo.SetSetMembers(ctx, scopeId, setId, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to set hosts in host set"))
 	}
@@ -627,7 +627,7 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	return out, hl, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).removeInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -637,7 +637,7 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
 	}
-	_, err = hostRepo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	_, err = hostRepo.DeleteSetMembers(ctx, scopeId, setId, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to remove hosts from host set"))
 	}
