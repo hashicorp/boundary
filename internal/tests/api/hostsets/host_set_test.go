@@ -127,7 +127,8 @@ func TestCrud(t *testing.T) {
 	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	hcClient := hostcatalogs.NewClient(client)
+	hc, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId())
 	require.NoError(err)
 	require.NotNil(hc)
 
@@ -162,6 +163,25 @@ func TestCrud(t *testing.T) {
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)
 	require.Error(err)
 	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+
+	// Plugin Sets
+	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
+	require.NoError(err)
+
+	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"))
+	checkHost(t, "create", h.Item, err, "foo", 1)
+
+	h, err = hClient.Read(tc.Context(), h.Item.Id)
+	checkHost(t, "read", h.Item, err, "foo", 1)
+
+	_, err = hClient.Delete(tc.Context(), h.Item.Id)
+	assert.NoError(err)
+	_, err = hClient.Delete(tc.Context(), h.Item.Id)
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }

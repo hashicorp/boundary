@@ -203,20 +203,16 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 
-	c := allocHostCatalog()
-	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		if errors.IsNotFoundError(err) {
-			return db.NoRowsAffected, nil
-		}
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
+	c, err := r.getCatalog(ctx, id)
+	if err != nil && !errors.IsNotFoundError(err) {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	if c.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c == nil {
+		return db.NoRowsAffected, nil
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	p, err := r.getPersistedDataForCatalog(ctx, c)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	plgClient, ok := r.plugins[c.GetPluginId()]
@@ -228,12 +224,16 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		return 0, errors.Wrap(ctx, err, op)
 	}
 	// TODO: include all the sets for this catalog in the delete catalog request.
-	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{Catalog: plgHc})
+	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{Catalog: plgHc, Persisted: p})
 	if err != nil {
 		// Even if the plugin returns an error, we ignore it and proceed
 		// with deleting the catalog.
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
 	metadata := c.oplog(oplog.OpType_OP_TYPE_DELETE)
 
 	var rowsDeleted int

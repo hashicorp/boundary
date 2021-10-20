@@ -489,24 +489,23 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
-	assert := assert.New(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms, plgm)
-	assert.NoError(err)
-	assert.NotNil(repo)
+	assert.NoError(t, err)
+	assert.NotNil(t, repo)
 
 	tests := []struct {
 		name    string
-		id      string
-		pluginResponse func(*plgpb.OnDeleteCatalogRequest) error
-		want    int
+		id            string
+		pluginChecker func(*testing.T, *plgpb.OnDeleteCatalogRequest) error
+		want          int
 		wantErr errors.Code
 	}{
 		{
 			name: "found",
 			id:   cat.GetPublicId(),
-			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
-				assert.Equal(cat.GetPublicId(), req.GetCatalog().GetId())
+			pluginChecker: func(t *testing.T, req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Equal(t, cat.GetPublicId(), req.GetCatalog().GetId())
 				return nil
 			},
 			want: 1,
@@ -514,8 +513,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		{
 			name: "ignore error",
 			id:   cat2.GetPublicId(),
-			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
-				assert.Equal(cat2.GetPublicId(), req.GetCatalog().GetId())
+			pluginChecker: func(t *testing.T, req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Equal(t, cat2.GetPublicId(), req.GetCatalog().GetId())
 				return fmt.Errorf("This is a test error")
 			},
 			want: 1,
@@ -523,8 +522,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		{
 			name: "not-found",
 			id:   badId,
-			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
-				assert.Fail("Should not call the plugin when catalog isn't found")
+			pluginChecker: func(t *testing.T, req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Fail(t, "Should not call the plugin when catalog isn't found")
 				return nil
 			},
 			want: 0,
@@ -532,8 +531,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		{
 			name:    "bad-public-id",
 			id:      "",
-			pluginResponse: func(req *plgpb.OnDeleteCatalogRequest) error {
-				assert.Fail("Should not call the plugin for a bad id")
+			pluginChecker: func(t *testing.T, req *plgpb.OnDeleteCatalogRequest) error {
+				assert.Fail(t, "Should not call the plugin for a bad id")
 				return nil
 			},
 			want:    0,
@@ -545,15 +544,15 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pluginInstance.OnDeleteCatalogFn = func(_ context.Context, request *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error) {
-				return nil, tt.pluginResponse(request)
+				return nil, tt.pluginChecker(t, request)
 			}
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
 			if tt.wantErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Truef(t, errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
-			assert.NoError(err)
-			assert.Equal(tt.want, got, "row count")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got, "row count")
 		})
 	}
 }

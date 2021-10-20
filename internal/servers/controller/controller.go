@@ -114,7 +114,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
-		return nil, fmt.Errorf("error creating azure host plugin")
+		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
 	}
 	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
 	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
