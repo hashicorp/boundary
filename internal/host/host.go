@@ -20,4 +20,6 @@ type Host interface {
 	boundary.Resource
 	GetCatalogId() string
 	GetAddress() string
+	GetIpAddresses() []string
+	GetDnsNames() []string
 }

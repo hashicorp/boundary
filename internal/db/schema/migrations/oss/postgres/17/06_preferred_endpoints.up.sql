@@ -7,9 +7,7 @@ create table host_set_preferred_endpoint (
     references host_set(public_id)
     on delete cascade
     on update cascade,
-  priority int not null
-    constraint priority_must_be_greater_than_zero
-      check(priority > 0),
+  priority wt_priority,
   condition text not null
     constraint condition_must_not_be_too_short
       check(length(trim(condition)) > 4) -- minimum is 'dns:*'

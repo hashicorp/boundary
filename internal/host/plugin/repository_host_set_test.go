@@ -489,16 +489,15 @@ func TestRepository_Endpoints(t *testing.T) {
 			})
 			assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()))
 
-			// TODO: Remove this once we no longer persist all host lookup calls
-			//   when retrieving the endpoints.
 			for _, ep := range got {
 				h := allocHost()
 				h.PublicId = ep.HostId
 				require.NoError(rw.LookupByPublicId(ctx, h))
 
-				assert.Equal(uint32(1), h.Version)
 				assert.Equal(ep.HostId, h.PublicId)
-				assert.Equal(ep.Address, h.Address)
+				// TODO: Uncomment when we have a better way to lookup host
+				// with it's address
+				// assert.Equal(ep.Address, h.Address)
 				assert.Equal(catalog.GetPublicId(), h.GetCatalogId())
 			}
 		})

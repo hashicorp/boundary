@@ -16,16 +16,27 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
+	withPluginId           string
 	withName               string
 	withDescription        string
 	withAttributes         *structpb.Struct
 	withSecrets            *structpb.Struct
 	withPreferredEndpoints []string
+	withIpAddresses        []string
+	withDnsNames           []string
+	withLimit              int
 }
 
 func getDefaultOptions() options {
 	return options{
 		withAttributes: &structpb.Struct{},
+	}
+}
+
+// WithPluginId provides an optional plugin id.
+func withPluginId(with string) Option {
+	return func(o *options) {
+		o.withPluginId = with
 	}
 }
 
@@ -61,5 +72,28 @@ func WithSecrets(secrets *structpb.Struct) Option {
 func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
 		o.withPreferredEndpoints = with
+	}
+}
+
+// withIpAddresses provides an optional list of ip addresses.
+func withIpAddresses(with []string) Option {
+	return func(o *options) {
+		o.withIpAddresses = with
+	}
+}
+
+// withDnsNames provides an optional list of dns names.
+func withDnsNames(with []string) Option {
+	return func(o *options) {
+		o.withDnsNames = with
+	}
+}
+
+// WithLimit provides an option to provide a limit. Intentionally allowing
+// negative integers. If WithLimit < 0, then unlimited results are
+// returned. If WithLimit == 0, then default limits are used for results.
+func WithLimit(l int) Option {
+	return func(o *options) {
+		o.withLimit = l
 	}
 }

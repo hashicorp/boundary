@@ -47,3 +47,25 @@ message PreferredEndpoint {
   // @inject_tag: `gorm:"not_null"`
   string condition = 3;
 }
+
+message IpAddress {
+  // @inject_tag: `gorm:"primary_key"`
+  string host_id = 1;
+
+  // @inject_tag: `gorm:"primary_key"`
+  uint32 priority = 2;
+
+  // @inject_tag: `gorm:"not_null`
+  string address = 3;
+}
+
+message DnsName {
+  // @inject_tag: `gorm:"primary_key"`
+  string host_id = 1;
+
+  // @inject_tag: `gorm:"primary_key"`
+  uint32 priority = 2;
+
+  // @inject_tag: `gorm:"not_null`
+  string name = 3;
+}

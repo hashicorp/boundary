@@ -100,8 +100,11 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	switch {
 	case err != nil:
 		return errors.Wrap(ctx, err, op)
+	case rowsUpdated == 0:
+		return errors.New(ctx, errors.RecordNotFound, op, "no matching version for host set found")
 	case rowsUpdated > 1:
 		return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+
 	}
 	msgs = append(msgs, setMsg)
 

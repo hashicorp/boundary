@@ -38,6 +38,16 @@ func NewHost(catalogId string, opt ...Option) (*Host, error) {
 	return host, nil
 }
 
+// For compatibility with the general Host type
+func (h *Host) GetIpAddresses() []string {
+	return nil
+}
+
+// For compatibility with the general Host type
+func (h *Host) GetDnsNames() []string {
+	return nil
+}
+
 // TableName returns the table name for the host.
 func (h *Host) TableName() string {
 	if h.tableName != "" {
