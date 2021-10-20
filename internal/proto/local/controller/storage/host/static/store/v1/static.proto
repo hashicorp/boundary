@@ -106,14 +106,3 @@ message HostSet {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 7;
 }
-
-message HostSetMember {
-  // @inject_tag: `gorm:"primary_key"`
-  string host_id = 1;
-
-  // @inject_tag: `gorm:"primary_key"`
-  string set_id = 2;
-
-  // @inject_tag: `gorm:"default:null"`
-  string catalog_id = 3;
-}

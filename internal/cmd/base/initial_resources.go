@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -384,6 +385,10 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating static repository: %w", err)
 	}
+	hostRepo, err := host.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error creating host repository: %w", err)
+	}
 
 	// Host Catalog
 	if b.DevHostCatalogId == "" {
@@ -456,7 +461,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	b.Info["generated host set id"] = b.DevHostSetId
 
 	// Associate members
-	if _, err := staticRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
+	if err := hostRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
 		return nil, nil, nil, fmt.Errorf("error associating host set to host in the db: %w", err)
 	}
 

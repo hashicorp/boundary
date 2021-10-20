@@ -3,6 +3,7 @@ package static_test
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 )
 
@@ -33,7 +34,7 @@ func ExampleNewHostSet() {
 func ExampleNewHostSetMember() {
 	setPublicId := "hsst_11111"
 	hostPublicId := "hst_22222"
-	member, _ := static.NewHostSetMember(setPublicId, hostPublicId)
+	member, _ := host.NewSetMember(setPublicId, hostPublicId)
 	fmt.Println(member.SetId)
 	fmt.Println(member.HostId)
 }

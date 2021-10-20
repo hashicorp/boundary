@@ -32,6 +32,21 @@ message Set {
   // The catalog_id of the owning catalog and must be set.
   // @inject_tag: `gorm:"not_null"`
   string catalog_id = 2;
+
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 3;
+}
+
+message SetMember {
+  // @inject_tag: `gorm:"primary_key"`
+  string host_id = 1;
+
+  // @inject_tag: `gorm:"primary_key"`
+  string set_id = 2;
+
+  // @inject_tag: `gorm:"default:null"`
+  string catalog_id = 3;
 }
 
 message PreferredEndpoint {

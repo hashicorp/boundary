@@ -79,7 +79,12 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+
+	for _, h := range []*static.Host{h} {
+		w := db.New(conn)
+		_, err := w.Query(context.Background(), "insert into static_host_set_member(set_id, host_id, catalog_id) values (?, ?, ?)", []interface{}{hs.GetPublicId(), h.GetPublicId(), hc.GetPublicId()})
+		assert.NoError(err)
+	}
 
 	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	var sessions []*session.Session

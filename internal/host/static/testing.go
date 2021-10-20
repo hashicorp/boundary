@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -87,13 +88,13 @@ func TestSets(t *testing.T, conn *db.DB, catalogId string, count int) []*HostSet
 // TestSetMembers adds hosts to the specified setId in the provided DB.
 // The set and hosts must have been created previously and belong to the
 // same catalog. The test will fail if any errors are encountered.
-func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
+func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*host.SetMember {
 	t.Helper()
 	assert := assert.New(t)
 
-	var members []*HostSetMember
-	for _, host := range hosts {
-		member, err := NewHostSetMember(setId, host.PublicId)
+	var members []*host.SetMember
+	for _, h := range hosts {
+		member, err := host.NewSetMember(setId, h.PublicId)
 		assert.NoError(err)
 		assert.NotNil(member)
 

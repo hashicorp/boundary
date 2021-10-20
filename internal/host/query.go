@@ -1,4 +1,4 @@
-package static
+package host
 
 const (
 	setChangesQuery = `
@@ -6,13 +6,13 @@ with
 final_hosts (host_id) as (
   -- returns the SET list
   select public_id
-    from static_host
+    from host
    where public_id in (%s)
 ),
 current_hosts (host_id) as (
   -- returns the current list
   select host_id
-    from static_host_set_member
+    from host_set_member
    where set_id = @1 -- this trailing space is needed by gorm
 ),
 keep_hosts (host_id) as (

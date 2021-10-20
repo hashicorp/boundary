@@ -165,8 +165,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			if rowsUpdated > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
-			if err != nil {
+			if err := host.GetHosts(ctx, reader, &hosts, s.PublicId, limit); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil
@@ -234,11 +233,7 @@ func (r *Repository) lookupSet(ctx context.Context, publicId string, opt ...Opti
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	var hosts []*Host
-	var err error
-	if hosts, err = getHosts(ctx, r.reader, s.PublicId, limit); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	if err != nil {
+	if err := host.GetHosts(ctx, r.reader, &hosts, s.PublicId, limit); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
 	}
 	return s, hosts, nil

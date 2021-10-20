@@ -747,7 +747,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			name:      "with-existing-host-set-id-empty-hosts",
 			in:        emptyHostSet.PublicId,
 			want:      emptyHostSet,
-			wantHosts: nil,
+			wantHosts: make([]*Host, 0),
 		},
 	}
 

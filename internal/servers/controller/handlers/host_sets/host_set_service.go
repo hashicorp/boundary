@@ -576,7 +576,11 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, nil, err
 	}
-	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	hostRepo, err := repo.GetHostRepo()
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
+	}
+	err = hostRepo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to add hosts to host set"))
 	}
@@ -600,7 +604,11 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	hostRepo, err := repo.GetHostRepo()
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
+	}
+	_, err = hostRepo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to set hosts in host set"))
 	}
@@ -625,7 +633,11 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	hostRepo, err := repo.GetHostRepo()
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("could not derive host repo from static host repo"))
+	}
+	_, err = hostRepo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to remove hosts from host set"))
 	}

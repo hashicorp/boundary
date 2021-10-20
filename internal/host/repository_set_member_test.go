@@ -1,4 +1,4 @@
-package static
+package host_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -25,9 +27,9 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	set := TestSets(t, conn, c.PublicId, 1)[0]
-	hosts := TestHosts(t, conn, c.PublicId, 5)
+	c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := static.TestSets(t, conn, c.PublicId, 1)[0]
+	hosts := static.TestHosts(t, conn, c.PublicId, 5)
 	var hostIds []string
 	for _, h := range hosts {
 		hostIds = append(hostIds, h.PublicId)
@@ -40,13 +42,13 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		setId   string
 		version uint32
 		hostIds []string
-		opt     []Option
+		opt     []host.Option
 	}
 
 	tests := []struct {
 		name      string
 		args      args
-		want      []*Host
+		want      []*static.Host
 		wantErr   bool
 		wantIsErr errors.Code
 	}{
@@ -112,29 +114,32 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := static.NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			hostRepo, err := repo.GetHostRepo()
+			require.NoError(err)
+			require.NotNil(hostRepo)
+			err = hostRepo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 				return
 			}
 			if tt.wantErr {
 				assert.Error(err)
-				assert.Nil(got)
 				assert.Error(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 				return
 			}
 			require.NoError(err)
+			_, hosts, err := repo.LookupSet(context.Background(), tt.args.setId)
+			require.NoError(err)
 			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+				cmpopts.SortSlices(func(x, y *static.Host) bool { return x.PublicId < y.PublicId }),
 				protocmp.Transform(),
 			}
-			assert.Len(got, len(tt.want))
-			assert.Empty(cmp.Diff(tt.want, got, opts...))
+			assert.Len(hosts, len(tt.want))
+			assert.Empty(cmp.Diff(tt.want, hosts, opts...))
 			assert.NoError(db.TestVerifyOplog(t, rw, tt.args.setId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
@@ -150,40 +155,44 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	assert, require := assert.New(t), require.New(t)
-	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	set := TestSets(t, conn, c.PublicId, 1)[0]
+	c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := static.TestSets(t, conn, c.PublicId, 1)[0]
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
-	hosts := TestHosts(t, conn, c.PublicId, 5)
+	hosts := static.TestHosts(t, conn, c.PublicId, 5)
 	var hostIds []string
 	for _, h := range hosts {
 		hostIds = append(hostIds, h.PublicId)
 	}
 
 	// first call - add first set of hosts - should succeed
-	got, err := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
+	hostRepo, err := repo.GetHostRepo()
 	require.NoError(err)
-	require.NotNil(got)
+	require.NotNil(hostRepo)
+	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds))
 
+	_, got, err := repo.LookupSet(context.Background(), set.PublicId)
+	require.NoError(err)
+	assert.Len(got, len(hosts))
 	opts := []cmp.Option{
-		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+		cmpopts.SortSlices(func(x, y *static.Host) bool { return x.PublicId < y.PublicId }),
 		protocmp.Transform(),
 	}
-	assert.Len(got, len(hosts))
 	assert.Empty(cmp.Diff(hosts, got, opts...))
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 	// second call - add new set of hosts - should succeed
 	set.Version = set.Version + 1
-	Hosts := TestHosts(t, conn, c.PublicId, 5)
+	Hosts := static.TestHosts(t, conn, c.PublicId, 5)
 	var hostIds2 []string
 	for _, h := range Hosts {
 		hostIds2 = append(hostIds2, h.PublicId)
 	}
-	got2, err2 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2)
+	require.NoError(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2))
+	_, got2, err2 := repo.LookupSet(context.Background(), set.PublicId)
 	require.NoError(err2)
 	require.NotNil(got2)
 
@@ -194,15 +203,17 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 
 	// third call - add new hosts plus a few existing hosts - should fail
 	set.Version = set.Version + 1
-	hosts3 := TestHosts(t, conn, c.PublicId, 5)
+	hosts3 := static.TestHosts(t, conn, c.PublicId, 5)
 	var hostIds3 []string
 	for _, h := range hosts3 {
 		hostIds3 = append(hostIds2, h.PublicId)
 	}
 	hostIds3 = append(hostIds3, hostIds2...)
-	got3, err3 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds3)
-	require.Error(err3)
-	require.Nil(got3)
+	require.Error(hostRepo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds3))
+	_, got3, err3 := repo.LookupSet(context.Background(), set.PublicId)
+	require.NoError(err3)
+	require.NotNil(got3)
+	assert.Len(got3, len(hosts))
 }
 
 func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
@@ -213,11 +224,11 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	set := TestSets(t, conn, c.PublicId, 1)[0]
+	c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := static.TestSets(t, conn, c.PublicId, 1)[0]
 	count := 5
-	hosts := TestHosts(t, conn, c.PublicId, count)
-	TestSetMembers(t, conn, set.PublicId, hosts)
+	hosts := static.TestHosts(t, conn, c.PublicId, count)
+	static.TestSetMembers(t, conn, set.PublicId, hosts)
 
 	var hostIds []string
 	for _, h := range hosts {
@@ -231,7 +242,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		setId   string
 		version uint32
 		hostIds []string
-		opt     []Option
+		opt     []host.Option
 	}
 
 	tests := []struct {
@@ -304,10 +315,13 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := static.NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			hostRepo, err := repo.GetHostRepo()
+			require.NoError(err)
+			require.NotNil(hostRepo)
+			got, err := hostRepo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -337,16 +351,16 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	assert, require := assert.New(t), require.New(t)
-	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	set := TestSets(t, conn, c.PublicId, 1)[0]
+	c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := static.TestSets(t, conn, c.PublicId, 1)[0]
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
 	count := 10
-	hosts := TestHosts(t, conn, c.PublicId, count)
-	TestSetMembers(t, conn, set.PublicId, hosts)
+	hosts := static.TestHosts(t, conn, c.PublicId, count)
+	static.TestSetMembers(t, conn, set.PublicId, hosts)
 
 	var hostIds []string
 	for _, h := range hosts {
@@ -357,17 +371,20 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	hostsB, idsB := hosts[split:], hostIds[split:]
 
 	// first call - delete first half of hosts - should succeed
-	got, err := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	hostRepo, err := repo.GetHostRepo()
+	require.NoError(err)
+	require.NotNil(hostRepo)
+	got, err := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
 	assert.NoError(err)
 	require.Equal(len(idsA), got)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify hostsB are still members
-	members, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
-	require.NoError(err)
+	var members []*static.Host
+	require.NoError(host.GetHosts(context.Background(), rw, &members, set.PublicId, host.UnlimitedHosts))
 
 	opts := []cmp.Option{
-		cmpopts.SortSlices(func(x, y *Host) bool { return x.PublicId < y.PublicId }),
+		cmpopts.SortSlices(func(x, y *static.Host) bool { return x.PublicId < y.PublicId }),
 		protocmp.Transform(),
 	}
 	assert.Len(members, len(hostsB))
@@ -375,27 +392,28 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 
 	// second call - delete first half of hosts again - should fail
 	set.Version = set.Version + 1
-	got2, err2 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	got2, err2 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
 	require.Error(err2)
 	assert.Zero(got2)
 
 	// third call - delete first half and second half - should fail
-	got3, err3 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
+	got3, err3 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
 	require.Error(err3)
 	assert.Zero(got3)
 
 	// fourth call - delete second half of hosts - should succeed
-	got4, err4 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsB)
+	got4, err4 := hostRepo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsB)
 	assert.NoError(err4)
 	require.Equal(len(idsB), got4)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify no members remain
-	Members, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
-	require.NoError(err)
-	require.Empty(Members)
+	var newMembers []*static.Host
+	require.NoError(host.GetHosts(context.Background(), rw, &newMembers, set.PublicId, host.UnlimitedHosts))
+	require.Empty(newMembers)
 }
 
+/*
 func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -404,17 +422,17 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-	set := TestSets(t, conn, c.PublicId, 1)[0]
+	c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	set := static.TestSets(t, conn, c.PublicId, 1)[0]
 
 	count := 5
-	hosts := TestHosts(t, conn, c.PublicId, count)
+	hosts := static.TestHosts(t, conn, c.PublicId, count)
 
 	// hostsA has the first 3 hosts, hostsB has the last 3 hosts
 	// the middle host is shared in both.
 	hostsA, hostsB := hosts[:3], hosts[2:]
 	// hostsA is the initial set of hosts in the host set
-	TestSetMembers(t, conn, set.PublicId, hostsA)
+	static.TestSetMembers(t, conn, set.PublicId, hostsA)
 
 	var hostIds []string
 	for _, h := range hostsB {
@@ -428,13 +446,13 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 		setId   string
 		version uint32
 		hostIds []string
-		opt     []Option
+		opt     []static.Option
 	}
 
 	tests := []struct {
 		name      string
 		args      args
-		want      []*Host
+		want      []*static.Host
 		wantCount int
 		wantErr   bool
 		wantIsErr errors.Code
@@ -602,10 +620,10 @@ func TestRepository_changes(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	t.Run("all-additions", func(t *testing.T) {
-		c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-		set := TestSets(t, conn, c.PublicId, 1)[0]
+		c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		set := static.TestSets(t, conn, c.PublicId, 1)[0]
 		count := 5
-		hosts := TestHosts(t, conn, c.PublicId, count)
+		hosts := static.TestHosts(t, conn, c.PublicId, count)
 
 		var hostIds []string
 		for _, h := range hosts {
@@ -622,7 +640,7 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := static.NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -652,7 +670,7 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := static.NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -666,13 +684,13 @@ func TestRepository_changes(t *testing.T) {
 		assert.Empty(cmp.Diff(want, got, opts...))
 	})
 	t.Run("additions-with-deletions", func(t *testing.T) {
-		c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
-		set := TestSets(t, conn, c.PublicId, 1)[0]
+		c := static.TestCatalogs(t, conn, prj.PublicId, 1)[0]
+		set := static.TestSets(t, conn, c.PublicId, 1)[0]
 
 		count := 5
-		hosts := TestHosts(t, conn, c.PublicId, count)
+		hosts := static.TestHosts(t, conn, c.PublicId, count)
 		initialHosts := hosts[:3]
-		TestSetMembers(t, conn, set.PublicId, initialHosts)
+		static.TestSetMembers(t, conn, set.PublicId, initialHosts)
 		targetHosts := hosts[2:]
 		deleteHosts := hosts[:2]
 		insertHosts := hosts[3:]
@@ -699,7 +717,7 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := static.NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -713,3 +731,5 @@ func TestRepository_changes(t *testing.T) {
 		assert.Empty(cmp.Diff(want, got, opts...))
 	})
 }
+
+*/
