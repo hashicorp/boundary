@@ -2,12 +2,18 @@ package plugin
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
+	"io"
+	"net"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,6 +71,65 @@ func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm
 	require.NoError(err)
 
 	return set
+}
+
+func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, count int) ([]*plgpb.ListHostsResponseHost, []*Host) {
+	t.Helper()
+	require := require.New(t)
+	retRH := make([]*plgpb.ListHostsResponseHost, 0, count)
+	retH := make([]*Host, 0, count)
+
+	for i := 0; i < count; i++ {
+		externalId, err := base62.Random(10)
+		require.NoError(err)
+
+		ipStr := testGetIpAddress(t)
+		dnsName := testGetDnsName(t)
+
+		retRH = append(retRH, &plgpb.ListHostsResponseHost{
+			ExternalId:  externalId,
+			SetIds:      setIds,
+			IpAddresses: []string{ipStr},
+			DnsNames:    []string{dnsName},
+		})
+
+		publicId, err := newHostId(context.Background(), catalog.PublicId, externalId)
+		require.NoError(err)
+
+		retH = append(retH, &Host{
+			PluginId: catalog.PluginId,
+			Host: &store.Host{
+				CatalogId:   catalog.PublicId,
+				PublicId:    publicId,
+				ExternalId:  externalId,
+				IpAddresses: []string{ipStr},
+				DnsNames:    []string{dnsName},
+			},
+		})
+	}
+
+	return retRH, retH
+}
+
+func testGetDnsName(t *testing.T) string {
+	dnsName, err := base62.Random(10)
+	require.NoError(t, err)
+	return fmt.Sprintf("%s.example.com", dnsName)
+}
+
+func testGetIpAddress(t *testing.T) string {
+	ipBytes := make([]byte, 4)
+	for {
+		lr := io.LimitReader(rand.Reader, 4)
+		n, err := lr.Read(ipBytes)
+		require.NoError(t, err)
+		require.Equal(t, n, 4)
+		ip := net.IP(ipBytes)
+		v4 := ip.To4()
+		if v4 != nil {
+			return v4.String()
+		}
+	}
 }
 
 var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)

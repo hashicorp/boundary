@@ -47,42 +47,6 @@ message HostCatalog {
   bytes attributes = 9;
 }
 
-message Host {
-  // public_id is a surrogate key suitable for use in a public API.
-  // @inject_tag: `gorm:"primary_key"`
-  string public_id = 1;
-
-  // The create_time is set by the database.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 2;
-
-  // The update_time is set by the database.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 3;
-
-  // name is optional. If set, it must be unique within
-  // catalog_id.
-  // @inject_tag: `gorm:"default:null"`
-  string name = 4;
-
-  // description is optional.
-  // @inject_tag: `gorm:"default:null"`
-  string description = 5;
-
-  // catalog_id is the public_id of the owning
-  // plugin_host_catalog and must be set.
-  // @inject_tag: `gorm:"not_null"`
-  string catalog_id = 6;
-
-  // version allows optimistic locking of the resource
-  // @inject_tag: `gorm:"default:null"`
-  uint32 version = 7;
-
-  // address is the IP Address or DNS name of the host.
-  // @inject_tag: `gorm:"default:null"`
-  string address = 8;
-}
-
 message HostSet {
   // public_id is a surrogate key suitable for use in a public API.
   // @inject_tag: `gorm:"primary_key"`
@@ -149,4 +113,62 @@ message HostCatalogSecret {
   // It must be set.
   // @inject_tag: `gorm:"not_null"`
   string key_id = 6;
+}
+
+// TODO: Add a field which tracks if the host in cache should be considered
+//       invalid and fall back to the plugin provided data.
+message Host {
+  // public_id is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 1;
+
+  // external_id is an id provided by the plugin.
+  // @inject_tag: `gorm:"not_null"`
+  string external_id = 2;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 3;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 4;
+
+  // name is optional. If set, it must be unique within
+  // catalog_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 5;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 6;
+
+  // catalog_id is the public_id of the owning
+  // plugin_host_catalog and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string catalog_id = 7;
+
+  // @inject_tag: `gorm:"-"`
+  uint32 version = 8;
+
+  // ip_addresses are the ip addresses associated with this host and will
+  // be persisted in the db through the HostAddress message.
+  // @inject_tag: `gorm:"-"`
+  repeated string ip_addresses = 9;
+
+  // dns_names are the dns names associated with this host and will
+  // be persisted in the db through the HostAddress message.
+  // @inject_tag: `gorm:"-"`
+  repeated string dns_names = 10;
+}
+
+message HostSetMember {
+  // @inject_tag: `gorm:"primary_key"`
+  string host_id = 1;
+
+  // @inject_tag: `gorm:"primary_key"`
+  string set_id = 2;
+
+  // @inject_tag: `gorm:"default:null"`
+  string catalog_id = 3;
 }

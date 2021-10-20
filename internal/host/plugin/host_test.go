@@ -21,9 +21,9 @@ func TestHost_Create(t *testing.T) {
 	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	type args struct {
-		catalogId string
-		address   string
-		opts      []Option
+		catalogId  string
+		externalId string
+		opts       []Option
 	}
 
 	tests := []struct {
@@ -35,16 +35,16 @@ func TestHost_Create(t *testing.T) {
 		{
 			name: "blank-catalogId",
 			args: args{
-				catalogId: "",
-				address:   "foo.bar.com",
+				catalogId:  "",
+				externalId: "external_id",
 			},
 			want: &Host{Host: &store.Host{
-				Address: "foo.bar.com",
+				ExternalId: "external_id",
 			}},
 			wantErr: true,
 		},
 		{
-			name: "blank-address",
+			name: "blank-external-id",
 			args: args{
 				catalogId: cat.GetPublicId(),
 			},
@@ -56,47 +56,47 @@ func TestHost_Create(t *testing.T) {
 		{
 			name: "valid-no-options",
 			args: args{
-				catalogId: cat.GetPublicId(),
-				address:   "foo.bar.com",
+				catalogId:  cat.GetPublicId(),
+				externalId: "valid-no-options",
 			},
 			want: &Host{
 				Host: &store.Host{
-					CatalogId: cat.GetPublicId(),
-					Address:   "foo.bar.com",
+					CatalogId:  cat.GetPublicId(),
+					ExternalId: "valid-no-options",
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				catalogId: cat.GetPublicId(),
-				address:   "foo.bar.com",
+				catalogId:  cat.GetPublicId(),
+				externalId: "valid-with-name",
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					CatalogId: cat.GetPublicId(),
-					Address:   "foo.bar.com",
-					Name:      "test-name",
+					CatalogId:  cat.GetPublicId(),
+					ExternalId: "valid-with-name",
+					Name:       "test-name",
 				},
 			},
 		},
 		{
 			name: "duplicate-name",
 			args: args{
-				catalogId: cat.GetPublicId(),
-				address:   "foo.bar.com",
+				catalogId:  cat.GetPublicId(),
+				externalId: "duplicate-name",
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					CatalogId: cat.GetPublicId(),
-					Address:   "foo.bar.com",
-					Name:      "test-name",
+					CatalogId:  cat.GetPublicId(),
+					ExternalId: "duplicate-name",
+					Name:       "test-name",
 				},
 			},
 			wantErr: true,
@@ -104,25 +104,25 @@ func TestHost_Create(t *testing.T) {
 		{
 			name: "valid-duplicate-name-different-catalog",
 			args: args{
-				catalogId: cat2.GetPublicId(),
-				address:   "foo.bar.com",
+				catalogId:  cat2.GetPublicId(),
+				externalId: "valid-duplicate-name-different-catalog",
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					CatalogId: cat2.GetPublicId(),
-					Address:   "foo.bar.com",
-					Name:      "test-name",
+					CatalogId:  cat2.GetPublicId(),
+					ExternalId: "valid-duplicate-name-different-catalog",
+					Name:       "test-name",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
 			args: args{
-				catalogId: cat.GetPublicId(),
-				address:   "foo.bar.com",
+				catalogId:  cat.GetPublicId(),
+				externalId: "valid-with-description",
 				opts: []Option{
 					WithDescription("test-description"),
 				},
@@ -130,7 +130,7 @@ func TestHost_Create(t *testing.T) {
 			want: &Host{
 				Host: &store.Host{
 					CatalogId:   cat.GetPublicId(),
-					Address:     "foo.bar.com",
+					ExternalId:  "valid-with-description",
 					Description: "test-description",
 				},
 			},
@@ -141,7 +141,7 @@ func TestHost_Create(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			got := newHost(ctx, tt.args.catalogId, tt.args.address, tt.args.opts...)
+			got := newHost(ctx, tt.args.catalogId, tt.args.externalId, tt.args.opts...)
 			require.NotNil(t, got)
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
@@ -162,6 +162,9 @@ func TestHost_Create(t *testing.T) {
 		})
 	}
 }
+
+// TODO: Test Deletion directly of host, of set membership, and of cascading
+//   from the set
 
 func TestHost_SetTableName(t *testing.T) {
 	defaultTableName := "host_plugin_host"
@@ -199,4 +202,16 @@ func TestHost_SetTableName(t *testing.T) {
 			assert.Equal(tt.want, s.TableName())
 		})
 	}
+}
+
+func testHost(t *testing.T, conn *db.DB, catId, externId string) *Host {
+	t.Helper()
+	w := db.New(conn)
+	ctx := context.Background()
+	host1 := newHost(ctx, catId, externId)
+	var err error
+	host1.PublicId, err = newHostId(ctx, catId, externId)
+	require.NoError(t, err)
+	require.NoError(t, w.Create(ctx, host1))
+	return host1
 }

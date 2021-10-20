@@ -14,16 +14,40 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withName = "test"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPluginId", func(t *testing.T) {
+		opts := getOpts(withPluginId("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withPluginId = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithDescription", func(t *testing.T) {
 		opts := getOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithLimit", func(t *testing.T) {
+		opts := getOpts(WithLimit(5))
+		testOpts := getDefaultOptions()
+		testOpts.withLimit = 5
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithPreferredEndpoints", func(t *testing.T) {
 		opts := getOpts(WithPreferredEndpoints([]string{"foo"}))
 		testOpts := getDefaultOptions()
 		testOpts.withPreferredEndpoints = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
+	t.Run("withDnsNames", func(t *testing.T) {
+		opts := getOpts(withDnsNames([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withDnsNames = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
+	t.Run("withIpAddresses", func(t *testing.T) {
+		opts := getOpts(withIpAddresses([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withIpAddresses = []string{"foo"}
 		assert.EqualValues(t, opts, testOpts)
 	})
 }
