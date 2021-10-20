@@ -71,7 +71,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		{
 			name: "no-external-id-hosts",
 			in: func() *input {
-				testPhs, _ := TestExternalHosts(t, catalog.GetPublicId(), setIds, setCount)
+				testPhs, _ := TestExternalHosts(t, catalog, setIds, setCount)
 				testPhs[1].ExternalId = ""
 				return &input{
 					catalog: catalog,
