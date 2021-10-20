@@ -164,7 +164,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     5,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithTargetType(target.TcpTargetType), target.WithScopeIds([]string{proj.PublicId})},
+				opt: []target.Option{target.WithType(tcp.Subtype), target.WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: 5,
 			wantErr: false,

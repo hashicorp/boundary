@@ -1474,7 +1474,7 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = target.TcpTargetType.String()
+		out.Type = in.GetType().String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -1626,11 +1626,9 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
 			}
 		}
-		switch req.GetItem().GetType() {
-		case target.TcpTargetType.String():
-		case "":
+		if req.GetItem().GetType() == "" {
 			badFields[globals.TypeField] = "This is a required field."
-		default:
+		} else if target.SubtypeFromType(req.GetItem().GetType()) == "" {
 			badFields[globals.TypeField] = "Unknown type provided."
 		}
 		if filter := req.GetItem().GetWorkerFilter(); filter != nil {

@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:            tar.CreateTime.GetTimestamp(),
 		UpdatedTime:            tar.UpdateTime.GetTimestamp(),
 		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-		Type:                   target.TcpTargetType.String(),
+		Type:                   tcp.Subtype.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		HostSourceIds:          []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		Attributes:             new(structpb.Struct),
@@ -212,7 +212,7 @@ func TestList(t *testing.T) {
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
-			Type:                   target.TcpTargetType.String(),
+			Type:                   tcp.Subtype.String(),
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
@@ -228,7 +228,7 @@ func TestList(t *testing.T) {
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
-			Type:                   target.TcpTargetType.String(),
+			Type:                   tcp.Subtype.String(),
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
@@ -421,7 +421,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:     proj.GetPublicId(),
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
-				Type:        target.TcpTargetType.String(),
+				Type:        tcp.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"default_port": structpb.NewNumberValue(2),
 				}},
@@ -434,7 +434,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        target.TcpTargetType.String(),
+					Type:        tcp.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
@@ -450,7 +450,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
-				Type:        target.TcpTargetType.String(),
+				Type:        tcp.Subtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"default_port": structpb.NewNumberValue(0),
 				}},
@@ -623,7 +623,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        target.TcpTargetType.String(),
+					Type:        tcp.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
@@ -658,7 +658,7 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        target.TcpTargetType.String(),
+					Type:        tcp.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
@@ -745,7 +745,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        target.TcpTargetType.String(),
+					Type:        tcp.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
@@ -778,7 +778,7 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("updated"),
 					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        target.TcpTargetType.String(),
+					Type:        tcp.Subtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
@@ -814,7 +814,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"default_port": structpb.NewNumberValue(2),
 					}},
-					Type:                   target.TcpTargetType.String(),
+					Type:                   tcp.Subtype.String(),
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					HostSourceIds:          hostSourceIds,
