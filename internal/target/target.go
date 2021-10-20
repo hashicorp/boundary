@@ -40,22 +40,6 @@ type Target interface {
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
-// TargetType defines the possible types for targets.
-type TargetType uint32
-
-const (
-	UnknownTargetType TargetType = 0
-	TcpTargetType     TargetType = 1
-)
-
-// String returns a string representation of the target type.
-func (t TargetType) String() string {
-	return [...]string{
-		"unknown",
-		"tcp",
-	}[t]
-}
-
 const (
 	targetsViewDefaultTable = "target_all_subtypes"
 )

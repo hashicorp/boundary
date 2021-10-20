@@ -1,6 +1,10 @@
 package target
 
-import "time"
+import (
+	"time"
+
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+)
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) options {
@@ -24,7 +28,7 @@ type options struct {
 	WithScopeIds               []string
 	WithScopeName              string
 	WithUserId                 string
-	WithTargetType             *TargetType
+	WithType                   subtypes.Subtype
 	WithHostSources            []string
 	WithCredentialSources      []string
 	WithSessionMaxSeconds      uint32
@@ -43,7 +47,7 @@ func getDefaultOptions() options {
 		WithScopeIds:               nil,
 		WithScopeName:              "",
 		WithUserId:                 "",
-		WithTargetType:             nil,
+		WithType:                   "",
 		WithHostSources:            nil,
 		WithCredentialSources:      nil,
 		WithSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
@@ -111,10 +115,10 @@ func WithUserId(userId string) Option {
 	}
 }
 
-// WithTargetType provides an option to search by a target type
-func WithTargetType(t TargetType) Option {
+// WithType provides an option to search by a target type
+func WithType(t subtypes.Subtype) Option {
 	return func(o *options) {
-		o.WithTargetType = &t
+		o.WithType = t
 	}
 }
 

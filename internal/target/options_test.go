@@ -3,6 +3,7 @@ package target
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,12 +83,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithPublicId = "testId"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithTargetType", func(t *testing.T) {
+	t.Run("WithType", func(t *testing.T) {
+		subtype := subtypes.Subtype("testtype")
 		assert := assert.New(t)
-		opts := GetOpts(WithTargetType(TcpTargetType))
+		opts := GetOpts(WithType(subtype))
 		testOpts := getDefaultOptions()
-		target := TcpTargetType
-		testOpts.WithTargetType = &target
+		target := subtype
+		testOpts.WithType = target
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithHostSources", func(t *testing.T) {

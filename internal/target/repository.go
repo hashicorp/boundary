@@ -138,7 +138,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	return subtype, hostSources, credSources, nil
 }
 
-// ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
+// ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithType options.
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
 	opts := GetOpts(opt...)
@@ -151,8 +151,8 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	if len(opts.WithScopeIds) != 0 {
 		where, args = append(where, "scope_id in (?)"), append(args, opts.WithScopeIds)
 	}
-	if opts.WithTargetType != nil {
-		where, args = append(where, "type = ?"), append(args, opts.WithTargetType.String())
+	if opts.WithType != "" {
+		where, args = append(where, "type = ?"), append(args, opts.WithType.String())
 	}
 
 	var foundTargets []*targetView
