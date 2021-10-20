@@ -301,7 +301,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			case strings.HasPrefix(field.Value, `"`): // explicitly quoted string
 				val = strings.Trim(field.Value, `"`)
 
-			case jsonNumberRegex.Match([]byte(strings.Trim(field.Value, `"`))): // number
+			case jsonNumberRegex.MatchString(strings.Trim(field.Value, `"`)): // number
 				// Same logic as above
 				if strings.Contains(field.Value, ".") {
 					val, err = strconv.ParseFloat(field.Value, 64)
