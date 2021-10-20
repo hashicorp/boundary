@@ -248,7 +248,7 @@ begin;
     name wt_dns_name,
     create_time wt_timestamp,
     primary key (host_id, priority),
-    constraint host_id_dns_name_condition_uq
+    constraint host_dns_name_host_id_name_uq
       unique(host_id, name)
   );
   comment on table host_dns_name is
