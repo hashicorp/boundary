@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 // UpsertHost inserts phs into the repository or updates its current
@@ -25,7 +26,7 @@ import (
 func (r *Repository) UpsertHosts(
 	ctx context.Context,
 	hc *HostCatalog,
-	sets []string,
+	setIds []string,
 	phs []*plgpb.ListHostsResponseHost,
 	_ ...Option) ([]*Host, error) {
 	const op = "plugin.(Repository).UpsertHosts"
@@ -46,81 +47,155 @@ func (r *Repository) UpsertHosts(
 	if hc.GetScopeId() == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
-	if sets == nil {
+	if setIds == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil sets")
 	}
-	if len(sets) == 0 { // At least one must have been given to the plugin
+	if len(setIds) == 0 { // At least one must have been given to the plugin
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty sets")
 	}
 
-	// hostInfo stores the info we need for the transaction below as well as
-	// which sets they matched
+	// hostInfo stores the info we need for figuring out host, set membership,
+	// and value object differences. It also stores dirty flags to indicate
+	// whether we need to update value objects or the host itself.
 	type hostInfo struct {
-		h        *Host
-		ips      []interface{}
-		dnsNames []interface{}
-		sets     map[string]struct{}
+		h                *Host
+		ipsToAdd         []interface{}
+		ipsToRemove      []interface{}
+		dnsNamesToAdd    []interface{}
+		dnsNamesToRemove []interface{}
+		dirtyHost        bool
 	}
-	hostMapping := make(map[string]hostInfo, len(phs))
-	var err error
-	var totalMsgs uint32
 
-	for _, ph := range phs {
-		totalMsgs += 2 // delete and create
-
-		h := newHost(ctx,
-			hc.GetPublicId(),
-			ph.GetExternalId(),
-			withIpAddresses(ph.GetIpAddresses()),
-			withDnsNames(ph.GetDnsNames()),
-			withPluginId(hc.GetPluginId()))
-		h.PublicId, err = newHostId(ctx, hc.GetPublicId(), ph.GetExternalId())
+	// First, fetch existing hosts for the set IDs passed in, and organize them
+	// into a lookup map by host ID for later usage
+	var currentHosts []*Host
+	var currentHostMap map[string]*Host
+	{
+		var err error
+		currentHosts, err = r.ListHostsBySetIds(ctx, setIds)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up current hosts for returned sets"))
 		}
 
-		var ipAddresses []interface{}
-		if len(h.GetIpAddresses()) > 0 {
-			sort.Strings(h.IpAddresses)
-			ipAddresses = make([]interface{}, 0, len(h.GetIpAddresses()))
-			for i, a := range h.GetIpAddresses() {
-				obj, err := host.NewIpAddress(ctx, h.PublicId, uint32(i+1), a)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+		currentHostMap = make(map[string]*Host, len(currentHosts))
+		for _, h := range currentHosts {
+			currentHostMap[h.PublicId] = h
+		}
+	}
+
+	// Now, parse the externally defined hosts into hostInfo values, which
+	// stores info useful for later comparisons
+	newHostMap := make(map[string]hostInfo, len(phs))
+	{
+		var err error
+		for _, ph := range phs {
+			var hi hostInfo
+
+			newHost := NewHost(ctx,
+				hc.GetPublicId(),
+				ph.GetExternalId(),
+				withIpAddresses(ph.GetIpAddresses()),
+				withDnsNames(ph.GetDnsNames()),
+				withPluginId(hc.GetPluginId()))
+			newHost.PublicId, err = newHostId(ctx, hc.GetPublicId(), ph.GetExternalId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			newHost.SetIds = ph.SetIds
+			hi.h = newHost
+			newHostMap[newHost.PublicId] = hi
+
+			// Check if the host is dirty; that is, we need to perform an upsert
+			// operation. If the host isn't dirty, we have nothing to do. Note
+			// that we don't check every value exhaustively; for instance, we
+			// assume catalog ID and external ID don't change because if they do
+			// the public ID will be different as well.
+			currHost := currentHostMap[newHost.PublicId]
+			switch {
+			case currHost == nil,
+				currHost.Name != newHost.Name,
+				currHost.Description != newHost.Description:
+				hi.dirtyHost = true
+			}
+
+			// Get the current set of host IPs/DNS names for comparison. These
+			// will be in sorted order since ordering is kept in the database
+			// and they will have been sorted before insertion.
+			var currHostIps []string
+			var currHostDnsNames []string
+			if currHost != nil {
+				currHostIps = currHost.IpAddresses
+				currHostDnsNames = currHost.DnsNames
+			}
+
+			// Sort these here before comparison. We always use a priority order
+			// based on the behavior of sort.Strings so that we can check for
+			// equivalency.
+			sort.Strings(newHost.IpAddresses)
+			sort.Strings(newHost.DnsNames)
+
+			// IPs
+			{
+				switch {
+				case strutil.EquivalentSlices(currHostIps, newHost.GetIpAddresses()):
+					// Nothing to do...don't remove or add anything
+
+				default:
+					// No match, so we need to remove the old ones and add the new
+
+					// First, build up removals
+					hi.ipsToRemove = make([]interface{}, 0, len(currHostIps))
+					for i, a := range currHostIps {
+						obj, err := host.NewIpAddress(ctx, newHost.PublicId, uint32(i+1), a)
+						if err != nil {
+							return nil, errors.Wrap(ctx, err, op)
+						}
+						hi.ipsToRemove = append(hi.ipsToRemove, obj)
+					}
+
+					// Now build up additions
+					hi.ipsToAdd = make([]interface{}, 0, len(newHost.GetIpAddresses()))
+					for i, a := range newHost.GetIpAddresses() {
+						obj, err := host.NewIpAddress(ctx, newHost.PublicId, uint32(i+1), a)
+						if err != nil {
+							return nil, errors.Wrap(ctx, err, op)
+						}
+						hi.ipsToAdd = append(hi.ipsToAdd, obj)
+					}
 				}
-				ipAddresses = append(ipAddresses, obj)
 			}
-		}
 
-		var dnsNames []interface{}
-		if len(h.GetDnsNames()) > 0 {
-			sort.Strings(h.DnsNames)
-			dnsNames = make([]interface{}, 0, len(h.GetDnsNames()))
-			for i, n := range h.GetDnsNames() {
-				obj, err := host.NewDnsName(ctx, h.PublicId, uint32(i+1), n)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+			// DNS names
+			{
+				switch {
+				case strutil.EquivalentSlices(currHostDnsNames, newHost.GetDnsNames()):
+					// Nothing to do...don't remove or add anything
+
+				default:
+					// No match, so we need to remove the old ones and add the new
+
+					// First, build up removals
+					hi.dnsNamesToRemove = make([]interface{}, 0, len(currHostDnsNames))
+					for i, a := range currHostDnsNames {
+						obj, err := host.NewDnsName(ctx, newHost.PublicId, uint32(i+1), a)
+						if err != nil {
+							return nil, errors.Wrap(ctx, err, op)
+						}
+						hi.dnsNamesToRemove = append(hi.dnsNamesToRemove, obj)
+					}
+
+					// Now build up additions
+					hi.dnsNamesToAdd = make([]interface{}, 0, len(newHost.GetIpAddresses()))
+					for i, a := range newHost.GetDnsNames() {
+						obj, err := host.NewDnsName(ctx, newHost.PublicId, uint32(i+1), a)
+						if err != nil {
+							return nil, errors.Wrap(ctx, err, op)
+						}
+						hi.dnsNamesToAdd = append(hi.dnsNamesToAdd, obj)
+					}
 				}
-				dnsNames = append(dnsNames, obj)
 			}
 		}
-
-		hi := hostInfo{
-			h:        h,
-			ips:      ipAddresses,
-			dnsNames: dnsNames,
-		}
-
-		for _, id := range ph.GetSetIds() {
-			if hi.sets == nil {
-				hi.sets = make(map[string]struct{})
-			}
-			hi.sets[id] = struct{}{}
-		}
-
-		hostMapping[h.PublicId] = hi
-
-		totalMsgs += uint32(len(ipAddresses) + len(dnsNames))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, hc.GetScopeId(), kms.KeyPurposeOplog)
@@ -129,99 +204,213 @@ func (r *Repository) UpsertHosts(
 	}
 
 	var returnedHosts []*Host
+	// Iterate over hosts and add or update them
+	for _, hi := range newHostMap {
+		if !hi.dirtyHost &&
+			len(hi.ipsToAdd) == 0 &&
+			len(hi.ipsToRemove) == 0 &&
+			len(hi.dnsNamesToAdd) == 0 &&
+			len(hi.dnsNamesToRemove) == 0 {
+			continue
+		}
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(r db.Reader, w db.Writer) error {
+				msgs := make([]*oplog.Message, 0)
+				ticket, err := w.GetTicket(hi.h)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+				}
 
-	// Here's what this function does: first it deletes a host, which causes
-	// cascading deletes on ip addresses and dns names (but all within the DB).
-	// Then the host is recreated, which uses the same public ID (since it's
-	// based on the host catalog/external ID), along with new/updated
-	// information.
-	//
-	// If we ever do start allowing hosts directly in targets this may cause a
-	// problem because the host deletion would probably cascade to the target
-	// and remove it from the target host sources, but at this point there are
-	// several issues with that scenario so it's not soon...
-	//
-	// The main reason I'm doing it this way is because I'm not sure how to do
-	// oplogs with custom queries. Otherwise a custom insert/on conflict query
-	// could replace the initial deletion. @jimlambrt @mgaffney help? :-D
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(r db.Reader, w db.Writer) error {
-			// FIXME: We need to ensure hosts no longer found have their
-			// memberships removed. To do this, first list all set memberships.
-			// This is waiting on membership to be plumbed through to gorm,
-			// which in turn is waiting on figuring out whether or not we can
-			// share that between static and plugin.
-			//
-			// Next, for each set, check whether a given host ID is in the
-			// hostMapping and if so, if the set ID is in the host's sets. If
-			// not, queue that membership entry for deletion.
-			msgs := make([]*oplog.Message, 0, totalMsgs+3)
-			ticket, err := w.GetTicket(hc)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
-			}
-
-			for _, hi := range hostMapping {
 				ret := hi.h.clone()
 
-				var hOplogMsg oplog.Message
-				// We don't need to check whether something was deleted because
-				// it's okay if it fails
-				if _, err := w.Delete(ctx, ret, db.NewOplogMsg(&hOplogMsg)); err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				msgs = append(msgs, &hOplogMsg)
-
-				hOplogMsg = oplog.Message{}
-				if err := w.Create(ctx, ret, db.NewOplogMsg(&hOplogMsg)); err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				msgs = append(msgs, &hOplogMsg)
-
-				if len(hi.ips) > 0 {
-					ipOplogMsgs := make([]*oplog.Message, 0, len(hi.ips))
-					if err := w.CreateItems(ctx, hi.ips, db.NewOplogMsgs(&ipOplogMsgs)); err != nil {
-						return err
+				if hi.dirtyHost {
+					var hOplogMsg oplog.Message
+					if err := w.Upsert(ctx, ret, db.NewOplogMsg(&hOplogMsg)); err != nil {
+						return errors.Wrap(ctx, err, op)
 					}
-					msgs = append(msgs, ipOplogMsgs...)
+					msgs = append(msgs, &hOplogMsg)
 				}
 
-				if len(hi.dnsNames) > 0 {
-					dnsOplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNames))
-					if err := w.CreateItems(ctx, hi.dnsNames, db.NewOplogMsgs(&dnsOplogMsgs)); err != nil {
-						return err
+				// IP handling
+				{
+					if len(hi.ipsToRemove) > 0 {
+						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToRemove))
+						count, err := w.DeleteItems(ctx, hi.ipsToRemove, db.NewOplogMsgs(&oplogMsgs))
+						if err != nil {
+							return err
+						}
+						if count != len(hi.ipsToRemove) {
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d ips from host %s, removed %d", len(hi.ipsToRemove), hi.h.PublicId, count))
+						}
+						msgs = append(msgs, oplogMsgs...)
 					}
-					msgs = append(msgs, dnsOplogMsgs...)
+					if len(hi.ipsToAdd) > 0 {
+						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToAdd))
+						if err := w.CreateItems(ctx, hi.ipsToAdd, db.NewOplogMsgs(&oplogMsgs)); err != nil {
+							return err
+						}
+						msgs = append(msgs, oplogMsgs...)
+					}
 				}
 
-				// FIXME: Add set memberships here
+				// DNS handling
+				{
+					if len(hi.dnsNamesToRemove) > 0 {
+						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToRemove))
+						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove, db.NewOplogMsgs(&oplogMsgs))
+						if err != nil {
+							return err
+						}
+						if count != len(hi.dnsNamesToRemove) {
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d dns names from host %s, removed %d", len(hi.dnsNamesToRemove), hi.h.PublicId, count))
+						}
+						msgs = append(msgs, oplogMsgs...)
+					}
+					if len(hi.dnsNamesToAdd) > 0 {
+						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToAdd))
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd, db.NewOplogMsgs(&oplogMsgs)); err != nil {
+							return err
+						}
+						msgs = append(msgs, oplogMsgs...)
+					}
+				}
+
+				metadata := hc.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
 
 				returnedHosts = append(returnedHosts, ret)
-			}
-
-			metadata := hc.oplog(oplog.OpType_OP_TYPE_CREATE)
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
-			}
-
-			return nil
-		},
-	)
-
-	if err != nil {
-		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
-			return nil, errors.New(ctx,
-				errors.InvalidAddress,
-				op,
-				fmt.Sprintf("in catalog: %s", hc.GetPublicId()),
-				errors.WithWrap(err),
-			)
+				return nil
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", hc.PublicId)))
 	}
+
+	// Now, check set membership changes
+	setMembershipsToAdd := make(map[string][]string)    // Map of set id to host ids
+	setMembershipsToRemove := make(map[string][]string) // Map of set id to host ids
+	totalSetIds := make(map[string]struct{})            // Stores the total set IDs we'll need to iterate over
+	{
+		// First, find sets that hosts should be added to: hosts that are new or
+		// have new set IDs returned.
+		for newHostId, newHost := range newHostMap {
+			var setsToAdd []string
+			currentHost, ok := currentHostMap[newHostId]
+			if !ok {
+				// If the host was not known about before now, any sets the host
+				// matches will need to be added
+				setsToAdd = newHost.h.SetIds
+			} else {
+				// Otherwise, add to any it doesn't currently match
+				for _, setId := range newHost.h.SetIds {
+					if !strutil.StrListContains(currentHost.SetIds, setId) {
+						setsToAdd = append(setsToAdd, setId)
+					}
+				}
+			}
+			// Add to the total set
+			for _, setToAdd := range setsToAdd {
+				setMembershipsToAdd[setToAdd] = append(setMembershipsToAdd[setToAdd], newHostId)
+				totalSetIds[setToAdd] = struct{}{}
+			}
+		}
+
+		// Now, do the inverse: remove hosts from sets that appear there now but no
+		// longer have that set ID in their current list.
+		for currentHostId, currentHost := range currentHostMap {
+			var setsToRemove []string
+			newHost, ok := newHostMap[currentHostId]
+			if !ok {
+				// If the host doesn't even appear now, we obviously want to remove
+				// it from all existing set memberships
+				setsToRemove = currentHost.SetIds
+			} else {
+				// Otherwise, remove it from any it doesn't currently have
+				for _, setId := range currentHost.SetIds {
+					if !strutil.StrListContains(newHost.h.SetIds, setId) {
+						setsToRemove = append(setsToRemove, setId)
+					}
+				}
+			}
+			// Add to the total set
+			for _, setToRemove := range setsToRemove {
+				setMembershipsToRemove[setToRemove] = append(setMembershipsToRemove[setToRemove], currentHostId)
+				totalSetIds[setToRemove] = struct{}{}
+			}
+		}
+	}
+
+	// Iterate through the sets and update memberships, one transaction per set
+	for setId := range totalSetIds {
+		hs, err := NewHostSet(ctx, hc.PublicId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		hs.PublicId = setId
+
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(r db.Reader, w db.Writer) error {
+				msgs := make([]*oplog.Message, 0)
+
+				ticket, err := w.GetTicket(hs)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+				}
+
+				// Perform additions
+				for _, hostId := range setMembershipsToAdd[hs.PublicId] {
+					membership, err := NewHostSetMember(hs.PublicId, hostId)
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+
+					var hOplogMsg oplog.Message
+					if err := w.Create(ctx, membership, db.NewOplogMsg(&hOplogMsg)); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					msgs = append(msgs, &hOplogMsg)
+				}
+
+				// Perform removals
+				for _, hostId := range setMembershipsToRemove[hs.PublicId] {
+					membership, err := NewHostSetMember(hs.PublicId, hostId)
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+
+					var hOplogMsg oplog.Message
+					rows, err := w.Delete(ctx, membership, db.NewOplogMsg(&hOplogMsg))
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					if rows != 1 {
+						return errors.New(ctx, errors.RecordNotFound, op, "record not found when deleting set membership")
+					}
+					msgs = append(msgs, &hOplogMsg)
+				}
+
+				metadata := hc.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
+
+				return nil
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	return returnedHosts, nil
 }
 
@@ -248,10 +437,10 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 	return h, nil
 }
 
-// ListHosts returns a slice of Hosts for the catalogId.
+// ListHostsByCatalogId returns a slice of Hosts for the catalogId.
 // WithLimit is the only option supported.
-func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
-	const op = "plugin.(Repository).ListHosts"
+func (r *Repository) ListHostsByCatalogId(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
+	const op = "plugin.(Repository).ListHostsByCatalogId"
 	if catalogId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
@@ -281,4 +470,91 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 	}
 
 	return hosts, nil
+}
+
+// ListHostsBySetId returns a slice of Hosts for the given set IDs.
+// WithLimit is the only option supported.
+func (r *Repository) ListHostsBySetIds(ctx context.Context, setIds []string, opt ...Option) ([]*Host, error) {
+	const op = "plugin.(Repository).ListHostsBySetIds"
+	if len(setIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set ids")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	query := `
+public_id in
+	(select distinct host_id
+		from host_plugin_set_member
+		where set_id in (?))
+`
+
+	var hostAggs []*hostAgg
+	err := r.reader.SearchWhere(ctx, &hostAggs, query, []interface{}{setIds}, db.WithLimit(limit))
+
+	switch {
+	case err != nil:
+		return nil, errors.Wrap(ctx, err, op)
+	case hostAggs == nil:
+		return nil, nil
+	}
+
+	hosts := make([]*Host, 0, len(hostAggs))
+	for _, ha := range hostAggs {
+		host, err := ha.toHost(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		hosts = append(hosts, host)
+	}
+
+	return hosts, nil
+}
+
+// DeleteOphanedHosts deletes any hosts that no longer belong to any set.
+// WithLimit is the only option supported. No options are currently supported.
+func (r *Repository) DeleteOrphanedHosts(ctx context.Context, _ ...Option) error {
+	const op = "plugin.(Repository).DeleteOrphanedHosts"
+
+	query := `
+public_id in
+	(select public_id
+		from host_plugin_host
+		where public_id not in
+			(select host_id from host_plugin_set_member))
+`
+
+	var hostAggs []*hostAgg
+	err := r.reader.SearchWhere(ctx, &hostAggs, query, nil)
+
+	switch {
+	case err != nil:
+		return errors.Wrap(ctx, err, op)
+	case len(hostAggs) == 0:
+		return nil
+	}
+
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			for _, ha := range hostAggs {
+				h := NewHost(ctx, ha.CatalogId, ha.ExternalId)
+				h.PublicId = ha.PublicId
+				if _, err := w.Delete(ctx, h); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	return nil
 }

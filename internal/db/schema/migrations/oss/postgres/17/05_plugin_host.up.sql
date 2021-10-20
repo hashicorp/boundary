@@ -315,40 +315,19 @@ begin;
   create trigger insert_host_plugin_set_member before insert on host_plugin_set_member
     for each row execute procedure insert_host_plugin_set_member();
 
-  -- delete_orphaned_host_plugin_host is an after delete trigger
-  -- function to delete plugin hosts when no more set members
-  -- reference it.
-  create function delete_orphaned_host_plugin_host()
-    returns trigger
-  as $$
-  begin
-    delete from host_plugin_host
-    where not exists (select host_id
-                      from host_plugin_set_member
-                      where host_id = old.host_id)
-      and
-    public_id = old.host_id;
-    return null;
-  end;
-  $$ language plpgsql;
-  comment on function delete_orphaned_host_plugin_host is
-    'delete_orphaned_host_plugin_host deletes a host when all set members with that host are deleted.';
-
-  create trigger delete_orphaned_host_plugin_host after delete on host_plugin_set_member
-    for each row execute procedure delete_orphaned_host_plugin_host();
-
   insert into oplog_ticket (name, version)
   values
     ('host_plugin_catalog', 1),
     ('host_plugin_catalog_secret', 1),
-    ('host_plugin_set', 1);
+    ('host_plugin_set', 1),
+    ('host_plugin_host', 1);
 
 
-  -- host_plugin_host_with_value_obj is useful for reading a plugin host with
-  -- its associated value objects (ip addresses, dns names, set membership) as
-  -- columns with delimited values. The delimiter depends on the value objects
-  -- (e.g. if they need ordering).
-  create view host_plugin_host_with_value_obj as
+  -- host_plugin_host_with_value_obj_and_set_memberships is useful for reading a
+  -- plugin host with its associated value objects (ip addresses, dns names) and
+  -- set membership as columns with delimited values. The delimiter depends on
+  -- the value objects (e.g. if they need ordering).
+  create view host_plugin_host_with_value_obj_and_set_memberships as
   select
     h.public_id,
     h.catalog_id,
@@ -360,15 +339,16 @@ begin;
     h.update_time,
     -- the string_agg(..) column will be null if there are no associated value objects
     string_agg(distinct concat_ws('=', hip.priority, hip.address), '|') as ip_addresses,
-    string_agg(distinct concat_ws('=', hdns.priority, hdns.name), '|') as dns_names
+    string_agg(distinct concat_ws('=', hdns.priority, hdns.name), '|') as dns_names,
+    string_agg(distinct hpsm.set_id, '|') as set_ids
   from
     host_plugin_host h
-    join host_plugin_catalog hc           on h.catalog_id = hc.public_id
-    left outer join host_ip_address hip   on h.public_id = hip.host_id
-    left outer join host_dns_name hdns    on h.public_id = hdns.host_id
-    -- FIXME: add set membership once that's shaken out
+    join host_plugin_catalog hc                  on h.catalog_id = hc.public_id
+    left outer join host_ip_address hip          on h.public_id = hip.host_id
+    left outer join host_dns_name hdns           on h.public_id = hdns.host_id
+    left outer join host_plugin_set_member hpsm  on h.public_id = hpsm.host_id
   group by h.public_id, hc.plugin_id;
-  comment on view host_plugin_host_with_value_obj is
+  comment on view host_plugin_host_with_value_obj_and_set_memberships is
   'host plugin host with its associated value objects';
 
 commit;

@@ -43,6 +43,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		set := TestSet(t, conn, kms, catalog, plgm)
 		setIds = append(setIds, set.GetPublicId())
 	}
+	sort.Strings(setIds)
 	phs, exp := TestExternalHosts(t, catalog, setIds, setCount)
 
 	type input struct {
@@ -58,86 +59,88 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		opts      []Option
 		wantIsErr errors.Code
 	}{
-		{
-			name: "nil-hosts",
-			in: func() *input {
-				return &input{
-					catalog: catalog,
-					sets:    setIds,
-				}
+		/*
+			{
+				name: "nil-hosts",
+				in: func() *input {
+					return &input{
+						catalog: catalog,
+						sets:    setIds,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "no-external-id-hosts",
-			in: func() *input {
-				testPhs, _ := TestExternalHosts(t, catalog, setIds, setCount)
-				testPhs[1].ExternalId = ""
-				return &input{
-					catalog: catalog,
-					sets:    setIds,
-					phs:     testPhs,
-				}
+			{
+				name: "no-external-id-hosts",
+				in: func() *input {
+					testPhs, _ := TestExternalHosts(t, catalog, setIds, setCount)
+					testPhs[1].ExternalId = ""
+					return &input{
+						catalog: catalog,
+						sets:    setIds,
+						phs:     testPhs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "nil-catalog",
-			in: func() *input {
-				return &input{
-					sets: setIds,
-					phs:  phs,
-				}
+			{
+				name: "nil-catalog",
+				in: func() *input {
+					return &input{
+						sets: setIds,
+						phs:  phs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "no-catalog-id",
-			in: func() *input {
-				cat := catalog.clone()
-				cat.PublicId = ""
-				return &input{
-					catalog: cat,
-					sets:    setIds,
-					phs:     phs,
-				}
+			{
+				name: "no-catalog-id",
+				in: func() *input {
+					cat := catalog.clone()
+					cat.PublicId = ""
+					return &input{
+						catalog: cat,
+						sets:    setIds,
+						phs:     phs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "no-scope-id",
-			in: func() *input {
-				cat := catalog.clone()
-				cat.ScopeId = ""
-				return &input{
-					catalog: cat,
-					sets:    setIds,
-					phs:     phs,
-				}
+			{
+				name: "no-scope-id",
+				in: func() *input {
+					cat := catalog.clone()
+					cat.ScopeId = ""
+					return &input{
+						catalog: cat,
+						sets:    setIds,
+						phs:     phs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "nil-sets",
-			in: func() *input {
-				return &input{
-					catalog: catalog,
-					phs:     phs,
-				}
+			{
+				name: "nil-sets",
+				in: func() *input {
+					return &input{
+						catalog: catalog,
+						phs:     phs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "no-sets",
-			in: func() *input {
-				return &input{
-					catalog: catalog,
-					sets:    make([]string, 0),
-					phs:     phs,
-				}
+			{
+				name: "no-sets",
+				in: func() *input {
+					return &input{
+						catalog: catalog,
+						sets:    make([]string, 0),
+						phs:     phs,
+					}
+				},
+				wantIsErr: errors.InvalidParameter,
 			},
-			wantIsErr: errors.InvalidParameter,
-		},
+		*/
 		{
 			name: "valid",
 			in: func() *input {
@@ -210,7 +213,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 			)
 
 			// Check again, but via performing an explicit list
-			got, err = repo.ListHosts(ctx, in.catalog.GetPublicId())
+			got, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Len(got, len(in.phs))
@@ -226,11 +229,17 @@ func TestRepository_UpsertHosts(t *testing.T) {
 				),
 			)
 
-			// Now individually call read on each host
+			// Now individually call read on each host, cache the matching set
+			// IDs, and then check membership
+			setIdMap := make(map[string][]string)
 			for _, exp := range in.exp {
+				for _, setId := range exp.SetIds {
+					setIdMap[setId] = append(setIdMap[setId], exp.GetPublicId())
+				}
 				got, err := repo.LookupHost(ctx, exp.GetPublicId())
 				require.NoError(err)
 				require.NotNil(got)
+				assert.NotEmpty(got.SetIds)
 				assert.Empty(
 					cmp.Diff(
 						exp,
@@ -239,6 +248,16 @@ func TestRepository_UpsertHosts(t *testing.T) {
 						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					),
 				)
+			}
+			for setId, expHostIds := range setIdMap {
+				got, err = repo.ListHostsBySetIds(ctx, []string{setId})
+				require.NoError(err)
+				require.NotNil(got)
+				var gotHostIds []string
+				for _, h := range got {
+					gotHostIds = append(gotHostIds, h.GetPublicId())
+				}
+				assert.ElementsMatch(expHostIds, gotHostIds)
 			}
 		})
 	}

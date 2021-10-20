@@ -19,14 +19,15 @@ import (
 // field for this host's host catalog.
 type Host struct {
 	*store.Host
-	PluginId  string `gorm:"-"`
-	tableName string `gorm:"-"`
+	PluginId  string   `gorm:"-"`
+	SetIds    []string `gorm:"-"`
+	tableName string   `gorm:"-"`
 }
 
 // newHost creates a new in memory Host assigned to catalogId with an address.
 // Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames,
 // WithPluginId. Others ignored.
-func newHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
+func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
 	opts := getOpts(opt...)
 
 	h := &Host{
@@ -77,10 +78,19 @@ func allocHost() *Host {
 
 func (h *Host) clone() *Host {
 	cp := proto.Clone(h.Host)
-	return &Host{
+	nh := &Host{
 		PluginId: h.PluginId,
 		Host:     cp.(*store.Host),
 	}
+	switch {
+	case h.SetIds == nil:
+	case len(h.SetIds) == 0:
+		nh.SetIds = make([]string, 0)
+	default:
+		nh.SetIds = make([]string, len(h.SetIds))
+		copy(nh.SetIds, h.SetIds)
+	}
+	return h
 }
 
 // hostAgg is a view that aggregates the host's value objects in to
@@ -96,6 +106,7 @@ type hostAgg struct {
 	UpdateTime  *timestamp.Timestamp
 	IpAddresses string
 	DnsNames    string
+	SetIds      string
 }
 
 func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
@@ -172,12 +183,17 @@ func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
 		}
 	}
 
+	if agg.SetIds != "" {
+		h.SetIds = strings.Split(agg.SetIds, aggregateDelimiter)
+		sort.Strings(h.SetIds)
+	}
+
 	return h, nil
 }
 
 // TableName returns the table name for gorm
 func (agg *hostAgg) TableName() string {
-	return "host_plugin_host_with_value_obj"
+	return "host_plugin_host_with_value_obj_and_set_memberships"
 }
 
 func (agg *hostAgg) GetPublicId() string {

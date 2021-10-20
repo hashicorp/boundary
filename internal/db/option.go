@@ -47,6 +47,10 @@ type Options struct {
 
 	withGormFormatter      hclog.Logger
 	withMaxOpenConnections int
+
+	// withDebug indicates that the given operation should invoke Gorm's debug
+	// mode
+	withDebug bool
 }
 
 type oplogOpts struct {
@@ -183,5 +187,12 @@ func WithGormFormatter(l hclog.Logger) Option {
 func WithMaxOpenConnections(max int) Option {
 	return func(o *Options) {
 		o.withMaxOpenConnections = max
+	}
+}
+
+// WithDebug specifies the given operation should invoke debug mode in Gorm
+func WithDebug(with bool) Option {
+	return func(o *Options) {
+		o.withDebug = with
 	}
 }

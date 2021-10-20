@@ -87,6 +87,10 @@ const (
 	// reasons related to the state of the DDL and/or inputs (such as we're
 	// already in the right state and don't want to end up writing oplogs).
 	GracefullyAborted Code = 1106
+	// UnexpectedRowsAffected indicates that an action expected to operate on a
+	// specific number of records returned a different count, e.g. if you
+	// expected to delete three items and only one was deleted.
+	UnexpectedRowsAffected Code = 1107
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code

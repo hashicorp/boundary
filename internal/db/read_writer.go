@@ -601,6 +601,9 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if opts.withWhereClause != "" {
 		db = db.Where(opts.withWhereClause, opts.withWhereClauseArgs...)
 	}
+	if opts.withDebug {
+		db = db.Debug()
+	}
 	db = db.Delete(i)
 	if db.Error != nil {
 		return NoRowsAffected, errors.Wrap(ctx, db.Error, op, errors.WithoutEvent())
