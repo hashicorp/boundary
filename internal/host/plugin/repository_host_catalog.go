@@ -195,8 +195,8 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 	return hostCatalogs, plgs, nil
 }
 
-// DeleteCatalog deletes id from the repository returning a count of the
-// number of records deleted.
+// DeleteCatalog deletes catalog for the provided id from the repository
+// returning a count of the number of records deleted. All options are ignored.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) (int, error) {
 	const op = "plugin.(Repository).DeleteCatalog"
 	if id == "" {
@@ -223,11 +223,13 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
-	// TODO: include all the sets for this catalog in the delete catalog request.
+	// TODO: Include all the sets for this catalog in the delete catalog request.  We don't need it for now
+	//   since our currently provided plugins only read data for set configuration, but in the future that might
+	//   change.
 	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{Catalog: plgHc, Persisted: p})
 	if err != nil {
-		// Even if the plugin returns an error, we ignore it and proceed
-		// with deleting the catalog.
+		// Even if the plugin returns an error, we ignore it and proceed with
+		// deleting the catalog.
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
