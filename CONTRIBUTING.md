@@ -144,6 +144,15 @@ $ make test-database-up
 $ make test
 ```
 
+By default the container name is `boundary-sql-tests`.
+This can be changed in the same way as the port:
+
+```
+$ export TEST_CONTAINER_NAME="custom-name"
+$ make test-database-up
+$ docker logs custom-name
+```
+
 The default docker image is built using the `postgres:11` base image.
 The image can be changed using a make option to test against other versions:
 
