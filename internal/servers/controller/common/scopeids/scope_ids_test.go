@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -229,9 +230,9 @@ func TestListingScopeIds(t *testing.T) {
 				authTokenRepoFn,
 				serversRepoFn,
 				kms,
-				auth.RequestInfo{
+				&authpb.RequestInfo{
 					Token:       at.GetToken(),
-					TokenFormat: auth.AuthTokenTypeBearer,
+					TokenFormat: uint32(auth.AuthTokenTypeBearer),
 					PublicId:    at.GetPublicId(),
 				})
 

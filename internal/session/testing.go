@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
@@ -132,7 +133,7 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
 
-	tcpTarget := target.TestTcpTarget(t, conn, proj.PublicId, "test target")
+	tcpTarget := tcp.TestTarget(t, conn, proj.PublicId, "test target")
 
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)

@@ -44,6 +44,7 @@ export NEW_HOST='test'
   local hid=$(host_id $NEW_HOST $DEFAULT_HOST_CATALOG)
   run delete_host $hid 
   echo "$output"
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
 

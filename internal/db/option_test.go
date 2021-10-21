@@ -141,8 +141,6 @@ func Test_getOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withSkipVetForWrite = false
 		assert.Equal(opts, testOpts)
-
-		// try setting to false
 		opts = GetOpts(WithSkipVetForWrite(true))
 		testOpts = getDefaultOptions()
 		testOpts.withSkipVetForWrite = true
@@ -156,8 +154,6 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withWhereClause = ""
 		testOpts.withWhereClauseArgs = nil
 		assert.Equal(opts, testOpts)
-
-		// try setting to false
 		opts = GetOpts(WithWhere("id = ? and foo = ?", 1234, "bar"))
 		testOpts.withWhereClause = "id = ? and foo = ?"
 		testOpts.withWhereClauseArgs = []interface{}{1234, "bar"}
@@ -170,8 +166,6 @@ func Test_getOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withOrder = ""
 		assert.Equal(opts, testOpts)
-
-		// try setting to false
 		opts = GetOpts(WithOrder("version desc"))
 		testOpts.withOrder = "version desc"
 		assert.Equal(opts, testOpts)
@@ -184,8 +178,6 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 
 		testLogger := hclog.New(&hclog.LoggerOptions{})
-
-		// try setting to false
 		opts = GetOpts(WithGormFormatter(testLogger))
 		testOpts.withGormFormatter = testLogger
 		assert.Equal(opts, testOpts)
@@ -196,8 +188,6 @@ func Test_getOpts(t *testing.T) {
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-
-		// try setting to false
 		opts = GetOpts(WithMaxOpenConnections(22))
 		testOpts.withMaxOpenConnections = 22
 		assert.Equal(opts, testOpts)
@@ -208,10 +198,36 @@ func Test_getOpts(t *testing.T) {
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-
 		// try setting to true
 		opts = GetOpts(WithDebug(true))
 		testOpts.withDebug = true
+	})
+	t.Run("WithOnConflict", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+		columns := SetColumns([]string{"name", "description"})
+		columnValues := SetColumnValues(map[string]interface{}{"expiration": "NULL"})
+		testOnConflict := OnConflict{
+			Target: Constraint("uniq-name"),
+			Action: append(columns, columnValues...),
+		}
+		opts = GetOpts(WithOnConflict(&testOnConflict))
+		testOpts.withOnConflict = &testOnConflict
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithReturnRowsAffected", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+
+		var rowsAffected int64
+		opts = GetOpts(WithReturnRowsAffected(&rowsAffected))
+		testOpts.withRowsAffected = &rowsAffected
 		assert.Equal(opts, testOpts)
 	})
 }

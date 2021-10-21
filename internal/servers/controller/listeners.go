@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
@@ -20,10 +21,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (c *Controller) startListeners() error {
+func (c *Controller) startListeners(ctx context.Context) error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
+		var err error
+		if c.gatewayServer, c.gatewayTicket, err = newGatewayServer(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms); err != nil {
+			return err
+		}
+		c.gatewayMux = newGatewayMux()
+
 		handler, err := c.handler(HandlerProperties{
 			ListenerConfig: ln.Config,
 			CancelCtx:      c.baseContext,
@@ -134,6 +141,11 @@ func (c *Controller) startListeners() error {
 		return nil
 	}
 
+	c.gatewayListener, _ = newGatewayListener()
+	servers = append(servers, func() {
+		go c.gatewayServer.Serve(c.gatewayListener)
+	})
+
 	for _, ln := range c.conf.Listeners {
 		var err error
 		for _, purpose := range ln.Config.Purpose {
@@ -184,6 +196,21 @@ func (c *Controller) stopListeners(serversOnly bool) error {
 			}
 		}()
 	}
+
+	if c.gatewayServer != nil {
+		serverWg.Add(1)
+		go func() {
+			defer serverWg.Done()
+			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, globals.DefaultMaxRequestDuration)
+			defer shutdownKillCancel()
+			go func() {
+				<-shutdownKill.Done()
+				c.gatewayServer.Stop()
+			}()
+			c.gatewayServer.GracefulStop()
+		}()
+	}
+
 	serverWg.Wait()
 	if serversOnly {
 		return nil

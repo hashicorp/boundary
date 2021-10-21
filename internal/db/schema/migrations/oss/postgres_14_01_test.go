@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,7 @@ func TestMigrations_UserDimension(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	var sessions []*session.Session
 
 	kmsCache := kms.TestKms(t, conn, wrapper)

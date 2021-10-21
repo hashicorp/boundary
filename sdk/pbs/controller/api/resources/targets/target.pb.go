@@ -461,11 +461,11 @@ type Target struct {
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
 	// The type of the Target.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
-	// The IDs of the Host Sets associated with this Target.
+	// Output only. The IDs of the Host Sets associated with this Target.
 	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty"`
 	// Output only. The Host Sets associated with this Target.
 	HostSets []*HostSet `protobuf:"bytes,110,rep,name=host_sets,proto3" json:"host_sets,omitempty"`
-	// The IDs of the Host Sources associated with this Target.
+	// Output only. The IDs of the Host Sources associated with this Target.
 	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"`
 	// Output only. The Host Sources associated with this Target.
 	HostSources []*HostSource `protobuf:"bytes,430,rep,name=host_sources,proto3" json:"host_sources,omitempty"`
@@ -475,7 +475,7 @@ type Target struct {
 	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"`
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"`
-	// The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
+	// Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
 	//
 	// Deprecated: Do not use.
 	ApplicationCredentialLibraryIds []string `protobuf:"bytes,150,rep,name=application_credential_library_ids,proto3" json:"application_credential_library_ids,omitempty"`
@@ -483,7 +483,7 @@ type Target struct {
 	//
 	// Deprecated: Do not use.
 	ApplicationCredentialLibraries []*CredentialLibrary `protobuf:"bytes,180,rep,name=application_credential_libraries,proto3" json:"application_credential_libraries,omitempty"`
-	// The IDs of the application credential source ids associated with this Target.
+	// Output only. The IDs of the application credential source ids associated with this Target.
 	ApplicationCredentialSourceIds []string `protobuf:"bytes,400,rep,name=application_credential_source_ids,proto3" json:"application_credential_source_ids,omitempty"`
 	// Output only. The application credential sources associated with this Target.
 	ApplicationCredentialSources []*CredentialSource `protobuf:"bytes,410,rep,name=application_credential_sources,proto3" json:"application_credential_sources,omitempty"`

@@ -51,6 +51,9 @@ type Options struct {
 	// withDebug indicates that the given operation should invoke Gorm's debug
 	// mode
 	withDebug bool
+
+	withOnConflict   *OnConflict
+	withRowsAffected *int64
 }
 
 type oplogOpts struct {
@@ -194,5 +197,21 @@ func WithMaxOpenConnections(max int) Option {
 func WithDebug(with bool) Option {
 	return func(o *Options) {
 		o.withDebug = with
+	}
+}
+
+// WithOnConflict specifies an optional on conflict criteria which specify
+// alternative actions to take when an insert results in a unique constraint or
+// exclusion constraint error
+func WithOnConflict(onConflict *OnConflict) Option {
+	return func(o *Options) {
+		o.withOnConflict = onConflict
+	}
+}
+
+// WithReturnRowsAffected specifies an option for returning the rows affected
+func WithReturnRowsAffected(rowsAffected *int64) Option {
+	return func(o *Options) {
+		o.withRowsAffected = rowsAffected
 	}
 }

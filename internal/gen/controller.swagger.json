@@ -5038,7 +5038,8 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the Host Sets associated with this Target."
+          "description": "Output only. The IDs of the Host Sets associated with this Target.",
+          "readOnly": true
         },
         "host_sets": {
           "type": "array",
@@ -5053,7 +5054,8 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the Host Sources associated with this Target."
+          "description": "Output only. The IDs of the Host Sources associated with this Target.",
+          "readOnly": true
         },
         "host_sources": {
           "type": "array",
@@ -5082,7 +5084,8 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead."
+          "description": "Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.",
+          "readOnly": true
         },
         "application_credential_libraries": {
           "type": "array",
@@ -5097,7 +5100,8 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the application credential source ids associated with this Target."
+          "description": "Output only. The IDs of the application credential source ids associated with this Target.",
+          "readOnly": true
         },
         "application_credential_sources": {
           "type": "array",

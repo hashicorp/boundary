@@ -32,14 +32,14 @@ func TestApiErrorHandler(t *testing.T) {
 	testCases := []struct {
 		name     string
 		err      error
-		expected apiError
+		expected ApiError
 	}{
 		{
 			name: "Not Found",
 			err:  NotFoundErrorf("Test"),
-			expected: apiError{
-				status: http.StatusNotFound,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusNotFound,
+				Inner: &pb.Error{
 					Kind:    "NotFound",
 					Message: "Test",
 				},
@@ -51,9 +51,9 @@ func TestApiErrorHandler(t *testing.T) {
 				"k1": "v1",
 				"k2": "v2",
 			}),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
 					Kind:    "InvalidArgument",
 					Message: "Test",
 					Details: &pb.ErrorDetails{
@@ -74,9 +74,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "GrpcGateway Routing Error",
 			err:  runtime.ErrNotMatch,
-			expected: apiError{
-				status: http.StatusNotFound,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusNotFound,
+				Inner: &pb.Error{
 					Kind:    "NotFound",
 					Message: http.StatusText(http.StatusNotFound),
 				},
@@ -85,9 +85,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Unimplemented error",
 			err:  status.Error(codes.Unimplemented, "Test"),
-			expected: apiError{
-				status: http.StatusMethodNotAllowed,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusMethodNotAllowed,
+				Inner: &pb.Error{
 					Kind:    "Unimplemented",
 					Message: "Test",
 				},
@@ -96,9 +96,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Unknown error",
 			err:  stderrors.New("Some random error"),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusInternalServerError,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "Some random error",
 				},
@@ -107,9 +107,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db invalid public id",
 			err:  errors.E(ctx, errors.WithCode(errors.InvalidPublicId)),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusInternalServerError,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "invalid public id, parameter violation: error #102",
 				},
@@ -118,9 +118,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db invalid parameter",
 			err:  errors.E(ctx, errors.WithCode(errors.InvalidParameter)),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusInternalServerError,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "invalid parameter, parameter violation: error #100",
 				},
@@ -129,9 +129,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db invalid field mask",
 			err:  errors.E(ctx, errors.WithCode(errors.InvalidFieldMask)),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
 					Kind:    "InvalidArgument",
 					Message: "Error in provided request",
 					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
@@ -141,9 +141,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db empty field mask",
 			err:  errors.E(ctx, errors.WithCode(errors.EmptyFieldMask)),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
 					Kind:    "InvalidArgument",
 					Message: "Error in provided request",
 					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
@@ -153,9 +153,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db not unqiue",
 			err:  errors.E(ctx, errors.WithCode(errors.NotUnique)),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
 					Kind:    "InvalidArgument",
 					Message: genericUniquenessMsg,
 				},
@@ -164,9 +164,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db record not found",
 			err:  errors.E(ctx, errors.WithCode(errors.RecordNotFound)),
-			expected: apiError{
-				status: http.StatusNotFound,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusNotFound,
+				Inner: &pb.Error{
 					Kind:    "NotFound",
 					Message: genericNotFoundMsg,
 				},
@@ -175,9 +175,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error Db multiple records",
 			err:  errors.E(ctx, errors.WithCode(errors.MultipleRecords)),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusInternalServerError,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "multiple records, search issue: error #1101",
 				},
@@ -186,9 +186,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Domain error account already associated",
 			err:  errors.E(ctx, errors.WithCode(errors.AccountAlreadyAssociated)),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
 					Kind:    "InvalidArgument",
 					Message: "account already associated with another user, parameter violation: error #114",
 				},
@@ -197,9 +197,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Wrapped domain error",
 			err:  errors.E(ctx, errors.WithCode(errors.InvalidAddress), errors.WithMsg("test msg"), errors.WithWrap(errors.E(ctx, errors.WithCode(errors.NotNull), errors.WithMsg("inner msg")))),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusInternalServerError,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "test msg: parameter violation: error #101: inner msg: integrity violation: error #1001",
 				},
@@ -208,9 +208,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Forbidden domain error",
 			err:  errors.E(ctx, errors.WithCode(errors.Forbidden), errors.WithMsg("test msg")),
-			expected: apiError{
-				status: http.StatusForbidden,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusForbidden,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "test msg: unknown: error #403",
 				},
@@ -219,9 +219,9 @@ func TestApiErrorHandler(t *testing.T) {
 		{
 			name: "Wrapped forbidden domain error",
 			err:  fmt.Errorf("got error: %w", errors.E(ctx, errors.WithCode(errors.Forbidden), errors.WithMsg("test msg"))),
-			expected: apiError{
-				status: http.StatusForbidden,
-				inner: &pb.Error{
+			expected: ApiError{
+				Status: http.StatusForbidden,
+				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "got error: test msg: unknown: error #403",
 				},
@@ -234,7 +234,7 @@ func TestApiErrorHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			tested(ctx, mux, outMarsh, w, req, tc.err)
 			resp := w.Result()
-			assert.EqualValues(tc.expected.status, resp.StatusCode)
+			assert.EqualValues(tc.expected.Status, resp.StatusCode)
 
 			got, err := ioutil.ReadAll(resp.Body)
 			require.NoError(err)
@@ -243,8 +243,8 @@ func TestApiErrorHandler(t *testing.T) {
 			err = inMarsh.Unmarshal(got, gotErr)
 			require.NoError(err)
 
-			assert.Equal(tc.expected.status, int32(resp.StatusCode))
-			assert.Empty(cmp.Diff(tc.expected.inner, gotErr, protocmp.Transform()))
+			assert.Equal(tc.expected.Status, int32(resp.StatusCode))
+			assert.Empty(cmp.Diff(tc.expected.Inner, gotErr, protocmp.Transform()))
 		})
 	}
 }

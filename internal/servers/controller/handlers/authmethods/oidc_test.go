@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -206,9 +208,9 @@ func TestList_FilterNonPublic(t *testing.T) {
 					atRepoFn,
 					serversRepoFn,
 					kmsCache,
-					auth.RequestInfo{
+					&authpb.RequestInfo{
 						Token:       at.GetToken(),
-						TokenFormat: auth.AuthTokenTypeBearer,
+						TokenFormat: uint32(auth.AuthTokenTypeBearer),
 						PublicId:    at.GetPublicId(),
 					})
 			}(),

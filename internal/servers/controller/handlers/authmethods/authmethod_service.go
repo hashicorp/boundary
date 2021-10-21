@@ -389,7 +389,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteAuthMethodResponse{}, nil
 }
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.

@@ -19,10 +19,12 @@ require (
 	github.com/fatih/color v1.12.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.3.0
+	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary/api v0.0.19
 	github.com/hashicorp/boundary/sdk v0.0.12-0.20211007161358-65f3725bf3e1
