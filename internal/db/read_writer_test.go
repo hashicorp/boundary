@@ -723,8 +723,8 @@ func TestDb_Create(t *testing.T) {
 
 		metadata := oplog.Metadata{
 			"resource-public-id": []string{user.PublicId},
-			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 		}
+
 		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 

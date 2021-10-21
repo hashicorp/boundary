@@ -15,6 +15,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -260,10 +261,12 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return nil
 }
 
-// Create an object in the db with options: WithOplog, NewOplogMsg and
-// WithLookup.  WithOplog will write an oplog entry for the create.
+// Create an object in the db with options: WithOplog, NewOplogMsg, WithLookup
+// and OnConflict.  WithOplog will write an oplog entry for the create.
 // NewOplogMsg will return in-memory oplog message.  WithOplog and NewOplogMsg
 // cannot be used together.  WithLookup with to force a lookup after create.
+// OnConflict specifies alternative actions to take when an insert results in a
+// unique constraint or exclusion constraint error.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
@@ -295,6 +298,54 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 			}
 		}
 	}
+
+	db := rw.underlying.WithContext(ctx)
+	var onConflictDoNothing bool
+	if opts.withOnConflict != nil {
+		c := clause.OnConflict{}
+		switch opts.withOnConflict.Target.(type) {
+		case Constraint:
+			c.OnConstraint = string(opts.withOnConflict.Target.(Constraint))
+		case Columns:
+			columns := make([]clause.Column, 0, len(opts.withOnConflict.Target.(Columns)))
+			for _, name := range opts.withOnConflict.Target.(Columns) {
+				columns = append(columns, clause.Column{Name: name})
+			}
+			c.Columns = columns
+		default:
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid conflict target: %v", reflect.TypeOf(opts.withOnConflict.Target)))
+		}
+
+		switch opts.withOnConflict.Action.(type) {
+		case DoNothing:
+			c.DoNothing = true
+			onConflictDoNothing = true
+		case UpdateAll:
+			c.UpdateAll = true
+		case []ColumnValue:
+			updates := opts.withOnConflict.Action.([]ColumnValue)
+			set := make(clause.Set, 0, len(updates))
+			for _, s := range updates {
+				// make sure it's not one of the std immutable columns
+				if contains([]string{"createtime", "publicid"}, strings.ToLower(s.column)) {
+					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("Cannot do update on conflict for column %s", s.column))
+				}
+				switch sv := s.value.(type) {
+				case column:
+					set = append(set, sv.toAssignment(s.column))
+				case ExprValue:
+					set = append(set, sv.toAssignment(s.column))
+				default:
+					set = append(set, rawAssignment(s.column, s.value))
+				}
+			}
+			c.DoUpdates = set
+		default:
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid conflict action: %v", reflect.TypeOf(opts.withOnConflict.Action)))
+		}
+		db = db.Clauses(c)
+	}
+
 	var ticket *store.Ticket
 	if withOplog {
 		var err error
@@ -303,20 +354,32 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
-	if err := rw.underlying.Create(i).Error; err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("create failed"), errors.WithoutEvent())
+	tx := db.Create(i)
+	if tx.Error != nil {
+		return errors.Wrap(ctx, tx.Error, op, errors.WithMsg("create failed"), errors.WithoutEvent())
+	}
+	if opts.withRowsAffected != nil {
+		*opts.withRowsAffected = tx.RowsAffected
 	}
 	if withOplog {
-		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
-			return errors.Wrap(ctx, err, op)
+		switch {
+		case onConflictDoNothing && tx.RowsAffected == 0:
+		default:
+			if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
 		}
 	}
 	if opts.newOplogMsg != nil {
-		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
+		switch {
+		case onConflictDoNothing && tx.RowsAffected == 0:
+		default:
+			msg, err := rw.newOplogMessage(ctx, CreateOp, i)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
+			}
+			*opts.newOplogMsg = *msg
 		}
-		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
