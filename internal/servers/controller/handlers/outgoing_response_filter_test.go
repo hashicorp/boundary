@@ -68,5 +68,4 @@ func TestOutgoingResponseFilter_StatusCode(t *testing.T) {
 			}
 		})
 	}
-
 }

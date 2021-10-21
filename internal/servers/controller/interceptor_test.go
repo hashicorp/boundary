@@ -376,7 +376,6 @@ func Test_errorInterceptor(t *testing.T) {
 			require.NoError(err)
 		})
 	}
-
 }
 
 func Test_statusCodeInterceptor(t *testing.T) {
@@ -424,7 +423,6 @@ func Test_statusCodeInterceptor(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 type testGreeter struct {
