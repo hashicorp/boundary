@@ -2471,6 +2471,9 @@ func TestAuthorizeSession(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
+
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
@@ -2641,6 +2644,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
+
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
