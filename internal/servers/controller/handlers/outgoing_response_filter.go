@@ -49,7 +49,6 @@ func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.
 	const op = "handlers.OutgoingResponseFilter"
 
 	if md, ok := runtime.ServerMetadataFromContext(ctx); ok {
-
 		// set http status codes based on metadata set by the grpc service
 		if statusCodes := md.HeaderMD.Get(StatusCodeHeader); len(statusCodes) > 0 {
 			defer func() {
