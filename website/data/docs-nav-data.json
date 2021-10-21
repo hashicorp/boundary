@@ -56,6 +56,10 @@
       {
         "title": "High Availability Install",
         "path": "installing/high-availability"
+      },
+      },
+        "title": "Reference Architectures",
+        "path": "installing/reference-architectures"
       }
     ]
   },
