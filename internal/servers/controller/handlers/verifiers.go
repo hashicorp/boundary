@@ -183,7 +183,7 @@ func ValidId(i Id, prefixes ...string) bool {
 			continue
 		}
 		id = strings.TrimPrefix(id, prefix)
-		if !reInvalidID.Match([]byte(id)) {
+		if !reInvalidID.MatchString(id) {
 			return true
 		}
 	}
