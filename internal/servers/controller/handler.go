@@ -164,11 +164,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
+			ctx,
 			c.kms,
 			c.TargetRepoFn,
 			c.IamRepoFn,
 			c.ServersRepoFn,
 			c.SessionRepoFn,
+			c.PluginHostRepoFn,
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn)
 		if err != nil {

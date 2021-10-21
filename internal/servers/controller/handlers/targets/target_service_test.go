@@ -2637,7 +2637,6 @@ func TestAuthorizeSession(t *testing.T) {
 	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
 	require.NoError(t, err)
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	shs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -2690,6 +2689,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			tar := tcp.TestTarget(t, conn, proj.GetPublicId(), tc.name)
 			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion(),
