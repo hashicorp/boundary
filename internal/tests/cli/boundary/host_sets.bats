@@ -58,6 +58,7 @@ export NEW_HOST_SET='test'
   local hsid=$(host_set_id $NEW_HOST_SET $DEFAULT_HOST_CATALOG)
   run delete_host_set $hsid 
   echo "$output"
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
 

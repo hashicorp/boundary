@@ -112,13 +112,13 @@ message Target {
 	// The type of the Target.
 	string type = 90;
 
-	// The IDs of the Host Sets associated with this Target.
+	// Output only. The IDs of the Host Sets associated with this Target.
 	repeated string host_set_ids = 100 [json_name="host_set_ids"];
 
 	// Output only. The Host Sets associated with this Target.
 	repeated HostSet host_sets = 110 [json_name="host_sets"];
 
-	// The IDs of the Host Sources associated with this Target.
+	// Output only. The IDs of the Host Sources associated with this Target.
 	repeated string host_source_ids = 420 [json_name="host_source_ids"];
 
 	// Output only. The Host Sources associated with this Target.
@@ -133,12 +133,12 @@ message Target {
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
 
-	// The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
+	// Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
 	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids", deprecated = true];
 	// Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
 	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries", deprecated = true];
 
-	// The IDs of the application credential source ids associated with this Target.
+	// Output only. The IDs of the application credential source ids associated with this Target.
 	repeated string application_credential_source_ids = 400 [json_name="application_credential_source_ids"];
 	// Output only. The application credential sources associated with this Target.
 	repeated CredentialSource application_credential_sources = 410 [json_name="application_credential_sources"];

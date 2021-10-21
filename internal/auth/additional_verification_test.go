@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -92,10 +93,10 @@ func TestFetchActionSetForId(t *testing.T) {
 				authTokenRepoFn,
 				serversRepoFn,
 				tc.Kms(),
-				auth.RequestInfo{
+				&authpb.RequestInfo{
 					PublicId:       token.Id,
 					EncryptedToken: strings.Split(token.Token, "_")[2],
-					TokenFormat:    auth.AuthTokenTypeBearer,
+					TokenFormat:    uint32(auth.AuthTokenTypeBearer),
 				})
 			typ := resource.Target
 			if tt.typeOverride != resource.Unknown {

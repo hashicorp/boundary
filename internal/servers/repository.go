@@ -2,7 +2,6 @@ package servers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -138,7 +137,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 
 	opts := getOpts(opt...)
 
-	var rowsUpdated int
+	var rowsUpdated int64
 	var controllers []*Server
 	_, err := r.writer.DoTx(
 		ctx,
@@ -146,14 +145,11 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Exec(ctx,
-				serverUpsertQuery,
-				[]interface{}{
-					sql.Named("private_id", server.PrivateId),
-					sql.Named("type", server.Type),
-					sql.Named("description", server.Description),
-					sql.Named("address", server.Address),
-				})
+			onConflict := &db.OnConflict{
+				Target: db.Constraint("server_pkey"),
+				Action: append(db.SetColumns([]string{"type", "description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			}
+			err = w.Create(ctx, server, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")
 			}
@@ -208,7 +204,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		return nil, db.NoRowsAffected, err
 	}
 
-	return controllers, rowsUpdated, nil
+	return controllers, int(rowsUpdated), nil
 }
 
 type RecoveryNonce struct {

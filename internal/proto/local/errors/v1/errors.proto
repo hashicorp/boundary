@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package errors.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/errors;errors";
+
+import "controller/api/v1/error.proto";
+
+// Err is a protobuf representation of a domain error
+message Err {
+  // code is the error's code, which can be used to get the error's
+  // errorCodeInfo, which contains the error's Kind and Message
+  uint32 code = 10;
+
+  // msg for the error
+  string msg = 20;
+
+  // op represents the operation raising/propagating an error and is optional.
+  string op = 30;
+
+  // wrapped represents an optionally wrapped error
+  oneof wrapped {
+    // err is a wrapped Err (aka a domain error)
+    Err err = 40;
+
+    // std_error is a wrapped std error
+    string std_error = 50;
+
+    // no error or err is wrapped
+    bool none = 60;
+  }
+}
+
+// ApiError is a protobuf representation of a controller ApiError
+message ApiError {
+  // api_error is the controller ApiError
+  controller.api.v1.Error api_error = 10;
+
+  // status is the status code assocatiated with the api error
+  int32 status = 20;
+}

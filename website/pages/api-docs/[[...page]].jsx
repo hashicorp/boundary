@@ -1,10 +1,12 @@
 import { productName, productSlug } from 'data/metadata'
+import OpenApiPage from '@hashicorp/react-open-api-page'
+/* Used server-side only */
 import path from 'path'
-import parseSwagger from '../../lib/swagger-parser'
-import OpenApiPage, {
+import {
   getPathsFromSchema,
   getPropsForPage,
-} from '../../components/openapi-page'
+} from '@hashicorp/react-open-api-page/server'
+import { processSchemaFile } from '@hashicorp/react-open-api-page/process-schema'
 
 const targetFile = '../internal/gen/controller.swagger.json'
 const pathFromRoot = 'api-docs'
@@ -15,19 +17,21 @@ export default function OpenApiDocsPage(props) {
       {...props}
       productName={productName}
       productSlug={productSlug}
-      pathFromRoot={pathFromRoot}
+      baseRoute={pathFromRoot}
     />
   )
 }
 
 export async function getStaticPaths() {
-  const schema = await parseSwagger(path.join(process.cwd(), targetFile))
+  const swaggerFile = path.join(process.cwd(), targetFile)
+  const schema = await processSchemaFile(swaggerFile)
   const paths = getPathsFromSchema(schema)
   return { paths, fallback: false }
 }
 
 export async function getStaticProps({ params }) {
-  const schema = await parseSwagger(path.join(process.cwd(), targetFile))
+  const swaggerFile = path.join(process.cwd(), targetFile)
+  const schema = await processSchemaFile(swaggerFile)
   const props = getPropsForPage(schema, params)
   return { props }
 }

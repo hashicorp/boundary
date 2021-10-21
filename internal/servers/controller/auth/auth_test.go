@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -107,17 +108,17 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			}
 
 			// Add values for authn/authz checking
-			requestInfo := RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:   req.URL.Path,
 				Method: req.Method,
 			}
 			requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), kms, req)
-			assert.Equal(t, tc.tokenFormat, requestInfo.TokenFormat)
+			assert.Equal(t, uint32(tc.tokenFormat), requestInfo.TokenFormat)
 
 			if tc.userId == "" {
 				return
 			}
-			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
 			v, ok := ctx.Value(verifierKey).(*verifier)
 			require.True(t, ok)

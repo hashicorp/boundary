@@ -417,6 +417,7 @@ func TestDelete_twice(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(err)
 
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,

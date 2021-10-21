@@ -102,6 +102,7 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run delete_role $rid 
   echo "$output"
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
 

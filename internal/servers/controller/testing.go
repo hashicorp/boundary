@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -28,6 +30,9 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
@@ -717,4 +722,40 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	}
 	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
 	return nil
+}
+
+// startTestGreeterService is intended to facilitate the testing of
+// interceptors.  You provide a greeter service that produces appropriate
+// responses to test your interceptor(s).  This test function will start up a
+// test greeter service wrapped with the  specified interceptors and return an
+// initialized client for the service. The test service will be stopped/cleaned
+// up after the test (or subtests) have completed.
+func startTestGreeterService(t *testing.T, greeter interceptor.GreeterServiceServer, interceptors ...grpc.UnaryServerInterceptor) interceptor.GreeterServiceClient {
+	t.Helper()
+	require := require.New(t)
+	dialCtx := context.Background()
+
+	buffer := 1024 * 1024
+	listener := bufconn.Listen(buffer)
+
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)),
+	)
+	interceptor.RegisterGreeterServiceServer(s, greeter)
+	go func() {
+		err := s.Serve(listener)
+		require.NoError(err)
+	}()
+
+	conn, _ := grpc.DialContext(dialCtx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return listener.Dial()
+	}), grpc.WithInsecure())
+
+	t.Cleanup(func() {
+		listener.Close()
+		s.Stop()
+	})
+
+	client := interceptor.NewGreeterServiceClient(conn)
+	return client
 }
