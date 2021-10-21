@@ -93,7 +93,7 @@ type Writer interface {
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateItems will create multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
 	// WithOplogMsgs may not be used together. WithLookup is not a
 	// supported option. The caller is responsible for the transaction life
 	// cycle of the writer and if an error is returned the caller must decide
@@ -101,15 +101,15 @@ type Writer interface {
 	// rollback.
 	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
 
-	// Delete an object in the db with options: WithOplog
-	// the caller is responsible for the transaction life cycle of the writer
+	// Delete an object in the db with options: WithOplog, WithDebug.
+	// The caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback. Delete
 	// returns the number of rows deleted or an error.
 	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
 
 	// DeleteItems will delete multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
 	// WithOplogMsgs may not be used together. The caller is responsible for the
 	// transaction life cycle of the writer and if an error is returned the
 	// caller must decide what to do with the transaction, which almost always
