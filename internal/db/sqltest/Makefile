@@ -21,6 +21,8 @@ POSTGRES_DOCKER_IMAGE := $(POSTGRES_DOCKER_IMAGE_BASE):$(PG_DOCKER_TAG)
 PG_TAP_DOCKER_IMAGE_BASE ?= subzerocloud/pgtap
 PG_TAP_DOCKER_IMAGE := $(PG_TAP_DOCKER_IMAGE_BASE):$(PG_TAP_DOCKER_TAG)
 
+SQL_TEST_CONTAINER_NAME ?= boundary-sql-tests
+
 
 # re-write paths for docker
 dockerized_tests = $(patsubst tests/%,/test/%,$(TESTS))
@@ -29,7 +31,7 @@ test:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
 	@docker run -d \
-		--name boundary-sql-tests \
+		--name $(SQL_TEST_CONTAINER_NAME) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
@@ -38,7 +40,7 @@ test:
 		$(POSTGRES_DOCKER_IMAGE)
 	@docker run -it --rm \
 		--name test \
-		--link boundary-sql-tests:db \
+		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \
 		-e HOST=db \
 		-e PORT=5432 \
@@ -47,12 +49,12 @@ test:
 		-e TESTS="$(PROVE_OPTS) $(dockerized_tests)" \
 		-v "$(CWD)/tests":/test \
 		$(PG_TAP_DOCKER_IMAGE); \
-		(ret=$$?; docker stop boundary-sql-tests &>/dev/null && docker rm -v boundary-sql-tests &>/dev/null && exit $$ret)
+		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) &>/dev/null && docker rm -v $(SQL_TEST_CONTAINER_NAME) &>/dev/null && exit $$ret)
 
 database-up:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@docker run -d \
-		--name boundary-sql-tests \
+		--name $(SQL_TEST_CONTAINER_NAME) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
@@ -64,7 +66,7 @@ run-tests:
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
 	@docker run -it --rm \
 		--name test \
-		--link boundary-sql-tests:db \
+		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \
 		-e HOST=db \
 		-e PORT=5432 \
@@ -75,7 +77,7 @@ run-tests:
 		$(PG_TAP_DOCKER_IMAGE)
 
 clean:
-	docker stop boundary-sql-tests || true
-	docker rm -v boundary-sql-tests || true
+	docker stop $(SQL_TEST_CONTAINER_NAME) || true
+	docker rm -v $(SQL_TEST_CONTAINER_NAME) || true
 
 .PHONY: all clean test database-up run-tests
