@@ -85,15 +85,15 @@ func (r *Repository) UpsertHosts(
 
 	// Now, parse the externally defined hosts into hostInfo values, which
 	// stores info useful for later comparisons
-	newHostMap := make(map[string]hostInfo, len(phs))
+	newHostMap := make(map[string]*hostInfo, len(phs))
 	{
 		var err error
 		for _, ph := range phs {
-			var hi hostInfo
-
 			newHost := NewHost(ctx,
 				hc.GetPublicId(),
 				ph.GetExternalId(),
+				WithName(ph.GetName()),
+				WithDescription(ph.GetDescription()),
 				withIpAddresses(ph.GetIpAddresses()),
 				withDnsNames(ph.GetDnsNames()),
 				withPluginId(hc.GetPluginId()))
@@ -102,7 +102,9 @@ func (r *Repository) UpsertHosts(
 				return nil, errors.Wrap(ctx, err, op)
 			}
 			newHost.SetIds = ph.SetIds
-			hi.h = newHost
+			hi := &hostInfo{
+				h: newHost,
+			}
 			newHostMap[newHost.PublicId] = hi
 
 			// Check if the host is dirty; that is, we need to perform an upsert
@@ -206,11 +208,14 @@ func (r *Repository) UpsertHosts(
 	var returnedHosts []*Host
 	// Iterate over hosts and add or update them
 	for _, hi := range newHostMap {
+		ret := hi.h.clone()
+
 		if !hi.dirtyHost &&
 			len(hi.ipsToAdd) == 0 &&
 			len(hi.ipsToRemove) == 0 &&
 			len(hi.dnsNamesToAdd) == 0 &&
 			len(hi.dnsNamesToRemove) == 0 {
+			returnedHosts = append(returnedHosts, ret)
 			continue
 		}
 		_, err = r.writer.DoTx(
@@ -224,11 +229,13 @@ func (r *Repository) UpsertHosts(
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
 
-				ret := hi.h.clone()
-
 				if hi.dirtyHost {
 					var hOplogMsg oplog.Message
-					if err := w.Upsert(ctx, ret, db.NewOplogMsg(&hOplogMsg)); err != nil {
+					onConflict := &db.OnConflict{
+						Target: db.Constraint("host_plugin_host_pkey"),
+						Action: db.SetColumns([]string{"name", "description"}),
+					}
+					if err := w.Create(ctx, ret, db.NewOplogMsg(&hOplogMsg), db.WithOnConflict(onConflict)); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
 					msgs = append(msgs, &hOplogMsg)
@@ -278,7 +285,7 @@ func (r *Repository) UpsertHosts(
 					}
 				}
 
-				metadata := hc.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				metadata := hi.h.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}

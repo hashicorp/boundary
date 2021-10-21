@@ -195,8 +195,29 @@ begin;
   create trigger immutable_columns before update on host_plugin_host
     for each row execute procedure immutable_columns('public_id', 'catalog_id', 'external_id', 'create_time');
 
-  create trigger insert_host_subtype before insert on host_plugin_host
-    for each row execute procedure insert_host_subtype();
+  -- insert_host_plugin_host_subtype is intended as a before insert trigger on
+  -- host_plugin_host. Its purpose is to insert a base host for new plugin-based
+  -- host accounts. It's a bit different than the standard trigger for this,
+  -- because it will have conflicting PKs and we just want to "do nothing" on
+  -- those conflicts, deferring the raising on an error to insert into the
+  -- host_plugin_host table. This allows the upsert-style workflow.
+  create or replace function
+    insert_host_plugin_host_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id)
+    on conflict do nothing;
+
+    return new;
+  end;
+    $$ language plpgsql;
+
+  create trigger insert_host_plugin_host_subtype before insert on host_plugin_host
+    for each row execute procedure insert_host_plugin_host_subtype();
 
   create trigger delete_host_subtype after delete on host_plugin_host
     for each row execute procedure delete_host_subtype();

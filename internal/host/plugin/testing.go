@@ -102,12 +102,15 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 		ipStr := testGetIpAddress(t)
 		dnsName := testGetDnsName(t)
 
-		retRH = append(retRH, &plgpb.ListHostsResponseHost{
+		rh := &plgpb.ListHostsResponseHost{
 			ExternalId:  externalId,
+			Name:        base62.MustRandom(10),
+			Description: base62.MustRandom(10),
 			SetIds:      setIds[0 : i+1],
 			IpAddresses: []string{ipStr},
 			DnsNames:    []string{dnsName},
-		})
+		}
+		retRH = append(retRH, rh)
 
 		publicId, err := newHostId(context.Background(), catalog.PublicId, externalId)
 		require.NoError(err)
@@ -116,6 +119,8 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 			PluginId: catalog.PluginId,
 			SetIds:   setIds[0 : i+1],
 			Host: &store.Host{
+				Name:        rh.Name,
+				Description: rh.Description,
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,

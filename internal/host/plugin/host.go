@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -91,6 +92,18 @@ func (h *Host) clone() *Host {
 		copy(nh.SetIds, h.SetIds)
 	}
 	return h
+}
+
+func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{h.PublicId},
+		"resource-type":      []string{"plugin-host"},
+		"op-type":            []string{op.String()},
+	}
+	if h.CatalogId != "" {
+		metadata["catalog-id"] = []string{h.CatalogId}
+	}
+	return metadata
 }
 
 // hostAgg is a view that aggregates the host's value objects in to
