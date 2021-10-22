@@ -18,14 +18,13 @@ type IpAddress struct {
 	tableName string `gorm:"-"`
 }
 
-func NewIpAddress(ctx context.Context, hostId string, priority uint32, address string) (*IpAddress, error) {
+func NewIpAddress(ctx context.Context, hostId string, address string) (*IpAddress, error) {
 	const op = "host.NewIpAddress"
 
 	ia := &IpAddress{
 		IpAddress: &store.IpAddress{
-			HostId:   hostId,
-			Address:  address,
-			Priority: priority,
+			HostId:  hostId,
+			Address: address,
 		},
 	}
 	if err := ia.validate(ctx, op); err != nil {
@@ -38,9 +37,6 @@ func NewIpAddress(ctx context.Context, hostId string, priority uint32, address s
 func (ia *IpAddress) validate(ctx context.Context, caller errors.Op) error {
 	if ia.HostId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing host id")
-	}
-	if ia.Priority < 1 {
-		return errors.New(ctx, errors.InvalidParameter, caller, "invalid priority value")
 	}
 	if ia.Address == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing ip address")

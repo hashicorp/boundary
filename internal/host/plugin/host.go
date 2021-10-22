@@ -2,13 +2,10 @@ package plugin
 
 import (
 	"context"
-	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -101,7 +98,6 @@ type hostAgg struct {
 func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
 	const op = "plugin.(hostAgg).toHost"
 	const aggregateDelimiter = "|"
-	const priorityDelimiter = "="
 	h := allocHost()
 	h.PublicId = agg.PublicId
 	h.CatalogId = agg.CatalogId
@@ -112,64 +108,14 @@ func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
 	h.CreateTime = agg.CreateTime
 	h.UpdateTime = agg.UpdateTime
 
-	// This function is used to protect against someone messing with the order
-	// in the DB by doing some validation
-	prioritySortFunc := func(in []string) error {
-		var sortErr error
-		sort.Slice(in, func(i, j int) bool {
-			ini := strings.Split(in[i], priorityDelimiter)
-			if len(ini) != 2 {
-				sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("value %s had unexpected fields", in[i]))
-				return false
-			}
-			inj := strings.Split(in[j], priorityDelimiter)
-			if len(inj) != 2 {
-				sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("value %s had unexpected fields", in[j]))
-				return false
-			}
-			indexi, err := strconv.Atoi(ini[0])
-			if err != nil {
-				sortErr = errors.Wrap(ctx, err, op)
-				return false
-			}
-			indexj, err := strconv.Atoi(inj[0])
-			if err != nil {
-				sortErr = errors.Wrap(ctx, err, op)
-				return false
-			}
-			return indexi < indexj
-		})
-		return sortErr
-	}
-
 	if agg.IpAddresses != "" {
-		ips := strings.Split(agg.IpAddresses, aggregateDelimiter)
-		if len(ips) > 0 {
-			if err := prioritySortFunc(ips); err != nil {
-				return nil, err
-			}
-			for i, ip := range ips {
-				// At this point they're in the correct order, but we still
-				// have to strip off the priority
-				ips[i] = strings.Split(ip, priorityDelimiter)[1]
-			}
-			h.IpAddresses = ips
-		}
+		h.IpAddresses = strings.Split(agg.IpAddresses, aggregateDelimiter)
+		sort.Strings(h.IpAddresses)
 	}
 
 	if agg.DnsNames != "" {
-		names := strings.Split(agg.DnsNames, aggregateDelimiter)
-		if len(names) > 0 {
-			if err := prioritySortFunc(names); err != nil {
-				return nil, err
-			}
-			for i, name := range names {
-				// At this point they're in the correct order, but we still
-				// have to strip off the priority
-				names[i] = strings.Split(name, priorityDelimiter)[1]
-			}
-			h.DnsNames = names
-		}
+		h.DnsNames = strings.Split(agg.DnsNames, aggregateDelimiter)
+		sort.Strings(h.DnsNames)
 	}
 
 	return h, nil

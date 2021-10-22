@@ -209,15 +209,12 @@ begin;
         references host(public_id)
         on delete cascade
         on update cascade,
-    priority wt_priority,
     address inet not null,
     create_time wt_timestamp,
-    primary key (host_id, priority),
-    constraint host_ip_address_host_id_address_uq
-      unique(host_id, address)
+    primary key (host_id, address)
   );
   comment on table host_ip_address is
-    'host_ip_address entries are ip addresses set on a host with a preserved order.';
+    'host_ip_address entries are ip addresses set on a host.';
 
   create trigger default_create_time_column before insert on host_ip_address
     for each row execute procedure default_create_time();
@@ -244,15 +241,12 @@ begin;
         references host(public_id)
         on delete cascade
         on update cascade,
-    priority wt_priority,
     name wt_dns_name,
     create_time wt_timestamp,
-    primary key (host_id, priority),
-    constraint host_dns_name_host_id_name_uq
-      unique(host_id, name)
+    primary key (host_id, name)
   );
   comment on table host_dns_name is
-    'host_dns_name entries are dns names set on a host with a preserved order.';
+    'host_dns_name entries are dns names set on a host';
 
   create trigger default_create_time_column before insert on host_dns_name
     for each row execute procedure default_create_time();
@@ -359,8 +353,8 @@ begin;
     h.create_time,
     h.update_time,
     -- the string_agg(..) column will be null if there are no associated value objects
-    string_agg(distinct concat_ws('=', hip.priority, hip.address), '|') as ip_addresses,
-    string_agg(distinct concat_ws('=', hdns.priority, hdns.name), '|') as dns_names
+    string_agg(distinct host(hip.address), '|') as ip_addresses,
+    string_agg(distinct hdns.name, '|') as dns_names
   from
     host_plugin_host h
     join host_plugin_catalog hc           on h.catalog_id = hc.public_id

@@ -83,8 +83,8 @@ func (r *Repository) UpsertHosts(
 		if len(h.GetIpAddresses()) > 0 {
 			sort.Strings(h.IpAddresses)
 			ipAddresses = make([]interface{}, 0, len(h.GetIpAddresses()))
-			for i, a := range h.GetIpAddresses() {
-				obj, err := host.NewIpAddress(ctx, h.PublicId, uint32(i+1), a)
+			for _, a := range h.GetIpAddresses() {
+				obj, err := host.NewIpAddress(ctx, h.PublicId, a)
 				if err != nil {
 					return nil, errors.Wrap(ctx, err, op)
 				}
@@ -96,8 +96,8 @@ func (r *Repository) UpsertHosts(
 		if len(h.GetDnsNames()) > 0 {
 			sort.Strings(h.DnsNames)
 			dnsNames = make([]interface{}, 0, len(h.GetDnsNames()))
-			for i, n := range h.GetDnsNames() {
-				obj, err := host.NewDnsName(ctx, h.PublicId, uint32(i+1), n)
+			for _, n := range h.GetDnsNames() {
+				obj, err := host.NewDnsName(ctx, h.PublicId, n)
 				if err != nil {
 					return nil, errors.Wrap(ctx, err, op)
 				}
