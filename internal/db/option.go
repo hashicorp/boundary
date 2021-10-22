@@ -47,6 +47,9 @@ type Options struct {
 
 	withGormFormatter      hclog.Logger
 	withMaxOpenConnections int
+
+	withOnConflict   *OnConflict
+	withRowsAffected *int64
 }
 
 type oplogOpts struct {
@@ -183,5 +186,21 @@ func WithGormFormatter(l hclog.Logger) Option {
 func WithMaxOpenConnections(max int) Option {
 	return func(o *Options) {
 		o.withMaxOpenConnections = max
+	}
+}
+
+// WithOnConflict specifies an optional on conflict criteria which specify
+// alternative actions to take when an insert results in a unique constraint or
+// exclusion constraint error
+func WithOnConflict(onConflict *OnConflict) Option {
+	return func(o *Options) {
+		o.withOnConflict = onConflict
+	}
+}
+
+// WithReturnRowsAffected specifies an option for returning the rows affected
+func WithReturnRowsAffected(rowsAffected *int64) Option {
+	return func(o *Options) {
+		o.withRowsAffected = rowsAffected
 	}
 }

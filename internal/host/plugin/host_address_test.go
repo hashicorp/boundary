@@ -24,9 +24,8 @@ func TestHostDnsName_Create(t *testing.T) {
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
-		hostId   string
-		name     string
-		priority uint32
+		hostId string
+		name   string
 	}
 
 	tests := []struct {
@@ -40,34 +39,23 @@ func TestHostDnsName_Create(t *testing.T) {
 		{
 			name: "blank-host-id-validate",
 			args: args{
-				hostId:   "",
-				name:     "foo.bar.com",
-				priority: 1,
+				hostId: "",
+				name:   "foo.bar.com",
 			},
 			wantNewErr: true,
 		},
 		{
 			name: "blank-name-validate",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				name:     "",
-				priority: 1,
-			},
-			wantNewErr: true,
-		},
-		{
-			name: "blank-priority-validate",
-			args: args{
 				hostId: host1.GetPublicId(),
-				name:   "foo.bar.com",
+				name:   "",
 			},
 			wantNewErr: true,
 		},
 		{
 			name: "blank-host-id-db",
 			args: args{
-				name:     "foo.bar.com",
-				priority: 1,
+				name: "foo.bar.com",
 			},
 			skipNewFunc: true,
 			wantDbErr:   true,
@@ -75,17 +63,7 @@ func TestHostDnsName_Create(t *testing.T) {
 		{
 			name: "blank-name-db",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				priority: 1,
-			},
-			skipNewFunc: true,
-			wantDbErr:   true,
-		},
-		{
-			name: "blank-priority-db",
-			args: args{
 				hostId: host1.GetPublicId(),
-				name:   "foo.bar.com",
 			},
 			skipNewFunc: true,
 			wantDbErr:   true,
@@ -93,46 +71,26 @@ func TestHostDnsName_Create(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				name:     "foo.bar.com",
-				priority: 1,
+				hostId: host1.GetPublicId(),
+				name:   "foo.bar.com",
 			},
 			want: &host.DnsName{
 				DnsName: &store.DnsName{
-					HostId:   host1.GetPublicId(),
-					Name:     "foo.bar.com",
-					Priority: 1,
+					HostId: host1.GetPublicId(),
+					Name:   "foo.bar.com",
 				},
 			},
 		},
 		{
 			name: "duplicate-name",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				name:     "foo.bar.com",
-				priority: 2,
+				hostId: host1.GetPublicId(),
+				name:   "foo.bar.com",
 			},
 			want: &host.DnsName{
 				DnsName: &store.DnsName{
-					HostId:   host1.GetPublicId(),
-					Name:     "foo.bar.com",
-					Priority: 2,
-				},
-			},
-			wantDbErr: true,
-		},
-		{
-			name: "duplicate-priority",
-			args: args{
-				hostId:   host1.GetPublicId(),
-				name:     "baz.bar.com",
-				priority: 1,
-			},
-			want: &host.DnsName{
-				DnsName: &store.DnsName{
-					HostId:   host1.GetPublicId(),
-					Name:     "baz.bar.com",
-					Priority: 1,
+					HostId: host1.GetPublicId(),
+					Name:   "foo.bar.com",
 				},
 			},
 			wantDbErr: true,
@@ -140,15 +98,13 @@ func TestHostDnsName_Create(t *testing.T) {
 		{
 			name: "valid-second",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				name:     "baz.bar.com",
-				priority: 2,
+				hostId: host1.GetPublicId(),
+				name:   "baz.bar.com",
 			},
 			want: &host.DnsName{
 				DnsName: &store.DnsName{
-					HostId:   host1.GetPublicId(),
-					Name:     "baz.bar.com",
-					Priority: 2,
+					HostId: host1.GetPublicId(),
+					Name:   "baz.bar.com",
 				},
 			},
 		},
@@ -161,7 +117,7 @@ func TestHostDnsName_Create(t *testing.T) {
 			var got *host.DnsName
 			var err error
 			if !tt.skipNewFunc {
-				got, err = host.NewDnsName(ctx, tt.args.hostId, tt.args.priority, tt.args.name)
+				got, err = host.NewDnsName(ctx, tt.args.hostId, tt.args.name)
 				if tt.wantNewErr {
 					require.Error(err)
 					return
@@ -171,9 +127,8 @@ func TestHostDnsName_Create(t *testing.T) {
 			} else {
 				got = &host.DnsName{
 					DnsName: &store.DnsName{
-						HostId:   tt.args.hostId,
-						Name:     tt.args.name,
-						Priority: tt.args.priority,
+						HostId: tt.args.hostId,
+						Name:   tt.args.name,
 					},
 				}
 			}
@@ -200,9 +155,8 @@ func TestHostIpAddress_Create(t *testing.T) {
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
-		hostId   string
-		address  string
-		priority uint32
+		hostId  string
+		address string
 	}
 
 	tests := []struct {
@@ -216,26 +170,16 @@ func TestHostIpAddress_Create(t *testing.T) {
 		{
 			name: "blank-host-id-validate",
 			args: args{
-				hostId:   "",
-				address:  "1.2.3.4",
-				priority: 1,
+				hostId:  "",
+				address: "1.2.3.4",
 			},
 			wantNewErr: true,
 		},
 		{
 			name: "blank-name-validate",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				address:  "",
-				priority: 1,
-			},
-			wantNewErr: true,
-		},
-		{
-			name: "blank-priority-validate",
-			args: args{
 				hostId:  host1.GetPublicId(),
-				address: "1.2.3.4",
+				address: "",
 			},
 			wantNewErr: true,
 		},
@@ -250,8 +194,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 		{
 			name: "blank-host-id-db",
 			args: args{
-				address:  "1.2.3.4",
-				priority: 1,
+				address: "1.2.3.4",
 			},
 			skipNewFunc: true,
 			wantDbErr:   true,
@@ -259,17 +202,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 		{
 			name: "blank-address-db",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				priority: 1,
-			},
-			skipNewFunc: true,
-			wantDbErr:   true,
-		},
-		{
-			name: "blank-priority-db",
-			args: args{
-				hostId:  host1.GetPublicId(),
-				address: "1.2.3.4",
+				hostId: host1.GetPublicId(),
 			},
 			skipNewFunc: true,
 			wantDbErr:   true,
@@ -277,46 +210,26 @@ func TestHostIpAddress_Create(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				address:  "1.2.3.4",
-				priority: 1,
+				hostId:  host1.GetPublicId(),
+				address: "1.2.3.4",
 			},
 			want: &host.IpAddress{
 				IpAddress: &store.IpAddress{
-					HostId:   host1.GetPublicId(),
-					Address:  "1.2.3.4",
-					Priority: 1,
+					HostId:  host1.GetPublicId(),
+					Address: "1.2.3.4",
 				},
 			},
 		},
 		{
 			name: "duplicate-name",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				address:  "1.2.3.4",
-				priority: 2,
+				hostId:  host1.GetPublicId(),
+				address: "1.2.3.4",
 			},
 			want: &host.IpAddress{
 				IpAddress: &store.IpAddress{
-					HostId:   host1.GetPublicId(),
-					Address:  "1.2.3.4",
-					Priority: 2,
-				},
-			},
-			wantDbErr: true,
-		},
-		{
-			name: "duplicate-priority",
-			args: args{
-				hostId:   host1.GetPublicId(),
-				address:  "2.3.4.5",
-				priority: 1,
-			},
-			want: &host.IpAddress{
-				IpAddress: &store.IpAddress{
-					HostId:   host1.GetPublicId(),
-					Address:  "2.3.4.5",
-					Priority: 1,
+					HostId:  host1.GetPublicId(),
+					Address: "1.2.3.4",
 				},
 			},
 			wantDbErr: true,
@@ -324,15 +237,13 @@ func TestHostIpAddress_Create(t *testing.T) {
 		{
 			name: "valid-second",
 			args: args{
-				hostId:   host1.GetPublicId(),
-				address:  "2.3.4.5",
-				priority: 2,
+				hostId:  host1.GetPublicId(),
+				address: "2.3.4.5",
 			},
 			want: &host.IpAddress{
 				IpAddress: &store.IpAddress{
-					HostId:   host1.GetPublicId(),
-					Address:  "2.3.4.5",
-					Priority: 2,
+					HostId:  host1.GetPublicId(),
+					Address: "2.3.4.5",
 				},
 			},
 		},
@@ -345,7 +256,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 			var got *host.IpAddress
 			var err error
 			if !tt.skipNewFunc {
-				got, err = host.NewIpAddress(ctx, tt.args.hostId, tt.args.priority, tt.args.address)
+				got, err = host.NewIpAddress(ctx, tt.args.hostId, tt.args.address)
 				if tt.wantNewErr {
 					require.Error(err)
 					return
@@ -355,9 +266,8 @@ func TestHostIpAddress_Create(t *testing.T) {
 			} else {
 				got = &host.IpAddress{
 					IpAddress: &store.IpAddress{
-						HostId:   tt.args.hostId,
-						Address:  tt.args.address,
-						Priority: tt.args.priority,
+						HostId:  tt.args.hostId,
+						Address: tt.args.address,
 					},
 				}
 			}
@@ -382,14 +292,13 @@ func TestHostDnsName_Delete(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), 1, "addr1.foo.com")
+	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 
 	type args struct {
-		hostId   string
-		name     string
-		priority uint32
+		hostId string
+		name   string
 	}
 
 	tests := []struct {
@@ -401,33 +310,15 @@ func TestHostDnsName_Delete(t *testing.T) {
 		{
 			name: "wrong_host_id",
 			args: args{
-				hostId:   "something",
-				name:     addr1.GetName(),
-				priority: 1,
-			},
-		},
-		{
-			name: "missing_priority",
-			args: args{
-				hostId: addr1.GetHostId(),
+				hostId: "something",
 				name:   addr1.GetName(),
-			},
-			wantError: true,
-		},
-		{
-			name: "wrong_priority",
-			args: args{
-				hostId:   addr1.GetHostId(),
-				name:     addr1.GetName(),
-				priority: 2,
 			},
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId:   addr1.GetHostId(),
-				name:     addr1.GetName(),
-				priority: 1,
+				hostId: addr1.GetHostId(),
+				name:   addr1.GetName(),
 			},
 			wantDelete: true,
 		},
@@ -438,9 +329,8 @@ func TestHostDnsName_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &host.DnsName{
 				DnsName: &store.DnsName{
-					HostId:   tt.args.hostId,
-					Name:     tt.args.name,
-					Priority: tt.args.priority,
+					HostId: tt.args.hostId,
+					Name:   tt.args.name,
 				},
 			}
 			require.NoError(t, err)
@@ -469,14 +359,13 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := testHost(t, conn, cat.GetPublicId(), "external")
-	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), 1, "1.2.3.4")
+	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
 
 	type args struct {
-		hostId   string
-		address  string
-		priority uint32
+		hostId  string
+		address string
 	}
 
 	tests := []struct {
@@ -488,33 +377,15 @@ func TestHostIpAddress_Delete(t *testing.T) {
 		{
 			name: "wrong_host_id",
 			args: args{
-				hostId:   "something",
-				address:  addr1.GetAddress(),
-				priority: 1,
-			},
-		},
-		{
-			name: "missing_priority",
-			args: args{
-				hostId:  addr1.GetHostId(),
+				hostId:  "something",
 				address: addr1.GetAddress(),
-			},
-			wantError: true,
-		},
-		{
-			name: "wrong_priority",
-			args: args{
-				hostId:   addr1.GetHostId(),
-				address:  addr1.GetAddress(),
-				priority: 2,
 			},
 		},
 		{
 			name: "valid",
 			args: args{
-				hostId:   addr1.GetHostId(),
-				address:  addr1.GetAddress(),
-				priority: 1,
+				hostId:  addr1.GetHostId(),
+				address: addr1.GetAddress(),
 			},
 			wantDelete: true,
 		},
@@ -525,9 +396,8 @@ func TestHostIpAddress_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &host.IpAddress{
 				IpAddress: &store.IpAddress{
-					HostId:   tt.args.hostId,
-					Address:  tt.args.address,
-					Priority: tt.args.priority,
+					HostId:  tt.args.hostId,
+					Address: tt.args.address,
 				},
 			}
 			require.NoError(t, err)

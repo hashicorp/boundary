@@ -53,10 +53,7 @@ message IpAddress {
   string host_id = 1;
 
   // @inject_tag: `gorm:"primary_key"`
-  uint32 priority = 2;
-
-  // @inject_tag: `gorm:"not_null`
-  string address = 3;
+  string address = 2;
 }
 
 message DnsName {
@@ -64,8 +61,5 @@ message DnsName {
   string host_id = 1;
 
   // @inject_tag: `gorm:"primary_key"`
-  uint32 priority = 2;
-
-  // @inject_tag: `gorm:"not_null`
-  string name = 3;
+  string name = 2;
 }

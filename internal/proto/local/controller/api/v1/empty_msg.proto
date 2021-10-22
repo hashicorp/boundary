@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;api";
+
+// EmptyResponse represents an empty response
+message EmptyResponse {}

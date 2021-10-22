@@ -13,6 +13,7 @@ import (
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -497,7 +498,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 
 	// Host Catalog
 	if b.DevTargetId == "" {
-		b.DevTargetId, err = db.NewPublicId(target.TcpTargetPrefix)
+		b.DevTargetId, err = db.NewPublicId(tcp.TargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial target id: %w", err)
 		}
@@ -514,11 +515,11 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 	}
-	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
+	t, err := tcp.New(b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}
-	tt, _, _, err := targetRepo.CreateTcpTarget(cancelCtx, t, opts...)
+	tt, _, _, err := targetRepo.CreateTarget(cancelCtx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error saving target to the db: %w", err)
 	}

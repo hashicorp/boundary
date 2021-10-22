@@ -43,18 +43,17 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
-	default:
+
+	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
+	if !ok {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
+
+	target := alloc()
+	target.SetPublicId(ctx, t.PublicId)
+	target.SetVersion(targetVersion + 1)
+	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
+	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -143,18 +142,16 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
-	default:
+
+	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
+	if !ok {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
+	target := alloc()
+	target.SetPublicId(ctx, t.PublicId)
+	target.SetVersion(targetVersion + 1)
+	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
+	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -257,17 +254,16 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-	default:
+
+	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
+	if !ok {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
+	target := alloc()
+	target.SetPublicId(ctx, t.PublicId)
+	target.SetVersion(targetVersion + 1)
+	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))

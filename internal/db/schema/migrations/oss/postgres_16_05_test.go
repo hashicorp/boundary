@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +82,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	var sessions []*session.Session
 
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -157,12 +158,12 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	require.Equal(want, state)
 }
 
-func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar *target.TcpTarget) []*session.DynamicCredential {
+func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper, tar target.Target) []*session.DynamicCredential {
 	t.Helper()
 	rw := db.New(conn)
 
 	ctx := context.Background()
-	stores := vault.TestCredentialStores(t, conn, wrapper, tar.ScopeId, 1)
+	stores := vault.TestCredentialStores(t, conn, wrapper, tar.GetScopeId(), 1)
 	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 
 	targetRepo, err := target.NewRepository(rw, rw, kms)

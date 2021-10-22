@@ -44,13 +44,6 @@ func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, 
 	return t, nil
 }
 
-// allocTargetHostSet will allocate a target host set
-func allocTargetHostSet() TargetHostSet {
-	return TargetHostSet{
-		TargetHostSet: &store.TargetHostSet{},
-	}
-}
-
 // Clone creates a clone of the target host set
 func (t *TargetHostSet) Clone() interface{} {
 	cp := proto.Clone(t.TargetHostSet)

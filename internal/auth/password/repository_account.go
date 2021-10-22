@@ -212,7 +212,7 @@ func validLoginName(u string) bool {
 	if u == "" {
 		return false
 	}
-	return !reInvalidLoginName.Match([]byte(u))
+	return !reInvalidLoginName.MatchString(u)
 }
 
 // UpdateAccount updates the repository entry for a.PublicId with the

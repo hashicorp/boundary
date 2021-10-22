@@ -15,10 +15,10 @@ import (
 
 func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 	t.Helper()
-	var apiErr *apiError
+	var apiErr *ApiError
 	require.True(t, errors.As(err, &apiErr))
 	var gotFields []string
-	for _, d := range apiErr.inner.GetDetails().GetRequestFields() {
+	for _, d := range apiErr.Inner.GetDetails().GetRequestFields() {
 		gotFields = append(gotFields, d.GetName())
 	}
 	assert.ElementsMatch(t, gotFields, wantFields)

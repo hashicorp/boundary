@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -32,6 +34,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
+	"google.golang.org/grpc"
 )
 
 type Controller struct {
@@ -49,6 +52,12 @@ type Controller struct {
 
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
+
+	// grpc gateway server
+	gatewayServer   *grpc.Server
+	gatewayTicket   string
+	gatewayListener gatewayListener
+	gatewayMux      *runtime.ServeMux
 
 	// Repo factory methods
 	AuthTokenRepoFn       common.AuthTokenRepoFactory
@@ -218,7 +227,7 @@ func (c *Controller) Start() error {
 	if err := c.scheduler.Start(c.baseContext, &c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
-	if err := c.startListeners(); err != nil {
+	if err := c.startListeners(c.baseContext); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 
