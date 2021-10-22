@@ -575,11 +575,13 @@ func TestUpdate(t *testing.T) {
 	tar, err := tcp.New(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, _, err := repo.CreateTarget(context.Background(), tar, target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	gtar, _, _, err := repo.CreateTarget(context.Background(), tar)
+	require.NoError(t, err)
+	gtar, _, _, err = repo.AddTargetHostSources(context.Background(), gtar.GetPublicId(), gtar.GetVersion(), []string{hs[0].GetPublicId(), hs[1].GetPublicId()})
 	require.NoError(t, err)
 	tar = gtar.(*tcp.Target)
 
-	var version uint32 = 1
+	var version uint32 = gtar.GetVersion()
 
 	resetTarget := func() {
 		version++

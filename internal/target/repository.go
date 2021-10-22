@@ -323,7 +323,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 
 // CreateTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
-// WithHostSources and WithCredentialSources are the only supported option.
+// WithPublicId is the only supported option.
 func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Option) (Target, []HostSource, []CredentialSource, error) {
 	const op = "target.(Repository).CreateTarget"
 	opts := GetOpts(opt...)
@@ -371,24 +371,6 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
-	for _, hsId := range opts.WithHostSources {
-		hostSet, err := NewTargetHostSet(t.GetPublicId(), hsId)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
-		}
-		newHostSets = append(newHostSets, hostSet)
-	}
-
-	newCredLibs := make([]interface{}, 0, len(opts.WithCredentialSources))
-	for _, clId := range opts.WithCredentialSources {
-		credLib, err := NewCredentialLibrary(t.GetPublicId(), clId)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target credential library"))
-		}
-		newCredLibs = append(newCredLibs, credLib)
-	}
-
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
 	var returnedHostSources []HostSource
@@ -409,26 +391,6 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 			}
 			msgs = append(msgs, &targetOplogMsg)
-			if len(newHostSets) > 0 {
-				hostSetOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
-				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add host sets"))
-				}
-				if returnedHostSources, err = fetchHostSources(ctx, read, t.GetPublicId()); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read host sources"))
-				}
-				msgs = append(msgs, hostSetOplogMsgs...)
-			}
-			if len(newCredLibs) > 0 {
-				credLibOplogMsgs := make([]*oplog.Message, 0, len(newCredLibs))
-				if err := w.CreateItems(ctx, newCredLibs, db.NewOplogMsgs(&credLibOplogMsgs)); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add credential sources"))
-				}
-				if returnedCredSources, err = fetchCredentialSources(ctx, read, t.GetPublicId()); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to read credential sources"))
-				}
-				msgs = append(msgs, credLibOplogMsgs...)
-			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
