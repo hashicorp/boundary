@@ -159,10 +159,6 @@ func getSetChanges(
 	setMembershipsToAdd, setMembershipsToRemove map[string][]string,
 	allSetIds map[string]struct{}) {
 
-	setMembershipsToAdd = make(map[string][]string)    // Map of set id to host ids
-	setMembershipsToRemove = make(map[string][]string) // Map of set id to host ids
-	allSetIds = make(map[string]struct{})              // Stores the total set IDs we'll need to iterate over
-
 	// First, find sets that hosts should be added to: hosts that are new or
 	// have new set IDs returned.
 	for newHostId, newHost := range newHostMap {
@@ -182,6 +178,12 @@ func getSetChanges(
 		}
 		// Add to the total set
 		for _, setToAdd := range setsToAdd {
+			if setMembershipsToAdd == nil {
+				setMembershipsToAdd = make(map[string][]string)
+			}
+			if allSetIds == nil {
+				allSetIds = make(map[string]struct{})
+			}
 			setMembershipsToAdd[setToAdd] = append(setMembershipsToAdd[setToAdd], newHostId)
 			allSetIds[setToAdd] = struct{}{}
 		}
@@ -206,6 +208,12 @@ func getSetChanges(
 		}
 		// Add to the total set
 		for _, setToRemove := range setsToRemove {
+			if setMembershipsToRemove == nil {
+				setMembershipsToRemove = make(map[string][]string)
+			}
+			if allSetIds == nil {
+				allSetIds = make(map[string]struct{})
+			}
 			setMembershipsToRemove[setToRemove] = append(setMembershipsToRemove[setToRemove], currentHostId)
 			allSetIds[setToRemove] = struct{}{}
 		}
