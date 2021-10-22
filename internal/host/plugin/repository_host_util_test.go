@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,15 +14,16 @@ import (
 func TestCreateNewHostMap(t *testing.T) {
 	ctx := context.Background()
 	const externalId = "ext_1234567890"
+	const pluginId = "plg_1234567890"
 
-	catalog, err := NewHostCatalog(ctx, "p_1234567890", "plg_1234567890")
+	catalog, err := NewHostCatalog(ctx, "p_1234567890", pluginId)
 	require.NoError(t, err)
 	require.NotNil(t, catalog)
 	catalog.PublicId = "hc_1234567890"
 	baseHostId, err := newHostId(ctx, catalog.GetPublicId(), externalId)
 	require.NoError(t, err)
 
-	baseHost := &plgpb.ListHostsResponseHost{
+	baseResponseHost := &plgpb.ListHostsResponseHost{
 		ExternalId:  externalId,
 		Name:        "base-name",
 		Description: "base-description",
@@ -29,8 +31,24 @@ func TestCreateNewHostMap(t *testing.T) {
 		DnsNames:    []string{"a.b.c", "x.y.z"},
 		SetIds:      []string{"hs_1234567890", "hs_0987654321"},
 	}
-	baseIpsIfaces := []interface{}{"1.2.3.4", "5.6.7.8"}
-	baseDnsNamesIfaces := []interface{}{"a.b.c", "x.y.z"}
+	var baseIpsIfaces []interface{}
+	for _, v := range baseResponseHost.IpAddresses {
+		ip, err := host.NewIpAddress(ctx, baseHostId, v)
+		require.NoError(t, err)
+		baseIpsIfaces = append(baseIpsIfaces, ip)
+	}
+	var baseDnsNamesIfaces []interface{}
+	for _, v := range baseResponseHost.DnsNames {
+		name, err := host.NewDnsName(ctx, baseHostId, v)
+		require.NoError(t, err)
+		baseDnsNamesIfaces = append(baseDnsNamesIfaces, name)
+	}
+	baseHost := NewHost(ctx, catalog.PublicId, externalId)
+	baseHost.Name = baseResponseHost.Name
+	baseHost.Description = baseResponseHost.Description
+	baseHost.IpAddresses = baseResponseHost.IpAddresses
+	baseHost.DnsNames = baseResponseHost.DnsNames
+	baseHost.PluginId = pluginId
 
 	tests := []struct {
 		name string
@@ -52,13 +70,21 @@ func TestCreateNewHostMap(t *testing.T) {
 				return in, hi
 			},
 		},
+		{
+			name: "no-change",
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				hi := &hostInfo{}
+				return in, hi
+			},
+			currentHostMap: map[string]*Host{baseHostId: baseHost},
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			h := proto.Clone(baseHost).(*plgpb.ListHostsResponseHost)
+			h := proto.Clone(baseResponseHost).(*plgpb.ListHostsResponseHost)
 			var hi *hostInfo
 			h, hi = tt.in(h)
 			out, err := createNewHostMap(ctx, catalog, []*plgpb.ListHostsResponseHost{h}, tt.currentHostMap)

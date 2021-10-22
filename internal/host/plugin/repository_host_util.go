@@ -90,8 +90,8 @@ func createNewHostMap(ctx context.Context,
 
 				// First, build up removals
 				hi.ipsToRemove = make([]interface{}, 0, len(currHostIps))
-				for i, a := range currHostIps {
-					obj, err := host.NewIpAddress(ctx, newHost.PublicId, uint32(i+1), a)
+				for _, a := range currHostIps {
+					obj, err := host.NewIpAddress(ctx, newHost.PublicId, a)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
@@ -100,8 +100,8 @@ func createNewHostMap(ctx context.Context,
 
 				// Now build up additions
 				hi.ipsToAdd = make([]interface{}, 0, len(newHost.GetIpAddresses()))
-				for i, a := range newHost.GetIpAddresses() {
-					obj, err := host.NewIpAddress(ctx, newHost.PublicId, uint32(i+1), a)
+				for _, a := range newHost.GetIpAddresses() {
+					obj, err := host.NewIpAddress(ctx, newHost.PublicId, a)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
@@ -121,8 +121,8 @@ func createNewHostMap(ctx context.Context,
 
 				// First, build up removals
 				hi.dnsNamesToRemove = make([]interface{}, 0, len(currHostDnsNames))
-				for i, a := range currHostDnsNames {
-					obj, err := host.NewDnsName(ctx, newHost.PublicId, uint32(i+1), a)
+				for _, a := range currHostDnsNames {
+					obj, err := host.NewDnsName(ctx, newHost.PublicId, a)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
@@ -131,8 +131,8 @@ func createNewHostMap(ctx context.Context,
 
 				// Now build up additions
 				hi.dnsNamesToAdd = make([]interface{}, 0, len(newHost.GetIpAddresses()))
-				for i, a := range newHost.GetDnsNames() {
-					obj, err := host.NewDnsName(ctx, newHost.PublicId, uint32(i+1), a)
+				for _, a := range newHost.GetDnsNames() {
+					obj, err := host.NewDnsName(ctx, newHost.PublicId, a)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
