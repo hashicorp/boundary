@@ -17,13 +17,12 @@ type DnsName struct {
 	tableName string `gorm:"-"`
 }
 
-func NewDnsName(ctx context.Context, hostId string, priority uint32, name string) (*DnsName, error) {
+func NewDnsName(ctx context.Context, hostId string, name string) (*DnsName, error) {
 	const op = "host.NewDnsName"
 	dn := &DnsName{
 		DnsName: &store.DnsName{
-			HostId:   hostId,
-			Name:     name,
-			Priority: priority,
+			HostId: hostId,
+			Name:   name,
 		},
 	}
 	if err := dn.validate(ctx, op); err != nil {
@@ -36,9 +35,6 @@ func NewDnsName(ctx context.Context, hostId string, priority uint32, name string
 func (dn *DnsName) validate(ctx context.Context, caller errors.Op) error {
 	if dn.HostId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing host id")
-	}
-	if dn.Priority < 1 {
-		return errors.New(ctx, errors.InvalidParameter, caller, "invalid priority value")
 	}
 	if dn.Name == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing dns name")
