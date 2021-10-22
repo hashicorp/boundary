@@ -88,7 +88,7 @@ func (h *Host) clone() *Host {
 		nh.SetIds = make([]string, len(h.SetIds))
 		copy(nh.SetIds, h.SetIds)
 	}
-	return h
+	return nh
 }
 
 func (h *Host) oplog(op oplog.OpType) oplog.Metadata {

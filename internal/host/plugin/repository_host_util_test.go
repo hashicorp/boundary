@@ -4,14 +4,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/host"
+	hoststore "github.com/hashicorp/boundary/internal/host/store"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestCreateNewHostMap(t *testing.T) {
+func TestUtilFunctions(t *testing.T) {
 	ctx := context.Background()
 	const externalId = "ext_1234567890"
 	const pluginId = "plg_1234567890"
@@ -50,17 +53,22 @@ func TestCreateNewHostMap(t *testing.T) {
 	baseHost.DnsNames = baseResponseHost.DnsNames
 	baseHost.PluginId = pluginId
 
+	defaultHostFunc := func(in *Host) *Host {
+		return in
+	}
+
 	tests := []struct {
 		name string
-
+		host func(*Host) *Host
 		// This function should take in a base host (which will be provided as a
 		// clone) and transform however needed for the particular test
 		in func(*plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo)
-
-		currentHostMap map[string]*Host
 	}{
 		{
 			name: "base",
+			host: func(in *Host) *Host {
+				return nil
+			},
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
 				hi := &hostInfo{
 					dirtyHost:     true,
@@ -72,11 +80,87 @@ func TestCreateNewHostMap(t *testing.T) {
 		},
 		{
 			name: "no-change",
+			host: defaultHostFunc,
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
 				hi := &hostInfo{}
 				return in, hi
 			},
-			currentHostMap: map[string]*Host{baseHostId: baseHost},
+		},
+		{
+			name: "new-name",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				in.Name = "newname"
+				hi := &hostInfo{
+					dirtyHost: true,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "new-description",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				in.Description = "newdescription"
+				hi := &hostInfo{
+					dirtyHost: true,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "extra-ip",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				const newIp = "11.22.33.44"
+				in.IpAddresses = append(in.IpAddresses, newIp)
+				ip, err := host.NewIpAddress(ctx, baseHostId, newIp)
+				require.NoError(t, err)
+				hi := &hostInfo{
+					ipsToAdd:    append(baseIpsIfaces, ip),
+					ipsToRemove: baseIpsIfaces,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "remove-ip",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				in.IpAddresses = in.IpAddresses[0:1]
+				hi := &hostInfo{
+					ipsToAdd:    baseIpsIfaces[0:1],
+					ipsToRemove: baseIpsIfaces,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "extra-dns-name",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				const newName = "this.is.a.test"
+				in.DnsNames = append(in.DnsNames, newName)
+				name, err := host.NewDnsName(ctx, baseHostId, newName)
+				require.NoError(t, err)
+				hi := &hostInfo{
+					dnsNamesToAdd:    append(baseDnsNamesIfaces, name),
+					dnsNamesToRemove: baseDnsNamesIfaces,
+				}
+				return in, hi
+			},
+		},
+		{
+			name: "remove-dns-name",
+			host: defaultHostFunc,
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				in.DnsNames = in.DnsNames[0:1]
+				hi := &hostInfo{
+					dnsNamesToAdd:    baseDnsNamesIfaces[0:1],
+					dnsNamesToRemove: baseDnsNamesIfaces,
+				}
+				return in, hi
+			},
 		},
 	}
 
@@ -84,10 +168,12 @@ func TestCreateNewHostMap(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			h := proto.Clone(baseResponseHost).(*plgpb.ListHostsResponseHost)
 			var hi *hostInfo
+			currentHostMap := map[string]*Host{baseHostId: tt.host(baseHost.clone())}
+			h := proto.Clone(baseResponseHost).(*plgpb.ListHostsResponseHost)
 			h, hi = tt.in(h)
-			out, err := createNewHostMap(ctx, catalog, []*plgpb.ListHostsResponseHost{h}, tt.currentHostMap)
+
+			out, err := createNewHostMap(ctx, catalog, []*plgpb.ListHostsResponseHost{h}, currentHostMap)
 			require.NoError(err)
 			require.NotNil(out)
 			require.NotNil(out[baseHostId])
@@ -103,10 +189,46 @@ func TestCreateNewHostMap(t *testing.T) {
 
 			// Check the various hostInfo bits
 			assert.Equal(hi.dirtyHost, got.dirtyHost)
-			assert.ElementsMatch(hi.ipsToAdd, got.ipsToAdd)
-			assert.ElementsMatch(hi.ipsToRemove, got.ipsToRemove)
-			assert.ElementsMatch(hi.dnsNamesToAdd, got.dnsNamesToAdd)
-			assert.ElementsMatch(hi.dnsNamesToRemove, got.dnsNamesToRemove)
+			assert.Empty(
+				cmp.Diff(
+					hi.ipsToAdd,
+					got.ipsToAdd,
+					cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
+					cmpopts.SortSlices(func(x, y interface{}) bool {
+						return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
+					}),
+				),
+			)
+			assert.Empty(
+				cmp.Diff(
+					hi.ipsToRemove,
+					got.ipsToRemove,
+					cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
+					cmpopts.SortSlices(func(x, y interface{}) bool {
+						return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
+					}),
+				),
+			)
+			assert.Empty(
+				cmp.Diff(
+					hi.dnsNamesToAdd,
+					got.dnsNamesToAdd,
+					cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
+					cmpopts.SortSlices(func(x, y interface{}) bool {
+						return x.(*host.DnsName).Name < y.(*host.DnsName).Name
+					}),
+				),
+			)
+			assert.Empty(
+				cmp.Diff(
+					hi.dnsNamesToRemove,
+					got.dnsNamesToRemove,
+					cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
+					cmpopts.SortSlices(func(x, y interface{}) bool {
+						return x.(*host.DnsName).Name < y.(*host.DnsName).Name
+					}),
+				),
+			)
 		})
 	}
 }
