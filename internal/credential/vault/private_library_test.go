@@ -18,6 +18,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	tests := []struct {
 		name string
@@ -44,10 +45,11 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			kms := kms.TestKms(t, conn, wrapper)
 
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			var opts []Option
 			if tt.tls == TestServerTLS {
