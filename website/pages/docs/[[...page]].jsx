@@ -15,6 +15,7 @@ export default function DocsLayout(props) {
       product={{ name: productName, slug: productSlug }}
       baseRoute={basePath}
       staticProps={props}
+      showVersionSelect={true}
     />
   )
 }
@@ -25,17 +26,29 @@ export async function getStaticPaths() {
     paths: await generateStaticPaths({
       navDataFile: NAV_DATA_FILE,
       localContentDir: CONTENT_DIR,
+      // new ----
+      product: { name: productName, slug: productSlug },
+      basePath: basePath,
     }),
   }
 }
 
 export async function getStaticProps({ params }) {
-  return {
-    props: await generateStaticProps({
-      navDataFile: NAV_DATA_FILE,
-      localContentDir: CONTENT_DIR,
-      product: { name: productName, slug: productSlug },
-      params,
-    }),
+  try {
+    return {
+      props: await generateStaticProps({
+        navDataFile: NAV_DATA_FILE,
+        localContentDir: CONTENT_DIR,
+        product: { name: productName, slug: productSlug },
+        params,
+        basePath: basePath,
+      }),
+      revalidate: 10,
+    }
+  } catch (err) {
+    console.warn(err)
+    return {
+      notFound: true,
+    }
   }
 }
