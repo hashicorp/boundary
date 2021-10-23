@@ -143,21 +143,10 @@ func TestPatchBytes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
 			dst, src := mustMarshal(tc.dst), mustMarshal(tc.src)
-			dstOrig, srcOrig := mustMarshal(tc.dst), mustMarshal(tc.src)
-			if tc.dst == nil {
-				dst = nil
-				dstOrig = nil
-			}
-			if tc.src == nil {
-				src = nil
-				srcOrig = nil
-			}
 
 			actual, err := PatchBytes(dst, src)
 			require.NoError(err)
 			requireEqualEncoded(t, mustMarshal(tc.expected), actual)
-			require.Equal(dstOrig, dst)
-			require.Equal(srcOrig, src)
 		})
 	}
 }
