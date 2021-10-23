@@ -32,7 +32,7 @@ func TestUtilFunctions(t *testing.T) {
 		Description: "base-description",
 		IpAddresses: []string{"1.2.3.4", "5.6.7.8"},
 		DnsNames:    []string{"a.b.c", "x.y.z"},
-		SetIds:      []string{"hs_1234567890", "hs_0987654321"},
+		SetIds:      []string{"set1", "set2"},
 	}
 	var baseIpsIfaces []interface{}
 	for _, v := range baseResponseHost.IpAddresses {
@@ -52,6 +52,7 @@ func TestUtilFunctions(t *testing.T) {
 	baseHost.IpAddresses = baseResponseHost.IpAddresses
 	baseHost.DnsNames = baseResponseHost.DnsNames
 	baseHost.PluginId = pluginId
+	baseHost.SetIds = baseResponseHost.SetIds
 
 	defaultHostFunc := func(in *Host) *Host {
 		return in
@@ -75,7 +76,9 @@ func TestUtilFunctions(t *testing.T) {
 			host: func(in *Host) *Host {
 				return nil
 			},
-			sets: defaultSetsFunc,
+			sets: func() []string {
+				return nil
+			},
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
 				hi := &hostInfo{
 					dirtyHost:     true,
@@ -179,10 +182,47 @@ func TestUtilFunctions(t *testing.T) {
 		{
 			name: "add-sets",
 			host: defaultHostFunc,
-			sets: defaultSetsFunc,
+			sets: func() []string {
+				return append(defaultSetsFunc(), "extra-set", "extra-set-2")
+			},
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
 				hi := &hostInfo{}
 				return in, hi
+			},
+			setsToAdd: map[string][]string{
+				"extra-set":   {baseHostId},
+				"extra-set-2": {baseHostId},
+			},
+		},
+		{
+			name: "remove-sets",
+			host: defaultHostFunc,
+			sets: func() []string {
+				return defaultSetsFunc()[0:1]
+			},
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				hi := &hostInfo{}
+				return in, hi
+			},
+			setsToRemove: map[string][]string{
+				"set2": {baseHostId},
+			},
+		},
+		{
+			name: "add-and-remove-sets",
+			host: defaultHostFunc,
+			sets: func() []string {
+				return append(defaultSetsFunc()[0:1], "extra-set")
+			},
+			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
+				hi := &hostInfo{}
+				return in, hi
+			},
+			setsToAdd: map[string][]string{
+				"extra-set": {baseHostId},
+			},
+			setsToRemove: map[string][]string{
+				"set2": {baseHostId},
 			},
 		},
 	}
