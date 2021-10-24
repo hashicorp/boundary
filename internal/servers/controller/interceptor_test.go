@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -17,10 +18,12 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/go-hclog"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,8 +62,10 @@ func Test_requestCtxInterceptor(t *testing.T) {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokValue))
 		// Add values for authn/authz checking
 		requestInfo := authpb.RequestInfo{
-			Path:   req.URL.Path,
-			Method: req.Method,
+			Path:    req.URL.Path,
+			Method:  req.Method,
+			EventId: "test-event-id",
+			TraceId: "test-trace-id",
 		}
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(context.TODO(), kmsCache, req)
 		requestInfo.Ticket = gwTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
@@ -82,6 +87,15 @@ func Test_requestCtxInterceptor(t *testing.T) {
 		return ctx, nil
 	}
 
+	c := event.TestEventerConfig(t, "Test_requestCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_requestCtxInterceptor", c.EventerConfig)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name                   string
 		requestCtx             context.Context
@@ -89,6 +103,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 		authTokenRepoFn        common.AuthTokenRepoFactory
 		serversRepoFn          common.ServersRepoFactory
 		kms                    *kms.Kms
+		eventer                *event.Eventer
 		ticket                 string
 		wantFactoryErr         bool
 		wantFactoryErrMatch    *errors.Template
@@ -103,6 +118,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			wantFactoryErr:         true,
 			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
 			wantFactoryErrContains: "missing iam repo",
@@ -113,6 +129,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			iamRepoFn:              iamRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			wantFactoryErr:         true,
 			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
 			wantFactoryErrContains: "missing auth token repo",
@@ -123,12 +140,24 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			iamRepoFn:              iamRepoFn,
 			authTokenRepoFn:        atRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			wantFactoryErr:         true,
 			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
 			wantFactoryErrContains: "missing servers repo function",
 		},
 		{
 			name:                   "missing-kms",
+			requestCtx:             newReqCtx(validGatewayTicket),
+			iamRepoFn:              iamRepoFn,
+			authTokenRepoFn:        atRepoFn,
+			serversRepoFn:          serversRepoFn,
+			eventer:                testEventer,
+			wantFactoryErr:         true,
+			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
+			wantFactoryErrContains: "missing kms",
+		},
+		{
+			name:                   "missing-eventer",
 			requestCtx:             newReqCtx(validGatewayTicket),
 			iamRepoFn:              iamRepoFn,
 			authTokenRepoFn:        atRepoFn,
@@ -144,6 +173,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			wantFactoryErr:         true,
 			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
 			wantFactoryErrContains: "missing ticket",
@@ -155,6 +185,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -170,6 +201,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -185,6 +217,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -200,6 +233,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -215,6 +249,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -230,6 +265,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 validGatewayTicket,
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -242,6 +278,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 "validGatewayTicket",
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -254,6 +291,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn:        atRepoFn,
 			serversRepoFn:          serversRepoFn,
 			kms:                    kmsCache,
+			eventer:                testEventer,
 			ticket:                 "validGatewayTicket",
 			wantRequestErr:         true,
 			wantRequestErrMatch:    errors.T(errors.Internal),
@@ -266,13 +304,14 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			authTokenRepoFn: atRepoFn,
 			serversRepoFn:   serversRepoFn,
 			kms:             kmsCache,
+			eventer:         testEventer,
 			ticket:          validGatewayTicket,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, tt.kms, tt.ticket)
+			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, tt.kms, tt.ticket, tt.eventer)
 			if tt.wantFactoryErr {
 				require.Error(err)
 				assert.Nil(interceptor)
