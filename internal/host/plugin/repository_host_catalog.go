@@ -212,14 +212,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("catalog with id %q not found", c.PublicId))
 	}
 
-	// We also need the secrets for the host catalog - while we don't
-	// patch them in the same way as we do attributes, we do need them
-	// for the plugin request.
-	currentCatalogPersisted, err := r.getPersistedDataForCatalog(ctx, currentCatalog)
-	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up persisted data for catalog with id %q", c.PublicId)))
-	}
-
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
 	var dbMask, nullFields []string
@@ -276,6 +268,12 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
 	if err != nil {
 		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	// Get the secrets for the host catalog.
+	currentCatalogPersisted, err := r.getPersistedDataForCatalog(ctx, currentCatalog)
+	if err != nil {
+		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up persisted data for catalog with id %q", c.PublicId)))
 	}
 
 	plgResp, err := plgClient.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
