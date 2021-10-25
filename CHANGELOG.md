@@ -4,6 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* tls: Boundary's support for TLS 1.0/1.1 on the API listener was broken. Rather
+  than fix this, we are simply not supporting TLS 1.0/1.1 as they are insecure.
+
+### Bug Fixes
+
+* tls: Support TLS 1.2 for more clients. This was broken for some clients due to
+  a missing mandated cipher suite of the HTTP/2 (`h2`) specification that could
+  result in no shared cipher suites between the Boundary API listener and those
+  clients. ([PR](https://github.com/hashicorp/boundary/pull/1637))
+
 ## 0.6.2 (2021/09/27)
 
 ### Deprecations/Changes
