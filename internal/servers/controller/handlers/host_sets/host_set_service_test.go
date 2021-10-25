@@ -445,7 +445,7 @@ func TestList_Plugin(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDelete_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -494,10 +494,78 @@ func TestDelete(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Delete bad host catalog id in Host Set",
+			name:    "Bad Host Id formatting",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostSetRequest{
+				Id: static.HostSetPrefix + "_bad_format",
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHostSet(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestDelete_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+	}
+	name := "test"
+	plg := hostplugin.TestPlugin(t, conn, name)
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	}
+
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := plugin.TestSet(t, conn, kms, hc, plgm)
+
+	s, err := host_sets.NewService(repoFn, pluginRepoFn)
+	require.NoError(t, err, "Couldn't create a new host set service.")
+
+	cases := []struct {
+		name    string
+		scopeId string
+		req     *pbs.DeleteHostSetRequest
+		res     *pbs.DeleteHostSetResponse
+		err     error
+	}{
+		{
+			name:    "Delete an Existing Host Set",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
+			},
+		},
+		{
+			name:    "Delete bad id Host Set",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostSetRequest{
+				Id: plugin.HostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -505,7 +573,7 @@ func TestDelete(t *testing.T) {
 			name:    "Bad Host Id formatting",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_bad_format",
+				Id: plugin.HostSetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

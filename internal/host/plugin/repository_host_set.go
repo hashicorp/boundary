@@ -249,6 +249,85 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host
 	return sets, plg, nil
 }
 
+// DeleteSet deletes the host set for the provided id from the repository
+// returning a count of the number of records deleted. All options are
+// ignored.
+func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, _ ...Option) (int, error) {
+	const op = "plugin.(Repository).DeleteSet"
+	if publicId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	}
+
+	sets, plg, err := r.getSets(ctx, publicId, "")
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	if len(sets) != 1 {
+		return db.NoRowsAffected, nil
+	}
+	s := sets[0]
+
+	c, err := r.getCatalog(ctx, s.GetCatalogId())
+	if err != nil && errors.IsNotFoundError(err) {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	if c == nil {
+		return db.NoRowsAffected, nil
+	}
+	p, err := r.getPersistedDataForCatalog(ctx, c)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	plgClient, ok := r.plugins[plg.GetPublicId()]
+	if !ok || plgClient == nil {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	}
+	plgHc, err := toPluginCatalog(ctx, c)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
+	plgHs, err := toPluginSet(ctx, s)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
+	_, err = plgClient.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{Catalog: plgHc, Persisted: p, Set: plgHs})
+	if err != nil {
+		// Even if the plugin returns an error, we ignore it and proceed
+		// with deleting the set.
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			ds := s.clone()
+			rowsDeleted, err = w.Delete(ctx, ds, db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", s.PublicId)))
+	}
+
+	return rowsDeleted, nil
+}
+
 func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	if publicId == "" && catalogId == "" {

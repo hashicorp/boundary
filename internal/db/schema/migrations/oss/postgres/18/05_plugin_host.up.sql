@@ -197,9 +197,9 @@ begin;
 
   -- insert_host_plugin_host_subtype is intended as a before insert trigger on
   -- host_plugin_host. Its purpose is to insert a base host for new plugin-based
-  -- host accounts. It's a bit different than the standard trigger for this,
-  -- because it will have conflicting PKs and we just want to "do nothing" on
-  -- those conflicts, deferring the raising on an error to insert into the
+  -- hosts. It's a bit different than the standard trigger for this, because it
+  -- will have conflicting PKs and we just want to "do nothing" on those
+  -- conflicts, deferring the raising on an error to insert into the
   -- host_plugin_host table. This allows the upsert-style workflow.
   create or replace function
     insert_host_plugin_host_subtype()

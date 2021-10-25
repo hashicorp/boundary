@@ -525,13 +525,26 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, re
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	const op = "host_sets.(Service).deleteFromRepo"
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return false, err
-	}
-	rows, err := repo.DeleteSet(ctx, scopeId, id)
-	if err != nil {
-		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+	rows := 0
+	switch host.SubtypeFromId(id) {
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return false, err
+		}
+		rows, err = repo.DeleteSet(ctx, scopeId, id)
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+		}
+	case plugin.Subtype:
+		repo, err := s.pluginRepoFn()
+		if err != nil {
+			return false, err
+		}
+		rows, err = repo.DeleteSet(ctx, scopeId, id)
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
+		}
 	}
 	return rows > 0, nil
 }
@@ -900,7 +913,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, plugin.HostSetPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostSetsRequest) error {
