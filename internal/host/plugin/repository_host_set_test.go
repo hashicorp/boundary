@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -650,6 +651,92 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
+		})
+	}
+}
+
+func TestRepository_DeleteSet(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iamRepo)
+	plg := hostplg.TestPlugin(t, conn, "create")
+
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			return &plgpb.OnCreateSetResponse{}, nil
+		}}),
+	}
+	c := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
+	hostSet := TestSet(t, conn, kms, c, plgm)
+	hostSet2 := TestSet(t, conn, kms, c, plgm)
+
+	newHostSetId, err := newHostSetId(ctx)
+	require.NoError(t, err)
+	tests := []struct {
+		name      string
+		in        string
+		pluginChecker func(*plgpb.OnDeleteSetRequest) error
+		want      int
+		wantIsErr errors.Code
+	}{
+		{
+			name:      "With no public id",
+			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
+				assert.Fail(t, "The plugin shouldn't be called")
+				return nil
+			},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "With non existing host set id",
+			in:   newHostSetId,
+			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
+				assert.Fail(t, "The plugin shouldn't be called")
+				return nil
+			},
+			want: 0,
+		},
+		{
+			name: "With existing host set id",
+			in:   hostSet.PublicId,
+			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
+				assert.Equal(t, c.GetPublicId(), req.GetCatalog().GetId())
+				assert.Equal(t, hostSet.GetPublicId(), req.GetSet().GetId())
+				return nil
+			},
+			want: 1,
+		},
+		{
+			name: "Ignores plugin errors",
+			in:   hostSet2.PublicId,
+			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
+				assert.Equal(t, c.GetPublicId(), req.GetCatalog().GetId())
+				assert.Equal(t, hostSet2.GetPublicId(), req.GetSet().GetId())
+				return fmt.Errorf("test error")
+			},
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms, plgm)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.DeleteSet(ctx, prj.PublicId, tt.in)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Zero(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
 		})
 	}
 }

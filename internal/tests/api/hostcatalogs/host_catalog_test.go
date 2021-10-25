@@ -117,6 +117,23 @@ func TestCrud(t *testing.T) {
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+
+	// Plugin catalogs
+	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
+	require.NoError(err)
+
+	c, err = hcClient.Read(tc.Context(), c.Item.Id)
+	assert.NoError(err)
+
+	_, err = hcClient.Delete(tc.Context(), c.Item.Id)
+	assert.NoError(err)
+
+	_, err = hcClient.Delete(tc.Context(), c.Item.Id)
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
