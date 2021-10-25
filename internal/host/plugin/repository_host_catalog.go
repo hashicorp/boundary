@@ -240,7 +240,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 			// Patch the working set with the new attributes.
 			c.Attributes = newCatalog.Attributes
-		case strings.EqualFold("secrets", f) && c.Secrets != nil:
+		case strings.EqualFold("secrets", f):
 			// While in a similar format, secrets are passed along
 			// wholesale (for the time being). Don't append this mask
 			// field, as secrets do not have a database entry. Clear the
