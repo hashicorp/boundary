@@ -56,6 +56,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 		sets    []string
 		host    *Host
 		wantErr bool
+		direct  bool
 	}{
 		{
 			name: "valid-host-in-set",
@@ -73,13 +74,39 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 			host:    blueHost1,
 			wantErr: true,
 		},
+		{
+			name:    "test-vet-for-write-no-set",
+			host:    blueHost1,
+			sets:    []string{""},
+			wantErr: true,
+			direct:  true,
+		},
+		{
+			name:    "test-vet-for-write-no-host",
+			sets:    []string{blueSet1.PublicId},
+			wantErr: true,
+			direct:  true,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for _, set := range tt.sets {
-				got, err := NewHostSetMember(set, tt.host.PublicId)
+				var got *HostSetMember
+				var err error
+				if !tt.direct {
+					got, err = NewHostSetMember(ctx, set, tt.host.PublicId)
+				} else {
+					got = &HostSetMember{
+						HostSetMember: &store.HostSetMember{
+							SetId: set,
+						},
+					}
+					if tt.host != nil {
+						got.HostId = tt.host.PublicId
+					}
+				}
 				require.NoError(err)
 				require.NotNil(got)
 				err2 := rw.Create(ctx, got)
@@ -110,7 +137,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	assert.Len(t, hosts, 2)
 
 	// Delete first membership, validate host is gone
-	got, err := NewHostSetMember(blueSet1.PublicId, blueHost1.PublicId)
+	got, err := NewHostSetMember(ctx, blueSet1.PublicId, blueHost1.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	num, err := rw.Delete(ctx, got)
@@ -122,7 +149,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.Len(t, hosts, 1)
 
 	// Delete second, validate second host is gone
-	got, err = NewHostSetMember(blueSet2.PublicId, blueHost2.PublicId)
+	got, err = NewHostSetMember(ctx, blueSet2.PublicId, blueHost2.PublicId)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	num, err = rw.Delete(ctx, got)

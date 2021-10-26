@@ -199,7 +199,7 @@ func (r *Repository) UpsertHosts(
 
 				// Perform additions
 				for _, hostId := range setMembershipsToAdd[hs.PublicId] {
-					membership, err := NewHostSetMember(hs.PublicId, hostId)
+					membership, err := NewHostSetMember(ctx, hs.PublicId, hostId)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -213,7 +213,7 @@ func (r *Repository) UpsertHosts(
 
 				// Perform removals
 				for _, hostId := range setMembershipsToRemove[hs.PublicId] {
-					membership, err := NewHostSetMember(hs.PublicId, hostId)
+					membership, err := NewHostSetMember(ctx, hs.PublicId, hostId)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
