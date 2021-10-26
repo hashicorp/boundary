@@ -47,7 +47,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	))
 	require.NoError(err)
 
-	assert.NoError(m.ApplyMigrations(ctx))
+	require.NoError(m.ApplyMigrations(ctx))
 	state, err := m.CurrentState(ctx)
 	require.NoError(err)
 	want := &schema.State{
@@ -127,7 +127,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	require.NoError(err)
 
 	count, err := sessionRepo.TerminateCompletedSessions(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 	assert.Zero(count)
 
 	for _, sess := range sessions {
@@ -142,7 +142,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	))
 	require.NoError(err)
 
-	assert.NoError(m.ApplyMigrations(ctx))
+	require.NoError(m.ApplyMigrations(ctx))
 	state, err = m.CurrentState(ctx)
 	want = &schema.State{
 		Initialized: true,

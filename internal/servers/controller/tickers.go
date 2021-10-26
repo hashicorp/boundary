@@ -17,7 +17,7 @@ const (
 )
 
 // This is exported so it can be tweaked in tests
-var RecoveryNonceCleanupInterval = 2 * time.Minute
+var NonceCleanupInterval = 2 * time.Minute
 
 func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	const op = "controller.(Controller).startStatusTicking"
@@ -51,8 +51,8 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	}
 }
 
-func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context) {
-	const op = "controller.(Controller).startRecoveryNonceCleanupTicking"
+func (c *Controller) startNonceCleanupTicking(cancelCtx context.Context) {
+	const op = "controller.(Controller).startNonceCleanupTicking"
 	timer := time.NewTimer(0)
 	for {
 		select {
@@ -72,7 +72,7 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 					event.WriteSysEvent(cancelCtx, op, "recovery nonce cleanup successful", "nonces_cleaned", nonceCount)
 				}
 			}
-			timer.Reset(RecoveryNonceCleanupInterval)
+			timer.Reset(NonceCleanupInterval)
 		}
 	}
 }

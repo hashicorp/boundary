@@ -195,9 +195,5 @@ func ValidNameDescription(in string) bool {
 		return !unicode.IsPrint(c)
 	})
 
-	if idx != -1 {
-		return false
-	}
-
-	return true
+	return idx == -1
 }

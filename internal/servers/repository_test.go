@@ -22,7 +22,8 @@ func TestRecoveryNonces(t *testing.T) {
 
 	// Set these low so that we can not have the test run forever
 	globals.RecoveryTokenValidityPeriod = 10 * time.Second
-	controller.RecoveryNonceCleanupInterval = 20 * time.Second
+	globals.WorkerAuthNonceValidityPeriod = 10 * time.Second
+	controller.NonceCleanupInterval = 20 * time.Second
 
 	wrapper := db.TestWrapper(t)
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
@@ -46,14 +47,14 @@ func TestRecoveryNonces(t *testing.T) {
 	roleClient := roles.NewClient(client)
 	_, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
-	nonces, err := repo.ListNonces(tc.Context())
+	nonces, err := repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
 	require.NoError(err)
 	assert.Len(nonces, 1)
 
 	// Token 1, try 2
 	_, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.Error(err)
-	nonces, err = repo.ListNonces(tc.Context())
+	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
 	require.NoError(err)
 	assert.Len(nonces, 1)
 
@@ -61,13 +62,13 @@ func TestRecoveryNonces(t *testing.T) {
 	roleClient.ApiClient().SetToken(token2)
 	_, err = roleClient.Create(tc.Context(), scope.Global.String())
 	require.NoError(err)
-	nonces, err = repo.ListNonces(tc.Context())
+	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
 	require.NoError(err)
 	assert.Len(nonces, 2)
 
 	// Make sure they get cleaned up
-	time.Sleep(2 * controller.RecoveryNonceCleanupInterval)
-	nonces, err = repo.ListNonces(tc.Context())
+	time.Sleep(2 * controller.NonceCleanupInterval)
+	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
 	require.NoError(err)
 	assert.Len(nonces, 0)
 
@@ -76,7 +77,7 @@ func TestRecoveryNonces(t *testing.T) {
 		roleClient.ApiClient().SetToken(token)
 		_, err = roleClient.Create(tc.Context(), scope.Global.String())
 		require.Error(err)
-		nonces, err = repo.ListNonces(tc.Context())
+		nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
 		require.NoError(err)
 		assert.Len(nonces, 0)
 	}

@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* workers: The existing worker connection replay prevention logic has been
+  enhanced to be more robust against attackers that have decryption access to
+  the shared `worker-auth` KMS key
+  ([PR](https://github.com/hashicorp/boundary/pull/1641))
+
 ## 0.6.2 (2021/09/27)
 
 ### Deprecations/Changes
