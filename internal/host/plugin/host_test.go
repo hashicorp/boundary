@@ -84,7 +84,7 @@ func TestHost_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "duplicate-name",
+			name: "valid-duplicate-name-same-catalog",
 			args: args{
 				catalogId:  cat.GetPublicId(),
 				externalId: "duplicate-name",
@@ -99,7 +99,6 @@ func TestHost_Create(t *testing.T) {
 					Name:       "test-name",
 				},
 			},
-			wantErr: true,
 		},
 		{
 			name: "valid-duplicate-name-different-catalog",
