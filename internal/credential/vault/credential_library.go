@@ -25,7 +25,7 @@ type CredentialLibrary struct {
 	*store.CredentialLibrary
 	tableName string `gorm:"-"`
 
-	mappingOverride MappingOverride `gorm:"-"`
+	MappingOverride MappingOverride `gorm:"-"`
 }
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
@@ -37,7 +37,7 @@ func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*Cre
 	opts := getOpts(opt...)
 
 	l := &CredentialLibrary{
-		mappingOverride: opts.withMappingOverride,
+		MappingOverride: opts.withMappingOverride,
 		CredentialLibrary: &store.CredentialLibrary{
 			StoreId:         storeId,
 			Name:            opts.withName,
@@ -54,7 +54,7 @@ func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*Cre
 
 func (l *CredentialLibrary) validate(ctx context.Context, caller errors.Op) error {
 	switch {
-	case !validMappingOverride(l.mappingOverride, l.CredentialType()):
+	case !validMappingOverride(l.MappingOverride, l.CredentialType()):
 		return errors.New(ctx, errors.VaultInvalidMappingOverride, caller, "invalid credential type for mapping override")
 	}
 	return nil
@@ -68,21 +68,21 @@ func allocCredentialLibrary() *CredentialLibrary {
 
 func (l *CredentialLibrary) clone() *CredentialLibrary {
 	var m MappingOverride
-	if l.mappingOverride != nil {
-		m = l.mappingOverride.clone()
+	if l.MappingOverride != nil {
+		m = l.MappingOverride.clone()
 	}
 
 	cp := proto.Clone(l.CredentialLibrary)
 	return &CredentialLibrary{
-		mappingOverride:   m,
+		MappingOverride:   m,
 		CredentialLibrary: cp.(*store.CredentialLibrary),
 	}
 }
 
 func (l *CredentialLibrary) setId(i string) {
 	l.PublicId = i
-	if l.mappingOverride != nil {
-		l.mappingOverride.setLibraryId(i)
+	if l.MappingOverride != nil {
+		l.MappingOverride.setLibraryId(i)
 	}
 }
 

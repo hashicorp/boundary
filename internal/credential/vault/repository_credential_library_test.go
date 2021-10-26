@@ -189,7 +189,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "unknown-mapping-override-type",
 			in: &CredentialLibrary{
-				mappingOverride: unknownMapper(1),
+				MappingOverride: unknownMapper(1),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -202,7 +202,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "invalid-mapping-override-type",
 			in: &CredentialLibrary{
-				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:    cs.GetPublicId(),
 					HttpMethod: "GET",
@@ -214,7 +214,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "valid-user-password-credential-type-with-override",
 			in: &CredentialLibrary{
-				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -223,7 +223,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 			want: &CredentialLibrary{
-				mappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.GetPublicId(),
 					HttpMethod:     "GET",
@@ -262,7 +262,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
-			if tt.in.mappingOverride != nil {
+			if tt.in.MappingOverride != nil {
 				override := allocUserPasswordOverride()
 				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", got.GetPublicId()))
 			}
