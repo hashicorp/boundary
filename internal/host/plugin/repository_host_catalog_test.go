@@ -981,7 +981,7 @@ func withNilEmbeddedCatalog() testSetCatalogOption {
 	}
 }
 
-// testSetCatalog creates a new HostCatalog with various fields set
+// testSetCatalog creates a new in memory HostCatalog with various fields set
 // and only those fields. This is intended for use in UpdateCatalog.
 func testSetCatalog(c *HostCatalog, opts ...testSetCatalogOption) *HostCatalog {
 	c = &HostCatalog{
