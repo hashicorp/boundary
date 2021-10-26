@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHostSetMember_Insert tests insertion and validates the lookup via set IDs
+// TestHostSetMember_InsertDelete tests insertion and validates the lookup via set IDs
 // function as well. After, we remove set memberships one at a time and validate
 // the cleanup function removes the hosts.
 func TestHostSetMember_InsertDelete(t *testing.T) {
