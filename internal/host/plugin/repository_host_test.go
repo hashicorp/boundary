@@ -45,6 +45,8 @@ func TestRepository_UpsertHosts(t *testing.T) {
 	}
 	sort.Strings(setIds)
 	phs, exp := TestExternalHosts(t, catalog, setIds, setCount)
+	phs[2].Name = phs[0].Name
+	exp[2].Name = exp[0].Name
 
 	type input struct {
 		catalog *HostCatalog
@@ -140,7 +142,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "valid",
+			name: "valid", // Note: this also tests duplicate names
 			in: func() *input {
 				return &input{
 					catalog: catalog,

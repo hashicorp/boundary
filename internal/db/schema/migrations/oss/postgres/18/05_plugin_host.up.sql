@@ -178,8 +178,6 @@ begin;
         references host (catalog_id, public_id)
         on delete cascade
         on update cascade,
-    constraint host_plugin_host_catalog_id_name_uq
-      unique(catalog_id, name),
     constraint host_plugin_host_catalog_id_external_id_uq
       unique(catalog_id, external_id),
     constraint host_plugin_host_catalog_id_public_id_uq
