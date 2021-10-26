@@ -14,21 +14,14 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/plugin/host"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-const (
-	testDuplicateCatalogNameOrgScope     = "duplicate-catalog-name-org-scope"
-	testDuplicateCatalogNameProjectScope = "duplicate-catalog-name-project-scope"
 )
 
 func TestRepository_CreateCatalog(t *testing.T) {
@@ -376,35 +369,323 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 func TestRepository_UpdateCatalog(t *testing.T) {
 	ctx := context.Background()
-	state := testRepositoryStateSetup(t, ctx)
+	dbConn, _ := db.TestSetup(t, "postgres")
+	dbRW := db.New(dbConn)
+	dbWrapper := db.TestWrapper(t)
+	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
+	orgScope, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+
+	// Plugins, OnUpdateCatalogRequest state, and returned error -
+	// tests will set s.PluginError if they are expecting an error
+	// back, and gotOnUpdateCatalogRequest will contain the value of
+	// the OnUpdateCatalogRequest for the current running test. Note
+	// that this means that the tests cannot run in parallel, but there
+	// could be other factors affecting that as well.
+	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
+	var pluginError error
+	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	testPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{
+			Server: &TestPluginServer{
+				OnUpdateCatalogFn: func(_ context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
+					gotOnUpdateCatalogRequest = req
+					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetNewCatalog().GetSecrets()}}, pluginError
+				},
+			},
+		},
+	}
+
+	// Set up two existing catalogs for duplicate tests, one with org
+	// scope, one with project scope.
+	const (
+		testDuplicateCatalogNameOrgScope     = "duplicate-catalog-name-org-scope"
+		testDuplicateCatalogNameProjectScope = "duplicate-catalog-name-project-scope"
+	)
+
+	// Org scope
+	existingOrgScopeCatalog := TestCatalog(t, dbConn, orgScope.PublicId, testPlugin.GetPublicId())
+	existingOrgScopeCatalog.Name = testDuplicateCatalogNameOrgScope
+	numCatUpdated, err := dbRW.Update(ctx, existingOrgScopeCatalog, []string{"name"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numCatUpdated)
+
+	// Project scope
+	existingProjectScopeCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+	existingProjectScopeCatalog.Name = testDuplicateCatalogNameProjectScope
+	numCatUpdated, err = dbRW.Update(ctx, existingProjectScopeCatalog, []string{"name"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numCatUpdated)
+
+	// Define some helpers here to make the test table more readable.
+	type changeHostCatalogFunc func(c *HostCatalog) *HostCatalog
+
+	changePublicId := func(s string) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.PublicId = s
+			return c
+		}
+	}
+
+	changeScopeId := func(s string) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.ScopeId = s
+			return c
+		}
+	}
+
+	changeName := func(s string) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Name = s
+			return c
+		}
+	}
+
+	changeDescription := func(s string) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Description = s
+			return c
+		}
+	}
+
+	changeAttributes := func(m map[string]interface{}) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Attributes = mustMarshal(m)
+			return c
+		}
+	}
+
+	changeSecrets := func(m map[string]interface{}) changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Secrets = mustStruct(m)
+			return c
+		}
+	}
+
+	changeCatalogToNil := func() changeHostCatalogFunc {
+		return func(_ *HostCatalog) *HostCatalog {
+			return nil
+		}
+	}
+
+	changeEmbeddedCatalogToNil := func() changeHostCatalogFunc {
+		return func(c *HostCatalog) *HostCatalog {
+			c.HostCatalog = nil
+			return c
+		}
+	}
+
+	// Define some checks that will be used in the below tests. Some of
+	// these are re-used, so we define them here. Most of these are
+	// assertions and no particular one is non-fatal in that they will
+	// stop execution. Note that these are executed after wantIsErr, so
+	// if that is set in an individual table test, these will not be
+	// executed.
+	//
+	// Note that we define some state here, similar to how we
+	// previously defined gotOnUpdateCatalogRequest above next the
+	// plugin map.
+	type checkFunc func(t *testing.T, ctx context.Context)
+	var (
+		gotCatalog         *HostCatalog
+		gotCatalogsUpdated int
+		gotSecretsUpdated  int
+	)
+
+	checkName := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotCatalog.Name)
+		}
+	}
+
+	checkDescription := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotCatalog.Description)
+		}
+	}
+
+	checkVersion := func(want uint32) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotCatalog.Version)
+		}
+	}
+
+	checkAttributes := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			require := require.New(t)
+			st := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(gotCatalog.Attributes, st))
+			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+		}
+	}
+
+	checkSecrets := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			require := require.New(t)
+
+			cSecret := allocHostCatalogSecret()
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", gotCatalog.GetPublicId())
+			require.NoError(err)
+			require.Empty(cSecret.Secret)
+			require.NotEmpty(cSecret.CtSecret)
+
+			dbWrapper, err := dbKmsCache.GetWrapper(ctx, gotCatalog.GetScopeId(), kms.KeyPurposeDatabase)
+			require.NoError(err)
+			require.NoError(cSecret.decrypt(ctx, dbWrapper))
+
+			st := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(cSecret.Secret, st))
+			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+		}
+	}
+
+	checkSecretsDeleted := func() checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+
+			cSecret := allocHostCatalogSecret()
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", gotCatalog.GetPublicId())
+			assert.Error(err)
+			assert.True(errors.IsNotFoundError(err))
+		}
+	}
+
+	checkUpdateCatalogRequestCurrentName := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Name)
+		}
+	}
+
+	checkUpdateCatalogRequestNewName := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.NewCatalog.Name)
+		}
+	}
+
+	checkUpdateCatalogRequestCurrentDescription := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Description)
+		}
+	}
+
+	checkUpdateCatalogRequestNewDescription := func(want string) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.NewCatalog.Description)
+		}
+	}
+
+	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.CurrentCatalog.Attributes, protocmp.Transform()))
+		}
+	}
+
+	checkUpdateCatalogRequestNewAttributes := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.NewCatalog.Attributes, protocmp.Transform()))
+		}
+	}
+
+	checkUpdateCatalogRequestPersistedSecrets := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.Persisted.Secrets, protocmp.Transform()))
+		}
+	}
+
+	checkUpdateCatalogRequestSecrets := func(want map[string]interface{}) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.NewCatalog.Secrets, protocmp.Transform()))
+			// Ensure that the current catalog's secrets value is always zero
+			assert.Zero(gotOnUpdateCatalogRequest.CurrentCatalog.Secrets)
+		}
+	}
+
+	checkNumCatalogsUpdated := func(want int) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotCatalogsUpdated)
+		}
+	}
+
+	checkNumSecretsUpdated := func(want int) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotSecretsUpdated)
+		}
+	}
+
+	checkVerifyCatalogOplog := func(op oplog.OpType) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.NoError(
+				db.TestVerifyOplog(
+					t,
+					dbRW,
+					gotCatalog.PublicId,
+					db.WithOperation(op),
+					db.WithCreateNotBefore(10*time.Second),
+				),
+			)
+		}
+	}
+
 	tests := []struct {
 		name               string
 		withEmptyPluginMap bool
 		withPluginError    error
-		catalogOpts        []testSetCatalogOption
+		changeFuncs        []changeHostCatalogFunc
 		version            uint32
 		fieldMask          []string
-		wantChecks         []testRepositoryHostCatalogCheck
+		wantCheckFuncs     []checkFunc
 		wantIsErr          errors.Code
 	}{
 		{
 			name:        "nil catalog",
-			catalogOpts: []testSetCatalogOption{withNilCatalog()},
+			changeFuncs: []changeHostCatalogFunc{changeCatalogToNil()},
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
 			name:        "nil embedded catalog",
-			catalogOpts: []testSetCatalogOption{withNilEmbeddedCatalog()},
+			changeFuncs: []changeHostCatalogFunc{changeEmbeddedCatalogToNil()},
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
 			name:        "missing public id",
-			catalogOpts: []testSetCatalogOption{withPublicId("")},
+			changeFuncs: []changeHostCatalogFunc{changePublicId("")},
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
 			name:        "missing scope id",
-			catalogOpts: []testSetCatalogOption{withScopeId("")},
+			changeFuncs: []changeHostCatalogFunc{changeScopeId("")},
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
@@ -414,7 +695,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name:        "bad catalog id",
-			catalogOpts: []testSetCatalogOption{withPublicId("badid")},
+			changeFuncs: []changeHostCatalogFunc{changePublicId("badid")},
 			fieldMask:   []string{"name"},
 			wantIsErr:   errors.RecordNotFound,
 		},
@@ -432,213 +713,258 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name:        "update name (duplicate, same scope)",
-			catalogOpts: []testSetCatalogOption{withName(testDuplicateCatalogNameProjectScope)},
+			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameProjectScope)},
 			version:     2,
 			fieldMask:   []string{"name"},
 			wantIsErr:   errors.NotUnique,
 		},
 		{
 			name:        "update name",
-			catalogOpts: []testSetCatalogOption{withName("foo")},
+			changeFuncs: []changeHostCatalogFunc{changeName("foo")},
 			version:     2,
 			fieldMask:   []string{"name"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentName(""),
-				withCheckUpdateCatalogRequestNewName("foo"),
-				withCheckName("foo"),
-				withCheckSecrets(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestNewName("foo"),
+				checkName("foo"),
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name:        "update name (duplicate, different scope)",
-			catalogOpts: []testSetCatalogOption{withName(testDuplicateCatalogNameOrgScope)},
+			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameOrgScope)},
 			version:     2,
 			fieldMask:   []string{"name"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentName(""),
-				withCheckUpdateCatalogRequestNewName(testDuplicateCatalogNameOrgScope),
-				withCheckName(testDuplicateCatalogNameOrgScope),
-				withCheckSecrets(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameOrgScope),
+				checkName(testDuplicateCatalogNameOrgScope),
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name:        "update description",
-			catalogOpts: []testSetCatalogOption{withDescription("foo")},
+			changeFuncs: []changeHostCatalogFunc{changeDescription("foo")},
 			version:     2,
 			fieldMask:   []string{"description"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentDescription(""),
-				withCheckUpdateCatalogRequestNewDescription("foo"),
-				withCheckDescription("foo"),
-				withCheckSecrets(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentDescription(""),
+				checkUpdateCatalogRequestNewDescription("foo"),
+				checkDescription("foo"),
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name: "update attributes (add)",
-			catalogOpts: []testSetCatalogOption{withAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
 				"baz": "qux",
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
-				withCheckUpdateCatalogRequestNewAttributes(map[string]interface{}{
-					"foo": "bar",
-					"baz": "qux",
-				}),
-				withCheckAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				withCheckSecrets(map[string]interface{}{
+				checkAttributes(map[string]interface{}{
+					"foo": "bar",
+					"baz": "qux",
+				}),
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name: "update attributes (overwrite)",
-			catalogOpts: []testSetCatalogOption{withAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
 				"foo": "baz",
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
-				withCheckUpdateCatalogRequestNewAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
 					"foo": "baz",
 				}),
-				withCheckAttributes(map[string]interface{}{
+				checkAttributes(map[string]interface{}{
 					"foo": "baz",
 				}),
-				withCheckSecrets(map[string]interface{}{
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name: "update attributes (null)",
-			catalogOpts: []testSetCatalogOption{withAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
 				"foo": nil,
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(3),
-				withCheckUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
-				withCheckUpdateCatalogRequestNewAttributes(map[string]interface{}{}),
-				withCheckAttributes(map[string]interface{}{}),
-				withCheckSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]interface{}{}),
+				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckNumCatalogsUpdated(1),
-				withCheckNumSecretsUpdated(0),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name: "update secrets",
-			catalogOpts: []testSetCatalogOption{withSecrets(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
 			})},
 			version:   2,
 			fieldMask: []string{"secrets"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(2), // Secret update does not update host catalog record itself
-				withCheckUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(2), // Secret update does not update host catalog record itself
+				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckUpdateCatalogRequestSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
 				}),
-				withCheckSecrets(map[string]interface{}{
+				checkSecrets(map[string]interface{}{
 					"three": "four",
 				}),
-				withCheckNumCatalogsUpdated(0),
-				withCheckNumSecretsUpdated(1),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumCatalogsUpdated(0),
+				checkNumSecretsUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
 			name:        "delete secrets",
-			catalogOpts: []testSetCatalogOption{withSecrets(map[string]interface{}{})},
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{})},
 			version:     2,
 			fieldMask:   []string{"secrets"},
-			wantChecks: []testRepositoryHostCatalogCheck{
-				withCheckVersion(2), // Secret update does not update host catalog record itself
-				withCheckUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+			wantCheckFuncs: []checkFunc{
+				checkVersion(2), // Secret update does not update host catalog record itself
+				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				withCheckUpdateCatalogRequestSecrets(map[string]interface{}{}),
-				withCheckSecretsDeleted(),
-				withCheckNumCatalogsUpdated(0),
-				withCheckNumSecretsUpdated(1),
-				withVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkUpdateCatalogRequestSecrets(map[string]interface{}{}),
+				checkSecretsDeleted(),
+				checkNumCatalogsUpdated(0),
+				checkNumSecretsUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
+	}
+
+	// Finally define a function for bringing the test subject catalog.
+	// This function also returns a function to clean up the catalog
+	// afterwards.
+	setupHostCatalog := func(t *testing.T, ctx context.Context) (*HostCatalog, func()) {
+		t.Helper()
+		require := require.New(t)
+
+		cat := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+		// Set some (default) attributes on our test catalog
+		cat.Attributes = mustMarshal(map[string]interface{}{
+			"foo": "bar",
+		})
+
+		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes"}, []string{})
+		require.NoError(err)
+		require.Equal(1, numCatUpdated)
+
+		// Set up some secrets
+		cSecretProto := mustStruct(map[string]interface{}{
+			"one": "two",
+		})
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cSecretProto)
+		require.NoError(err)
+		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		require.NoError(err)
+		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
+		cSecretQ, cSecretV := cSecret.upsertQuery()
+		secretsUpdated, err := dbRW.Exec(ctx, cSecretQ, cSecretV)
+		require.NoError(err)
+		require.Equal(1, secretsUpdated)
+
+		cleanupFunc := func() {
+			t.Helper()
+			assert := assert.New(t)
+			n, err := dbRW.Delete(ctx, cat)
+			assert.NoError(err)
+			assert.Equal(1, n)
+		}
+
+		return cat, cleanupFunc
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			origCat, cleanup := state.testRepositorySetupHostCatalog(t, ctx)
+			origCat, cleanup := setupHostCatalog(t, ctx)
 			defer cleanup()
 
-			pluginMap := state.PluginMap
+			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
-			state.PluginError = tt.withPluginError
-			defer func() { state.PluginError = nil }()
-			repo, err := NewRepository(state.DBRW, state.DBRW, state.KmsCache, pluginMap)
+			pluginError = tt.withPluginError
+			defer func() { pluginError = nil }()
+			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
 
-			workingCat := testSetCatalog(origCat, tt.catalogOpts...)
-			got := new(testRepositoryHostCatalogCheckDetails)
-			got.Catalog, got.NumCatalogsUpdated, got.NumSecretsUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
+			workingCat := origCat.clone()
+			for _, cf := range tt.changeFuncs {
+				workingCat = cf(workingCat)
+			}
+
+			gotCatalog, gotCatalogsUpdated, gotSecretsUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {
 				require.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				return
 			}
 			require.NoError(err)
-			got.OnUpdateCatalogRequest = state.GotOnUpdateCatalogRequest
+			defer func() { gotOnUpdateCatalogRequest = nil }()
 
 			// Perform checks
-			for _, check := range tt.wantChecks {
-				check(t, ctx, state, got)
+			for _, check := range tt.wantCheckFuncs {
+				check(t, ctx)
 			}
 		})
 	}
@@ -901,102 +1227,6 @@ func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
-// testSetCatalogOption represents an option that is set on a catalog
-// repository function request, typically UpdateCatalog.
-type testSetCatalogOption func(c *HostCatalog) *HostCatalog
-
-// withPublicId sets the public id in a HostCatalog to the supplied
-// id.
-func withPublicId(id string) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.PublicId = id
-		return c
-	}
-}
-
-// withScopeId sets the scope id in a HostCatalog to the supplied id.
-func withScopeId(id string) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.ScopeId = id
-		return c
-	}
-}
-
-// withName sets the name in a HostCatalog to the supplied name.
-func withName(name string) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.Name = name
-		return c
-	}
-}
-
-// withDescription sets the name in a HostCatalog to the supplied
-// desc.
-func withDescription(desc string) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.Description = desc
-		return c
-	}
-}
-
-// withAttributes sets the attributes in a HostCatalog to the
-// supplied map.
-//
-// The map must be able to be marshaled to a structpb.Struct or this
-// function will panic.
-func withAttributes(in map[string]interface{}) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.Attributes = mustMarshal(in)
-		return c
-	}
-}
-
-// withSecrets sets the secrets in a HostCatalog to the supplied map.
-//
-// The map must be able to be marshaled to a structpb.Struct or this
-// function will panic.
-func withSecrets(in map[string]interface{}) testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.Secrets = mustStruct(in)
-		return c
-	}
-}
-
-// withNilCatalog sets the entire catalog to nil. This should be the
-// only option in a particular test case or any other options will
-// likely panic.
-func withNilCatalog() testSetCatalogOption {
-	return func(_ *HostCatalog) *HostCatalog {
-		return nil
-	}
-}
-
-// withNilEmbeddedCatalog sets the embedded catalog to nil. This
-// should be the only option in a particular test case or any other
-// options will likely panic.
-func withNilEmbeddedCatalog() testSetCatalogOption {
-	return func(c *HostCatalog) *HostCatalog {
-		c.HostCatalog = nil
-		return c
-	}
-}
-
-// testSetCatalog creates a new HostCatalog with various fields set
-// and only those fields. This is intended for use in UpdateCatalog.
-func testSetCatalog(c *HostCatalog, opts ...testSetCatalogOption) *HostCatalog {
-	c = &HostCatalog{
-		HostCatalog: &store.HostCatalog{
-			PublicId: c.PublicId,
-			ScopeId:  c.ScopeId,
-		},
-	}
-	for _, opt := range opts {
-		c = opt(c)
-	}
-
-	return c
-}
-
 // mustStruct creates a structpb.Struct, and panics if there is an
 // error.
 func mustStruct(in map[string]interface{}) *structpb.Struct {
@@ -1017,376 +1247,4 @@ func mustMarshal(in map[string]interface{}) []byte {
 	}
 
 	return b
-}
-
-// testRepositoryHostCatalogCheckDetails describes test data that's
-// received during select repository methods. This is used with the
-// check type below (testRepositoryHostCatalogCheck) to test
-// various repository functions.
-type testRepositoryHostCatalogCheckDetails struct {
-	Catalog                *HostCatalog
-	OnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
-	NumCatalogsUpdated     int
-	NumSecretsUpdated      int
-}
-
-// testRepositoryHostCatalogCheck represents a specific repository
-// function check.
-type testRepositoryHostCatalogCheck func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails)
-
-// withCheckName checks the returned Catalog's name.
-func withCheckName(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(want, got.Catalog.Name)
-	}
-}
-
-// withCheckDescription checks the returned Catalog's description.
-func withCheckDescription(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(want, got.Catalog.Description)
-	}
-}
-
-// withCheckVersion checks the returned Catalog's version.
-func withCheckVersion(want uint32) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(want, got.Catalog.Version)
-	}
-}
-
-// withCheckAttributes checks the returned Catalog's attributes.
-func withCheckAttributes(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		require := require.New(t)
-		st := &structpb.Struct{}
-		require.NoError(proto.Unmarshal(got.Catalog.Attributes, st))
-		assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
-	}
-}
-
-// withCheckSecrets checks the returned Catalog's secrets.
-func withCheckSecrets(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		require := require.New(t)
-
-		cSecret := allocHostCatalogSecret()
-		err := state.DBRW.LookupWhere(ctx, &cSecret, "catalog_id=?", got.Catalog.GetPublicId())
-		require.NoError(err)
-		require.Empty(cSecret.Secret)
-		require.NotEmpty(cSecret.CtSecret)
-
-		dbWrapper, err := state.KmsCache.GetWrapper(ctx, got.Catalog.GetScopeId(), kms.KeyPurposeDatabase)
-		require.NoError(err)
-		require.NoError(cSecret.decrypt(ctx, dbWrapper))
-
-		st := &structpb.Struct{}
-		require.NoError(proto.Unmarshal(cSecret.Secret, st))
-		assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
-	}
-}
-
-// withCheckSecretsDeleted checks the returned Catalog's secrets to
-// make sure they are gonne.
-func withCheckSecretsDeleted() testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-
-		cSecret := allocHostCatalogSecret()
-		err := state.DBRW.LookupWhere(ctx, &cSecret, "catalog_id=?", got.Catalog.GetPublicId())
-		assert.Error(err)
-		assert.True(errors.IsNotFoundError(err))
-	}
-}
-
-// withCheckUpdateCatalogRequestCurrentName checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the current
-// catalog's name.
-func withCheckUpdateCatalogRequestCurrentName(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(wrapperspb.String(want), got.OnUpdateCatalogRequest.CurrentCatalog.Name)
-	}
-}
-
-// withCheckUpdateCatalogRequestNewName checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the new
-// catalog's name.
-func withCheckUpdateCatalogRequestNewName(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(wrapperspb.String(want), got.OnUpdateCatalogRequest.NewCatalog.Name)
-	}
-}
-
-// withCheckUpdateCatalogRequestCurrentDescription checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the current
-// catalog's description.
-func withCheckUpdateCatalogRequestCurrentDescription(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(wrapperspb.String(want), got.OnUpdateCatalogRequest.CurrentCatalog.Description)
-	}
-}
-
-// withCheckUpdateCatalogRequestNewDescription checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the new
-// catalog's description.
-func withCheckUpdateCatalogRequestNewDescription(want string) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(wrapperspb.String(want), got.OnUpdateCatalogRequest.NewCatalog.Description)
-	}
-}
-
-// withCheckUpdateCatalogRequestCurrentAttributes checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the current
-// catalog's attributes.
-func withCheckUpdateCatalogRequestCurrentAttributes(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Empty(cmp.Diff(mustStruct(want), got.OnUpdateCatalogRequest.CurrentCatalog.Attributes, protocmp.Transform()))
-	}
-}
-
-// withCheckUpdateCatalogRequestNewAttributes checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the new
-// catalog's attributes.
-func withCheckUpdateCatalogRequestNewAttributes(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Empty(cmp.Diff(mustStruct(want), got.OnUpdateCatalogRequest.NewCatalog.Attributes, protocmp.Transform()))
-	}
-}
-
-// withCheckUpdateCatalogRequestPersisted checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the persisted
-// state.
-func withCheckUpdateCatalogRequestPersistedSecrets(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Empty(cmp.Diff(mustStruct(want), got.OnUpdateCatalogRequest.Persisted.Secrets, protocmp.Transform()))
-	}
-}
-
-// withCheckUpdateCatalogRequestSecrets checks the
-// OnUpdateCatalogRequest sent by OnUpdateCatalog for the new
-// catalog's secrets.
-//
-// It also asserts that the current catalogs's secrets field is nil;
-// this is never set.
-func withCheckUpdateCatalogRequestSecrets(want map[string]interface{}) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Empty(cmp.Diff(mustStruct(want), got.OnUpdateCatalogRequest.NewCatalog.Secrets, protocmp.Transform()))
-		// Ensure that the current catalog's secrets value is always zero
-		assert.Zero(got.OnUpdateCatalogRequest.CurrentCatalog.Secrets)
-	}
-}
-
-// withCheckNumCatalogsUpdated asserts the number of catalogs updated
-// in UpdateCatalog.
-func withCheckNumCatalogsUpdated(want int) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(want, got.NumCatalogsUpdated)
-	}
-}
-
-// withCheckNumSecretsUpdated asserts the number of secrets updated
-// in UpdateCatalog.
-func withCheckNumSecretsUpdated(want int) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.Equal(want, got.NumSecretsUpdated)
-	}
-}
-
-// withVerifyCatalogOplog asserts that an entry was written for the
-// catalog.
-func withVerifyCatalogOplog(op oplog.OpType) testRepositoryHostCatalogCheck {
-	return func(t *testing.T, ctx context.Context, state *testRepositoryState, got *testRepositoryHostCatalogCheckDetails) {
-		t.Helper()
-		assert := assert.New(t)
-		assert.NoError(
-			db.TestVerifyOplog(
-				t,
-				state.DBRW,
-				got.Catalog.PublicId,
-				db.WithOperation(op),
-				db.WithCreateNotBefore(10*time.Second),
-			),
-		)
-	}
-}
-
-// testRepositoryState represents the complex state that needs to be
-// set up during repository tests.
-type testRepositoryState struct {
-	DBConn                      *db.DB
-	DBRW                        *db.Db
-	Wrapper                     wrapping.Wrapper
-	KmsCache                    *kms.Kms
-	OrgScope                    *iam.Scope
-	ProjectScope                *iam.Scope
-	Plugin                      *host.Plugin
-	PluginMap                   map[string]plgpb.HostPluginServiceClient
-	PluginError                 error
-	GotOnUpdateCatalogRequest   *plgpb.OnUpdateCatalogRequest
-	ExistingOrgScopeCatalog     *HostCatalog
-	ExistingProjectScopeCatalog *HostCatalog
-}
-
-// testRepositoryStateSetup does initial setup of a repository state
-// for a test and returns a testRepositoryState.
-func testRepositoryStateSetup(t *testing.T, ctx context.Context) *testRepositoryState {
-	t.Helper()
-
-	s := new(testRepositoryState)
-	// DB setup
-	s.setupDB(t)
-	// KMS setup
-	s.setupKMS(t)
-	// IAM scope setup
-	s.setupScopes(t)
-	// Plugin setup
-	s.setupPlugins(t)
-	// Setup existing catalogs
-	s.setupExistingCatalogs(t, ctx)
-
-	return s
-}
-
-// setupDB takes care of initial DB-related setup tasks.
-func (s *testRepositoryState) setupDB(t *testing.T) {
-	t.Helper()
-	s.DBConn, _ = db.TestSetup(t, "postgres")
-	s.DBRW = db.New(s.DBConn)
-	s.Wrapper = db.TestWrapper(t)
-}
-
-// setupKMS takes care of initial KMS-related setup tasks.
-func (s *testRepositoryState) setupKMS(t *testing.T) {
-	t.Helper()
-	s.Wrapper = db.TestWrapper(t)
-	s.KmsCache = kms.TestKms(t, s.DBConn, s.Wrapper)
-}
-
-// setupScopes sets up a project scope for the state.
-func (s *testRepositoryState) setupScopes(t *testing.T) {
-	t.Helper()
-	s.OrgScope, s.ProjectScope = iam.TestScopes(t, iam.TestRepo(t, s.DBConn, s.Wrapper))
-}
-
-// setupPlugins configures a plugin for the repository state.
-//
-// This also patches received data for various hook functions over to
-// fields in the state - example: GotOnUpdateCatalogRequest. These
-// fields currently do not have any concurrency built in, which is
-// important to note when running tests; as such, they can't be run
-// in parallel.
-func (s *testRepositoryState) setupPlugins(t *testing.T) {
-	t.Helper()
-	s.Plugin = hostplg.TestPlugin(t, s.DBConn, "test")
-	s.PluginMap = map[string]plgpb.HostPluginServiceClient{
-		s.Plugin.GetPublicId(): &WrappingPluginClient{
-			Server: &TestPluginServer{
-				OnUpdateCatalogFn: func(_ context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
-					s.GotOnUpdateCatalogRequest = req
-					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetNewCatalog().GetSecrets()}}, s.PluginError
-				},
-			},
-		},
-	}
-}
-
-// setupExistingCatalogs sets up some existing host catalogs for the
-// state that can be used to test 2 scenarios:
-//
-// * Changing or creating a catalog in the same scope to a duplicate
-// name.
-//
-// * Changing or creating a catalog to/with a name that is shared by
-// another catalog, but in a different scope.
-func (s *testRepositoryState) setupExistingCatalogs(t *testing.T, ctx context.Context) {
-	t.Helper()
-	require := require.New(t)
-	var err error
-
-	// Org scope
-	s.ExistingOrgScopeCatalog = TestCatalog(t, s.DBConn, s.OrgScope.PublicId, s.Plugin.GetPublicId())
-	s.ExistingOrgScopeCatalog.Name = testDuplicateCatalogNameOrgScope
-	numCatUpdated, err := s.DBRW.Update(ctx, s.ExistingOrgScopeCatalog, []string{"name"}, []string{})
-	require.NoError(err)
-	require.Equal(1, numCatUpdated)
-
-	// Project scope
-	s.ExistingProjectScopeCatalog = TestCatalog(t, s.DBConn, s.ProjectScope.PublicId, s.Plugin.GetPublicId())
-	s.ExistingProjectScopeCatalog.Name = testDuplicateCatalogNameProjectScope
-	numCatUpdated, err = s.DBRW.Update(ctx, s.ExistingProjectScopeCatalog, []string{"name"}, []string{})
-	require.NoError(err)
-	require.Equal(1, numCatUpdated)
-}
-
-// testRepositorySetupHostCatalog returns a new configured host
-// catalog for the test repository. The second return value is a
-// cleanup function that can be called to delete the catalog.
-func (s *testRepositoryState) testRepositorySetupHostCatalog(t *testing.T, ctx context.Context) (*HostCatalog, func()) {
-	t.Helper()
-	require := require.New(t)
-
-	cat := TestCatalog(t, s.DBConn, s.ProjectScope.PublicId, s.Plugin.GetPublicId())
-	// Set some (default) attributes on our test catalog
-	cat.Attributes = mustMarshal(map[string]interface{}{
-		"foo": "bar",
-	})
-
-	numCatUpdated, err := s.DBRW.Update(ctx, cat, []string{"attributes"}, []string{})
-	require.NoError(err)
-	require.Equal(1, numCatUpdated)
-
-	// Set up some secrets
-	cSecretProto := mustStruct(map[string]interface{}{
-		"one": "two",
-	})
-	cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cSecretProto)
-	require.NoError(err)
-	scopeWrapper, err := s.KmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
-	require.NoError(err)
-	require.NoError(cSecret.encrypt(ctx, scopeWrapper))
-	cSecretQ, cSecretV := cSecret.upsertQuery()
-	secretsUpdated, err := s.DBRW.Exec(ctx, cSecretQ, cSecretV)
-	require.NoError(err)
-	require.Equal(1, secretsUpdated)
-
-	cleanupFunc := func() {
-		t.Helper()
-		assert := assert.New(t)
-		n, err := s.DBRW.Delete(ctx, cat)
-		assert.NoError(err)
-		assert.Equal(1, n)
-	}
-
-	return cat, cleanupFunc
 }
