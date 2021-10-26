@@ -1649,21 +1649,28 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	rw := db.New(conn)
 
 	ctx := context.Background()
-	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
-	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	tcpTarget, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
+	tar, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
 	require.NoError(err)
-	require.NotNil(tcpTarget)
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	require.NotNil(tar)
+
+	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
+	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+	libs := []*target.CredentialLibrary{
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), credential.ApplicationPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), credential.IngressPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), credential.EgressPurpose),
+	}
+
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), libs)
 	require.NoError(err)
 	creds := []*DynamicCredential{
-		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
-		NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
-		NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+		NewDynamicCredential(libIds[0].GetPublicId(), credential.ApplicationPurpose),
+		NewDynamicCredential(libIds[0].GetPublicId(), credential.IngressPurpose),
+		NewDynamicCredential(libIds[1].GetPublicId(), credential.EgressPurpose),
 	}
 	params.DynamicCredentials = creds
 	return params

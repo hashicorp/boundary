@@ -28,6 +28,10 @@ type Library interface {
 // Purpose is the purpose of the credential.
 type Purpose string
 
+func (p Purpose) String() string {
+	return string(p)
+}
+
 // Credential purpose values.
 const (
 	// ApplicationPurpose is a credential used for application specific
@@ -44,6 +48,13 @@ const (
 	// credentials are never returned to the user.
 	EgressPurpose Purpose = "egress"
 )
+
+// ValidPurposes are the set of all credential Purposes.
+var ValidPurposes = []Purpose{
+	ApplicationPurpose,
+	IngressPurpose,
+	EgressPurpose,
+}
 
 // SecretData represents secret data.
 type SecretData interface{}

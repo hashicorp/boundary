@@ -21,7 +21,7 @@ type CredentialLibrary struct {
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
 // representing the relationship between targetId and credentialLibraryId.
-func NewCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*CredentialLibrary, error) {
+func NewCredentialLibrary(targetId, credentialLibraryId string, purpose credential.Purpose) (*CredentialLibrary, error) {
 	const op = "target.NewCredentialLibrary"
 	if targetId == "" {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no target id")
@@ -34,7 +34,7 @@ func NewCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*C
 		CredentialLibrary: &store.CredentialLibrary{
 			TargetId:            targetId,
 			CredentialLibraryId: credentialLibraryId,
-			CredentialPurpose:   string(credential.ApplicationPurpose), // application is the only purpose currently supported
+			CredentialPurpose:   string(purpose),
 		},
 	}
 	return t, nil

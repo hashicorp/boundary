@@ -6,17 +6,46 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/target/store"
 )
+
+// credentialLibrariesPurposeMap is used to group CredentialLibraries by purpose.
+type credentialLibrariesPurposeMap map[string][]*CredentialLibrary
+
+func (c credentialLibrariesPurposeMap) add(cl *CredentialLibrary) {
+	var s []*CredentialLibrary
+	var ok bool
+
+	s, ok = c[cl.CredentialPurpose]
+	if !ok {
+		s = make([]*CredentialLibrary, 0, 1)
+	}
+
+	s = append(s, cl)
+	c[cl.CredentialPurpose] = s
+}
+
+func newCredentialLibrariesPurposeMap(cls []*CredentialLibrary) credentialLibrariesPurposeMap {
+	clpm := make(credentialLibrariesPurposeMap)
+	for _, p := range credential.ValidPurposes {
+		clpm[p.String()] = make([]*CredentialLibrary, 0)
+	}
+	for _, cl := range cls {
+		clpm.add(cl)
+	}
+	return clpm
+}
 
 // AddTargetCredentialSources adds the cIds to the targetId in the repository. The target
 // and the list of credential sources attached to the target, after cIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cIds []string, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
+func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cls []*CredentialLibrary, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
 	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -24,16 +53,12 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 	if targetVersion == 0 {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if len(cIds) == 0 {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential source ids")
+	if len(cls) == 0 {
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential libraries")
 	}
 
-	addCredLibs := make([]interface{}, 0, len(cIds))
-	for _, id := range cIds {
-		cl, err := NewCredentialLibrary(targetId, id)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory credential library"))
-		}
+	addCredLibs := make([]interface{}, 0, len(cls))
+	for _, cl := range cls {
 		addCredLibs = append(addCredLibs, cl)
 	}
 
@@ -115,7 +140,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 // DeleteTargetCredentialSources deletes credential sources from a target in the repository.
 // The target's current db version must match the targetVersion or an error will be returned.
-func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) (int, error) {
+func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cls []*CredentialLibrary, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTargetCredentialSources"
 	if targetId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -123,16 +148,12 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 	if targetVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if len(csIds) == 0 {
+	if len(cls) == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing credential source ids")
 	}
 
-	deleteCredLibs := make([]interface{}, 0, len(csIds))
-	for _, id := range csIds {
-		cl, err := NewCredentialLibrary(targetId, id)
-		if err != nil {
-			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory credential library"))
-		}
+	deleteCredLibs := make([]interface{}, 0, len(cls))
+	for _, cl := range cls {
 		deleteCredLibs = append(deleteCredLibs, cl)
 	}
 
@@ -208,7 +229,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 // SetTargetCredentialSources will set the target's credential sources. Set will add
 // and/or delete credential sources as need to reconcile the existing credential sources
 // with the request. If clIds is empty, all the credential sources will be cleared from the target.
-func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, csIds []string, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
+func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cls []*CredentialLibrary, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
 	const op = "target.(Repository).SetTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -217,10 +238,18 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
-	changes, err := r.changes(ctx, targetId, csIds)
-	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	clpm := newCredentialLibrariesPurposeMap(cls)
+
+	var changes []*change
+
+	for purpose, cls := range clpm {
+		c, err := r.changes(ctx, targetId, cls, purpose)
+		if err != nil {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+		changes = append(changes, c...)
 	}
+
 	if len(changes) == 0 {
 		// Nothing needs to be changed, return early
 		hostSets, err := fetchHostSources(ctx, r.reader, targetId)
@@ -236,15 +265,11 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 	var deleteCredLibs, addCredLibs []interface{}
 	for _, c := range changes {
-		cl, err := NewCredentialLibrary(targetId, c.LibraryId)
-		if err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target credential library"))
-		}
-		switch c.Action {
+		switch c.action {
 		case "delete":
-			deleteCredLibs = append(deleteCredLibs, cl)
+			deleteCredLibs = append(deleteCredLibs, c.credentialLibrary)
 		case "add":
-			addCredLibs = append(addCredLibs, cl)
+			addCredLibs = append(addCredLibs, c.credentialLibrary)
 		}
 	}
 
@@ -343,28 +368,33 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 }
 
 type change struct {
+	action            string
+	credentialLibrary *CredentialLibrary
+}
+
+type changeQueryResult struct {
 	Action    string
 	LibraryId string
 }
 
-func (r *Repository) changes(ctx context.Context, targetId string, clIds []string) ([]*change, error) {
+func (r *Repository) changes(ctx context.Context, targetId string, cls []*CredentialLibrary, purpose string) ([]*change, error) {
 	const op = "target.(Repository).changes"
+
+	// TODO ensure that all cls have the same purpose as the given purpose?
+
 	var inClauseSpots []string
-	// starts at 2 because there is already a @1 in the query
-	for i := 2; i < len(clIds)+2; i++ {
-		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", i))
+	var params []interface{}
+	params = append(params, sql.Named("target_id", targetId), sql.Named("purpose", purpose))
+	for idx, cl := range cls {
+		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), cl.CredentialLibraryId))
+		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", idx+1))
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 	if inClause == "" {
 		inClause = "''"
 	}
-	query := fmt.Sprintf(setChangesQuery, inClause)
 
-	var params []interface{}
-	params = append(params, sql.Named("target_id", targetId))
-	for idx, id := range clIds {
-		params = append(params, sql.Named(fmt.Sprintf("%d", idx+2), id))
-	}
+	query := fmt.Sprintf(setChangesQuery, inClause)
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("query failed"))
@@ -373,11 +403,20 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 
 	var changes []*change
 	for rows.Next() {
-		var chg change
+		var chg changeQueryResult
 		if err := r.reader.ScanRows(rows, &chg); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		changes = append(changes, &chg)
+		changes = append(changes, &change{
+			action: chg.Action,
+			credentialLibrary: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					TargetId:            targetId,
+					CredentialLibraryId: chg.LibraryId,
+					CredentialPurpose:   purpose,
+				},
+			},
+		})
 	}
 	return changes, nil
 }
