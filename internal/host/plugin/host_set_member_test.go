@@ -36,13 +36,13 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	blueSet1 := TestSet(t, conn, kms, blueCat, plgm)
 	blueSet2 := TestSet(t, conn, kms, blueCat, plgm)
 
-	hostId, err := db.NewPublicId("h")
+	hostId, err := db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
 	blueHost1 := NewHost(ctx, blueCat.PublicId, "abcd", withPluginId(plg.GetPublicId()))
 	blueHost1.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost1))
 
-	hostId, err = db.NewPublicId("h")
+	hostId, err = db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
 	blueHost2 := NewHost(ctx, blueCat.PublicId, "zyxw", withPluginId(plg.GetPublicId()))
 	blueHost2.PublicId = hostId

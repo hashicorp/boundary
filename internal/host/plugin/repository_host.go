@@ -120,7 +120,7 @@ func (r *Repository) UpsertHosts(
 				{
 					if len(hi.ipsToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToRemove))
-						count, err := w.DeleteItems(ctx, hi.ipsToRemove, db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.ipsToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -131,7 +131,7 @@ func (r *Repository) UpsertHosts(
 					}
 					if len(hi.ipsToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToAdd))
-						if err := w.CreateItems(ctx, hi.ipsToAdd, db.NewOplogMsgs(&oplogMsgs)); err != nil {
+						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)
@@ -142,7 +142,7 @@ func (r *Repository) UpsertHosts(
 				{
 					if len(hi.dnsNamesToRemove) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToRemove))
-						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove, db.NewOplogMsgs(&oplogMsgs))
+						count, err := w.DeleteItems(ctx, hi.dnsNamesToRemove.toArray(), db.NewOplogMsgs(&oplogMsgs))
 						if err != nil {
 							return err
 						}
@@ -153,7 +153,7 @@ func (r *Repository) UpsertHosts(
 					}
 					if len(hi.dnsNamesToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToAdd))
-						if err := w.CreateItems(ctx, hi.dnsNamesToAdd, db.NewOplogMsgs(&oplogMsgs)); err != nil {
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)

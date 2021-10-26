@@ -10,15 +10,34 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
+// valueToInterfaceMap is a map that has a function to convert values into an
+// array
+type valueToInterfaceMap map[string]interface{}
+
+func (m valueToInterfaceMap) toArray() []interface{} {
+	switch {
+	case m == nil:
+		return nil
+	case len(m) == 0:
+		return make([]interface{}, 0)
+	default:
+		ret := make([]interface{}, 0, len(m))
+		for _, v := range m {
+			ret = append(ret, v)
+		}
+		return ret
+	}
+}
+
 // hostInfo stores the info we need for figuring out host, set membership,
 // and value object differences. It also stores dirty flags to indicate
 // whether we need to update value objects or the host itself.
 type hostInfo struct {
 	h                *Host
-	ipsToAdd         []interface{}
-	ipsToRemove      []interface{}
-	dnsNamesToAdd    []interface{}
-	dnsNamesToRemove []interface{}
+	ipsToAdd         valueToInterfaceMap
+	ipsToRemove      valueToInterfaceMap
+	dnsNamesToAdd    valueToInterfaceMap
+	dnsNamesToRemove valueToInterfaceMap
 	dirtyHost        bool
 }
 
@@ -89,27 +108,37 @@ func createNewHostMap(ctx context.Context,
 				// No match, so we need to remove the old ones and add the new
 
 				// First, build up removals
-				for _, a := range currHostIps {
+				for _, ip := range currHostIps {
 					if hi.ipsToRemove == nil {
-						hi.ipsToRemove = make([]interface{}, 0, len(currHostIps))
+						hi.ipsToRemove = make(valueToInterfaceMap, len(currHostIps))
 					}
-					obj, err := host.NewIpAddress(ctx, newHost.PublicId, a)
+					obj, err := host.NewIpAddress(ctx, newHost.PublicId, ip)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
-					hi.ipsToRemove = append(hi.ipsToRemove, obj)
+					hi.ipsToRemove[ip] = obj
 				}
 
 				// Now build up additions
-				for _, a := range newHost.GetIpAddresses() {
-					if hi.ipsToAdd == nil {
-						hi.ipsToAdd = make([]interface{}, 0, len(newHost.GetIpAddresses()))
+				for _, ip := range newHost.GetIpAddresses() {
+					// If it's in ipsToRemove we found it on the current host;
+					// finding it again here means the host still has it, so
+					// simply do no change.
+					if hi.ipsToRemove != nil && hi.ipsToRemove[ip] != nil {
+						delete(hi.ipsToRemove, ip)
+						if len(hi.ipsToRemove) == 0 {
+							hi.ipsToRemove = nil
+						}
+						continue
 					}
-					obj, err := host.NewIpAddress(ctx, newHost.PublicId, a)
+					if hi.ipsToAdd == nil {
+						hi.ipsToAdd = make(valueToInterfaceMap, len(newHost.GetIpAddresses()))
+					}
+					obj, err := host.NewIpAddress(ctx, newHost.PublicId, ip)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
-					hi.ipsToAdd = append(hi.ipsToAdd, obj)
+					hi.ipsToAdd[ip] = obj
 				}
 			}
 		}
@@ -124,27 +153,37 @@ func createNewHostMap(ctx context.Context,
 				// No match, so we need to remove the old ones and add the new
 
 				// First, build up removals
-				for _, a := range currHostDnsNames {
+				for _, name := range currHostDnsNames {
 					if hi.dnsNamesToRemove == nil {
-						hi.dnsNamesToRemove = make([]interface{}, 0, len(currHostDnsNames))
+						hi.dnsNamesToRemove = make(valueToInterfaceMap, len(currHostDnsNames))
 					}
-					obj, err := host.NewDnsName(ctx, newHost.PublicId, a)
+					obj, err := host.NewDnsName(ctx, newHost.PublicId, name)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
-					hi.dnsNamesToRemove = append(hi.dnsNamesToRemove, obj)
+					hi.dnsNamesToRemove[name] = obj
 				}
 
 				// Now build up additions
-				for _, a := range newHost.GetDnsNames() {
-					if hi.dnsNamesToAdd == nil {
-						hi.dnsNamesToAdd = make([]interface{}, 0, len(newHost.GetDnsNames()))
+				for _, name := range newHost.GetDnsNames() {
+					// If it's in dnsNamesToRemove we found it on the current
+					// host; finding it again here means the host still has it,
+					// so simply do no change.
+					if hi.dnsNamesToRemove != nil && hi.dnsNamesToRemove[name] != nil {
+						delete(hi.dnsNamesToRemove, name)
+						if len(hi.dnsNamesToRemove) == 0 {
+							hi.dnsNamesToRemove = nil
+						}
+						continue
 					}
-					obj, err := host.NewDnsName(ctx, newHost.PublicId, a)
+					if hi.dnsNamesToAdd == nil {
+						hi.dnsNamesToAdd = make(valueToInterfaceMap, len(newHost.GetDnsNames()))
+					}
+					obj, err := host.NewDnsName(ctx, newHost.PublicId, name)
 					if err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
-					hi.dnsNamesToAdd = append(hi.dnsNamesToAdd, obj)
+					hi.dnsNamesToAdd[name] = obj
 				}
 			}
 		}

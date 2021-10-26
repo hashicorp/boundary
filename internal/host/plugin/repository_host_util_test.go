@@ -34,17 +34,17 @@ func TestUtilFunctions(t *testing.T) {
 		DnsNames:    []string{"a.b.c", "x.y.z"},
 		SetIds:      []string{"set1", "set2"},
 	}
-	var baseIpsIfaces []interface{}
+	baseIpsIfaces := valueToInterfaceMap{}
 	for _, v := range baseResponseHost.IpAddresses {
 		ip, err := host.NewIpAddress(ctx, baseHostId, v)
 		require.NoError(t, err)
-		baseIpsIfaces = append(baseIpsIfaces, ip)
+		baseIpsIfaces[v] = ip
 	}
-	var baseDnsNamesIfaces []interface{}
+	baseDnsNamesIfaces := valueToInterfaceMap{}
 	for _, v := range baseResponseHost.DnsNames {
 		name, err := host.NewDnsName(ctx, baseHostId, v)
 		require.NoError(t, err)
-		baseDnsNamesIfaces = append(baseDnsNamesIfaces, name)
+		baseDnsNamesIfaces[v] = name
 	}
 	baseHost := NewHost(ctx, catalog.PublicId, externalId)
 	baseHost.Name = baseResponseHost.Name
@@ -131,8 +131,7 @@ func TestUtilFunctions(t *testing.T) {
 				ip, err := host.NewIpAddress(ctx, baseHostId, newIp)
 				require.NoError(t, err)
 				hi := &hostInfo{
-					ipsToAdd:    append(baseIpsIfaces, ip),
-					ipsToRemove: baseIpsIfaces,
+					ipsToAdd: valueToInterfaceMap{newIp: ip},
 				}
 				return in, hi
 			},
@@ -142,11 +141,13 @@ func TestUtilFunctions(t *testing.T) {
 			host: defaultHostFunc,
 			sets: defaultSetsFunc,
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
-				in.IpAddresses = in.IpAddresses[0:1]
 				hi := &hostInfo{
-					ipsToAdd:    baseIpsIfaces[0:1],
-					ipsToRemove: baseIpsIfaces,
+					ipsToRemove: valueToInterfaceMap{},
 				}
+				for _, ip := range in.IpAddresses[1:] {
+					hi.ipsToRemove[ip] = baseIpsIfaces[ip]
+				}
+				in.IpAddresses = in.IpAddresses[0:1]
 				return in, hi
 			},
 		},
@@ -160,8 +161,7 @@ func TestUtilFunctions(t *testing.T) {
 				name, err := host.NewDnsName(ctx, baseHostId, newName)
 				require.NoError(t, err)
 				hi := &hostInfo{
-					dnsNamesToAdd:    append(baseDnsNamesIfaces, name),
-					dnsNamesToRemove: baseDnsNamesIfaces,
+					dnsNamesToAdd: valueToInterfaceMap{newName: name},
 				}
 				return in, hi
 			},
@@ -171,11 +171,13 @@ func TestUtilFunctions(t *testing.T) {
 			host: defaultHostFunc,
 			sets: defaultSetsFunc,
 			in: func(in *plgpb.ListHostsResponseHost) (*plgpb.ListHostsResponseHost, *hostInfo) {
-				in.DnsNames = in.DnsNames[0:1]
 				hi := &hostInfo{
-					dnsNamesToAdd:    baseDnsNamesIfaces[0:1],
-					dnsNamesToRemove: baseDnsNamesIfaces,
+					dnsNamesToRemove: valueToInterfaceMap{},
 				}
+				for _, name := range in.DnsNames[1:] {
+					hi.dnsNamesToRemove[name] = baseDnsNamesIfaces[name]
+				}
+				in.DnsNames = in.DnsNames[0:1]
 				return in, hi
 			},
 		},
