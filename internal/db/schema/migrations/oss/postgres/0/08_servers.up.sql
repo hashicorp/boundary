@@ -29,7 +29,7 @@ before
 insert on server
   for each row execute procedure default_create_time();
 
--- UPDATED in 17/01_server_nonce
+-- UPDATED in 18/01_nonce
 create table recovery_nonces (
     nonce text
       primary key,

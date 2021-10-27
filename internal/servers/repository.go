@@ -207,14 +207,14 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	return controllers, int(rowsUpdated), nil
 }
 
-type ServerNonce struct {
+type Nonce struct {
 	Nonce   string
 	Purpose string
 }
 
 // TableName returns the table name.
-func (sn *ServerNonce) TableName() string {
-	return "server_nonce"
+func (n *Nonce) TableName() string {
+	return "nonce"
 }
 
 const (
@@ -235,7 +235,7 @@ func (r *Repository) AddNonce(ctx context.Context, nonce, purpose string, opt ..
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown nonce purpose %q", purpose))
 	}
-	if err := r.writer.Create(ctx, &ServerNonce{
+	if err := r.writer.Create(ctx, &Nonce{
 		Nonce:   nonce,
 		Purpose: purpose,
 	}); err != nil {
@@ -254,7 +254,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 	// If something was inserted before 3x the actual validity period, clean it out
 	endTime := time.Now().Add(-3 * maxDuration)
 
-	rows, err := r.writer.Delete(ctx, &ServerNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
+	rows, err := r.writer.Delete(ctx, &Nonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, "servers.CleanupNonces")
 	}
@@ -262,8 +262,8 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 }
 
 // ListNonces lists nonces. Used only for tests at the moment.
-func (r *Repository) ListNonces(ctx context.Context, purpose string, opt ...Option) ([]*ServerNonce, error) {
-	var nonces []*ServerNonce
+func (r *Repository) ListNonces(ctx context.Context, purpose string, opt ...Option) ([]*Nonce, error) {
+	var nonces []*Nonce
 	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []interface{}{purpose}, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, "servers.ListNonces")
 	}

@@ -144,6 +144,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 
 	require.NoError(m.ApplyMigrations(ctx))
 	state, err = m.CurrentState(ctx)
+	require.NoError(err)
 	want = &schema.State{
 		Initialized: true,
 		Editions: []schema.EditionState{

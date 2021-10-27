@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigrations_ServerNonce(t *testing.T) {
+func TestMigrations_Nonce(t *testing.T) {
 	const (
 		priorMigration   = 16005
-		currentMigration = 17001
+		currentMigration = 18001
 	)
 
 	t.Parallel()
@@ -129,11 +129,11 @@ func TestMigrations_ServerNonce(t *testing.T) {
 
 		// Check that null errors
 		require.Error(rw.CreateItems(ctx, []interface{}{
-			&servers.ServerNonce{Nonce: "dcba"},
+			&servers.Nonce{Nonce: "dcba"},
 		}))
 		// Check that bad purpose errors
 		require.Error(rw.CreateItems(ctx, []interface{}{
-			&servers.ServerNonce{Nonce: "dcba", Purpose: badPurpose},
+			&servers.Nonce{Nonce: "dcba", Purpose: badPurpose},
 		}))
 
 		// Add some valid values, ensure that we can then list for both purposes
