@@ -29,17 +29,17 @@ drop trigger immutable_columns on recovery_nonces;
 alter table recovery_nonces rename to nonce;
 
 -- Add purpose field
-alter table nonce add column purpose text;
-
--- Migrate any existing data
-update nonce set purpose = 'recovery';
-
--- Add foreign key
 alter table nonce
-  add constraint nonce_type_enm_fkey
-    foreign key (purpose) references nonce_type_enm(name)
-    on update cascade
-    on delete restrict;
+  add column purpose text not null
+    default 'recovery'
+    constraint nonce_type_enm_fkey
+      references nonce_type_enm(name)
+      on update cascade
+      on delete restrict;
+
+alter table nonce
+  alter column purpose drop default;
+
 
 -- Recreate triggers
 create trigger 
