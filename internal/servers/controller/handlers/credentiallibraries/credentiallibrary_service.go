@@ -33,8 +33,8 @@ const (
 
 // Credential mapping override attributes
 const (
-	usernameAttribute string = "username"
-	passwordAttribute string = "password"
+	usernameAttribute string = "username_attribute"
+	passwordAttribute string = "password_attribute"
 )
 
 var (
