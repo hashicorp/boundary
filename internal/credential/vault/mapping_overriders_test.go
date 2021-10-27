@@ -12,6 +12,7 @@ type unknownMapper int
 
 func (u unknownMapper) clone() MappingOverride { return u }
 func (u unknownMapper) setLibraryId(_ string)  {}
+func (u unknownMapper) sanitize()              {}
 
 var _ MappingOverride = unknownMapper(0)
 

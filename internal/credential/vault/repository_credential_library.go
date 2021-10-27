@@ -86,6 +86,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 				if err := w.Create(ctx, newCredentialLibrary.MappingOverride, db.NewOplogMsg(&msg)); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
+				newCredentialLibrary.MappingOverride.sanitize()
 				msgs = append(msgs, &msg)
 			}
 

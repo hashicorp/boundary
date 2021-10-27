@@ -263,6 +263,19 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			if tt.in.MappingOverride != nil {
+				require.NotNil(got.MappingOverride)
+				assert.IsType(tt.want.MappingOverride, got.MappingOverride)
+				switch w := tt.want.MappingOverride.(type) {
+				case *UserPasswordOverride:
+					g, ok := got.MappingOverride.(*UserPasswordOverride)
+					require.True(ok)
+					assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
+					assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+				default:
+					assert.Fail("Unknown mapping override")
+				}
+
+				// verify it was persisted in the database
 				override := allocUserPasswordOverride()
 				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", got.GetPublicId()))
 			}
