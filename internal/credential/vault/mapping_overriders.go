@@ -26,6 +26,11 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 type MappingOverride interface {
 	clone() MappingOverride
 	setLibraryId(i string)
+
+	// sanitize replaces all sentinel values in the MappingOverride with
+	// zero values. It is called before a MappingOverride is returned from
+	// the domain layer when the MappingOverride has been loaded from the
+	// database.
 	sanitize()
 }
 
