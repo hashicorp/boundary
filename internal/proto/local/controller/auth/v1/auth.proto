@@ -39,4 +39,10 @@ message RequestInfo {
   // ticket is a unique id that allows the grpc-gateway to verify that the info
   // came from its companion http proxy
   string ticket = 110;
+
+  // trace_id is the request's trace_id
+  string trace_id = 120;
+
+  // event_id is the request's event id
+  string event_id = 130;
 }

@@ -287,6 +287,16 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
 
+		if info, ok := event.RequestInfoFromContext(ctx); ok {
+			// piggyback some eventing fields with the auth info proto message
+			requestInfo.EventId = info.EventId
+			requestInfo.TraceId = info.Id
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
+			return
+		}
+
 		// Serialize the request info to send it across the wire to the
 		// grpc-gateway via an http header
 		requestInfo.Ticket = c.gatewayTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
@@ -301,6 +311,8 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// See: https://pkg.go.dev/github.com/grpc-ecosystem/grpc-gateway/runtime#DefaultHeaderMatcher
 		r.Header.Set("Grpc-Metadata-"+requestInfoMdKey, base58.FastBase58Encoding(marshalledRequestInfo))
 
+		// Set the context back on the request
+		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})
 }

@@ -508,7 +508,6 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithName("Generated target"),
 		target.WithDescription("Provides an initial target in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
-		target.WithHostSources([]string{b.DevHostSetId}),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
@@ -518,6 +517,10 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}
 	tt, _, _, err := targetRepo.CreateTarget(cancelCtx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error saving target to the db: %w", err)
+	}
+	tt, _, _, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
 	if err != nil {
 		return nil, fmt.Errorf("error saving target to the db: %w", err)
 	}

@@ -383,7 +383,7 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 			// trigger to set ApproximateLastAccessTime to the commit timestamp.
 			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, []string{"ApproximateLastAccessTime"}, db.WithWhere("status = ?", PendingStatus))
 			if err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 			if rowsUpdated == 0 {
 				return errors.New(ctx, errors.RecordNotFound, op, "pending auth token not found")

@@ -183,3 +183,4 @@ Note that if `max_connections` is set too low, it may result in sporadic test
 failures if a connection cannot be established. In this case, reduce the number
 of concurrent tests via `GOMAXPROCS` or selectively run tests.
 
+## [Adding additional field to an existing API (or new API)](internal/adding-a-new-field-readme.md)
