@@ -168,6 +168,20 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if item.CredentialType != "" {
+		ret = append(ret,
+			"",
+			"  Credential Type:",
+			fmt.Sprintf("    %v", item.CredentialType),
+		)
+		if len(item.CredentialMappingOverrides) > 0 {
+			ret = append(ret,
+				"  Credential Mapping Overrides:",
+				base.WrapMap(4, maxLength, item.CredentialMappingOverrides),
+			)
+		}
+	}
+
 	return base.WrapForHelpText(ret)
 }
 

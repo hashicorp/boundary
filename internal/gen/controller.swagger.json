@@ -3923,6 +3923,14 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
+        },
+        "credential_type": {
+          "type": "string",
+          "title": "The type of credential this library will issue, defaults to Unspecified"
+        },
+        "credential_mapping_overrides": {
+          "type": "object",
+          "title": "The credential mapping overrides"
         }
       },
       "title": "CredentialLibrary contains all fields related to an Credential Library resource"
