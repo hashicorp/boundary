@@ -348,8 +348,13 @@ public_id in
 
 // DeleteOphanedHosts deletes any hosts that no longer belong to any set.
 // WithLimit is the only option supported. No options are currently supported.
-func (r *Repository) DeleteOrphanedHosts(ctx context.Context, _ ...Option) error {
+func (r *Repository) DeleteOrphanedHosts(ctx context.Context, scopeId string, _ ...Option) error {
 	const op = "plugin.(Repository).DeleteOrphanedHosts"
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
 
 	query := `
 public_id in
@@ -360,8 +365,7 @@ public_id in
 `
 
 	var hostAggs []*hostAgg
-	err := r.reader.SearchWhere(ctx, &hostAggs, query, nil)
-
+	err = r.reader.SearchWhere(ctx, &hostAggs, query, nil)
 	switch {
 	case err != nil:
 		return errors.Wrap(ctx, err, op)
@@ -377,7 +381,9 @@ public_id in
 			for _, ha := range hostAggs {
 				h := NewHost(ctx, ha.CatalogId, ha.ExternalId)
 				h.PublicId = ha.PublicId
-				if _, err := w.Delete(ctx, h); err != nil {
+				metadata := h.oplog(oplog.OpType_OP_TYPE_DELETE)
+				dHost := h.clone()
+				if _, err := w.Delete(ctx, dHost, db.WithOplog(oplogWrapper, metadata)); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 			}
