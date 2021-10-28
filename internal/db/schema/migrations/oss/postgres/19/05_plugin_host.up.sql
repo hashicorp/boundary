@@ -335,7 +335,6 @@ begin;
     ('host_plugin_set', 1),
     ('host_plugin_host', 1);
 
-
   -- host_plugin_host_with_value_obj_and_set_memberships is useful for reading a
   -- plugin host with its associated value objects (ip addresses, dns names) and
   -- set membership as columns with delimited values. The delimiter depends on

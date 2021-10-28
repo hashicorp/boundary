@@ -359,7 +359,7 @@ func TestRepository_LookupSet(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, _, _, err := repo.LookupSet(ctx, tt.in)
+			got, _, err := repo.LookupSet(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -677,14 +677,14 @@ func TestRepository_DeleteSet(t *testing.T) {
 	newHostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
-		name      string
-		in        string
+		name          string
+		in            string
 		pluginChecker func(*plgpb.OnDeleteSetRequest) error
-		want      int
-		wantIsErr errors.Code
+		want          int
+		wantIsErr     errors.Code
 	}{
 		{
-			name:      "With no public id",
+			name: "With no public id",
 			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
 				assert.Fail(t, "The plugin shouldn't be called")
 				return nil

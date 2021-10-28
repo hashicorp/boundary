@@ -19,7 +19,6 @@ type options struct {
 	WithLimit             int
 	WithOrderByCreateTime bool
 	Ascending             bool
-	WithSetMembers        bool
 }
 
 func getDefaultOptions() options {
@@ -42,16 +41,6 @@ func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) error {
 		o.WithOrderByCreateTime = true
 		o.Ascending = ascending
-		return nil
-	}
-}
-
-// WithSetMembers controls whether to include set members in a lookup. This will
-// always be true for static and may be true for plugin when we have caching,
-// but for now this skips API calls on authentication.
-func WithSetMembers(with bool) Option {
-	return func(o *options) error {
-		o.WithSetMembers = true
 		return nil
 	}
 }

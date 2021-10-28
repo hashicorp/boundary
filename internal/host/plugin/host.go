@@ -31,6 +31,7 @@ func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *
 	h := &Host{
 		PluginId: opts.withPluginId,
 		Host: &store.Host{
+			PublicId:    opts.withPublicId,
 			CatalogId:   catalogId,
 			ExternalId:  externalId,
 			Name:        opts.withName,
