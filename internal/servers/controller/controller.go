@@ -32,7 +32,6 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -45,10 +44,10 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
-	tickerWg    sync.WaitGroup
-	schedulerWg sync.WaitGroup
+	tickerWg    *sync.WaitGroup
+	schedulerWg *sync.WaitGroup
 
-	workerAuthCache *cache.Cache
+	workerAuthCache *sync.Map
 
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
@@ -82,6 +81,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
 		started:                 ua.NewBool(false),
+		tickerWg:                new(sync.WaitGroup),
+		schedulerWg:             new(sync.WaitGroup),
+		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
 	}
 
@@ -209,7 +211,6 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.SessionRepoFn = func() (*session.Repository, error) {
 		return session.NewRepository(dbase, dbase, c.kms)
 	}
-	c.workerAuthCache = cache.New(0, 0)
 
 	return c, nil
 }
@@ -224,7 +225,7 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext, &c.schedulerWg); err != nil {
+	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 	if err := c.startListeners(c.baseContext); err != nil {
@@ -238,7 +239,7 @@ func (c *Controller) Start() error {
 	}()
 	go func() {
 		defer c.tickerWg.Done()
-		c.startRecoveryNonceCleanupTicking(c.baseContext)
+		c.startNonceCleanupTicking(c.baseContext)
 	}()
 	go func() {
 		defer c.tickerWg.Done()

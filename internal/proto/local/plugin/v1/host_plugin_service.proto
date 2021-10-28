@@ -152,15 +152,21 @@ message ListHostsResponseHost {
 	// useful, ie: a compute instance ID.
 	string external_id = 10;
 
+	// If supplied, will be set as the managed name of the host
+	string name = 20;
+
+	// If supplied, will be set as the managed description of the host
+	string description = 30;
+
 	// Required. Any and all known IP addresses for the host.
-	repeated string ip_addresses = 20;
+	repeated string ip_addresses = 40;
 
 	// Required. Any and all known DNS names for the host.
-	repeated string dns_names = 30;
+	repeated string dns_names = 50;
 
 	// Required. The host set IDs that match this host, out of the host sets
 	// sent in the request.
-	repeated string set_ids = 40;
+	repeated string set_ids = 60;
 
 	// Optional. Provider-specific metadata that is applicable to this
 	// host. Example: host descriptions, tags, alternate network

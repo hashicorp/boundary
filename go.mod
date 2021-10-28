@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
 	github.com/hashicorp/eventlogger v0.1.0
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.4-0.20210928205053-80364fba97eb
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.5
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.2
@@ -33,7 +33,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.4 // indirect
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
@@ -63,7 +64,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.6.1
 	github.com/ory/dockertest/v3 v3.7.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3

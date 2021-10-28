@@ -26,7 +26,7 @@ func (c *Controller) startListeners(ctx context.Context) error {
 
 	configureForAPI := func(ln *base.ServerListener) error {
 		var err error
-		if c.gatewayServer, c.gatewayTicket, err = newGatewayServer(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms); err != nil {
+		if c.gatewayServer, c.gatewayTicket, err = newGatewayServer(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer); err != nil {
 			return err
 		}
 		c.gatewayMux = newGatewayMux()

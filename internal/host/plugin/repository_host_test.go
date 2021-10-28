@@ -43,7 +43,10 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		set := TestSet(t, conn, kms, catalog, plgm)
 		setIds = append(setIds, set.GetPublicId())
 	}
+	sort.Strings(setIds)
 	phs, exp := TestExternalHosts(t, catalog, setIds, setCount)
+	phs[2].Name = phs[0].Name
+	exp[2].Name = exp[0].Name
 
 	type input struct {
 		catalog *HostCatalog
@@ -139,7 +142,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "valid",
+			name: "valid", // Note: this also tests duplicate names
 			in: func() *input {
 				return &input{
 					catalog: catalog,
@@ -164,7 +167,11 @@ func TestRepository_UpsertHosts(t *testing.T) {
 				sort.Strings(e.IpAddresses)
 				sort.Strings(e.DnsNames)
 
+				ph.Name, ph.Description = ph.Description, ph.Name
+				e.Name, e.Description = e.Description, e.Name
+
 				ph.SetIds = ph.SetIds[0 : len(ph.SetIds)-1]
+				e.SetIds = e.SetIds[0 : len(e.SetIds)-1]
 				return &input{
 					catalog: catalog,
 					sets:    setIds,
@@ -194,7 +201,9 @@ func TestRepository_UpsertHosts(t *testing.T) {
 
 			// Basic tests
 			assert.Len(got, len(in.phs))
-			assert.NoError(db.TestVerifyOplog(t, rw, in.catalog.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+			for _, h := range in.exp {
+				assert.NoError(db.TestVerifyOplog(t, rw, h.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			}
 
 			// Make sure outputs match. Ignore timestamps.
 			assert.Empty(
@@ -210,7 +219,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 			)
 
 			// Check again, but via performing an explicit list
-			got, err = repo.ListHosts(ctx, in.catalog.GetPublicId())
+			got, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Len(got, len(in.phs))
@@ -226,11 +235,17 @@ func TestRepository_UpsertHosts(t *testing.T) {
 				),
 			)
 
-			// Now individually call read on each host
+			// Now individually call read on each host, cache the matching set
+			// IDs, and then check membership
+			setIdMap := make(map[string][]string)
 			for _, exp := range in.exp {
+				for _, setId := range exp.SetIds {
+					setIdMap[setId] = append(setIdMap[setId], exp.GetPublicId())
+				}
 				got, err := repo.LookupHost(ctx, exp.GetPublicId())
 				require.NoError(err)
 				require.NotNil(got)
+				assert.NotEmpty(got.SetIds)
 				assert.Empty(
 					cmp.Diff(
 						exp,
@@ -239,6 +254,16 @@ func TestRepository_UpsertHosts(t *testing.T) {
 						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					),
 				)
+			}
+			for setId, expHostIds := range setIdMap {
+				got, err = repo.ListHostsBySetIds(ctx, []string{setId})
+				require.NoError(err)
+				require.NotNil(got)
+				var gotHostIds []string
+				for _, h := range got {
+					gotHostIds = append(gotHostIds, h.GetPublicId())
+				}
+				assert.ElementsMatch(expHostIds, gotHostIds)
 			}
 		})
 	}

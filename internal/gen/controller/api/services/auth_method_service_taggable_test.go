@@ -1,4 +1,4 @@
-package services
+package services_test
 
 import (
 	"context"
@@ -6,23 +6,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestScope_Tags(t *testing.T) {
+// TestAuthenticate_Tags will test that the response filtering aligns with the
+// AuthenticateResponse and AuthenticateResponse tags.  See:
+// internal/tests/api/authmethods/authenticate_test.go TestAuthenticate where
+// the audit events produced using these tags is unit tested.
+func TestAuthenticate_Tags(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	wrapper := wrapper.TestWrapper(t)
-	testEncryptingFilter := &encrypt.Filter{
-		Wrapper:  wrapper,
-		HmacSalt: []byte("salt"),
-		HmacInfo: []byte("info"),
-	}
+	testEncryptingFilter := api.NewEncryptFilter(t, wrapper)
 
 	tests := []struct {
 		name      string
@@ -30,11 +31,11 @@ func TestScope_Tags(t *testing.T) {
 		wantEvent *eventlogger.Event
 	}{
 		{
-			name: "validate-filtering",
+			name: "validate-response-filtering",
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthenticateResponse{
+				Payload: &services.AuthenticateResponse{
 					Command: "public-command",
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -49,6 +50,10 @@ func TestScope_Tags(t *testing.T) {
 							"token_type":                 structpb.NewStringValue("public-token_type"),
 							"updated_time":               structpb.NewStringValue("public-updated_time"),
 							"user_id":                    structpb.NewStringValue("public-user_id"),
+							"status":                     structpb.NewStringValue("public-status"),
+							"auth_url":                   structpb.NewStringValue("public-auth_url"),
+							"token_id":                   structpb.NewStringValue("public-token_id"),
+							"final_redirect_url":         structpb.NewStringValue("public-final_redirect_url"),
 							"token":                      structpb.NewStringValue("secret-token"),
 						},
 					},
@@ -57,7 +62,7 @@ func TestScope_Tags(t *testing.T) {
 			wantEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthenticateResponse{
+				Payload: &services.AuthenticateResponse{
 					Command: "public-command",
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -72,7 +77,52 @@ func TestScope_Tags(t *testing.T) {
 							"token_type":                 structpb.NewStringValue("public-token_type"),
 							"updated_time":               structpb.NewStringValue("public-updated_time"),
 							"user_id":                    structpb.NewStringValue("public-user_id"),
+							"status":                     structpb.NewStringValue("public-status"),
+							"auth_url":                   structpb.NewStringValue("public-auth_url"),
+							"token_id":                   structpb.NewStringValue("public-token_id"),
+							"final_redirect_url":         structpb.NewStringValue("public-final_redirect_url"),
 							"token":                      structpb.NewStringValue("<REDACTED>"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "validate-request-filtering",
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"login_name": structpb.NewStringValue("public-login_name"),
+							"auth_url":   structpb.NewStringValue("public-auth_url"),
+							"token_id":   structpb.NewStringValue("public-token_id"),
+							"state":      structpb.NewStringValue("public-state"),
+							"password":   structpb.NewStringValue("secret-password"),
+							"code":       structpb.NewStringValue("secret-code"),
+						},
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"login_name": structpb.NewStringValue("public-login_name"),
+							"auth_url":   structpb.NewStringValue("public-auth_url"),
+							"token_id":   structpb.NewStringValue("public-token_id"),
+							"state":      structpb.NewStringValue("public-state"),
+							"password":   structpb.NewStringValue("<REDACTED>"),
+							"code":       structpb.NewStringValue("<REDACTED>"),
 						},
 					},
 				},

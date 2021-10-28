@@ -636,7 +636,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 				if _, ok := hostIds[hostId]; !ok {
 					hostIds[hostId] = true
-					host := newHost(ctx, ci.publicId, addr)
+					host := NewHost(ctx, ci.publicId, addr)
 					host.PublicId = hostId
 					hosts = append(hosts, host)
 				}

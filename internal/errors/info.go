@@ -236,4 +236,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "purposefully aborted without error",
 		Kind:    Other,
 	},
+	UnexpectedRowsAffected: {
+		Message: "unexpected number of rows affected",
+		Kind:    Integrity,
+	},
 }

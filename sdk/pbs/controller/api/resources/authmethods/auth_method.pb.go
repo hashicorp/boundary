@@ -452,9 +452,9 @@ type OidcAuthMethodAuthenticateStartResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The returned authentication URL
-	AuthUrl string `protobuf:"bytes,10,opt,name=auth_url,proto3" json:"auth_url,omitempty"`
+	AuthUrl string `protobuf:"bytes,10,opt,name=auth_url,proto3" json:"auth_url,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The returned token ID
-	TokenId string `protobuf:"bytes,30,opt,name=token_id,proto3" json:"token_id,omitempty"`
+	TokenId string `protobuf:"bytes,30,opt,name=token_id,proto3" json:"token_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *OidcAuthMethodAuthenticateStartResponse) Reset() {
@@ -510,13 +510,13 @@ type OidcAuthMethodAuthenticateCallbackRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The returned code
-	Code string `protobuf:"bytes,10,opt,name=code,proto3" json:"code,omitempty"`
+	Code string `protobuf:"bytes,10,opt,name=code,proto3" json:"code,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// The returned state
-	State string `protobuf:"bytes,20,opt,name=state,proto3" json:"state,omitempty"`
+	State string `protobuf:"bytes,20,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Error parameters, if they are returned
-	Error            string `protobuf:"bytes,30,opt,name=error,proto3" json:"error,omitempty"`
-	ErrorDescription string `protobuf:"bytes,40,opt,name=error_description,proto3" json:"error_description,omitempty"`
-	ErrorUri         string `protobuf:"bytes,50,opt,name=error_uri,proto3" json:"error_uri,omitempty"`
+	Error            string `protobuf:"bytes,30,opt,name=error,proto3" json:"error,omitempty" class:"public"`                         // @gotags: `class:"public"`
+	ErrorDescription string `protobuf:"bytes,40,opt,name=error_description,proto3" json:"error_description,omitempty" class:"public"` // @gotags: `class:"public"`
+	ErrorUri         string `protobuf:"bytes,50,opt,name=error_uri,proto3" json:"error_uri,omitempty" class:"public"`                 // @gotags: `class:"public"`
 }
 
 func (x *OidcAuthMethodAuthenticateCallbackRequest) Reset() {
@@ -593,7 +593,7 @@ type OidcAuthMethodAuthenticateCallbackResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The final redirection URL
-	FinalRedirectUrl string `protobuf:"bytes,10,opt,name=final_redirect_url,proto3" json:"final_redirect_url,omitempty"`
+	FinalRedirectUrl string `protobuf:"bytes,10,opt,name=final_redirect_url,proto3" json:"final_redirect_url,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *OidcAuthMethodAuthenticateCallbackResponse) Reset() {
@@ -642,7 +642,7 @@ type OidcAuthMethodAuthenticateTokenRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the pending token
-	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty"`
+	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty" class:"private"` // @gotags: `class:"private"`
 }
 
 func (x *OidcAuthMethodAuthenticateTokenRequest) Reset() {
@@ -693,7 +693,7 @@ type OidcAuthMethodAuthenticateTokenResponse struct {
 
 	// The status. This will always be "unknown". It will never be forwarded to
 	// the consumer.
-	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"`
+	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *OidcAuthMethodAuthenticateTokenResponse) Reset() {

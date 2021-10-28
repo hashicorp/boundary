@@ -25,6 +25,7 @@ type options struct {
 	withIpAddresses        []string
 	withDnsNames           []string
 	withLimit              int
+	withSetIds             []string
 }
 
 func getDefaultOptions() options {
@@ -95,5 +96,13 @@ func withDnsNames(with []string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithSetIds provides the ability to restrict lookups to particular matching
+// sets.
+func WithSetIds(with []string) Option {
+	return func(o *options) {
+		o.withSetIds = with
 	}
 }

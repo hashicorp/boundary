@@ -50,4 +50,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withIpAddresses = []string{"foo"}
 		assert.EqualValues(t, opts, testOpts)
 	})
+	t.Run("withSetIds", func(t *testing.T) {
+		opts := getOpts(WithSetIds([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withSetIds = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
 }
