@@ -1,6 +1,7 @@
 package credentialstores
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -52,6 +53,8 @@ func TestList(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -156,6 +159,8 @@ func TestCreate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -655,6 +660,8 @@ func TestDelete(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -714,6 +721,8 @@ func TestUpdate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {

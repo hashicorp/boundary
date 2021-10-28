@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -391,7 +392,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
-		if err := repo.AddRecoveryNonce(v.ctx, info.Nonce); err != nil {
+		if err := repo.AddNonce(v.ctx, info.Nonce, servers.NoncePurposeRecovery); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("decrypt recovery token: error adding nonce to database (possible replay attack)"))
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return

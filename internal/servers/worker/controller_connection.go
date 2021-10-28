@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -137,11 +138,17 @@ func (w *Worker) createClientConn(addr string) error {
 func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
-		Name:        w.conf.RawConfig.Worker.Name,
-		Description: w.conf.RawConfig.Worker.Description,
+		Name:            w.conf.RawConfig.Worker.Name,
+		Description:     w.conf.RawConfig.Worker.Description,
+		ConnectionNonce: w.testReusedAuthNonce,
 	}
-	if info.ConnectionNonce, err = base62.Random(20); err != nil {
-		return nil, nil, err
+	if info.ConnectionNonce == "" {
+		if info.ConnectionNonce, err = base62.Random(20); err != nil {
+			return nil, nil, err
+		}
+		if w.testReuseAuthNonces {
+			w.testReusedAuthNonce = info.ConnectionNonce
+		}
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
@@ -162,7 +169,7 @@ func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
 		SerialNumber:          big.NewInt(mathrand.Int63()),
 		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(2 * time.Minute),
+		NotAfter:              time.Now().Add(globals.WorkerAuthNonceValidityPeriod),
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
