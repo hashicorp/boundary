@@ -20,7 +20,7 @@ import (
 // NOTE: If phs is empty, this assumes that there are simply no hosts that
 // matched the given sets! Which means it will remove all hosts from the given
 // sets.
-func (r *Repository) UpsertHosts(
+func (r *SetSyncJob) UpsertHosts(
 	ctx context.Context,
 	hc *HostCatalog,
 	setIds []string,
@@ -62,7 +62,7 @@ func (r *Repository) UpsertHosts(
 	var currentHostMap map[string]*Host
 	{
 		var err error
-		currentHosts, err = r.ListHostsBySetIds(ctx, setIds)
+		currentHosts, err = listHostBySetIds(ctx, r.reader, setIds)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up current hosts for returned sets"))
 		}
@@ -316,7 +316,16 @@ func (r *Repository) ListHostsBySetIds(ctx context.Context, setIds []string, opt
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	hs, err := listHostBySetIds(ctx, r.reader, setIds, WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return hs, nil
+}
 
+func listHostBySetIds(ctx context.Context, reader db.Reader, setIds []string, opt ...Option) ([]*Host, error) {
+	const op = "plugin.listHostsBySetIds"
+	opts := getOpts(opt...)
 	query := `
 public_id in
 	(select distinct host_id
@@ -325,7 +334,7 @@ public_id in
 `
 
 	var hostAggs []*hostAgg
-	err := r.reader.SearchWhere(ctx, &hostAggs, query, []interface{}{setIds}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &hostAggs, query, []interface{}{setIds}, db.WithLimit(opts.withLimit))
 
 	switch {
 	case err != nil:
@@ -346,10 +355,10 @@ public_id in
 	return hosts, nil
 }
 
-// DeleteOphanedHosts deletes any hosts that no longer belong to any set.
+// deleteOrphanedHosts deletes any hosts that no longer belong to any set.
 // WithLimit is the only option supported. No options are currently supported.
-func (r *Repository) DeleteOrphanedHosts(ctx context.Context, _ ...Option) error {
-	const op = "plugin.(Repository).DeleteOrphanedHosts"
+func (r *OrphanedHostCleanupJob) deleteOrphanedHosts(ctx context.Context, _ ...Option) (int, error) {
+	const op = "plugin.(OrphanedHostCleanupJob).deleteOrphanedHosts"
 
 	query := `
 public_id in
@@ -364,9 +373,9 @@ public_id in
 
 	switch {
 	case err != nil:
-		return errors.Wrap(ctx, err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	case len(hostAggs) == 0:
-		return nil
+		return db.NoRowsAffected, nil
 	}
 
 	_, err = r.writer.DoTx(
@@ -384,8 +393,8 @@ public_id in
 			return nil
 		})
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	return nil
+	return len(hostAggs), nil
 }

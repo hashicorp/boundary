@@ -123,6 +123,8 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    last_sync_time wt_timestamp,
+    need_sync bool not null,
     version wt_version,
     attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq

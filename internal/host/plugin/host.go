@@ -22,7 +22,7 @@ type Host struct {
 	tableName string   `gorm:"-"`
 }
 
-// newHost creates a new in memory Host assigned to catalogId with an address.
+// NewHost creates a new in memory Host assigned to catalogId with an address.
 // Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames,
 // WithPluginId. Others ignored.
 func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {

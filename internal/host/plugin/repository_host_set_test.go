@@ -385,25 +385,7 @@ func TestRepository_Endpoints(t *testing.T) {
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
-			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
-				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
-					return &plgpb.ListHostsResponse{}, nil
-				}
-				var setIds []string
-				for _, set := range req.GetSets() {
-					setIds = append(setIds, set.GetId())
-				}
-				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
-					{
-						SetIds:      setIds,
-						ExternalId:  "test",
-						IpAddresses: []string{"10.0.0.5", "192.168.0.5"},
-						DnsNames:    nil,
-					},
-				}}, nil
-			},
-		}),
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -411,6 +393,11 @@ func TestRepository_Endpoints(t *testing.T) {
 	hostSet192 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
 	hostSet100 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
 	hostlessSet := TestSet(t, conn, kms, hostlessCatalog, plgm)
+
+	h1 := TestHost(t, conn, catalog.GetPublicId(), "test", withIpAddresses([]string{"10.0.0.5", "192.168.0.5"}))
+	TestSetMembers(t, conn, hostSet10.GetPublicId(), []*Host{h1})
+	TestSetMembers(t, conn, hostSet192.GetPublicId(), []*Host{h1})
+	TestSetMembers(t, conn, hostSet100.GetPublicId(), []*Host{h1})
 
 	tests := []struct {
 		name      string

@@ -125,17 +125,19 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 			assert.ElementsMatch(h.SetIds, tt.sets)
 		})
 	}
-	repo, err := NewRepository(rw, rw, kms, plgm)
-	require.NoError(t, err)
-	hosts, err := repo.ListHostsBySetIds(ctx, []string{blueSet1.PublicId, blueSet2.PublicId})
+	hosts, err := listHostBySetIds(ctx, rw, []string{blueSet1.PublicId, blueSet2.PublicId})
 	require.NoError(t, err)
 	require.Len(t, hosts, 2)
 
+	repo, err := NewRepository(rw, rw, kms, plgm)
+	require.NoError(t, err)
 	// Base case the count by catalog ID
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	assert.Len(t, hosts, 2)
 
+	j, err := newOrphanedHostCleanupJob(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	// Delete first membership, validate host is gone
 	got, err := NewHostSetMember(ctx, blueSet1.PublicId, blueHost1.PublicId)
 	require.NoError(t, err)
@@ -143,7 +145,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err := rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, repo.DeleteOrphanedHosts(ctx))
+	require.NoError(t, j.deleteOrphanedHosts(ctx))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 1)
@@ -155,7 +157,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err = rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, repo.DeleteOrphanedHosts(ctx))
+	require.NoError(t, j.deleteOrphanedHosts(ctx))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 0)

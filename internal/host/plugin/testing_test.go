@@ -51,3 +51,45 @@ func Test_TestSet(t *testing.T) {
 	assert.Equal("foo", set.GetName())
 	assert.Equal("bar", set.GetDescription())
 }
+
+func Test_TestHosts(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	plg := host.TestPlugin(t, conn, "test")
+	require.NotNil(plg)
+	assert.NotEmpty(plg.GetPublicId())
+
+	require.NotNil(org)
+	assert.NotEmpty(org.GetPublicId())
+
+	c := TestCatalog(t, conn, org.GetPublicId(), plg.GetPublicId())
+
+	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
+	assert.NotEmpty(h.GetPublicId())
+}
+
+func Test_TestSetMembers(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	plg := host.TestPlugin(t, conn, "test")
+	require.NotNil(plg)
+	assert.NotEmpty(plg.GetPublicId())
+
+	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+	s := TestSet(t, conn, kmsCache, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})})
+
+	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
+	members := TestSetMembers(t, conn, s.PublicId, []*Host{h})
+	assert.Len(members, 1)
+	assert.Equal(h.GetPublicId(), members[0].GetHostId())
+	assert.Equal(s.GetPublicId(), members[0].GetSetId())
+}

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -15,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
-	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	hspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -67,6 +67,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	s.PublicId = id
+	s.LastSyncTime = timestamp.New(time.Unix(0, 0))
 
 	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
@@ -407,6 +408,8 @@ type hostSetAgg struct {
 	Description        string
 	CreateTime         *timestamp.Timestamp
 	UpdateTime         *timestamp.Timestamp
+	LastSyncTime       *timestamp.Timestamp
+	NeedSync           bool
 	Version            uint32
 	Attributes         []byte
 	PreferredEndpoints string
@@ -423,6 +426,8 @@ func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
 	hs.Description = agg.Description
 	hs.CreateTime = agg.CreateTime
 	hs.UpdateTime = agg.UpdateTime
+	hs.LastSyncTime = agg.LastSyncTime
+	hs.NeedSync = agg.NeedSync
 	hs.Version = agg.Version
 	hs.Attributes = agg.Attributes
 	if agg.PreferredEndpoints != "" {
@@ -508,171 +513,72 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	if len(setAggs) == 0 {
 		return nil, nil
 	}
-
-	type setInfo struct {
-		preferredEndpoint endpoint.Option
-		plgSet            *pb.HostSet
-	}
-
-	type catalogInfo struct {
-		publicId  string                        // ID of the catalog
-		plg       plgpb.HostPluginServiceClient // plugin client for the catalog
-		setInfos  map[string]*setInfo           // map of set IDs to set information
-		plgCat    *hcpb.HostCatalog             // storage host catalog
-		persisted *plgpb.HostCatalogPersisted   // host catalog persisted (secret) data
-	}
-
-	// Next, look up the distinct catalog info and assign set infos to it.
-	// Notably, this does not include persisted info.
-	catalogInfos := make(map[string]*catalogInfo)
-	for _, ag := range setAggs {
-		ci, ok := catalogInfos[ag.CatalogId]
-		if !ok {
-			ci = &catalogInfo{
-				publicId: ag.CatalogId,
-				setInfos: make(map[string]*setInfo),
-			}
-		}
-		ci.plg, ok = r.plugins[ag.PluginId]
-		if !ok {
-			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("expected plugin %q not available", ag.PluginId))
-		}
-
-		s, err := ag.toHostSet(ctx)
+	setIdToSet := make(map[string]*HostSet, len(setAggs))
+	for _, s := range setAggs {
+		var err error
+		setIdToSet[s.PublicId], err = s.toHostSet(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		si, ok := ci.setInfos[s.GetPublicId()]
-		if !ok {
-			si = &setInfo{}
-		}
-		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.GetPreferredEndpoints())
-		si.plgSet, err = toPluginSet(ctx, s)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("converting set %q to plugin set", s.GetPublicId())))
-		}
-
-		ci.setInfos[s.GetPublicId()] = si
-		catalogInfos[ag.CatalogId] = ci
 	}
 
-	// Now, look up the catalog persisted (secret) information
-	catIds := make([]string, 0, len(catalogInfos))
-	for k := range catalogInfos {
-		catIds = append(catIds, k)
+	var setMembers []*HostSetMember
+	if err := r.reader.SearchWhere(ctx, &setMembers, "set_id in (?)", []interface{}{setIds}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set members for sets %v", setIds)))
 	}
-	var cats []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &cats, "public_id in (?)", []interface{}{catIds}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
-	}
-	if len(cats) == 0 {
-		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "no catalogs returned for retrieved sets")
-	}
-	for _, c := range cats {
-		ci, ok := catalogInfos[c.GetPublicId()]
-		if !ok {
-			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
-		}
-		plgCat, err := toPluginCatalog(ctx, c)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("storage to plugin catalog conversion"))
-		}
-		ci.plgCat = plgCat
-
-		// TODO: Do these lookups from the DB in bulk instead of individually.
-		per, err := r.getPersistedDataForCatalog(ctx, c)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("persisted catalog lookup failed"))
-		}
-		ci.persisted = per
-		catalogInfos[c.GetPublicId()] = ci
+	if len(setMembers) == 0 {
+		return nil, nil
 	}
 
-	// For writing the hosts to the db so data warehouse doesn't complain
-	var hosts []interface{}
-	hostIds := map[string]bool{}
+	hostIdToSetIds := make(map[string][]string)
+	for _, m := range setMembers {
+		hostIdToSetIds[m.GetHostId()] = append(hostIdToSetIds[m.GetHostId()], m.GetSetId())
+	}
+	var hostIds []string
+	for hid := range hostIdToSetIds {
+		hostIds = append(hostIds, hid)
+	}
+	var hostAggs []*hostAgg
+	if err := r.reader.SearchWhere(ctx, &hostAggs, "public_id in (?)", []interface{}{hostIds}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve hosts %v", hostIds)))
+	}
+	if len(hostAggs) == 0 {
+		return nil, nil
+	}
+
 	var es []*host.Endpoint
-
-	// For each distinct catalog, list all sets at once
-	for _, ci := range catalogInfos {
-
-		var sets []*pb.HostSet
-		for _, si := range ci.setInfos {
-			sets = append(sets, si.plgSet)
-		}
-
-		resp, err := ci.plg.ListHosts(ctx, &plgpb.ListHostsRequest{
-			Catalog:   ci.plgCat,
-			Sets:      sets,
-			Persisted: ci.persisted,
-		})
+	for _, ha := range hostAggs {
+		h, err := ha.toHost(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-
-		for _, h := range resp.GetHosts() {
-			hostId, err := newHostId(ctx, ci.publicId, h.GetExternalId())
+		for _, sId := range hostIdToSetIds[h.GetPublicId()] {
+			s := setIdToSet[sId]
+			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.GetPreferredEndpoints()))
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("getting preferencer for set %q", sId)))
+			}
+			var opts []endpoint.Option
+			if len(h.GetIpAddresses()) > 0 {
+				opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
+			}
+			if len(h.GetDnsNames()) > 0 {
+				opts = append(opts, endpoint.WithIpAddrs(h.GetDnsNames()))
+			}
+			addr, err := pref.Choose(ctx, opts...)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-
-			for _, sId := range h.GetSetIds() {
-				var opts []endpoint.Option
-				if len(h.GetIpAddresses()) > 0 {
-					opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
-				}
-				if len(h.GetDnsNames()) > 0 {
-					opts = append(opts, endpoint.WithIpAddrs(h.GetDnsNames()))
-				}
-
-				si, ok := ci.setInfos[sId]
-				if !ok {
-					return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "host is reporting it's part of a set we didn't query for")
-				}
-				pref, err := endpoint.NewPreferencer(ctx, si.preferredEndpoint)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("getting preferencer for set %q", sId)))
-				}
-				addr, err := pref.Choose(ctx, opts...)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
-				if addr == "" {
-					continue
-				}
-				es = append(es, &host.Endpoint{
-					HostId:  hostId,
-					SetId:   sId,
-					Address: addr,
-				})
-
-				if _, ok := hostIds[hostId]; !ok {
-					hostIds[hostId] = true
-					host := NewHost(ctx, ci.publicId, addr)
-					host.PublicId = hostId
-					hosts = append(hosts, host)
-				}
+			if addr == "" {
+				continue
 			}
+			es = append(es, &host.Endpoint{
+				HostId:  h.GetPublicId(),
+				SetId:   sId,
+				Address: addr,
+			})
 		}
 	}
 
-	if len(hosts) > 0 {
-		_, err := r.writer.DoTx(
-			ctx,
-			db.StdRetryCnt,
-			db.ExpBackoff{},
-			func(_ db.Reader, w db.Writer) error {
-				if _, err := r.writer.DeleteItems(ctx, hosts); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("couldn't delete existing hosts"))
-				}
-				if err := r.writer.CreateItems(ctx, hosts); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("can't persist hosts"))
-				}
-				return nil
-			})
-		if err != nil {
-			return nil, err
-		}
-	}
 	return es, nil
 }

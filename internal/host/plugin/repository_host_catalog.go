@@ -286,35 +286,11 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, e
 // TODO: consider merging the functions for getting catalog and persisted data into a view.
 func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCatalog) (*plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getPersistedDataForCatalog"
-	if c.PublicId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty public id")
-	}
-	if c.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
-	}
-	cSecret := allocHostCatalogSecret()
-	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", c.GetPublicId()); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if cSecret == nil {
-		return nil, nil
-	}
-	dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	per, err := getPersistedDataForCatalog(ctx, r.reader, r.kms, c)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-	}
-	if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-
-	secrets := &structpb.Struct{}
-	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
-	}
-	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+	return per, nil
 }
 
 func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.Plugin, error) {
@@ -352,4 +328,39 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		hc.Secrets = in.Secrets
 	}
 	return hc, nil
+}
+
+// getPersistedDataForCatalog returns the persisted data for a catalog if
+// present.  c must have a valid Public Id and Scope Id set.
+func getPersistedDataForCatalog(ctx context.Context, reader db.Reader, kmsCache *kms.Kms, c *HostCatalog) (*plgpb.HostCatalogPersisted, error) {
+	const op = "plugin.(Repository).getPersistedDataForCatalog"
+	if c.PublicId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty public id")
+	}
+	if c.ScopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
+	}
+	cSecret := allocHostCatalogSecret()
+	if err := reader.LookupWhere(ctx, cSecret, "catalog_id=?", c.GetPublicId()); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if cSecret == nil {
+		return nil, nil
+	}
+	dbWrapper, err := kmsCache.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+	}
+	if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	secrets := &structpb.Struct{}
+	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
+	}
+	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
 }

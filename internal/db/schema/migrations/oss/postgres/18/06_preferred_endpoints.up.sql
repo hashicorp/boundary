@@ -58,6 +58,8 @@ select
   hs.description,
   hs.create_time,
   hs.update_time,
+  hs.last_sync_time,
+  hs.need_sync,
   hs.version,
   hs.attributes,
   -- the string_agg(..) column will be null if there are no associated value objects

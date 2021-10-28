@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_UpsertHosts(t *testing.T) {
+func TestJob_UpsertHosts(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -186,11 +186,11 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			job, err := newSetSyncJob(ctx, rw, rw, kms, plgm)
 			require.NoError(err)
-			require.NotNil(repo)
+			require.NotNil(job)
 			in := tt.in()
-			got, err := repo.UpsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
+			got, err := job.UpsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -217,6 +217,10 @@ func TestRepository_UpsertHosts(t *testing.T) {
 					}),
 				),
 			)
+
+			repo, err := NewRepository(rw, rw, kms, plgm)
+			require.NoError(err)
+			require.NotNil(repo)
 
 			// Check again, but via performing an explicit list
 			got, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())

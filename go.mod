@@ -141,7 +141,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/go-plugin v1.0.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/go-version v1.3.0 // indirect
