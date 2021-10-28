@@ -18,7 +18,14 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, setSyncJob); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("token renewal job"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("set sync job"))
+	}
+	orphanedHostCleanupJob, err := newOrphanedHostCleanupJob(ctx, r, w, kms)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, orphanedHostCleanupJob); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("orphaned host cleanup job"))
 	}
 
 	return nil

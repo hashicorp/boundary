@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	ua "go.uber.org/atomic"
 )
@@ -14,7 +15,7 @@ import (
 
 const (
 	orphanedHostCleanupJobName = "plugin_host_orpahend_hosts_cleanup"
-	orphanedHostCleanupJobRunInterval = 1 * time.Hour
+	orphanedHostCleanupJobRunInterval = 5 * time.Minute
 )
 
 // OrphanedHostCleanupJob is the recurring job that syncs hosts from sets that are.
@@ -99,4 +100,60 @@ func (r *OrphanedHostCleanupJob) Name() string {
 // Description is the human readable description of the job.
 func (r *OrphanedHostCleanupJob) Description() string {
 	return "Periodically deletes plugin based hosts which are not members of any sets."
+}
+
+// deleteOrphanedHosts deletes any hosts that no longer belong to any set.
+// WithLimit is the only option supported. No options are currently supported.
+func (r *OrphanedHostCleanupJob) deleteOrphanedHosts(ctx context.Context, _ ...Option) (int, error) {
+	const op = "plugin.(OrphanedHostCleanupJob).deleteOrphanedHosts"
+
+	query := `
+public_id in
+	(select public_id
+		from host_plugin_host
+		where public_id not in
+			(select host_id from host_plugin_set_member))
+`
+
+	var hostAggs []*hostAgg
+	err := r.reader.SearchWhere(ctx, &hostAggs, query, nil)
+	switch {
+	case err != nil:
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	case len(hostAggs) == 0:
+		return db.NoRowsAffected, nil
+	}
+
+	scopeToHost := make(map[string][]*Host)
+	for _, ha := range hostAggs {
+		h := allocHost()
+		h.PublicId = ha.PublicId
+		scopeToHost[ha.ScopeId] = append(scopeToHost[ha.ScopeId], h)
+	}
+
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for scopeId, hosts := range scopeToHost {
+				oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+				}
+				for _, h := range hosts {
+					metadata := h.oplog(oplog.OpType_OP_TYPE_DELETE)
+					dHost := h.clone()
+					if _, err := w.Delete(ctx, dHost, db.WithOplog(oplogWrapper, metadata)); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	return len(hostAggs), nil
 }

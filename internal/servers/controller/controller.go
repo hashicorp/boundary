@@ -262,6 +262,9 @@ func (c *Controller) registerJobs() error {
 	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
 		return err
 	}
+	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
+		return err
+	}
 
 	if err := c.registerSessionCleanupJob(); err != nil {
 		return err

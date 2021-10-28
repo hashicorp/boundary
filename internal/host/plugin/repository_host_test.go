@@ -190,7 +190,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(job)
 			in := tt.in()
-			got, err := job.UpsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
+			got, err := job.upsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
