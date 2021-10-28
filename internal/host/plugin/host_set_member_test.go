@@ -3,11 +3,13 @@ package plugin
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -146,6 +148,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 	require.NoError(t, j.deleteOrphanedHosts(ctx))
+	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost1.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 1)
@@ -158,6 +161,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 	require.NoError(t, j.deleteOrphanedHosts(ctx))
+	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 0)

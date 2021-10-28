@@ -41,6 +41,8 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
+	err = vault.RegisterJobs(ctx, sche, rw, rw, kms)
+	require.NoError(err)
 
 	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki"}))
 

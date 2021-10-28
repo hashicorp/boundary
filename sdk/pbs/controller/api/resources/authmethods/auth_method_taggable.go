@@ -46,6 +46,10 @@ func (req *AuthMethod) Tags() ([]encrypt.PointerTag, error) {
 					Classification: encrypt.PublicClassification,
 				},
 				{
+					Pointer:        "/Attributes/Fields/idp_ca_certs",
+					Classification: encrypt.PublicClassification,
+				},
+				{
 					Pointer:        "/Attributes/Fields/api_url_prefix",
 					Classification: encrypt.PublicClassification,
 				},

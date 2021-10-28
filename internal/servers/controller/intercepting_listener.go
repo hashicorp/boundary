@@ -70,7 +70,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
 	}
-	workerInfoRaw, found := m.c.workerAuthCache.Get(string(nonce))
+	workerInfoRaw, found := m.c.workerAuthCache.Load(string(nonce))
 	if !found {
 		if err := conn.Close(); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
