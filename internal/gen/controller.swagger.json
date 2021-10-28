@@ -2812,6 +2812,12 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -3048,6 +3054,12 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -3233,9 +3245,15 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
-              "description": "Sets the values for application_credential_source_ids.  If any\ncredential_source_id field that is not set in the request will result in\nthose fields being cleared."
+              "description": "Sets the values for credential sources. Any credential_source_id field that\nis not set in the request will result in those fields being cleared."
             }
           }
         ],
@@ -5052,6 +5070,22 @@
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The application credential sources associated with this Target.",
+          "readOnly": true
+        },
+        "egress_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of the egress credential source ids associated with this Target.",
+          "readOnly": true
+        },
+        "egress_credential_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
+          },
+          "description": "Output only. The egress credential sources associated with this Target.",
           "readOnly": true
         },
         "attributes": {
