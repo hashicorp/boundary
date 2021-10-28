@@ -202,15 +202,3 @@ func TestHost_SetTableName(t *testing.T) {
 		})
 	}
 }
-
-func testHost(t *testing.T, conn *db.DB, catId, externId string) *Host {
-	t.Helper()
-	w := db.New(conn)
-	ctx := context.Background()
-	host1 := NewHost(ctx, catId, externId)
-	var err error
-	host1.PublicId, err = newHostId(ctx, catId, externId)
-	require.NoError(t, err)
-	require.NoError(t, w.Create(ctx, host1))
-	return host1
-}

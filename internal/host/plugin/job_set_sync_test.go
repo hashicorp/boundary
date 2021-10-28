@@ -154,7 +154,6 @@ func TestSetSyncJob_Run(t *testing.T) {
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
 
-
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
@@ -165,9 +164,9 @@ func TestSetSyncJob_Run(t *testing.T) {
 		return &plgpb.ListHostsResponse{
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
-					ExternalId: "first",
+					ExternalId:  "first",
 					IpAddresses: []string{"10.0.0.1"},
-					SetIds: []string{req.GetSets()[0].GetId()},
+					SetIds:      []string{req.GetSets()[0].GetId()},
 				},
 			},
 		}, nil

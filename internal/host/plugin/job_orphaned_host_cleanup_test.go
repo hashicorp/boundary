@@ -24,9 +24,9 @@ func TestNewOrphanedHostCleanupJob(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r    db.Reader
-		w    db.Writer
-		kms  *kms.Kms
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name        string
@@ -38,17 +38,17 @@ func TestNewOrphanedHostCleanupJob(t *testing.T) {
 		{
 			name: "nil reader",
 			args: args{
-				w:    rw,
-				kms:  kmsCache,
- 			},
+				w:   rw,
+				kms: kmsCache,
+			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "nil writer",
 			args: args{
-				r:    rw,
-				kms:  kmsCache,
+				r:   rw,
+				kms: kmsCache,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -56,8 +56,8 @@ func TestNewOrphanedHostCleanupJob(t *testing.T) {
 		{
 			name: "nil kms",
 			args: args{
-				r:    rw,
-				w:    rw,
+				r: rw,
+				w: rw,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -65,9 +65,9 @@ func TestNewOrphanedHostCleanupJob(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:    rw,
-				w:    rw,
-				kms:  kmsCache,
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 		},
 	}
@@ -117,7 +117,6 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	require.NoError(err)
 	// No sets should have been synced.
 	assert.Equal(0, r.numProcessed)
-
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 

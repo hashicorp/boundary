@@ -12,9 +12,8 @@ import (
 	ua "go.uber.org/atomic"
 )
 
-
 const (
-	orphanedHostCleanupJobName = "plugin_host_orpahend_hosts_cleanup"
+	orphanedHostCleanupJobName        = "plugin_host_orpahend_hosts_cleanup"
 	orphanedHostCleanupJobRunInterval = 5 * time.Minute
 )
 
@@ -22,10 +21,10 @@ const (
 // The OrphanedHostCleanupJob is not thread safe,
 // an attempt to Run the job concurrently will result in an JobAlreadyRunning error.
 type OrphanedHostCleanupJob struct {
-	reader  db.Reader
-	writer  db.Writer
-	kms     *kms.Kms
-	limit   int
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
+	limit  int
 
 	running      ua.Bool
 	numHosts     int
@@ -45,9 +44,9 @@ func newOrphanedHostCleanupJob(ctx context.Context, r db.Reader, w db.Writer, km
 	}
 
 	return &OrphanedHostCleanupJob{
-		reader:  r,
-		writer:  w,
-		kms:     kms,
+		reader: r,
+		writer: w,
+		kms:    kms,
 	}, nil
 }
 

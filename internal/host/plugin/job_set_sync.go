@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	setSyncJobName = "plugin_host_set_sync"
+	setSyncJobName        = "plugin_host_set_sync"
 	setSyncJobRunInterval = 10 * time.Minute
 )
 
@@ -319,7 +319,7 @@ func (r *SetSyncJob) upsertHosts(
 	setIds []string,
 	phs []*plgpb.ListHostsResponseHost,
 	_ ...Option) ([]*Host, error) {
-	const op = "plugin.(Repository).upsertHosts"
+	const op = "plugin.(SetSyncJob).upsertHosts"
 	if phs == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil plugin hosts")
 	}
