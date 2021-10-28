@@ -241,14 +241,15 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 	for k := range catalogInfos {
 		catIds = append(catIds, k)
 	}
-	var cats []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &cats, "public_id in (?)", []interface{}{catIds}); err != nil {
+	var catAggs []*catalogAgg
+	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []interface{}{catIds}); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
 	}
-	if len(cats) == 0 {
+	if len(catAggs) == 0 {
 		return errors.New(ctx, errors.NotSpecificIntegrity, op, "no catalogs returned for retrieved sets")
 	}
-	for _, c := range cats {
+	for _, ca := range catAggs {
+		c, s := ca.toCatalogAndPersisted()
 		ci, ok := catalogInfos[c.GetPublicId()]
 		if !ok {
 			return errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
@@ -260,10 +261,9 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		ci.plgCat = plgCat
 		ci.storeCat = c
 
-		// TODO: Do these lookups from the DB in bulk instead of individually.
-		per, err := getPersistedDataForCatalog(ctx, r.reader, r.kms, c)
+		per, err := toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
 		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("persisted catalog lookup failed"))
+			return errors.Wrap(ctx, err, op)
 		}
 		ci.persisted = per
 		catalogInfos[c.GetPublicId()] = ci

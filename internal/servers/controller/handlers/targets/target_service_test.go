@@ -2563,6 +2563,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 }
 
 func TestAuthorizeSession(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -2624,7 +2625,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
+	ctx = auth.NewVerifierContext(requests.NewRequestContext(ctx),
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,
@@ -2649,6 +2650,9 @@ func TestAuthorizeSession(t *testing.T) {
 
 	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	phs := plugin.TestSet(t, conn, kms, phc, plgm, plugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
+
+	// Sync the boundary db from the plugins
+	plugin.TestRunSetSync(t, conn, kms, plgm)
 
 	v := vault.NewTestVaultServer(t)
 	v.MountPKI(t)

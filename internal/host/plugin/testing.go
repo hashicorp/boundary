@@ -195,6 +195,17 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 	return retRH, retH
 }
 
+// TestRunSetSync runs the set sync job a single time.
+func TestRunSetSync(t *testing.T, conn *db.DB, kmsCache *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient) {
+	t.Helper()
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	j, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
+	require.NoError(t, err)
+	require.NoError(t, j.Run(ctx))
+}
+
 func testGetDnsName(t *testing.T) string {
 	dnsName, err := base62.Random(10)
 	require.NoError(t, err)

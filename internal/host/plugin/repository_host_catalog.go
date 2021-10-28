@@ -290,7 +290,7 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	var p *plgpb.HostCatalogPersisted
 	if s != nil {
 		var err error
-		p, err = r.toPluginPersistedData(ctx, c.GetScopeId(), s)
+		p, err = toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
@@ -337,7 +337,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 
 // toPluginCatalog converts a *HostCatalogSecret from storage to a
 // *plgpb.HostCatalogPersisted expected by a plugin. Scope Id must be set.
-func (r *Repository) toPluginPersistedData(ctx context.Context, scopeId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
+func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getPersistedDataForCatalog"
 	if scopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
@@ -345,7 +345,7 @@ func (r *Repository) toPluginPersistedData(ctx context.Context, scopeId string, 
 	if cSecret == nil {
 		return nil, nil
 	}
-	dbWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	dbWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 	}

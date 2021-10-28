@@ -10,7 +10,7 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
-
+// RegisterJobs registers plugin host related jobs with the provided scheduler.
 func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient) error {
 	const op = "plugin.RegisterJobs"
 	setSyncJob, err := newSetSyncJob(ctx, r, w, kms, plgm)
