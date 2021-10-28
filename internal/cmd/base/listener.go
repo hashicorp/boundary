@@ -54,7 +54,7 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, m
 	}
 
 	if len(l.Purpose) != 1 {
-		return nil, nil, nil, fmt.Errorf("Expected single listener purpose, found %d", len(l.Purpose))
+		return nil, nil, nil, fmt.Errorf("expected single listener purpose, found %d", len(l.Purpose))
 	}
 	purpose := l.Purpose[0]
 
@@ -65,6 +65,17 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, m
 		// TODO: Eventually we'll support bringing your own cert, and we'd only
 		// want to disable if you aren't actually bringing your own
 		l.TLSDisable = true
+	default:
+		switch l.TLSMinVersion {
+		case "", "tls12", "tls13":
+		default:
+			return nil, nil, nil, fmt.Errorf("unsupported minimum tls version %q", l.TLSMinVersion)
+		}
+		switch l.TLSMaxVersion {
+		case "", "tls12", "tls13":
+		default:
+			return nil, nil, nil, fmt.Errorf("unsupported maximum tls version %q", l.TLSMaxVersion)
+		}
 	}
 
 	finalAddr, ln, err := f(purpose, l, ui)

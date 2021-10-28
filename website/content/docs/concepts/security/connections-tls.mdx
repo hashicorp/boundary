@@ -57,8 +57,9 @@ TLS establishment is performed as follows:
    encrypted value.
 
 5. The Controller decrypts this value via the shared KMS. If successful, the
-   Controller validates that the nonce is not known, to ensure that this is not a
-   replay.
+   Controller validates that the nonce is not known to ensure that this is not a
+   replay. The nonce value is checked against and stored into the database,
+   ensuring that nonce replay cannot occur across controllers.
 
 6. The Controller uses the decrypted parameters to configures its TLS stack with
    the same certificate and key.
@@ -66,11 +67,6 @@ TLS establishment is performed as follows:
 7. The connection is mutually authenticated; on each end, only the single
    self-signed CA certificate that was securely transmitted is configured as a
    valid root CA for validation checking.
-
-8. If successful, the nonce is stored in the database along with an expiration
-   time set several minutes past the actual expiration time of the certificate
-   itself. This ensures that any replay attempt that occurs is detected and
-   rejected until after the certificate is otherwise invalid.
 
 ## Client-to-Worker TLS
 

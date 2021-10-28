@@ -54,10 +54,77 @@ func (req *AuthenticateResponse) Tags() ([]encrypt.PointerTag, error) {
 			Pointer:        "/Attributes/Fields/user_id",
 			Classification: encrypt.PublicClassification,
 		},
+		{
+			Pointer:        "/Attributes/Fields/status",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/auth_url",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/token_id",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/final_redirect_url",
+			Classification: encrypt.PublicClassification,
+		},
 		// secret fields
 		{
 			Pointer:        "/Attributes/Fields/token",
 			Classification: encrypt.SecretClassification,
+		},
+	}, nil
+}
+
+// Tags implements the encrypt.Taggable interface which allows
+// AuthenticateRequest Attributes to be classified for the encrypt filter.
+func (req *AuthenticateRequest) Tags() ([]encrypt.PointerTag, error) {
+	if req.Attributes == nil {
+		return nil, nil
+	}
+	return []encrypt.PointerTag{
+		// public fields
+		{
+			Pointer:        "/Attributes/Fields/login_name",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/auth_url",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/token_id",
+			Classification: encrypt.PublicClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/state",
+			Classification: encrypt.PublicClassification,
+		},
+		// secret fields
+		{
+			Pointer:        "/Attributes/Fields/password",
+			Classification: encrypt.SecretClassification,
+		},
+		{
+			Pointer:        "/Attributes/Fields/code",
+			Classification: encrypt.SecretClassification,
+		},
+	}, nil
+}
+
+// Tags implements the encrypt.Taggable interface which allows
+// ChangeStateRequest Attributes to be classified for the encrypt filter.
+func (req *ChangeStateRequest) Tags() ([]encrypt.PointerTag, error) {
+	if req.Attributes == nil {
+		return nil, nil
+	}
+	return []encrypt.PointerTag{
+		// public fields
+		{
+			Pointer:        "/Attributes/Fields/state",
+			Classification: encrypt.PublicClassification,
 		},
 	}, nil
 }

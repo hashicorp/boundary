@@ -581,11 +581,13 @@ func TestUpdate(t *testing.T) {
 	tar, err := tcp.New(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, _, err := repo.CreateTarget(context.Background(), tar, target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	gtar, _, _, err := repo.CreateTarget(context.Background(), tar)
+	require.NoError(t, err)
+	gtar, _, _, err = repo.AddTargetHostSources(context.Background(), gtar.GetPublicId(), gtar.GetVersion(), []string{hs[0].GetPublicId(), hs[1].GetPublicId()})
 	require.NoError(t, err)
 	tar = gtar.(*tcp.Target)
 
-	var version uint32 = 1
+	var version uint32 = gtar.GetVersion()
 
 	resetTarget := func() {
 		version++
@@ -2567,6 +2569,9 @@ func TestAuthorizeSession(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
+
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
@@ -2799,6 +2804,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
+
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
