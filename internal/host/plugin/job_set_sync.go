@@ -291,8 +291,16 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
+		updateSyncDataQuery := `
+update host_plugin_set
+set
+	last_sync_time = current_timestamp,
+	need_sync = false
+where public_id in (?)
+`
+
 		// update last sync time on the sets
-		i, err := r.writer.Exec(ctx, "update host_plugin_set set last_sync_time = current_timestamp where public_id in (?)", []interface{}{catSetIds})
+		i, err := r.writer.Exec(ctx, updateSyncDataQuery, []interface{}{catSetIds})
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("updating last sync time"))
 		}

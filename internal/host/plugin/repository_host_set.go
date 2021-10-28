@@ -64,6 +64,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s.PublicId = id
 	s.LastSyncTime = timestamp.New(time.Unix(0, 0))
+	s.NeedSync = true
 
 	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
@@ -144,6 +145,10 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", s.CatalogId)))
 	}
+
+	// The set now exists in the plugin, sync it immediately.
+	r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
@@ -401,6 +406,10 @@ type hostSetAgg struct {
 	Version            uint32
 	Attributes         []byte
 	PreferredEndpoints string
+}
+
+func (agg *hostSetAgg) GetPublicId() string {
+	return agg.PublicId
 }
 
 func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {

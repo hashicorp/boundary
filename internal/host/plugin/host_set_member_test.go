@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	plg := hostplg.TestPlugin(t, conn, "create")
@@ -35,8 +37,8 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	cats := TestCatalogs(t, conn, prj.PublicId, plg.PublicId, 2)
 
 	blueCat := cats[0]
-	blueSet1 := TestSet(t, conn, kms, blueCat, plgm)
-	blueSet2 := TestSet(t, conn, kms, blueCat, plgm)
+	blueSet1 := TestSet(t, conn, kms, sched, blueCat, plgm)
+	blueSet2 := TestSet(t, conn, kms, sched, blueCat, plgm)
 
 	hostId, err := db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
@@ -51,7 +53,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, rw.Create(ctx, blueHost2))
 
 	greenCat := cats[1]
-	greenSet := TestSet(t, conn, kms, greenCat, plgm)
+	greenSet := TestSet(t, conn, kms, sched, greenCat, plgm)
 
 	tests := []struct {
 		name    string
@@ -130,7 +132,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, hosts, 2)
 
-	repo, err := NewRepository(rw, rw, kms, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	require.NoError(t, err)
 	// Base case the count by catalog ID
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)

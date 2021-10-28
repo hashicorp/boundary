@@ -136,6 +136,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 
 	plgServer := &TestPluginServer{}
 	plg := hostplg.TestPlugin(t, conn, "run")
@@ -157,7 +158,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set1 := TestSet(t, conn, kmsCache, cat, plgm)
+	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 		assert.Len(req.GetSets(), 1)
 		assert.Equal(set1.GetPublicId(), req.GetSets()[0].GetId())
@@ -172,6 +173,10 @@ func TestSetSyncJob_Run(t *testing.T) {
 		}, nil
 	}
 
+	hsa := &hostSetAgg{PublicId: set1.GetPublicId()}
+	require.NoError(rw.LookupByPublicId(ctx, hsa))
+	assert.Less(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
+
 	// Run sync again with the newly created set
 	err = r.Run(context.Background())
 	require.NoError(err)
@@ -179,12 +184,37 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 
+	require.NoError(rw.LookupByPublicId(ctx, hsa))
+	assert.Greater(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
+	assert.False(hsa.NeedSync)
+	firstSyncTime := hsa.LastSyncTime
+
 	// Run sync again with the freshly synced set
 	err = r.Run(context.Background())
 	require.NoError(err)
 	// The single existing set should have been processed
 	assert.Equal(0, r.numSets)
 	assert.Equal(0, r.numProcessed)
+
+	// Set needs update
+	hs, err := hsa.toHostSet(ctx)
+	require.NoError(err)
+	hs.NeedSync = true
+	count, err := rw.Update(ctx, hs, []string{"NeedSync"}, nil)
+	require.NoError(err)
+	assert.Equal(1, count)
+	assert.True(hs.NeedSync)
+
+	// Run sync again with the set needing update
+	err = r.Run(context.Background())
+	require.NoError(err)
+	// The single existing set should have been processed
+	assert.Equal(1, r.numSets)
+	assert.Equal(1, r.numProcessed)
+
+	require.NoError(rw.LookupByPublicId(ctx, hs))
+	assert.Greater(hs.GetLastSyncTime().AsTime().UnixNano(), firstSyncTime.AsTime().UnixNano())
+	assert.False(hs.GetNeedSync())
 }
 
 func TestSetSyncJob_NextRunIn(t *testing.T) {
@@ -193,6 +223,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -201,7 +232,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, kmsCache, catalog, plgm)
+	hostSet := TestSet(t, conn, kmsCache, sched, catalog, plgm)
 
 	type setArgs struct {
 		lastSyncTime *timestamp.Timestamp

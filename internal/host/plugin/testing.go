@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/assert"
@@ -60,13 +61,13 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Scheduler, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
 	rw := db.New(conn)
 
-	repo, err := NewRepository(rw, rw, kmsCache, plgm)
+	repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 	require.NoError(err)
 
 	set, err := NewHostSet(ctx, hc.PublicId, opt...)

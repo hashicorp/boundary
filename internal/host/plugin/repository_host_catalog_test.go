@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
@@ -250,7 +252,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kmsCache, plgm)
+			repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, _, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
@@ -301,7 +303,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -331,7 +333,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -379,6 +381,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -418,7 +421,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -446,11 +449,12 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	plg := hostplg.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
-	repo, err := NewRepository(rw, rw, kms, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
 
@@ -477,6 +481,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	pluginInstance := &TestPluginServer{}
@@ -490,7 +495,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NotNil(t, badId)
 
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
 
@@ -562,6 +567,7 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -601,7 +607,7 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 

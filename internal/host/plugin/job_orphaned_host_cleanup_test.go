@@ -100,6 +100,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 
 	plgServer := &TestPluginServer{}
 	plg := hostplg.TestPlugin(t, conn, "run")
@@ -121,7 +122,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set1 := TestSet(t, conn, kmsCache, cat, plgm)
+	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	host1 := TestHost(t, conn, cat.GetPublicId(), "host with membership")
 	TestSetMembers(t, conn, set1.GetPublicId(), []*Host{host1})
 

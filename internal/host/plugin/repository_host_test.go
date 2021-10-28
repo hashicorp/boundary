@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -40,7 +42,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 	const setCount int = 3
 	setIds := make([]string, 0, setCount)
 	for i := 0; i < setCount; i++ {
-		set := TestSet(t, conn, kms, catalog, plgm)
+		set := TestSet(t, conn, kms, sched, catalog, plgm)
 		setIds = append(setIds, set.GetPublicId())
 	}
 	sort.Strings(setIds)
@@ -218,7 +220,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 				),
 			)
 
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 
