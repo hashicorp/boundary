@@ -18,7 +18,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalog creates count number of plugin host catalogs to the provided DB
+// TestCatalogs creates count number of static host catalogs to the provided DB
+// with the provided scope id.  If any errors are encountered during the creation of
+// the host catalog, the test will fail.
+func TestCatalogs(t *testing.T, conn *db.DB, scopeId, pluginId string, count int) []*HostCatalog {
+	t.Helper()
+	var cats []*HostCatalog
+	for i := 0; i < count; i++ {
+		cats = append(cats, TestCatalog(t, conn, scopeId, pluginId))
+	}
+	return cats
+}
+
+// TestCatalog creates a plugin host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
 func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Option) *HostCatalog {
@@ -78,6 +90,10 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 	require := require.New(t)
 	retRH := make([]*plgpb.ListHostsResponseHost, 0, count)
 	retH := make([]*Host, 0, count)
+	if setIds == nil {
+		// Prevent panics
+		setIds = make([]string, 0)
+	}
 
 	for i := 0; i < count; i++ {
 		externalId, err := base62.Random(10)
@@ -86,19 +102,25 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 		ipStr := testGetIpAddress(t)
 		dnsName := testGetDnsName(t)
 
-		retRH = append(retRH, &plgpb.ListHostsResponseHost{
+		rh := &plgpb.ListHostsResponseHost{
 			ExternalId:  externalId,
-			SetIds:      setIds,
+			Name:        base62.MustRandom(10),
+			Description: base62.MustRandom(10),
+			SetIds:      setIds[0 : i+1],
 			IpAddresses: []string{ipStr},
 			DnsNames:    []string{dnsName},
-		})
+		}
+		retRH = append(retRH, rh)
 
 		publicId, err := newHostId(context.Background(), catalog.PublicId, externalId)
 		require.NoError(err)
 
 		retH = append(retH, &Host{
 			PluginId: catalog.PluginId,
+			SetIds:   setIds[0 : i+1],
 			Host: &store.Host{
+				Name:        rh.Name,
+				Description: rh.Description,
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,
