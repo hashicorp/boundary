@@ -664,14 +664,14 @@ func TestRepository_DeleteSet(t *testing.T) {
 	newHostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
-		name      string
-		in        string
+		name          string
+		in            string
 		pluginChecker func(*plgpb.OnDeleteSetRequest) error
-		want      int
-		wantIsErr errors.Code
+		want          int
+		wantIsErr     errors.Code
 	}{
 		{
-			name:      "With no public id",
+			name: "With no public id",
 			pluginChecker: func(req *plgpb.OnDeleteSetRequest) error {
 				assert.Fail(t, "The plugin shouldn't be called")
 				return nil
