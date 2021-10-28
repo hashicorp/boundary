@@ -54,13 +54,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
-	c, err := r.getCatalog(ctx, s.CatalogId)
+	c, per, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
-	}
-	per, err := r.getPersistedDataForCatalog(ctx, c)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up persisted data"))
 	}
 	id, err := newHostSetId(ctx)
 	if err != nil {
@@ -187,15 +183,11 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host
 
 	// FIXME: change to use the database
 	if plg != nil && opts.WithSetMembers {
-		cat, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
+		cat, persisted, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
 		plgCat, err := toPluginCatalog(ctx, cat)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		persisted, err := r.getPersistedDataForCatalog(ctx, cat)
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
 		}
@@ -270,16 +262,12 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 	}
 	s := sets[0]
 
-	c, err := r.getCatalog(ctx, s.GetCatalogId())
+	c, p, err := r.getCatalog(ctx, s.GetCatalogId())
 	if err != nil && errors.IsNotFoundError(err) {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	if c == nil {
 		return db.NoRowsAffected, nil
-	}
-	p, err := r.getPersistedDataForCatalog(ctx, c)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	plgClient, ok := r.plugins[plg.GetPublicId()]
@@ -561,14 +549,15 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	for k := range catalogInfos {
 		catIds = append(catIds, k)
 	}
-	var cats []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &cats, "public_id in (?)", []interface{}{catIds}); err != nil {
+	var catAggs []*catalogAgg
+	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []interface{}{catIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
 	}
-	if len(cats) == 0 {
+	if len(catAggs) == 0 {
 		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "no catalogs returned for retrieved sets")
 	}
-	for _, c := range cats {
+	for _, ca := range catAggs {
+		c, s := ca.toCatalogAndPersisted()
 		ci, ok := catalogInfos[c.GetPublicId()]
 		if !ok {
 			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, "catalog returned when no set requested it")
@@ -579,10 +568,9 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		}
 		ci.plgCat = plgCat
 
-		// TODO: Do these lookups from the DB in bulk instead of individually.
-		per, err := r.getPersistedDataForCatalog(ctx, c)
+		per, err := r.toPluginPersistedData(ctx, c.GetScopeId(), s)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("persisted catalog lookup failed"))
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		ci.persisted = per
 		catalogInfos[c.GetPublicId()] = ci

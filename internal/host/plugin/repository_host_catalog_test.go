@@ -495,11 +495,11 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NotNil(t, repo)
 
 	tests := []struct {
-		name    string
+		name          string
 		id            string
 		pluginChecker func(*testing.T, *plgpb.OnDeleteCatalogRequest) error
 		want          int
-		wantErr errors.Code
+		wantErr       errors.Code
 	}{
 		{
 			name: "found",
@@ -529,8 +529,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:    "bad-public-id",
-			id:      "",
+			name: "bad-public-id",
+			id:   "",
 			pluginChecker: func(t *testing.T, req *plgpb.OnDeleteCatalogRequest) error {
 				assert.Fail(t, "Should not call the plugin for a bad id")
 				return nil

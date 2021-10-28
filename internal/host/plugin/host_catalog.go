@@ -6,6 +6,7 @@ package plugin
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -95,4 +96,56 @@ func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["scope-id"] = []string{s.ScopeId}
 	}
 	return metadata
+}
+
+type catalogAgg struct {
+	PublicId            string `gorm:"primary_key"`
+	ScopeId             string
+	PluginId            string
+	Name                string
+	Description         string
+	CreateTime          *timestamp.Timestamp
+	UpdateTime          *timestamp.Timestamp
+	Version             uint32
+	Attributes          []byte
+	Secret              []byte
+	KeyId               string
+	PersistedCreateTime *timestamp.Timestamp
+	PersistedUpdateTime *timestamp.Timestamp
+}
+
+func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret) {
+	if agg == nil {
+		return nil, nil
+	}
+	c := allocHostCatalog()
+	c.PublicId = agg.PublicId
+	c.ScopeId = agg.ScopeId
+	c.PluginId = agg.PluginId
+	c.Name = agg.Name
+	c.Description = agg.Description
+	c.CreateTime = agg.CreateTime
+	c.UpdateTime = agg.UpdateTime
+	c.Version = agg.Version
+	c.Attributes = agg.Attributes
+
+	var s *HostCatalogSecret
+	if len(agg.Secret) > 0 {
+		s = allocHostCatalogSecret()
+		s.CatalogId = agg.PublicId
+		s.Secret = agg.Secret
+		s.KeyId = agg.KeyId
+		s.CreateTime = agg.PersistedCreateTime
+		s.UpdateTime = agg.PersistedUpdateTime
+	}
+	return c, s
+}
+
+// TableName returns the table name for gorm
+func (agg *catalogAgg) TableName() string {
+	return "host_plugin_catalog_with_secret"
+}
+
+func (agg *catalogAgg) GetPublicId() string {
+	return agg.PublicId
 }
