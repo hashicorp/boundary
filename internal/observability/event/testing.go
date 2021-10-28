@@ -222,7 +222,7 @@ func TestWithBroker(t *testing.T, b broker) Option {
 	}
 }
 
-// TestWithObservationSink is an unexported and a test option
+// TestWithObservationSink is a test option
 func TestWithObservationSink(t *testing.T) Option {
 	t.Helper()
 	return func(o *options) {
@@ -230,7 +230,7 @@ func TestWithObservationSink(t *testing.T) Option {
 	}
 }
 
-// TestWithAuditSink is an unexported and a test option
+// TestWithAuditSink is a test option
 func TestWithAuditSink(t *testing.T) Option {
 	t.Helper()
 	return func(o *options) {
@@ -238,8 +238,8 @@ func TestWithAuditSink(t *testing.T) Option {
 	}
 }
 
-// testWithSysSink is an unexported and a test option
-func testWithSysSink(t *testing.T) Option {
+// TestWithSysSink is a test option
+func TestWithSysSink(t *testing.T) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true

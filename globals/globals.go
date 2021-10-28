@@ -30,4 +30,8 @@ var (
 	// RecoveryTokenValidityPeriod is exported so we can modify it in tests if
 	// we want
 	RecoveryTokenValidityPeriod = 5 * time.Minute
+
+	// WorkerAuthNonceValidityPeriod is exported so we can modify it in tests if
+	// we want
+	WorkerAuthNonceValidityPeriod = 2 * time.Minute
 )
