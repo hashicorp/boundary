@@ -122,8 +122,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 			// Run a test on the aggregate to validate looking up sets
 			agg := &hostAgg{PublicId: tt.host.PublicId}
 			require.NoError(rw.LookupByPublicId(ctx, agg))
-			h, err := agg.toHost(ctx)
-			require.NoError(err)
+			h := agg.toHost()
 			assert.ElementsMatch(h.SetIds, tt.sets)
 		})
 	}
@@ -147,7 +146,9 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err := rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, j.deleteOrphanedHosts(ctx))
+	count, err := j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost1.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
@@ -160,7 +161,9 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err = rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, j.deleteOrphanedHosts(ctx))
+	count, err = j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)

@@ -548,10 +548,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 	var es []*host.Endpoint
 	for _, ha := range hostAggs {
-		h, err := ha.toHost(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
+		h := ha.toHost()
 		for _, sId := range hostIdToSetIds[h.GetPublicId()] {
 			s := setIdToSet[sId]
 			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.GetPreferredEndpoints()))

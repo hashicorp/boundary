@@ -261,11 +261,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
-	h, err := ha.toHost(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to convert host agg for %s", publicId)))
-	}
-	return h, nil
+	return ha.toHost(), nil
 }
 
 // ListHostsByCatalogId returns a slice of Hosts for the catalogId.
@@ -293,11 +289,7 @@ func (r *Repository) ListHostsByCatalogId(ctx context.Context, catalogId string,
 
 	hosts := make([]*Host, 0, len(hostAggs))
 	for _, ha := range hostAggs {
-		host, err := ha.toHost(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		hosts = append(hosts, host)
+		hosts = append(hosts, ha.toHost())
 	}
 
 	return hosts, nil
@@ -345,11 +337,7 @@ public_id in
 
 	hosts := make([]*Host, 0, len(hostAggs))
 	for _, ha := range hostAggs {
-		host, err := ha.toHost(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		hosts = append(hosts, host)
+		hosts = append(hosts, ha.toHost())
 	}
 
 	return hosts, nil
@@ -357,12 +345,8 @@ public_id in
 
 // deleteOrphanedHosts deletes any hosts that no longer belong to any set.
 // WithLimit is the only option supported. No options are currently supported.
-func (r *OrphanedHostCleanupJob) deleteOrphanedHosts(ctx context.Context, scopeId string, _ ...Option) (int, error) {
+func (r *OrphanedHostCleanupJob) deleteOrphanedHosts(ctx context.Context, _ ...Option) (int, error) {
 	const op = "plugin.(OrphanedHostCleanupJob).deleteOrphanedHosts"
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
 
 	query := `
 public_id in
@@ -373,7 +357,7 @@ public_id in
 `
 
 	var hostAggs []*hostAgg
-	err = r.reader.SearchWhere(ctx, &hostAggs, query, nil)
+	err := r.reader.SearchWhere(ctx, &hostAggs, query, nil)
 	switch {
 	case err != nil:
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
@@ -381,18 +365,29 @@ public_id in
 		return db.NoRowsAffected, nil
 	}
 
+	scopeToHost := make(map[string][]*Host)
+	for _, ha := range hostAggs {
+		h := allocHost()
+		h.PublicId = ha.PublicId
+		scopeToHost[ha.ScopeId] = append(scopeToHost[ha.ScopeId], h)
+	}
+
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(r db.Reader, w db.Writer) error {
-			for _, ha := range hostAggs {
-				h := NewHost(ctx, ha.CatalogId, ha.ExternalId)
-				h.PublicId = ha.PublicId
-				metadata := h.oplog(oplog.OpType_OP_TYPE_DELETE)
-				dHost := h.clone()
-				if _, err := w.Delete(ctx, dHost, db.WithOplog(oplogWrapper, metadata)); err != nil {
-					return errors.Wrap(ctx, err, op)
+		func(_ db.Reader, w db.Writer) error {
+			for scopeId, hosts := range scopeToHost {
+				oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+				}
+				for _, h := range hosts {
+					metadata := h.oplog(oplog.OpType_OP_TYPE_DELETE)
+					dHost := h.clone()
+					if _, err := w.Delete(ctx, dHost, db.WithOplog(oplogWrapper, metadata)); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
 				}
 			}
 			return nil

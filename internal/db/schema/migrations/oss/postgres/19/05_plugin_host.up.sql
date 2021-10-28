@@ -347,6 +347,7 @@ begin;
     h.public_id,
     h.catalog_id,
     h.external_id,
+    hc.scope_id,
     hc.plugin_id,
     h.name,
     h.description,
@@ -362,7 +363,7 @@ begin;
     left outer join host_ip_address hip          on h.public_id = hip.host_id
     left outer join host_dns_name hdns           on h.public_id = hdns.host_id
     left outer join host_plugin_set_member hpsm  on h.public_id = hpsm.host_id
-  group by h.public_id, hc.plugin_id;
+  group by h.public_id, hc.plugin_id, hc.scope_id;
   comment on view host_plugin_host_with_value_obj_and_set_memberships is
   'host plugin host with its associated value objects';
 
