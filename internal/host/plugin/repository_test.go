@@ -24,12 +24,12 @@ func TestRepository_New(t *testing.T) {
 	plgs := map[string]plgpb.HostPluginServiceClient{}
 
 	type args struct {
-		r       db.Reader
-		w       db.Writer
+		r         db.Reader
+		w         db.Writer
 		kms       *kms.Kms
 		scheduler *scheduler.Scheduler
 		plugins   map[string]plgpb.HostPluginServiceClient
-		opts    []host.Option
+		opts      []host.Option
 	}
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func TestRepository_New(t *testing.T) {
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
-				scheduler: sched,
+				scheduler:    sched,
 				plugins:      plgs,
 				defaultLimit: db.DefaultLimit,
 			},
@@ -59,18 +59,18 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid-with-limit",
 			args: args{
-				r:       rw,
-				w:       rw,
-				kms:     kmsCache,
+				r:         rw,
+				w:         rw,
+				kms:       kmsCache,
 				scheduler: sched,
-				plugins: plgs,
-				opts:    []host.Option{host.WithLimit(5)},
+				plugins:   plgs,
+				opts:      []host.Option{host.WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          kmsCache,
-				scheduler: sched,
+				scheduler:    sched,
 				plugins:      plgs,
 				defaultLimit: 5,
 			},
@@ -78,11 +78,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-reader",
 			args: args{
-				r:       nil,
-				w:       rw,
-				kms:     kmsCache,
+				r:         nil,
+				w:         rw,
+				kms:       kmsCache,
 				scheduler: sched,
-				plugins: plgs,
+				plugins:   plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -90,11 +90,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:       rw,
-				w:       nil,
-				kms:     kmsCache,
+				r:         rw,
+				w:         nil,
+				kms:       kmsCache,
 				scheduler: sched,
-				plugins: plgs,
+				plugins:   plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -102,11 +102,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-kms",
 			args: args{
-				r:       rw,
-				w:       rw,
-				kms:     nil,
+				r:         rw,
+				w:         rw,
+				kms:       nil,
 				scheduler: sched,
-				plugins: plgs,
+				plugins:   plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -114,11 +114,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-plugins",
 			args: args{
-				r:       rw,
-				w:       rw,
-				kms:     kmsCache,
+				r:         rw,
+				w:         rw,
+				kms:       kmsCache,
 				scheduler: sched,
-				plugins: nil,
+				plugins:   nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -126,11 +126,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-scheduler",
 			args: args{
-				r:       rw,
-				w:       rw,
-				kms:     kmsCache,
+				r:         rw,
+				w:         rw,
+				kms:       kmsCache,
 				scheduler: nil,
-				plugins: plgs,
+				plugins:   plgs,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,
@@ -138,11 +138,11 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "all-nils",
 			args: args{
-				r:       nil,
-				w:       nil,
-				kms:     nil,
+				r:         nil,
+				w:         nil,
+				kms:       nil,
 				scheduler: nil,
-				plugins: nil,
+				plugins:   nil,
 			},
 			want:      nil,
 			wantIsErr: errors.InvalidParameter,

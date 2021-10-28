@@ -183,7 +183,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
-		return pluginhost.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)
