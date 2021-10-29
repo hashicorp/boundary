@@ -24,7 +24,7 @@ type Host struct {
 
 // newHost creates a new in memory Host assigned to catalogId with an address.
 // Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames,
-// WithPluginId. Others ignored.
+// WithPluginId, WithPublicId. Others ignored.
 func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
 	opts := getOpts(opt...)
 
