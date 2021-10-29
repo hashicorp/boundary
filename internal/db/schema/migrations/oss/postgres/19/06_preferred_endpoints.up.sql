@@ -50,25 +50,27 @@ create trigger immutable_preferred_endpoint
 -- values. The delimiter depends on the value objects (e.g. if they need
 -- ordering).
 create view host_plugin_host_set_with_value_obj as
-select
-  hs.public_id,
-  hs.catalog_id,
-  hc.plugin_id,
-  hs.name,
-  hs.description,
-  hs.create_time,
-  hs.update_time,
-  hs.last_sync_time,
-  hs.need_sync,
-  hs.version,
-  hs.attributes,
-  -- the string_agg(..) column will be null if there are no associated value objects
-  string_agg(distinct concat_ws('=', hspe.priority, hspe.condition), '|') as preferred_endpoints
-from
-  host_plugin_set hs
-  join host_plugin_catalog hc                        on hs.catalog_id = hc.public_id
-  left outer join host_set_preferred_endpoint hspe   on hs.public_id = hspe.host_set_id
-group by hs.public_id, hc.plugin_id;
+  select
+    hs.public_id,
+    hs.catalog_id,
+    hc.plugin_id,
+    hs.name,
+    hs.description,
+    hs.create_time,
+    hs.update_time,
+    hs.last_sync_time,
+    hs.need_sync,
+    hs.version,
+    hs.attributes,
+    -- the string_agg(..) column will be null if there are no associated value objects
+    string_agg(distinct concat_ws('=', hspe.priority, hspe.condition), '|') as preferred_endpoints,
+    string_agg(distinct hpsm.host_id, '|') as host_ids
+  from
+    host_plugin_set hs
+    join host_plugin_catalog hc                        on hs.catalog_id = hc.public_id
+    left outer join host_set_preferred_endpoint hspe   on hs.public_id = hspe.host_set_id
+    left outer join host_plugin_set_member hpsm        on hs.public_id = hpsm.set_id
+  group by hs.public_id, hc.plugin_id;
 comment on view host_plugin_host_set_with_value_obj is
 'host plugin host set with its associated value objects';
 

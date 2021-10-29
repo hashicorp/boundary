@@ -34,60 +34,74 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 		plg.GetPublicId(): NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
 
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
+	require.NoError(t, err)
+
 	cats := TestCatalogs(t, conn, prj.PublicId, plg.PublicId, 2)
 
 	blueCat := cats[0]
 	blueSet1 := TestSet(t, conn, kms, sched, blueCat, plgm)
 	blueSet2 := TestSet(t, conn, kms, sched, blueCat, plgm)
+	blueSet3 := TestSet(t, conn, kms, sched, blueCat, plgm)
 
 	hostId, err := db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
-	blueHost1 := NewHost(ctx, blueCat.PublicId, "abcd", withPluginId(plg.GetPublicId()))
+	blueHost1 := NewHost(ctx, blueCat.PublicId, "blue1", withPluginId(plg.GetPublicId()))
 	blueHost1.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost1))
 
 	hostId, err = db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
-	blueHost2 := NewHost(ctx, blueCat.PublicId, "zyxw", withPluginId(plg.GetPublicId()))
+	blueHost2 := NewHost(ctx, blueCat.PublicId, "blue2", withPluginId(plg.GetPublicId()))
 	blueHost2.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost2))
+
+	hostId, err = db.NewPublicId(HostPrefix)
+	require.NoError(t, err)
+	blueHost3 := NewHost(ctx, blueCat.PublicId, "blue3", withPluginId(plg.GetPublicId()))
+	blueHost3.PublicId = hostId
+	require.NoError(t, rw.Create(ctx, blueHost3))
+
+	hostId, err = db.NewPublicId(HostPrefix)
+	require.NoError(t, err)
+	blueHost4 := NewHost(ctx, blueCat.PublicId, "blue4", withPluginId(plg.GetPublicId()))
+	blueHost4.PublicId = hostId
+	require.NoError(t, rw.Create(ctx, blueHost4))
 
 	greenCat := cats[1]
 	greenSet := TestSet(t, conn, kms, sched, greenCat, plgm)
 
 	tests := []struct {
 		name    string
-		sets    []string
-		host    *Host
+		set     string
+		hosts   []*Host
 		wantErr bool
 		direct  bool
 	}{
 		{
-			name: "valid-host-in-set",
-			sets: []string{blueSet1.PublicId},
-			host: blueHost1,
+			name:  "valid-host-in-set",
+			set:   blueSet1.PublicId,
+			hosts: []*Host{blueHost1},
 		},
 		{
-			name: "valid-other-host-in-set",
-			sets: []string{blueSet2.PublicId},
-			host: blueHost2,
+			name:  "valid-other-host-in-set",
+			set:   blueSet2.PublicId,
+			hosts: []*Host{blueHost2},
+		},
+		{
+			name:  "valid-two-hosts-in-set",
+			set:   blueSet3.PublicId,
+			hosts: []*Host{blueHost3, blueHost4},
 		},
 		{
 			name:    "invalid-diff-catalogs",
-			sets:    []string{greenSet.PublicId},
-			host:    blueHost1,
+			set:     greenSet.PublicId,
+			hosts:   []*Host{blueHost1},
 			wantErr: true,
 		},
 		{
 			name:    "test-vet-for-write-no-set",
-			host:    blueHost1,
-			sets:    []string{""},
-			wantErr: true,
-			direct:  true,
-		},
-		{
-			name:    "test-vet-for-write-no-host",
-			sets:    []string{blueSet1.PublicId},
+			hosts:   []*Host{blueHost1},
 			wantErr: true,
 			direct:  true,
 		},
@@ -96,19 +110,21 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			for _, set := range tt.sets {
+			var hostIds []string
+			for _, host := range tt.hosts {
 				var got *HostSetMember
 				var err error
+				hostIds = append(hostIds, host.PublicId)
 				if !tt.direct {
-					got, err = NewHostSetMember(ctx, set, tt.host.PublicId)
+					got, err = NewHostSetMember(ctx, tt.set, host.PublicId)
 				} else {
 					got = &HostSetMember{
 						HostSetMember: &store.HostSetMember{
-							SetId: set,
+							SetId: tt.set,
 						},
 					}
-					if tt.host != nil {
-						got.HostId = tt.host.PublicId
+					if host != nil {
+						got.HostId = host.PublicId
 					}
 				}
 				require.NoError(err)
@@ -122,22 +138,28 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 			}
 
 			// Run a test on the aggregate to validate looking up sets
-			agg := &hostAgg{PublicId: tt.host.PublicId}
-			require.NoError(rw.LookupByPublicId(ctx, agg))
-			h := agg.toHost()
-			assert.ElementsMatch(h.SetIds, tt.sets)
+			for _, host := range tt.hosts {
+				agg := &hostAgg{PublicId: host.PublicId}
+				require.NoError(rw.LookupByPublicId(ctx, agg))
+				h := agg.toHost()
+				assert.ElementsMatch(h.SetIds, []string{tt.set})
+			}
+
+			set, _, err := repo.LookupSet(ctx, tt.set)
+			require.NoError(err)
+			require.NotNil(set)
+			require.ElementsMatch(set.HostIds, hostIds)
 		})
 	}
-	hosts, err := listHostBySetIds(ctx, rw, []string{blueSet1.PublicId, blueSet2.PublicId})
+
+	hosts, err := repo.ListHostsBySetIds(ctx, []string{blueSet1.PublicId, blueSet2.PublicId})
 	require.NoError(t, err)
 	require.Len(t, hosts, 2)
 
-	repo, err := NewRepository(rw, rw, kms, sched, plgm)
-	require.NoError(t, err)
 	// Base case the count by catalog ID
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
-	assert.Len(t, hosts, 2)
+	assert.Len(t, hosts, 4)
 
 	j, err := newOrphanedHostCleanupJob(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -154,7 +176,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost1.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
-	require.Len(t, hosts, 1)
+	require.Len(t, hosts, 3)
 
 	// Delete second, validate second host is gone
 	got, err = NewHostSetMember(ctx, blueSet2.PublicId, blueHost2.PublicId)
@@ -167,6 +189,23 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
+	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
+	require.NoError(t, err)
+	require.Len(t, hosts, 2)
+
+	// Delete third set, validate remaining hosts are gone
+	gotSet, err := NewHostSet(ctx, blueCat.PublicId)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	gotSet.PublicId = blueSet3.PublicId
+	num, err = rw.Delete(ctx, gotSet)
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+	count, err = j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost3.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
+	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost4.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 0)

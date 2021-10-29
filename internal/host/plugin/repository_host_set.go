@@ -3,9 +3,6 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -16,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
-	hspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -158,78 +154,26 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 // LookupSet will look up a host set in the repository and return the host set,
 // as well as host IDs that match. If the host set is not found, it will return
-// nil, nil, nil, nil. Supported options: WithSetMembers, which requests that
-// host IDs contained within the set are looked up and returned. (In the future
-// we may make it automatic to return this if it's coming from the database.)
-func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...host.Option) (*HostSet, []string, *hostplugin.Plugin, error) {
+// nil, nil, nil. No options are currently supported.
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 
-	opts, err := host.GetOpts(opt...)
+	sets, plg, err := r.getSets(ctx, publicId, "")
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
-	}
-
-	sets, plg, err := r.getSets(ctx, publicId, "", opt...)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	switch {
 	case len(sets) == 0:
-		return nil, nil, nil, nil // not an error to return no rows for a "lookup"
+		return nil, nil, nil // not an error to return no rows for a "lookup"
 	case len(sets) > 1:
-		return nil, nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
+		return nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", publicId))
 	}
 
-	setToReturn := sets[0]
-	var hostIdsToReturn []string
-
-	// FIXME: change to use the database
-	if plg != nil && opts.WithSetMembers {
-		cat, persisted, err := r.getCatalog(ctx, setToReturn.GetCatalogId())
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		plgCat, err := toPluginCatalog(ctx, cat)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		plgSet, err := toPluginSet(ctx, setToReturn)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
-		}
-		plgClient, ok := r.plugins[plg.GetPublicId()]
-		if !ok {
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no plugin found for plugin id %s", plg.GetPublicId()))
-		}
-		resp, err := plgClient.ListHosts(ctx, &plgpb.ListHostsRequest{
-			Catalog:   plgCat,
-			Sets:      []*hspb.HostSet{plgSet},
-			Persisted: persisted,
-		})
-		switch {
-		case err != nil:
-			// If it's just not implemented, e.g. for tests, don't error out, return what we have
-			if status.Code(err) != codes.Unimplemented {
-				return nil, nil, nil, errors.Wrap(ctx, err, op)
-			}
-		case resp != nil:
-			for _, respHost := range resp.GetHosts() {
-				hostId, err := newHostId(ctx, setToReturn.GetCatalogId(), respHost.GetExternalId())
-				if err != nil {
-					return nil, nil, nil, errors.Wrap(ctx, err, op)
-				}
-				hostIdsToReturn = append(hostIdsToReturn, hostId)
-			}
-		}
-	}
-
-	sort.Strings(hostIdsToReturn)
-
-	return setToReturn, hostIdsToReturn, plg, nil
+	return sets[0], plg, nil
 }
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
@@ -390,88 +334,6 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 
 	return sets, plg, nil
 }
-
-// hostSetAgg is a view that aggregates the host set's value objects in to
-// string fields delimited with the aggregateDelimiter of "|"
-type hostSetAgg struct {
-	PublicId           string `gorm:"primary_key"`
-	CatalogId          string
-	PluginId           string
-	Name               string
-	Description        string
-	CreateTime         *timestamp.Timestamp
-	UpdateTime         *timestamp.Timestamp
-	LastSyncTime       *timestamp.Timestamp
-	NeedSync           bool
-	Version            uint32
-	Attributes         []byte
-	PreferredEndpoints string
-}
-
-func (agg *hostSetAgg) GetPublicId() string {
-	return agg.PublicId
-}
-
-func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
-	const op = "plugin.(hostSetAgg).toHostSet"
-	const aggregateDelimiter = "|"
-	const priorityDelimiter = "="
-	hs := allocHostSet()
-	hs.PublicId = agg.PublicId
-	hs.CatalogId = agg.CatalogId
-	hs.Name = agg.Name
-	hs.Description = agg.Description
-	hs.CreateTime = agg.CreateTime
-	hs.UpdateTime = agg.UpdateTime
-	hs.LastSyncTime = agg.LastSyncTime
-	hs.NeedSync = agg.NeedSync
-	hs.Version = agg.Version
-	hs.Attributes = agg.Attributes
-	if agg.PreferredEndpoints != "" {
-		eps := strings.Split(agg.PreferredEndpoints, aggregateDelimiter)
-		if len(eps) > 0 {
-			// We want to protect against someone messing with the DB
-			// and not panic, so we do a bit of a dance here
-			var sortErr error
-			sort.Slice(eps, func(i, j int) bool {
-				epi := strings.Split(eps[i], priorityDelimiter)
-				if len(epi) != 2 {
-					sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[i]))
-					return false
-				}
-				epj := strings.Split(eps[j], priorityDelimiter)
-				if len(epj) != 2 {
-					sortErr = errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("preferred endpoint %s had unexpected fields", eps[j]))
-					return false
-				}
-				indexi, err := strconv.Atoi(epi[0])
-				if err != nil {
-					sortErr = errors.Wrap(ctx, err, op)
-					return false
-				}
-				indexj, err := strconv.Atoi(epj[0])
-				if err != nil {
-					sortErr = errors.Wrap(ctx, err, op)
-					return false
-				}
-				return indexi < indexj
-			})
-			if sortErr != nil {
-				return nil, sortErr
-			}
-			for i, ep := range eps {
-				// At this point they're in the correct order, but we still
-				// have to strip off the priority
-				eps[i] = strings.Split(ep, priorityDelimiter)[1]
-			}
-			hs.PreferredEndpoints = eps
-		}
-	}
-	return hs, nil
-}
-
-// TableName returns the table name for gorm
-func (agg *hostSetAgg) TableName() string { return "host_plugin_host_set_with_value_obj" }
 
 // toPluginSet returns a host set in the format expected by the host plugin system.
 func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
