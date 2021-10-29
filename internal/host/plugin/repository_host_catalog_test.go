@@ -69,9 +69,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "no-scope",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte{},
+					PluginId: plg.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
@@ -79,9 +79,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "no-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					Attributes: []byte{},
+					ScopeId: prj.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
@@ -99,44 +99,44 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-no-options",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte{},
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte{},
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 		},
 		{
 			name: "valid-unimplemented-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   unimplementedPlugin.GetPublicId(),
-					Attributes: []byte{},
+					ScopeId:  prj.GetPublicId(),
+					PluginId: unimplementedPlugin.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   unimplementedPlugin.GetPublicId(),
-					Attributes: []byte{},
+					ScopeId:  prj.GetPublicId(),
+					PluginId: unimplementedPlugin.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 		},
 		{
 			name: "not-found-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   "unknown_plugin",
-					Attributes: []byte{},
+					ScopeId:  prj.GetPublicId(),
+					PluginId: "unknown_plugin",
 				},
+				Attributes: &structpb.Struct{},
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
@@ -144,19 +144,19 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-name",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Name:       "test-name-repo",
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte{},
+					Name:     "test-name-repo",
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Name:       "test-name-repo",
-					ScopeId:    prj.GetPublicId(),
-					PluginId:   plg.GetPublicId(),
-					Attributes: []byte{},
+					Name:     "test-name-repo",
+					ScopeId:  prj.GetPublicId(),
+					PluginId: plg.GetPublicId(),
 				},
+				Attributes: &structpb.Struct{},
 			},
 		},
 		{
@@ -166,16 +166,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte{},
 				},
+				Attributes: &structpb.Struct{},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte{},
 				},
+				Attributes: &structpb.Struct{},
 			},
 		},
 		{
@@ -184,27 +184,15 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{
 					ScopeId:  prj.GetPublicId(),
 					PluginId: plg.GetPublicId(),
-					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
-						require.NoError(t, err)
-						b, err := proto.Marshal(st)
-						require.NoError(t, err)
-						return b
-					}(),
 				},
+				Attributes: mustStruct(map[string]interface{}{"k1": "foo"}),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					ScopeId:  prj.GetPublicId(),
 					PluginId: plg.GetPublicId(),
-					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
-						require.NoError(t, err)
-						b, err := proto.Marshal(st)
-						require.NoError(t, err)
-						return b
-					}(),
 				},
+				Attributes: mustStruct(map[string]interface{}{"k1": "foo"}),
 			},
 		},
 		{
@@ -214,17 +202,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 					ScopeId:     prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
-					Attributes:  []byte{},
 				},
-				Secrets: func() *structpb.Struct {
-					st, err := structpb.NewStruct(map[string]interface{}{
-						"k1": "v1",
-						"k2": 2,
-						"k3": nil,
-					})
-					require.NoError(t, err)
-					return st
-				}(),
+				Attributes: &structpb.Struct{},
+				Secrets: mustStruct(map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				}),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
@@ -233,16 +217,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
+				Attributes: &structpb.Struct{},
 			},
-			wantSecret: func() *structpb.Struct {
-				st, err := structpb.NewStruct(map[string]interface{}{
-					"k1": "v1",
-					"k2": 2,
-					"k3": nil,
-				})
-				require.NoError(t, err)
-				return st
-			}(),
+			wantSecret: mustStruct(map[string]interface{}{
+				"k1": "v1",
+				"k2": 2,
+				"k3": nil,
+			}),
 		},
 	}
 
@@ -269,11 +250,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
-			// wantedPluginAttributes := &structpb.Struct{}
-			// require.NoError(t, proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
-			gotB, err := proto.Marshal(gotPluginAttrs)
-			require.NoError(t, err)
-			assert.Equal(tt.want.GetAttributes(), gotB)
+			// Compare attributes from request with attributes in expected
+			assert.Empty(cmp.Diff(tt.want.GetAttributes(), gotPluginAttrs, protocmp.Transform()))
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
@@ -308,11 +286,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
-				ScopeId:    prj.GetPublicId(),
-				Name:       "test-name-repo",
-				PluginId:   plg.GetPublicId(),
-				Attributes: []byte{},
+				ScopeId:  prj.GetPublicId(),
+				Name:     "test-name-repo",
+				PluginId: plg.GetPublicId(),
 			},
+			Attributes: &structpb.Struct{},
 		}
 
 		got, _, err := repo.CreateCatalog(context.Background(), in)
@@ -338,10 +316,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
-				Name:       "test-name-repo",
-				PluginId:   plg.GetPublicId(),
-				Attributes: []byte{},
+				Name:     "test-name-repo",
+				PluginId: plg.GetPublicId(),
 			},
+			Attributes: &structpb.Struct{},
 		}
 		in2 := in.clone()
 
@@ -449,7 +427,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 	changeAttributes := func(m map[string]interface{}) changeHostCatalogFunc {
 		return func(c *HostCatalog) *HostCatalog {
-			c.Attributes = mustMarshal(m)
+			c.Attributes = mustStruct(m)
 			return c
 		}
 	}
@@ -519,10 +497,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			require := require.New(t)
-			st := &structpb.Struct{}
-			require.NoError(proto.Unmarshal(gotCatalog.Attributes, st))
-			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotCatalog.Attributes, protocmp.Transform()))
 		}
 	}
 
@@ -899,7 +874,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 		cat := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
 		// Set some (default) attributes on our test catalog
-		cat.Attributes = mustMarshal(map[string]interface{}{
+		cat.Attributes = mustStruct(map[string]interface{}{
 			"foo": "bar",
 		})
 
@@ -1236,15 +1211,4 @@ func mustStruct(in map[string]interface{}) *structpb.Struct {
 	}
 
 	return out
-}
-
-// mustMarshal behaves like mustStruct but also converts the Struct
-// to wire-format data.
-func mustMarshal(in map[string]interface{}) []byte {
-	b, err := proto.Marshal(mustStruct(in))
-	if err != nil {
-		panic(err)
-	}
-
-	return b
 }

@@ -233,7 +233,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			// Attributes are patched from the JSON included in the mask to
 			// the attributes that exist in the record.
 			dbMask = append(dbMask, "attributes")
-			newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
+			newCatalog.Attributes = patchstruct.PatchStruct(newCatalog.Attributes, c.Attributes)
 			if err != nil {
 				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
 			}
@@ -608,12 +608,8 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		Name:        wrapperspb.String(in.GetName()),
 		Description: wrapperspb.String(in.GetDescription()),
 	}
-	if in.GetAttributes() != nil {
-		attrs := &structpb.Struct{}
-		if err := proto.Unmarshal(in.GetAttributes(), attrs); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal attributes"))
-		}
-		hc.Attributes = attrs
+	if in.Attributes != nil {
+		hc.Attributes = in.Attributes
 	}
 	if in.Secrets != nil {
 		hc.Secrets = in.Secrets

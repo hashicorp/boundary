@@ -4,7 +4,7 @@ import "google.golang.org/protobuf/types/known/structpb"
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
-	opts := getDefaultOptions()
+	opts := options{}
 	for _, o := range opt {
 		o(&opts)
 	}
@@ -25,12 +25,6 @@ type options struct {
 	withIpAddresses        []string
 	withDnsNames           []string
 	withLimit              int
-}
-
-func getDefaultOptions() options {
-	return options{
-		withAttributes: &structpb.Struct{},
-	}
 }
 
 // WithPluginId provides an optional plugin id.
