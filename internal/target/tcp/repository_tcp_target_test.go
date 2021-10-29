@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,9 +41,16 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	credSources := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
-	var clIds []string
+	var credLibraries []*target.CredentialLibrary
+	var credLibIds []string
 	for _, cl := range credSources {
-		clIds = append(clIds, cl.PublicId)
+		credLibraries = append(credLibraries, &target.CredentialLibrary{
+			CredentialLibrary: &store.CredentialLibrary{
+				CredentialLibraryId: cl.PublicId,
+				CredentialPurpose:   string(credential.ApplicationPurpose),
+			},
+		})
+		credLibIds = append(credLibIds, cl.PublicId)
 	}
 
 	type args struct {
@@ -392,11 +401,22 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 
 			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
 			var testClIds []string
+			var testCredLibs []*target.CredentialLibrary
 			for _, cl := range cls {
+				testCredLibs = append(testCredLibs, &target.CredentialLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						CredentialLibraryId: cl.PublicId,
+						CredentialPurpose:   string(credential.ApplicationPurpose),
+					},
+				})
 				testClIds = append(testClIds, cl.PublicId)
 			}
 
-			tt.newTargetOpts = append(tt.newTargetOpts, target.WithHostSources(testHostSetIds), target.WithCredentialSources(testClIds))
+			tt.newTargetOpts = append(
+				tt.newTargetOpts,
+				target.WithHostSources(testHostSetIds),
+				target.WithCredentialLibraries(testCredLibs),
+			)
 			name := tt.newName
 			if name == "" {
 				name = tcp.TestId(t)

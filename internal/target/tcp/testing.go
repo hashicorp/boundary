@@ -36,12 +36,11 @@ func TestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...target.O
 		err := rw.CreateItems(context.Background(), newHostSets)
 		require.NoError(err)
 	}
-	if len(opts.WithCredentialSources) > 0 {
-		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialSources))
-		for _, cl := range opts.WithCredentialSources {
-			newCl, err := target.NewCredentialLibrary(tar.PublicId, cl)
-			require.NoError(err)
-			newCredLibs = append(newCredLibs, newCl)
+	if len(opts.WithCredentialLibraries) > 0 {
+		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
+		for _, cl := range opts.WithCredentialLibraries {
+			cl.TargetId = tar.PublicId
+			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
 		require.NoError(err)
