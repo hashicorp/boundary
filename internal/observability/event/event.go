@@ -25,20 +25,22 @@ type UserInfo struct {
 }
 
 type GrantsInfo struct {
-	Grants []GrantsPair `json:"grants_pair,omitempty"`
+	Grants []Grant `json:"grants,omitempty"`
 }
 
-type GrantsPair struct {
+type Grant struct {
 	Grant   string `json:"grant,omitempty" class:"public"`
 	ScopeId string `json:"scope_id,omitempty" class:"public"`
+	RoleId  string `json:"role_id,omitempty" class:"public"`
 }
 
 type Auth struct {
-	AuthTokenId string      `json:"auth_token_id" class:"public"`
-	UserInfo    *UserInfo   `json:"user_info,omitempty"` // boundary field
-	GrantsInfo  *GrantsInfo `json:"grants_info,omitempty"`
-	UserEmail   string      `json:"email,omitempty" class:"sensitive"`
-	UserName    string      `json:"name,omitempty" class:"sensitive"`
+	DisabledAuthEntirely *bool       `json:"disabled_auth_entirely,omitempty" class:"public"`
+	AuthTokenId          string      `json:"auth_token_id" class:"public"`
+	UserInfo             *UserInfo   `json:"user_info,omitempty"` // boundary field
+	GrantsInfo           *GrantsInfo `json:"grants_info,omitempty"`
+	UserEmail            string      `json:"email,omitempty" class:"sensitive"`
+	UserName             string      `json:"name,omitempty" class:"sensitive"`
 }
 
 type Request struct {

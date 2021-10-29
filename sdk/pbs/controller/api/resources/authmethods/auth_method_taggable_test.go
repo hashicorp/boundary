@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -92,7 +93,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 							"account_claim_maps":                   structpb.NewStringValue("public-account_claim_maps"),
 							"disable_discovered_config_validation": structpb.NewStringValue("public-disable_discovered_config_validation"),
 							"dry_run":                              structpb.NewStringValue("public-dry_run"),
-							"client_secret":                        structpb.NewStringValue("<REDACTED>"),
+							"client_secret":                        structpb.NewStringValue(encrypt.RedactedData),
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},
