@@ -423,7 +423,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		hset, hostIds, hsplg, err := repo.LookupSet(ctx, id, host.WithSetMembers(true))
+		hset, hsplg, err := repo.LookupSet(ctx, id)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -432,7 +432,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 		}
 		hs = hset
 		plg = toPluginInfo(hsplg)
-		for _, h := range hostIds {
+		for _, h := range hset.HostIds {
 			hl = append(hl, &plugin.Host{
 				Host: &plugstore.Host{
 					PublicId:  h,
@@ -690,7 +690,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			}
 			set = ss
 		case plugin.Subtype:
-			ps, _, _, err := pluginRepo.LookupSet(ctx, id)
+			ps, _, err := pluginRepo.LookupSet(ctx, id)
 			if err != nil {
 				res.Error = err
 				return nil, res

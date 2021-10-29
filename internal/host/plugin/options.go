@@ -16,6 +16,7 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
+	withPublicId           string
 	withPluginId           string
 	withName               string
 	withDescription        string
@@ -38,6 +39,13 @@ func getDefaultOptions() options {
 func withPluginId(with string) Option {
 	return func(o *options) {
 		o.withPluginId = with
+	}
+}
+
+// WithPublicId provides an optional public id.
+func WithPublicId(with string) Option {
+	return func(o *options) {
+		o.withPublicId = with
 	}
 }
 
