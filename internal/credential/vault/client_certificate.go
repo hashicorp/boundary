@@ -2,15 +2,12 @@ package vault
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/hmac"
-	"crypto/sha256"
 	"database/sql"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -103,17 +100,14 @@ func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapp
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	reader, err := kms.NewDerivedReader(cipher, 32, []byte(c.StoreId), nil)
+	// this operation currently uses the legacy WithEd25519 option for hmac'ing.
+	// we should likely deprecate this and introduce a new "crypto version" of
+	// this attribute.
+	hm, err := crypto.HmacSha256(ctx, c.CertificateKey, cipher, []byte(c.StoreId), nil, crypto.WithEd25519())
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	key, _, err := ed25519.GenerateKey(reader)
-	if err != nil {
-		return errors.New(ctx, errors.Encrypt, op, "unable to generate derived key")
-	}
-	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write(c.CertificateKey)
-	c.CertificateKeyHmac = mac.Sum(nil)
+	c.CertificateKeyHmac = []byte(hm)
 	return nil
 }
 
