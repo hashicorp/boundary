@@ -67,6 +67,12 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 	return &n, nil
 }
 
+// Rotate supports rotating the filter's wrapper, salt and info via the options:
+// WithAuditWrapper
+func (f *cloudEventsFormatterFilter) Rotate(opt ...Option) {
+	panic("todo")
+}
+
 func newPredicate(allow, deny []*filter) func(ctx context.Context, ce interface{}) (bool, error) {
 	return func(ctx context.Context, ce interface{}) (bool, error) {
 		if len(allow) == 0 && len(deny) == 0 {
