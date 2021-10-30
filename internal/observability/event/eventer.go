@@ -539,6 +539,9 @@ func DefaultSink() *SinkConfig {
 
 func (e *Eventer) RotateAuditWrapper(ctx context.Context, newWrapper wrapping.Wrapper) error {
 	const op = "event.(Eventer).RotateAuditWrapper"
+	if newWrapper == nil {
+		return fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
+	}
 	for _, n := range e.auditWrapperNodes {
 		switch w := n.(type) {
 		case *hclogFormatterFilter:

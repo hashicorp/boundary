@@ -513,8 +513,7 @@ func (c *Command) Run(args []string) int {
 		c.StderrLock,
 		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
-		base.WithEventFlags(eventFlags),
-		base.WithEventAuditWrapper(c.RootKms)); err != nil {
+		base.WithEventFlags(eventFlags)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

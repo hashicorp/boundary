@@ -151,6 +151,7 @@ func Test_InitSysEventer(t *testing.T) {
 			tt.want.auditPipelines = got.auditPipelines
 			tt.want.errPipelines = got.errPipelines
 			tt.want.observationPipelines = got.observationPipelines
+			tt.want.auditWrapperNodes = got.auditWrapperNodes
 			assert.Equal(tt.want, got)
 		})
 	}
