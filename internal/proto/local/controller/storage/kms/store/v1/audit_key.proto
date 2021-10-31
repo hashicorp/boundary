@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message OidcKey {
+  // private_id is used to access the key via an API
+  // @inject_tag: gorm:"primary_key"
+  string private_id = 10;
+
+  // root key id for the key
+  // @inject_tag: `gorm:"default:null"`
+  string root_key_id = 20;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+message OidcKeyVersion {
+  // private_id is used to access the key version via an API
+  // @inject_tag: gorm:"primary_key"
+  string private_id = 10;
+
+  // id for the key version
+  // @inject_tag: `gorm:"default:null"`
+  string oidc_key_id = 20;
+
+  // root_key_version_id of the version of the root key data.
+  // @inject_tag: `gorm:"default:null"`
+  string root_key_version_id = 30;
+
+  // plain-text of the key data.  we are NOT storing this plain-text key
+  // in the db.
+  // @inject_tag: `gorm:"-" wrapping:"pt,key_data"`
+  bytes key = 40;
+
+  // ciphertext key data stored in the database
+  // @inject_tag: `gorm:"column:key;not_null" wrapping:"ct,key_data"`
+  bytes ct_key = 50;
+
+  // version of the key data.  This is not used for optimistic locking, since
+  // key versions are immutable.  It's just the version of the key.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 60;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 70;
+}
