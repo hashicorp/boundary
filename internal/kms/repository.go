@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
@@ -161,7 +162,6 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create oidc key in scope %s", scopeId)))
 	}
-
 	keys := Keys{
 		KeyTypeRootKey:            rootKey,
 		KeyTypeRootKeyVersion:     rootKeyVersion,
@@ -176,6 +176,15 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		KeyTypeOidcKey:            oidcKey,
 		KeyTypeOidcKeyVersion:     oidcKeyVersion,
 	}
+	if scopeId == scope.Global.String() {
+		auditKey, auditKeyVersion, err := createAuditKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create audit key in scope %s", scopeId)))
+		}
+		keys[KeyTypeAuditKey] = auditKey
+		keys[KeyTypeAuditKeyVersion] = auditKeyVersion
+	}
+
 	return keys, nil
 }
 

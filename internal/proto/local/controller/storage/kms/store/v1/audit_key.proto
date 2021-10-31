@@ -5,7 +5,7 @@ option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
-message OidcKey {
+message AuditKey {
   // private_id is used to access the key via an API
   // @inject_tag: gorm:"primary_key"
   string private_id = 10;
@@ -19,14 +19,14 @@ message OidcKey {
   timestamp.v1.Timestamp create_time = 30;
 }
 
-message OidcKeyVersion {
+message AuditKeyVersion {
   // private_id is used to access the key version via an API
   // @inject_tag: gorm:"primary_key"
   string private_id = 10;
 
   // id for the key version
   // @inject_tag: `gorm:"default:null"`
-  string oidc_key_id = 20;
+  string audit_key_id = 20;
 
   // root_key_version_id of the version of the root key data.
   // @inject_tag: `gorm:"default:null"`
