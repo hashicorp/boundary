@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -885,9 +886,9 @@ var keySubstMap = map[string]string{
 func exampleOutput() string {
 	item := &targets.Target{
 		Id:      "ttcp_1234567890",
-		ScopeId: "global",
+		ScopeId: scope.Global.String(),
 		Scope: &scopes.ScopeInfo{
-			Id: "global",
+			Id: scope.Global.String(),
 		},
 		Name:        "foo",
 		Description: "The bar of foos",
