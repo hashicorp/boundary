@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -56,18 +57,22 @@ type Service struct {
 	pbs.UnimplementedHostServiceServer
 
 	staticRepoFn common.StaticRepoFactory
+	pluginRepoFn common.PluginHostRepoFactory
 }
 
 var _ pbs.HostServiceServer = Service{}
 
 // NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(repoFn common.StaticRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
-	return Service{staticRepoFn: repoFn}, nil
+	if pluginRepoFn == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing plugin host repository")
+	}
+	return Service{staticRepoFn: repoFn, pluginRepoFn: pluginRepoFn}, nil
 }
 
 func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs.ListHostsResponse, error) {
@@ -114,7 +119,12 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, nil, outputOpts...)
+		var hostSetIds []string
+		switch h := item.(type) {
+		case *plugin.Host:
+			hostSetIds = h.SetIds
+		}
+		item, err := toProto(ctx, item, hostSetIds, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +166,12 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, h, nil, outputOpts...)
+	var hostSetIds []string
+	switch h := h.(type) {
+	case *plugin.Host:
+		hostSetIds = h.SetIds
+	}
+	item, err := toProto(ctx, h, hostSetIds, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -259,17 +274,33 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*static.Host, error) {
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	h, err := repo.LookupHost(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if h == nil {
-		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
+func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, error) {
+	var h host.Host
+	switch host.SubtypeFromId(id) {
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		h, err = repo.LookupHost(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if h == nil {
+			return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
+		}
+	case plugin.Subtype:
+		repo, err := s.pluginRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		h, err = repo.LookupHost(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if h == nil {
+			return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
+		}
 	}
 	return h, nil
 }
@@ -361,16 +392,35 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*static.Host, error) {
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, err
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Host, error) {
+	var hosts []host.Host
+	switch host.SubtypeFromId(catalogId) {
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		hl, err := repo.ListHosts(ctx, catalogId)
+		if err != nil {
+			return nil, err
+		}
+		for _, h := range hl {
+			hosts = append(hosts, h)
+		}
+	case plugin.Subtype:
+		repo, err := s.pluginRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		hl, err := repo.ListHostsByCatalogId(ctx, catalogId)
+		if err != nil {
+			return nil, err
+		}
+		for _, h := range hl {
+			hosts = append(hosts, h)
+		}
 	}
-	hl, err := repo.ListHosts(ctx, catalogId)
-	if err != nil {
-		return nil, err
-	}
-	return hl, nil
+	return hosts, nil
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
@@ -413,7 +463,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
+func toProto(ctx context.Context, in host.Host, hostSetIds []string, opt ...handlers.Option) (*pb.Host, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building host proto")
@@ -452,8 +502,8 @@ func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, o
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 	if outputFields.Has(globals.HostSetIdsField) {
-		for _, hs := range hostSets {
-			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
+		for _, hs := range hostSetIds {
+			out.HostSetIds = append(out.HostSetIds, hs)
 		}
 	}
 	if outputFields.Has(globals.AttributesField) {
@@ -481,7 +531,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	}, req, static.HostPrefix)
+	}, req, static.HostPrefix, plugin.HostPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
@@ -552,7 +602,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
