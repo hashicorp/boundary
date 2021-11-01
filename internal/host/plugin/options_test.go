@@ -10,30 +10,44 @@ func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithName", func(t *testing.T) {
 		opts := getOpts(WithName("test"))
-		assert.Equal(t, "test", opts.withName)
+		testOpts := getDefaultOptions()
+		testOpts.withName = "test"
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithPluginId", func(t *testing.T) {
 		opts := getOpts(withPluginId("test"))
-		assert.Equal(t, "test", opts.withPluginId)
+		testOpts := getDefaultOptions()
+		testOpts.withPluginId = "test"
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithDescription", func(t *testing.T) {
 		opts := getOpts(WithDescription("test desc"))
-		assert.Equal(t, "test desc", opts.withDescription)
+		testOpts := getDefaultOptions()
+		testOpts.withDescription = "test desc"
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
 		opts := getOpts(WithLimit(5))
-		assert.Equal(t, 5, opts.withLimit)
+		testOpts := getDefaultOptions()
+		testOpts.withLimit = 5
+		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithPreferredEndpoints", func(t *testing.T) {
 		opts := getOpts(WithPreferredEndpoints([]string{"foo"}))
-		assert.EqualValues(t, []string{"foo"}, opts.withPreferredEndpoints)
+		testOpts := getDefaultOptions()
+		testOpts.withPreferredEndpoints = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
 	})
-	t.Run("WithDnsNames", func(t *testing.T) {
+	t.Run("withDnsNames", func(t *testing.T) {
 		opts := getOpts(withDnsNames([]string{"foo"}))
-		assert.EqualValues(t, []string{"foo"}, opts.withDnsNames)
+		testOpts := getDefaultOptions()
+		testOpts.withDnsNames = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
 	})
-	t.Run("WithIpAddresses", func(t *testing.T) {
+	t.Run("withIpAddresses", func(t *testing.T) {
 		opts := getOpts(withIpAddresses([]string{"foo"}))
-		assert.EqualValues(t, []string{"foo"}, opts.withIpAddresses)
+		testOpts := getDefaultOptions()
+		testOpts.withIpAddresses = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
 	})
 }

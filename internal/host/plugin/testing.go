@@ -26,7 +26,8 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 	ctx := context.Background()
 	w := db.New(conn)
 
-	cat := NewHostCatalog(ctx, scopeId, pluginId, opt...)
+	cat, err := NewHostCatalog(ctx, scopeId, pluginId, opt...)
+	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
 	plg := host.NewPlugin()
