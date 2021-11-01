@@ -48,7 +48,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	))
 	require.NoError(err)
 
-	assert.NoError(m.ApplyMigrations(ctx))
+	require.NoError(m.ApplyMigrations(ctx))
 	state, err := m.CurrentState(ctx)
 	require.NoError(err)
 	want := &schema.State{
@@ -128,7 +128,7 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	require.NoError(err)
 
 	count, err := sessionRepo.TerminateCompletedSessions(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 	assert.Zero(count)
 
 	for _, sess := range sessions {
@@ -143,8 +143,9 @@ func TestMigrations_CredentialDimension(t *testing.T) {
 	))
 	require.NoError(err)
 
-	assert.NoError(m.ApplyMigrations(ctx))
+	require.NoError(m.ApplyMigrations(ctx))
 	state, err = m.CurrentState(ctx)
+	require.NoError(err)
 	want = &schema.State{
 		Initialized: true,
 		Editions: []schema.EditionState{
@@ -165,16 +166,20 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, kms *kms.Kms, wrappe
 
 	ctx := context.Background()
 	stores := vault.TestCredentialStores(t, conn, wrapper, tar.GetScopeId(), 1)
-	libs := createVaultLibraries(t, conn, stores[0].GetPublicId())
+
+	libIds := createVaultLibraries(t, conn, stores[0].GetPublicId())
+	libs := []*target.CredentialLibrary{
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0], credential.ApplicationPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1], credential.ApplicationPurpose),
+	}
 
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), []string{libs[0], libs[1]})
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), libs)
 	require.NoError(t, err)
 	creds := []*session.DynamicCredential{
-		session.NewDynamicCredential(libs[0], credential.ApplicationPurpose),
-		session.NewDynamicCredential(libs[0], credential.IngressPurpose),
-		session.NewDynamicCredential(libs[1], credential.EgressPurpose),
+		session.NewDynamicCredential(libIds[0], credential.ApplicationPurpose),
+		session.NewDynamicCredential(libIds[1], credential.ApplicationPurpose),
 	}
 	return creds
 }

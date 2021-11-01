@@ -662,7 +662,7 @@ func Test_WriteAudit(t *testing.T) {
 			AuthAccountId: "test_auth_account_id",
 		},
 		GrantsInfo: &event.GrantsInfo{
-			Grants: []event.GrantsPair{
+			Grants: []event.Grant{
 				{
 					Grant:   "test_grant",
 					ScopeId: "test_grant_scope_id",

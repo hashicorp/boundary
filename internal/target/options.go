@@ -30,7 +30,7 @@ type options struct {
 	WithUserId                 string
 	WithType                   subtypes.Subtype
 	WithHostSources            []string
-	WithCredentialSources      []string
+	WithCredentialLibraries    []*CredentialLibrary
 	WithSessionMaxSeconds      uint32
 	WithSessionConnectionLimit int32
 	WithPublicId               string
@@ -49,7 +49,7 @@ func getDefaultOptions() options {
 		WithUserId:                 "",
 		WithType:                   "",
 		WithHostSources:            nil,
-		WithCredentialSources:      nil,
+		WithCredentialLibraries:    nil,
 		WithSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		WithSessionConnectionLimit: 1,
 		WithPublicId:               "",
@@ -129,10 +129,10 @@ func WithHostSources(hs []string) Option {
 	}
 }
 
-// WithCredentialSources provides an option for providing a list of credential source ids
-func WithCredentialSources(cl []string) Option {
+// WithCredentialLibraries provides an option for providing a list of credential libraries.
+func WithCredentialLibraries(cl []*CredentialLibrary) Option {
 	return func(o *options) {
-		o.WithCredentialSources = cl
+		o.WithCredentialLibraries = cl
 	}
 }
 

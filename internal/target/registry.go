@@ -15,10 +15,15 @@ type AllocFunc func() Target
 // be used by the Repository.
 type VetFunc func(context.Context, Target) error
 
+// VetCredentialLibrariesFunc is a function that checks the given CredentialLibraries
+// to ensure that they are valid for a Target subtype.
+type VetCredentialLibrariesFunc func(context.Context, []*CredentialLibrary) error
+
 type registryEntry struct {
-	alloc  AllocFunc
-	vet    VetFunc
-	prefix string
+	alloc                  AllocFunc
+	vet                    VetFunc
+	vetCredentialLibraries VetCredentialLibrariesFunc
+	prefix                 string
 }
 
 type registry struct {
@@ -71,6 +76,14 @@ func (r *registry) vetFunc(s subtypes.Subtype) (VetFunc, bool) {
 	return entry.vet, ok
 }
 
+func (r *registry) vetCredentialLibrariesFunc(s subtypes.Subtype) (VetCredentialLibrariesFunc, bool) {
+	entry, ok := r.get(s)
+	if !ok {
+		return nil, ok
+	}
+	return entry.vetCredentialLibraries, ok
+}
+
 func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
 	entry, ok := r.get(s)
 	if !ok {
@@ -103,10 +116,11 @@ func SubtypeFromId(id string) subtypes.Subtype {
 // Register registers repository hooks and the prefixes for a provided Subtype. Register
 // panics if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(s subtypes.Subtype, af AllocFunc, vf VetFunc, prefix string) {
+func Register(s subtypes.Subtype, af AllocFunc, vf VetFunc, vclf VetCredentialLibrariesFunc, prefix string) {
 	subtypeRegistry.set(s, &registryEntry{
-		alloc:  af,
-		vet:    vf,
-		prefix: prefix,
+		alloc:                  af,
+		vet:                    vf,
+		vetCredentialLibraries: vclf,
+		prefix:                 prefix,
 	})
 }

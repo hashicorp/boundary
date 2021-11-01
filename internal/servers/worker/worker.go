@@ -52,6 +52,10 @@ type Worker struct {
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
 	updateTags ua.Bool
+
+	// Test-related values
+	testReuseAuthNonces bool
+	testReusedAuthNonce string
 }
 
 func New(conf *Config) (*Worker, error) {
