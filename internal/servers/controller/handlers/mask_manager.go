@@ -76,14 +76,25 @@ func mapFromProto(ps []protoreflect.ProtoMessage) (map[string]string, error) {
 	return mapping, nil
 }
 
-// Translate takes a field mask's paths and returns paths translated for the destination's protobuf.
-func (m MaskManager) Translate(paths []string) []string {
+// Translate takes a field mask's paths and returns paths translated for the
+// destination's protobuf. If a path doesn't translate to a destination's proto
+// but does contain a prefix which matches a passedThroughPrefix it will be
+// added unmodified to the result.
+func (m MaskManager) Translate(paths []string, passedThroughPrefix ...string) []string {
 	var result []string
 	for _, v := range paths {
 		vSplit := strings.Split(v, ",")
 		for _, v := range vSplit {
-			if ov, ok := m[strings.TrimSpace(v)]; ok {
+			candidate := strings.TrimSpace(v)
+			if ov, ok := m[candidate]; ok {
 				result = append(result, ov)
+			} else {
+				for _, pre := range passedThroughPrefix {
+					if strings.HasPrefix(candidate, pre) {
+						result = append(result, candidate)
+						break
+					}
+				}
 			}
 		}
 	}
