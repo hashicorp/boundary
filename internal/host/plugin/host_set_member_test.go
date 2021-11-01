@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	plg := hostplg.TestPlugin(t, conn, "create")
@@ -32,15 +34,15 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 		plg.GetPublicId(): NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
 
-	repo, err := NewRepository(rw, rw, kms, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	require.NoError(t, err)
 
 	cats := TestCatalogs(t, conn, prj.PublicId, plg.PublicId, 2)
 
 	blueCat := cats[0]
-	blueSet1 := TestSet(t, conn, kms, blueCat, plgm)
-	blueSet2 := TestSet(t, conn, kms, blueCat, plgm)
-	blueSet3 := TestSet(t, conn, kms, blueCat, plgm)
+	blueSet1 := TestSet(t, conn, kms, sched, blueCat, plgm)
+	blueSet2 := TestSet(t, conn, kms, sched, blueCat, plgm)
+	blueSet3 := TestSet(t, conn, kms, sched, blueCat, plgm)
 
 	hostId, err := db.NewPublicId(HostPrefix)
 	require.NoError(t, err)
@@ -67,7 +69,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, rw.Create(ctx, blueHost4))
 
 	greenCat := cats[1]
-	greenSet := TestSet(t, conn, kms, greenCat, plgm)
+	greenSet := TestSet(t, conn, kms, sched, greenCat, plgm)
 
 	tests := []struct {
 		name    string
@@ -139,8 +141,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 			for _, host := range tt.hosts {
 				agg := &hostAgg{PublicId: host.PublicId}
 				require.NoError(rw.LookupByPublicId(ctx, agg))
-				h, err := agg.toHost(ctx)
-				require.NoError(err)
+				h := agg.toHost()
 				assert.ElementsMatch(h.SetIds, []string{tt.set})
 			}
 
@@ -160,6 +161,8 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, hosts, 4)
 
+	j, err := newOrphanedHostCleanupJob(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	// Delete first membership, validate host is gone
 	got, err := NewHostSetMember(ctx, blueSet1.PublicId, blueHost1.PublicId)
 	require.NoError(t, err)
@@ -167,7 +170,9 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err := rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, repo.DeleteOrphanedHosts(ctx, blueCat.ScopeId))
+	count, err := j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost1.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
@@ -180,7 +185,9 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err = rw.Delete(ctx, got)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, repo.DeleteOrphanedHosts(ctx, blueCat.ScopeId))
+	count, err = j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
 	require.NoError(t, err)
@@ -194,7 +201,9 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	num, err = rw.Delete(ctx, gotSet)
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
-	require.NoError(t, repo.DeleteOrphanedHosts(ctx, blueCat.ScopeId))
+	count, err = j.deleteOrphanedHosts(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost3.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost4.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	hosts, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)

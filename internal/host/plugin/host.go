@@ -22,7 +22,7 @@ type Host struct {
 	tableName string   `gorm:"-"`
 }
 
-// newHost creates a new in memory Host assigned to catalogId with an address.
+// NewHost creates a new in memory Host assigned to catalogId with an address.
 // Supported options: WithName, WithDescription, WithIpAddresses, WithDnsNames,
 // WithPluginId, WithPublicId. Others ignored.
 func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *Host {
@@ -109,6 +109,7 @@ func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
 type hostAgg struct {
 	PublicId    string `gorm:"primary_key"`
 	CatalogId   string
+	ScopeId     string
 	ExternalId  string
 	PluginId    string
 	Name        string
@@ -120,8 +121,7 @@ type hostAgg struct {
 	SetIds      string
 }
 
-func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
-	const op = "plugin.(hostAgg).toHost"
+func (agg *hostAgg) toHost() *Host {
 	const aggregateDelimiter = "|"
 	h := allocHost()
 	h.PublicId = agg.PublicId
@@ -148,7 +148,7 @@ func (agg *hostAgg) toHost(ctx context.Context) (*Host, error) {
 		sort.Strings(h.SetIds)
 	}
 
-	return h, nil
+	return h
 }
 
 // TableName returns the table name for gorm

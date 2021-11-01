@@ -1,12 +1,14 @@
 package plugin
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +37,7 @@ func Test_TestSet(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	require.NotNil(prj)
@@ -45,9 +48,95 @@ func Test_TestSet(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, kmsCache, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
+	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	db.AssertPublicId(t, HostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())
 	assert.Equal("bar", set.GetDescription())
+}
+
+func Test_TestHosts(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	plg := host.TestPlugin(t, conn, "test")
+	require.NotNil(plg)
+	assert.NotEmpty(plg.GetPublicId())
+
+	require.NotNil(org)
+	assert.NotEmpty(org.GetPublicId())
+
+	c := TestCatalog(t, conn, org.GetPublicId(), plg.GetPublicId())
+
+	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
+	assert.NotEmpty(h.GetPublicId())
+}
+
+func Test_TestSetMembers(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	plg := host.TestPlugin(t, conn, "test")
+	require.NotNil(plg)
+	assert.NotEmpty(plg.GetPublicId())
+
+	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+	s := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})})
+
+	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
+	members := TestSetMembers(t, conn, s.PublicId, []*Host{h})
+	assert.Len(members, 1)
+	assert.Equal(h.GetPublicId(), members[0].GetHostId())
+	assert.Equal(s.GetPublicId(), members[0].GetSetId())
+}
+
+func Test_TestRunSetSync(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	plg := host.TestPlugin(t, conn, "test")
+	require.NotNil(plg)
+	assert.NotEmpty(plg.GetPublicId())
+	pluginServer := &TestPluginServer{}
+	plgm := map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(pluginServer)}
+
+	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+	s1 := TestSet(t, conn, kmsCache, sched, c, plgm)
+	s2 := TestSet(t, conn, kmsCache, sched, c, plgm)
+
+	pluginServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		var setIds []string
+		for _, s := range req.GetSets() {
+			setIds = append(setIds, s.GetId())
+		}
+		resp := &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
+			{
+				ExternalId:  "test",
+				SetIds:      setIds,
+				IpAddresses: []string{"10.0.0.1"},
+			},
+		}}
+		return resp, nil
+	}
+
+	TestRunSetSync(t, conn, kmsCache, plgm)
+	rw := db.New(conn)
+	var ha []*hostAgg
+	require.NoError(rw.SearchWhere(context.Background(), &ha, "true", nil))
+	require.Len(ha, 1)
+	assert.ElementsMatch(ha[0].toHost().SetIds, []string{s1.GetPublicId(), s2.GetPublicId()})
 }

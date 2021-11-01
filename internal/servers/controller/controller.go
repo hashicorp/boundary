@@ -183,7 +183,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
-		return pluginhost.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)
@@ -260,6 +260,9 @@ func (c *Controller) Start() error {
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
 	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
 

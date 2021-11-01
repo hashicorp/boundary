@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,7 @@ func TestRepository_CreateSet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
@@ -208,7 +210,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, plgInfo, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
@@ -236,7 +238,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -267,7 +269,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -312,6 +314,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -319,7 +322,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, kms, catalog, map[string]plgpb.HostPluginServiceClient{
+	hostSet := TestSet(t, conn, kms, sched, catalog, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
 			ListHostsFn: func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				require.NotEmpty(t, req.GetSets())
@@ -356,7 +359,7 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, _, err := repo.LookupSet(ctx, tt.in)
@@ -380,37 +383,25 @@ func TestRepository_Endpoints(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "endpoints")
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{
-			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
-				if req.Catalog.GetId() == hostlessCatalog.GetPublicId() {
-					return &plgpb.ListHostsResponse{}, nil
-				}
-				var setIds []string
-				for _, set := range req.GetSets() {
-					setIds = append(setIds, set.GetId())
-				}
-				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
-					{
-						SetIds:      setIds,
-						ExternalId:  "test",
-						IpAddresses: []string{"10.0.0.5", "192.168.0.5"},
-						DnsNames:    nil,
-					},
-				}}, nil
-			},
-		}),
+		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet10 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
-	hostSet192 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
-	hostSet100 := TestSet(t, conn, kms, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
-	hostlessSet := TestSet(t, conn, kms, hostlessCatalog, plgm)
+	hostSet10 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
+	hostSet192 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
+	hostSet100 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
+	hostlessSet := TestSet(t, conn, kms, sched, hostlessCatalog, plgm)
+
+	h1 := TestHost(t, conn, catalog.GetPublicId(), "test", withIpAddresses([]string{"10.0.0.5", "192.168.0.5"}))
+	TestSetMembers(t, conn, hostSet10.GetPublicId(), []*Host{h1})
+	TestSetMembers(t, conn, hostSet192.GetPublicId(), []*Host{h1})
+	TestSetMembers(t, conn, hostSet100.GetPublicId(), []*Host{h1})
 
 	tests := []struct {
 		name      string
@@ -468,7 +459,7 @@ func TestRepository_Endpoints(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.Endpoints(ctx, tt.setIds)
@@ -511,7 +502,7 @@ func TestRepository_ListSets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -521,9 +512,9 @@ func TestRepository_ListSets(t *testing.T) {
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 
 	hostSets := []*HostSet{
-		TestSet(t, conn, kms, catalogA, plgm),
-		TestSet(t, conn, kms, catalogA, plgm),
-		TestSet(t, conn, kms, catalogA, plgm),
+		TestSet(t, conn, kms, sched, catalogA, plgm),
+		TestSet(t, conn, kms, sched, catalogA, plgm),
+		TestSet(t, conn, kms, sched, catalogA, plgm),
 	}
 
 	printoutTable(t, rw)
@@ -555,7 +546,7 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, gotPlg, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
@@ -583,7 +574,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -593,7 +584,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	count := 10
 	var hostSets []*HostSet
 	for i := 0; i < count; i++ {
-		hostSets = append(hostSets, TestSet(t, conn, kms, catalog, plgm))
+		hostSets = append(hostSets, TestSet(t, conn, kms, sched, catalog, plgm))
 	}
 
 	tests := []struct {
@@ -644,7 +635,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, gotPlg, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
@@ -662,6 +653,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "create")
 
@@ -671,8 +663,8 @@ func TestRepository_DeleteSet(t *testing.T) {
 		}}),
 	}
 	c := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet := TestSet(t, conn, kms, c, plgm)
-	hostSet2 := TestSet(t, conn, kms, c, plgm)
+	hostSet := TestSet(t, conn, kms, sched, c, plgm)
+	hostSet2 := TestSet(t, conn, kms, sched, c, plgm)
 
 	newHostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)
@@ -726,7 +718,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteSet(ctx, prj.PublicId, tt.in)

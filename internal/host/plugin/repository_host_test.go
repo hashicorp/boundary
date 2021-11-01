@@ -17,16 +17,18 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_UpsertHosts(t *testing.T) {
+func TestJob_UpsertHosts(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -40,7 +42,7 @@ func TestRepository_UpsertHosts(t *testing.T) {
 	const setCount int = 3
 	setIds := make([]string, 0, setCount)
 	for i := 0; i < setCount; i++ {
-		set := TestSet(t, conn, kms, catalog, plgm)
+		set := TestSet(t, conn, kms, sched, catalog, plgm)
 		setIds = append(setIds, set.GetPublicId())
 	}
 	sort.Strings(setIds)
@@ -186,11 +188,11 @@ func TestRepository_UpsertHosts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, plgm)
+			job, err := newSetSyncJob(ctx, rw, rw, kms, plgm)
 			require.NoError(err)
-			require.NotNil(repo)
+			require.NotNil(job)
 			in := tt.in()
-			got, err := repo.UpsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
+			got, err := job.upsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -217,6 +219,10 @@ func TestRepository_UpsertHosts(t *testing.T) {
 					}),
 				),
 			)
+
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			require.NoError(err)
+			require.NotNil(repo)
 
 			// Check again, but via performing an explicit list
 			got, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())

@@ -8,15 +8,17 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
 // A Repository stores and retrieves the persistent types in the plugin
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	reader    db.Reader
+	writer    db.Writer
+	kms       *kms.Kms
+	scheduler *scheduler.Scheduler
 
 	// plugins is a map from plugin resource id to host plugin client.
 	plugins map[string]plgpb.HostPluginServiceClient
@@ -29,7 +31,7 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient, opt ...host.Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, sched *scheduler.Scheduler, plgm map[string]plgpb.HostPluginServiceClient, opt ...host.Option) (*Repository, error) {
 	const op = "plugin.NewRepository"
 	switch {
 	case r == nil:
@@ -38,6 +40,8 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
+	case sched == nil:
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "scheduler")
 	case plgm == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "plgm")
 	}
@@ -60,6 +64,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, plgm map[string]plgpb
 		reader:       r,
 		writer:       w,
 		kms:          kms,
+		scheduler:    sched,
 		plugins:      plgs,
 		defaultLimit: opts.WithLimit,
 	}, nil

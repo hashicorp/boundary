@@ -123,6 +123,8 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    last_sync_time wt_timestamp,
+    need_sync bool not null,
     version wt_version,
     attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq
@@ -367,6 +369,7 @@ begin;
     h.public_id,
     h.catalog_id,
     h.external_id,
+    hc.scope_id,
     hc.plugin_id,
     h.name,
     h.description,
@@ -382,7 +385,7 @@ begin;
     left outer join host_ip_address hip          on h.public_id = hip.host_id
     left outer join host_dns_name hdns           on h.public_id = hdns.host_id
     left outer join host_plugin_set_member hpsm  on h.public_id = hpsm.host_id
-  group by h.public_id, hc.plugin_id;
+  group by h.public_id, hc.plugin_id, hc.scope_id;
   comment on view host_plugin_host_with_value_obj_and_set_memberships is
   'host plugin host with its associated value objects';
 

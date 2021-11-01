@@ -99,6 +99,8 @@ type hostSetAgg struct {
 	Description        string
 	CreateTime         *timestamp.Timestamp
 	UpdateTime         *timestamp.Timestamp
+	LastSyncTime       *timestamp.Timestamp
+	NeedSync           bool
 	Version            uint32
 	Attributes         []byte
 	PreferredEndpoints string
@@ -117,6 +119,8 @@ func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
 	hs.Description = agg.Description
 	hs.CreateTime = agg.CreateTime
 	hs.UpdateTime = agg.UpdateTime
+	hs.LastSyncTime = agg.LastSyncTime
+	hs.NeedSync = agg.NeedSync
 	hs.Version = agg.Version
 	hs.Attributes = agg.Attributes
 	if agg.HostIds != "" {
@@ -163,6 +167,10 @@ func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
 		}
 	}
 	return hs, nil
+}
+
+func (agg *hostSetAgg) GetPublicId() string {
+	return agg.PublicId
 }
 
 // TableName returns the table name for gorm
