@@ -214,6 +214,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
+	var updateAttributes bool
 	var dbMask, nullFields []string
 	for _, f := range fieldMask {
 		switch {
@@ -229,17 +230,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		case strings.EqualFold("description", f) && c.Description != "":
 			dbMask = append(dbMask, "description")
 			newCatalog.Description = c.Description
-		case strings.EqualFold("attributes", f) && c.Attributes != nil:
-			// Attributes are patched from the JSON included in the mask to
-			// the attributes that exist in the record.
-			dbMask = append(dbMask, "attributes")
-			newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
-			if err != nil {
-				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
-			}
-
-			// Patch the working set with the new attributes.
-			c.Attributes = newCatalog.Attributes
+		case strings.EqualFold("attributes", strings.Split(f, ".")[0]):
+			// Flag attributes for updating. While multiple masks may be
+			// sent, we only need to do this once.
+			updateAttributes = true
 		case strings.EqualFold("secrets", f):
 			// While in a similar format, secrets are passed along
 			// wholesale (for the time being). Don't append this mask
@@ -251,6 +245,17 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		default:
 			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
+	}
+
+	if updateAttributes && c.Attributes != nil {
+		dbMask = append(dbMask, "attributes")
+		newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
+		if err != nil {
+			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
+		}
+
+		// Patch the working set with the new attributes.
+		c.Attributes = newCatalog.Attributes
 	}
 
 	// Get the plugin client.

@@ -849,6 +849,35 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 		},
 		{
+			name: "update attributes (combined)",
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
+				"a":   "b",
+				"foo": "baz",
+			})},
+			version:   2,
+			fieldMask: []string{"attributes.a", "attributes.foo"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
+					"a":   "b",
+					"foo": "baz",
+				}),
+				checkAttributes(map[string]interface{}{
+					"a":   "b",
+					"foo": "baz",
+				}),
+				checkSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumCatalogsUpdated(1),
+				checkNumSecretsUpdated(0),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
 			name: "update secrets",
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
