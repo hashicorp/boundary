@@ -288,7 +288,16 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) scope %q, got response %q, wanted %q", tc.name, tc.req.GetScopeId(), got, tc.res)
+			assert.Equal(len(tc.res.Items), len(got.Items))
+			wantById := make(map[string]*pb.Target, len(tc.res.Items))
+			for _, t := range tc.res.Items {
+				wantById[t.Id] = t
+			}
+			for _, t := range got.Items {
+				want, ok := wantById[t.Id]
+				assert.True(ok, "Got unexpected target with id: %s", t.Id)
+				assert.Empty(cmp.Diff(t, want, protocmp.Transform()), "got %v, wanted %v", t, want)
+			}
 
 			// Test with anon user
 			got, gErr = s.ListTargets(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
