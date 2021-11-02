@@ -84,7 +84,7 @@ func TestHost_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "duplicate-name",
+			name: "valid-duplicate-name-same-catalog",
 			args: args{
 				catalogId:  cat.GetPublicId(),
 				externalId: "duplicate-name",
@@ -99,7 +99,6 @@ func TestHost_Create(t *testing.T) {
 					Name:       "test-name",
 				},
 			},
-			wantErr: true,
 		},
 		{
 			name: "valid-duplicate-name-different-catalog",
@@ -141,7 +140,7 @@ func TestHost_Create(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			got := newHost(ctx, tt.args.catalogId, tt.args.externalId, tt.args.opts...)
+			got := NewHost(ctx, tt.args.catalogId, tt.args.externalId, tt.args.opts...)
 			require.NotNil(t, got)
 			assert.Emptyf(t, got.PublicId, "PublicId set")
 			assert.Equal(t, tt.want, got)
@@ -202,16 +201,4 @@ func TestHost_SetTableName(t *testing.T) {
 			assert.Equal(tt.want, s.TableName())
 		})
 	}
-}
-
-func testHost(t *testing.T, conn *db.DB, catId, externId string) *Host {
-	t.Helper()
-	w := db.New(conn)
-	ctx := context.Background()
-	host1 := newHost(ctx, catId, externId)
-	var err error
-	host1.PublicId, err = newHostId(ctx, catId, externId)
-	require.NoError(t, err)
-	require.NoError(t, w.Create(ctx, host1))
-	return host1
 }

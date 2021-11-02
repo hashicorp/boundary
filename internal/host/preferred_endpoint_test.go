@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,13 +22,14 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceClient{
+	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
@@ -151,13 +153,14 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	set := plugin.TestSet(t, conn, kmsCache, catalog, map[string]plgpb.HostPluginServiceClient{
+	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	})
 

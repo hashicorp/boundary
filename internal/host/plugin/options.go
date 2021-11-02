@@ -16,6 +16,7 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
+	withPublicId           string
 	withPluginId           string
 	withName               string
 	withDescription        string
@@ -25,6 +26,7 @@ type options struct {
 	withIpAddresses        []string
 	withDnsNames           []string
 	withLimit              int
+	withSetIds             []string
 }
 
 func getDefaultOptions() options {
@@ -37,6 +39,13 @@ func getDefaultOptions() options {
 func withPluginId(with string) Option {
 	return func(o *options) {
 		o.withPluginId = with
+	}
+}
+
+// WithPublicId provides an optional public id.
+func WithPublicId(with string) Option {
+	return func(o *options) {
+		o.withPublicId = with
 	}
 }
 
@@ -95,5 +104,13 @@ func withDnsNames(with []string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithSetIds provides the ability to restrict lookups to particular matching
+// sets.
+func WithSetIds(with []string) Option {
+	return func(o *options) {
+		o.withSetIds = with
 	}
 }

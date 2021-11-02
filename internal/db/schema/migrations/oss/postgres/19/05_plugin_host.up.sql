@@ -123,6 +123,8 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    last_sync_time wt_timestamp,
+    need_sync bool not null,
     version wt_version,
     attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq
@@ -178,8 +180,6 @@ begin;
         references host (catalog_id, public_id)
         on delete cascade
         on update cascade,
-    constraint host_plugin_host_catalog_id_name_uq
-      unique(catalog_id, name),
     constraint host_plugin_host_catalog_id_external_id_uq
       unique(catalog_id, external_id),
     constraint host_plugin_host_catalog_id_public_id_uq
@@ -195,8 +195,29 @@ begin;
   create trigger immutable_columns before update on host_plugin_host
     for each row execute procedure immutable_columns('public_id', 'catalog_id', 'external_id', 'create_time');
 
-  create trigger insert_host_subtype before insert on host_plugin_host
-    for each row execute procedure insert_host_subtype();
+  -- insert_host_plugin_host_subtype is intended as a before insert trigger on
+  -- host_plugin_host. Its purpose is to insert a base host for new plugin-based
+  -- hosts. It's a bit different than the standard trigger for this, because it
+  -- will have conflicting PKs and we just want to "do nothing" on those
+  -- conflicts, deferring the raising on an error to insert into the
+  -- host_plugin_host table. This allows the upsert-style workflow.
+  create or replace function
+    insert_host_plugin_host_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id)
+    on conflict do nothing;
+
+    return new;
+  end;
+    $$ language plpgsql;
+
+  create trigger insert_host_plugin_host_subtype before insert on host_plugin_host
+    for each row execute procedure insert_host_plugin_host_subtype();
 
   create trigger delete_host_subtype after delete on host_plugin_host
     for each row execute procedure delete_host_subtype();
@@ -309,44 +330,46 @@ begin;
   create trigger insert_host_plugin_set_member before insert on host_plugin_set_member
     for each row execute procedure insert_host_plugin_set_member();
 
-  -- delete_orphaned_host_plugin_host is an after delete trigger
-  -- function to delete plugin hosts when no more set members
-  -- reference it.
-  create function delete_orphaned_host_plugin_host()
-    returns trigger
-  as $$
-  begin
-    delete from host_plugin_host
-    where not exists (select host_id
-                      from host_plugin_set_member
-                      where host_id = old.host_id)
-      and
-    public_id = old.host_id;
-    return null;
-  end;
-  $$ language plpgsql;
-  comment on function delete_orphaned_host_plugin_host is
-    'delete_orphaned_host_plugin_host deletes a host when all set members with that host are deleted.';
-
-  create trigger delete_orphaned_host_plugin_host after delete on host_plugin_set_member
-    for each row execute procedure delete_orphaned_host_plugin_host();
-
   insert into oplog_ticket (name, version)
   values
     ('host_plugin_catalog', 1),
     ('host_plugin_catalog_secret', 1),
-    ('host_plugin_set', 1);
+    ('host_plugin_set', 1),
+    ('host_plugin_host', 1);
 
+  -- host_plugin_catalog_with_secret is useful for reading a plugin catalog with
+  -- its associated persisted data.
+  create view host_plugin_catalog_with_secret as
+  select
+    hc.public_id,
+    hc.scope_id,
+    hc.plugin_id,
+    hc.name,
+    hc.description,
+    hc.create_time,
+    hc.update_time,
+    hc.version,
+    hc.attributes,
+    hcs.secret,
+    hcs.key_id,
+    hcs.create_time as persisted_create_time,
+    hcs.update_time as persisted_update_time
+  from
+    host_plugin_catalog hc
+    left outer join host_plugin_catalog_secret hcs   on hc.public_id = hcs.catalog_id;
+  comment on view host_plugin_catalog_with_secret is
+    'host plugin catalog with its associated persisted data';
 
-  -- host_plugin_host_with_value_obj is useful for reading a plugin host with
-  -- its associated value objects (ip addresses, dns names, set membership) as
-  -- columns with delimited values. The delimiter depends on the value objects
-  -- (e.g. if they need ordering).
-  create view host_plugin_host_with_value_obj as
+  -- host_plugin_host_with_value_obj_and_set_memberships is useful for reading a
+  -- plugin host with its associated value objects (ip addresses, dns names) and
+  -- set membership as columns with delimited values. The delimiter depends on
+  -- the value objects (e.g. if they need ordering).
+  create view host_plugin_host_with_value_obj_and_set_memberships as
   select
     h.public_id,
     h.catalog_id,
     h.external_id,
+    hc.scope_id,
     hc.plugin_id,
     h.name,
     h.description,
@@ -354,15 +377,16 @@ begin;
     h.update_time,
     -- the string_agg(..) column will be null if there are no associated value objects
     string_agg(distinct host(hip.address), '|') as ip_addresses,
-    string_agg(distinct hdns.name, '|') as dns_names
+    string_agg(distinct hdns.name, '|') as dns_names,
+    string_agg(distinct hpsm.set_id, '|') as set_ids
   from
     host_plugin_host h
-    join host_plugin_catalog hc           on h.catalog_id = hc.public_id
-    left outer join host_ip_address hip   on h.public_id = hip.host_id
-    left outer join host_dns_name hdns    on h.public_id = hdns.host_id
-    -- FIXME: add set membership once that's shaken out
-  group by h.public_id, hc.plugin_id;
-  comment on view host_plugin_host_with_value_obj is
+    join host_plugin_catalog hc                  on h.catalog_id = hc.public_id
+    left outer join host_ip_address hip          on h.public_id = hip.host_id
+    left outer join host_dns_name hdns           on h.public_id = hdns.host_id
+    left outer join host_plugin_set_member hpsm  on h.public_id = hpsm.host_id
+  group by h.public_id, hc.plugin_id, hc.scope_id;
+  comment on view host_plugin_host_with_value_obj_and_set_memberships is
   'host plugin host with its associated value objects';
 
 commit;

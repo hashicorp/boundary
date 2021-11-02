@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
@@ -44,6 +45,7 @@ func TestGet_Static(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -57,7 +59,7 @@ func TestGet_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -137,6 +139,7 @@ func TestGet_Plugin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -157,11 +160,11 @@ func TestGet_Plugin(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, plgm)
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints))
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -240,6 +243,7 @@ func TestList_Static(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -253,7 +257,7 @@ func TestList_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -338,6 +342,7 @@ func TestList_Plugin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -356,7 +361,7 @@ func TestList_Plugin(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, plgm)
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -364,7 +369,7 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
+		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -450,6 +455,7 @@ func TestDelete_Static(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -463,7 +469,7 @@ func TestDelete_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -520,6 +526,7 @@ func TestDelete_Plugin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -533,7 +540,7 @@ func TestDelete_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
@@ -542,7 +549,7 @@ func TestDelete_Plugin(t *testing.T) {
 	}
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestSet(t, conn, kms, hc, plgm)
+	h := plugin.TestSet(t, conn, kms, sche, hc, plgm)
 
 	s, err := host_sets.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
@@ -597,6 +604,7 @@ func TestDelete_twice(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -610,7 +618,7 @@ func TestDelete_twice(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -633,6 +641,7 @@ func TestCreate_Static(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -646,7 +655,7 @@ func TestCreate_Static(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
@@ -776,6 +785,7 @@ func TestCreate_Plugin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -791,7 +801,7 @@ func TestCreate_Plugin(t *testing.T) {
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
 			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
@@ -1028,6 +1038,7 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1070,7 +1081,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	tested, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
@@ -1407,6 +1418,7 @@ func TestAddHostSetHosts(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1420,7 +1432,7 @@ func TestAddHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1527,6 +1539,7 @@ func TestSetHostSetHosts(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1540,7 +1553,7 @@ func TestSetHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1643,6 +1656,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1656,7 +1670,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, map[string]plgpb.HostPluginServiceClient{})
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")

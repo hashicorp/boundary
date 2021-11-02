@@ -10,9 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
+	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,13 +60,13 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c.PublicId = id
 
-	plgClient, ok := r.plugins[c.GetPluginId()]
-	if !ok || plgClient == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
-	}
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	plgClient, ok := r.plugins[c.GetPluginId()]
+	if !ok || plgClient == nil {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 	plgResp, err := plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
 	if err != nil {
@@ -203,7 +205,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	// sending it to the DB for updating so that we can run on
 	// OnUpdateCatalog. Note that the field masks are still used for
 	// updating.
-	currentCatalog, _, err := r.LookupCatalog(ctx, c.PublicId)
+	currentCatalog, currentCatalogPersisted, err := r.getCatalog(ctx, c.PublicId)
 	if err != nil {
 		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", c.PublicId)))
 	}
@@ -279,12 +281,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
 	if err != nil {
 		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-	}
-
-	// Get the secrets for the host catalog.
-	currentCatalogPersisted, err := r.getPersistedDataForCatalog(ctx, currentCatalog)
-	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up persisted data for catalog with id %q", c.PublicId)))
 	}
 
 	plgResp, err := plgClient.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
@@ -426,11 +422,10 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 	if id == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	c, err := r.getCatalog(ctx, id)
+	c, _, err := r.getCatalog(ctx, id)
 	if errors.IsNotFoundError(err) {
 		return nil, nil, nil
 	}
-
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
@@ -479,33 +474,40 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 
-	c, err := r.getCatalog(ctx, id)
+	c, p, err := r.getCatalog(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	if c == nil {
 		return db.NoRowsAffected, nil
 	}
-	p, err := r.getPersistedDataForCatalog(ctx, c)
+	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	sets, _, err := r.getSets(ctx, "", c.GetPublicId())
+	var plgSets []*pbset.HostSet
+	for _, s := range sets {
+		ps, err := toPluginSet(ctx, s)
+		if err != nil {
+			return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+		plgSets = append(plgSets, ps)
 	}
 
 	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
 		return 0, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
-	plgHc, err := toPluginCatalog(ctx, c)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, op)
-	}
-	// TODO: Include all the sets for this catalog in the delete catalog request.  We don't need it for now
-	//   since our currently provided plugins only read data for set configuration, but in the future that might
-	//   change.
-	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{Catalog: plgHc, Persisted: p})
+	_, err = plgClient.OnDeleteCatalog(ctx, &plgpb.OnDeleteCatalogRequest{
+		Catalog:   plgHc,
+		Sets:      plgSets,
+		Persisted: p,
+	})
 	if err != nil {
 		// Even if the plugin returns an error, we ignore it and proceed with
 		// deleting the catalog.
+		event.WriteError(ctx, op, err, event.WithInfoMsg("plugin deleting catalog", "host plugin id", c.GetPluginId()))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
@@ -547,50 +549,23 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 
 // getCatalog retrieves the *HostCatalog with the provided id.  If it is not found or there
 // is an problem getting it from the database an error is returned instead.
-func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, error) {
+func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getCatalog"
-	c := allocHostCatalog()
-	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
+	ca := &catalogAgg{}
+	ca.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, ca); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
-	return c, nil
-}
-
-// getPersistedDataForCatalog returns the persisted data for a catalog if
-// present. c must have a valid Public Id and Scope Id set.  TODO: consider
-// merging the functions for getting catalog and persisted data into a view.
-func (r *Repository) getPersistedDataForCatalog(ctx context.Context, c *HostCatalog) (*plgpb.HostCatalogPersisted, error) {
-	const op = "plugin.(Repository).getPersistedDataForCatalog"
-	if c.PublicId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty public id")
-	}
-	if c.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
-	}
-	cSecret := allocHostCatalogSecret()
-	if err := r.reader.LookupWhere(ctx, cSecret, "catalog_id=?", c.GetPublicId()); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
+	c, s := ca.toCatalogAndPersisted()
+	var p *plgpb.HostCatalogPersisted
+	if s != nil {
+		var err error
+		p, err = toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
-		return nil, errors.Wrap(ctx, err, op)
 	}
-	if cSecret == nil {
-		return nil, nil
-	}
-	dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-	}
-	if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	secrets := &structpb.Struct{}
-	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
-	}
-	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+	return c, p, nil
 }
 
 func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.Plugin, error) {
@@ -630,4 +605,29 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		hc.Secrets = in.Secrets
 	}
 	return hc, nil
+}
+
+// toPluginCatalog converts a *HostCatalogSecret from storage to a
+// *plgpb.HostCatalogPersisted expected by a plugin. Scope Id must be set.
+func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
+	const op = "plugin.(Repository).getPersistedDataForCatalog"
+	if scopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
+	}
+	if cSecret == nil {
+		return nil, nil
+	}
+	dbWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+	}
+	if err := cSecret.decrypt(ctx, dbWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	secrets := &structpb.Struct{}
+	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
+	}
+	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
 }

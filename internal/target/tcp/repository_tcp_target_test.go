@@ -73,60 +73,6 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantHostSources: []string{},
 		},
 		{
-			name: "valid-org-with-host-sets",
-			args: args{
-				target: func() *tcp.Target {
-					target, err := tcp.New(proj.PublicId,
-						target.WithName("valid-org-with-host-sets"),
-						target.WithDescription("valid-org"),
-						target.WithDefaultPort(uint32(22)))
-					require.NoError(t, err)
-					return target
-				}(),
-				opt: []target.Option{target.WithHostSources(sets)},
-			},
-			wantErr:         false,
-			wantHostSources: sets,
-			wantCredLibs:    []string{},
-		},
-		{
-			name: "valid-org-with-cred-libs",
-			args: args{
-				target: func() *tcp.Target {
-					target, err := tcp.New(proj.PublicId,
-						target.WithName("valid-org-with-cred-libs"),
-						target.WithDescription("valid-org"),
-						target.WithDefaultPort(uint32(22)))
-					require.NoError(t, err)
-					return target
-				}(),
-				opt: []target.Option{target.WithCredentialSources(clIds)},
-			},
-			wantErr:         false,
-			wantCredLibs:    clIds,
-			wantHostSources: []string{},
-		},
-		{
-			name: "valid-org-with-cred-libs-and-host-sets",
-			args: args{
-				target: func() *tcp.Target {
-					target, err := tcp.New(proj.PublicId,
-						target.WithName("valid-org-with-cred-libs-and-host-sets"),
-						target.WithDescription("valid-org"),
-						target.WithDefaultPort(uint32(22)))
-					require.NoError(t, err)
-					return target
-				}(),
-				opt: []target.Option{
-					target.WithHostSources(sets),
-					target.WithCredentialSources(clIds),
-				},
-			},
-			wantErr:         false,
-			wantCredLibs:    clIds,
-			wantHostSources: sets,
-		},
-		{
 			name: "nil-target",
 			args: args{
 				target: nil,

@@ -6,19 +6,34 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalog creates count number of plugin host catalogs to the provided DB
+// TestCatalogs creates count number of static host catalogs to the provided DB
+// with the provided scope id.  If any errors are encountered during the creation of
+// the host catalog, the test will fail.
+func TestCatalogs(t *testing.T, conn *db.DB, scopeId, pluginId string, count int) []*HostCatalog {
+	t.Helper()
+	var cats []*HostCatalog
+	for i := 0; i < count; i++ {
+		cats = append(cats, TestCatalog(t, conn, scopeId, pluginId))
+	}
+	return cats
+}
+
+// TestCatalog creates a plugin host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
 func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Option) *HostCatalog {
@@ -30,7 +45,7 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
-	plg := host.NewPlugin()
+	plg := hostplugin.NewPlugin()
 	plg.PublicId = pluginId
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
@@ -46,20 +61,20 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
+func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Scheduler, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
 	rw := db.New(conn)
 
-	repo, err := NewRepository(rw, rw, kmsCache, plgm)
+	repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 	require.NoError(err)
 
 	set, err := NewHostSet(ctx, hc.PublicId, opt...)
 	require.NoError(err)
 	require.NotNil(set)
 
-	plg := host.NewPlugin()
+	plg := hostplugin.NewPlugin()
 	plg.PublicId = hc.GetPluginId()
 	require.NoError(rw.LookupByPublicId(ctx, plg))
 
@@ -73,11 +88,75 @@ func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, hc *HostCatalog, plgm
 	return set
 }
 
+// TestSetMembers adds hosts to the specified setId in the provided DB.
+// The set and hosts must have been created previously and belong to the
+// same catalog. The test will fail if any errors are encountered.
+func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
+	t.Helper()
+	assert := assert.New(t)
+
+	var members []*HostSetMember
+	for _, host := range hosts {
+		member, err := NewHostSetMember(context.Background(), setId, host.PublicId)
+		assert.NoError(err)
+		assert.NotNil(member)
+
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), member)
+		assert.NoError(err2)
+		members = append(members, member)
+	}
+	return members
+}
+
+// TestHost creates a plugin host in the provided DB in the catalog with the
+// provided catalog id. The catalog must have been created previously.
+// The test will fail if any errors are encountered.
+func TestHost(t *testing.T, conn *db.DB, catId, externId string, opt ...Option) *Host {
+	t.Helper()
+	w := db.New(conn)
+	ctx := context.Background()
+	host1 := NewHost(ctx, catId, externId, opt...)
+	var err error
+	host1.PublicId, err = newHostId(ctx, catId, externId)
+	require.NoError(t, err)
+	require.NoError(t, w.Create(ctx, host1))
+
+	var ipAddresses []interface{}
+	if len(host1.GetIpAddresses()) > 0 {
+		sort.Strings(host1.IpAddresses)
+		ipAddresses = make([]interface{}, 0, len(host1.GetIpAddresses()))
+		for _, a := range host1.GetIpAddresses() {
+			obj, err := host.NewIpAddress(ctx, host1.PublicId, a)
+			require.NoError(t, err)
+			ipAddresses = append(ipAddresses, obj)
+		}
+		require.NoError(t, w.CreateItems(ctx, ipAddresses))
+	}
+
+	var dnsNames []interface{}
+	if len(host1.GetDnsNames()) > 0 {
+		sort.Strings(host1.DnsNames)
+		dnsNames = make([]interface{}, 0, len(host1.GetDnsNames()))
+		for _, n := range host1.GetDnsNames() {
+			obj, err := host.NewDnsName(ctx, host1.PublicId, n)
+			require.NoError(t, err)
+			dnsNames = append(dnsNames, obj)
+		}
+		require.NoError(t, w.CreateItems(ctx, dnsNames))
+	}
+	return host1
+}
+
 func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, count int) ([]*plgpb.ListHostsResponseHost, []*Host) {
 	t.Helper()
 	require := require.New(t)
 	retRH := make([]*plgpb.ListHostsResponseHost, 0, count)
 	retH := make([]*Host, 0, count)
+	if setIds == nil {
+		// Prevent panics
+		setIds = make([]string, 0)
+	}
 
 	for i := 0; i < count; i++ {
 		externalId, err := base62.Random(10)
@@ -86,19 +165,25 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 		ipStr := testGetIpAddress(t)
 		dnsName := testGetDnsName(t)
 
-		retRH = append(retRH, &plgpb.ListHostsResponseHost{
+		rh := &plgpb.ListHostsResponseHost{
 			ExternalId:  externalId,
-			SetIds:      setIds,
+			Name:        base62.MustRandom(10),
+			Description: base62.MustRandom(10),
+			SetIds:      setIds[0 : i+1],
 			IpAddresses: []string{ipStr},
 			DnsNames:    []string{dnsName},
-		})
+		}
+		retRH = append(retRH, rh)
 
 		publicId, err := newHostId(context.Background(), catalog.PublicId, externalId)
 		require.NoError(err)
 
 		retH = append(retH, &Host{
 			PluginId: catalog.PluginId,
+			SetIds:   setIds[0 : i+1],
 			Host: &store.Host{
+				Name:        rh.Name,
+				Description: rh.Description,
 				CatalogId:   catalog.PublicId,
 				PublicId:    publicId,
 				ExternalId:  externalId,
@@ -109,6 +194,17 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 	}
 
 	return retRH, retH
+}
+
+// TestRunSetSync runs the set sync job a single time.
+func TestRunSetSync(t *testing.T, conn *db.DB, kmsCache *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient) {
+	t.Helper()
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	j, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
+	require.NoError(t, err)
+	require.NoError(t, j.Run(ctx))
 }
 
 func testGetDnsName(t *testing.T) string {

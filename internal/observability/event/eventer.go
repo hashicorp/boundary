@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,8 +20,8 @@ import (
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/eventlogger/sinks/writer"
-
 	"github.com/hashicorp/go-hclog"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 const (
@@ -135,6 +136,19 @@ func SysEventer() *Eventer {
 	sysEventerLock.RLock()
 	defer sysEventerLock.RUnlock()
 	return sysEventer
+}
+
+// NewAuditEncryptFilter returns a new encrypt filter which is initialized for
+// audit events.
+func NewAuditEncryptFilter(opt ...Option) (*encrypt.Filter, error) {
+	opts := getOpts(opt...)
+
+	return &encrypt.Filter{
+		Wrapper: opts.withAuditWrapper,
+		IgnoreTypes: []reflect.Type{
+			reflect.TypeOf(&fieldmaskpb.FieldMask{}),
+		},
+	}, nil
 }
 
 // NewEventer creates a new Eventer using the config.  Supports options:
@@ -269,8 +283,9 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
-			encryptFilter := &encrypt.Filter{
-				Wrapper: opts.withAuditWrapper,
+			encryptFilter, err := NewAuditEncryptFilter(opt...)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			if len(s.AuditConfig.FilterOverrides) > 0 {
 				overrides := encrypt.DefaultFilterOperations()

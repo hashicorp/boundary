@@ -32,7 +32,6 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -45,10 +44,10 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
-	tickerWg    sync.WaitGroup
-	schedulerWg sync.WaitGroup
+	tickerWg    *sync.WaitGroup
+	schedulerWg *sync.WaitGroup
 
-	workerAuthCache *cache.Cache
+	workerAuthCache *sync.Map
 
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
@@ -82,6 +81,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
 		started:                 ua.NewBool(false),
+		tickerWg:                new(sync.WaitGroup),
+		schedulerWg:             new(sync.WaitGroup),
+		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
 	}
 
@@ -170,7 +172,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
 	// currently caps the scheduler at running 10 jobs per interval.
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, scheduler.WithRunJobsLimit(10))
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(10)}
+	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -181,7 +187,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
-		return pluginhost.NewRepository(dbase, dbase, c.kms, c.conf.HostPlugins)
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
 	c.HostPluginRepoFn = func() (*host.Repository, error) {
 		return host.NewRepository(dbase, dbase, c.kms)
@@ -209,7 +215,6 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.SessionRepoFn = func() (*session.Repository, error) {
 		return session.NewRepository(dbase, dbase, c.kms)
 	}
-	c.workerAuthCache = cache.New(0, 0)
 
 	return c, nil
 }
@@ -224,7 +229,7 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext, &c.schedulerWg); err != nil {
+	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 	if err := c.startListeners(c.baseContext); err != nil {
@@ -238,7 +243,7 @@ func (c *Controller) Start() error {
 	}()
 	go func() {
 		defer c.tickerWg.Done()
-		c.startRecoveryNonceCleanupTicking(c.baseContext)
+		c.startNonceCleanupTicking(c.baseContext)
 	}()
 	go func() {
 		defer c.tickerWg.Done()
@@ -259,6 +264,9 @@ func (c *Controller) Start() error {
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
 	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
 

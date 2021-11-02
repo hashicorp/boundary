@@ -21,7 +21,7 @@ func TestHostDnsName_Create(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	host1 := testHost(t, conn, cat.GetPublicId(), "external")
+	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
 		hostId string
@@ -152,7 +152,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	host1 := testHost(t, conn, cat.GetPublicId(), "external")
+	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
 	type args struct {
 		hostId  string
@@ -291,7 +291,7 @@ func TestHostDnsName_Delete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	host1 := testHost(t, conn, cat.GetPublicId(), "external")
+	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))
@@ -358,7 +358,7 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	host1 := testHost(t, conn, cat.GetPublicId(), "external")
+	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4")
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, addr1))

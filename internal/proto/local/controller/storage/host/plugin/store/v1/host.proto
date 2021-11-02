@@ -60,31 +60,39 @@ message HostSet {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp update_time = 3;
 
+  // The last_sync_time is updated every time a host set has been synced.
+  // @inject_tag: `gorm:"default:null"`
+  timestamp.v1.Timestamp last_sync_time = 4;
+
+  // The need_sync indicates that a sync needs to happen.
+  // @inject_tag: `gorm:"not_null"`
+  bool need_sync = 5;
+
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 6 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 7 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // catalog_id is the public_id of the owning
   // plugin_host_catalog and must be set.
   // @inject_tag: `gorm:"not_null"`
-  string catalog_id = 6;
+  string catalog_id = 8;
 
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 7;
+  uint32 version = 9;
 
   // attributes is a byte field containing marshaled JSON data
   // @inject_tag: `gorm:"not_null"`
-  bytes attributes = 8;
+  bytes attributes = 10;
 
   // preferred_endpoints stores string preference values
   // @inject_tag: `gorm:"-"`
-  repeated string preferred_endpoints = 9;
+  repeated string preferred_endpoints = 11;
 }
 
 message HostCatalogSecret {

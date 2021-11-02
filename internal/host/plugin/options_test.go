@@ -8,6 +8,12 @@ import (
 
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
+	t.Run("WithPublicId", func(t *testing.T) {
+		opts := getOpts(WithPublicId("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithName", func(t *testing.T) {
 		opts := getOpts(WithName("test"))
 		testOpts := getDefaultOptions()
@@ -48,6 +54,12 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(withIpAddresses([]string{"foo"}))
 		testOpts := getDefaultOptions()
 		testOpts.withIpAddresses = []string{"foo"}
+		assert.EqualValues(t, opts, testOpts)
+	})
+	t.Run("withSetIds", func(t *testing.T) {
+		opts := getOpts(WithSetIds([]string{"foo"}))
+		testOpts := getDefaultOptions()
+		testOpts.withSetIds = []string{"foo"}
 		assert.EqualValues(t, opts, testOpts)
 	})
 }
