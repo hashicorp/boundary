@@ -143,11 +143,10 @@ message Target {
 	// Output only. The application credential sources associated with this Target.
 	repeated CredentialSource application_credential_sources = 410 [json_name="application_credential_sources"];
 
-	// TODO: Uncomment when we suport more purposes beyond application
-//	// Output only. The egress credential libraries associated with this Target.
-//	repeated CredentialLibrary egress_credential_libraries = 190 [json_name="egress_credential_libraries"];
-//	// Output only. The credential libraries associated with this Target.
-//	repeated CredentialLibrary ingress_credential_libraries = 200 [json_name="ingress_credential_libraries"];
+	// Output only. The IDs of the egress credential source ids associated with this Target.
+	repeated string egress_credential_source_ids = 500 [json_name="egress_credential_source_ids"];
+	// Output only. The egress credential sources associated with this Target.
+	repeated CredentialSource egress_credential_sources = 510 [json_name="egress_credential_sources"];
 
 	// The attributes that are applicable for the specific Target.
 	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
