@@ -59,6 +59,52 @@ func TestList(t *testing.T) {
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
+func TestList_Plugin(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+	catalogClient := hostcatalogs.NewClient(client)
+
+	ul, err := catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.Empty(ul.Items)
+
+	var expected []*hostcatalogs.HostCatalog
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
+	}
+
+	cr, err := catalogClient.Create(tc.Context(), "plugin", proj.GetPublicId(),
+		hostcatalogs.WithName(expected[0].Name), hostcatalogs.WithPluginId("pl_1234567890"))
+	require.NoError(err)
+	expected[0] = cr.Item
+
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
+
+	for i := 1; i < 10; i++ {
+		cr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
+		require.NoError(err)
+		expected[i] = cr.Item
+	}
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId(),
+		hostcatalogs.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
+}
+
 func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {
 	var filtered []hostcatalogs.HostCatalog
 	for _, i := range in {

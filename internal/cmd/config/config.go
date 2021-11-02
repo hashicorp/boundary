@@ -131,6 +131,12 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
+
+	// SchedulerRunJobInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
+	//
+	// TODO: This field is currently internal.
+	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty() (string, error) {

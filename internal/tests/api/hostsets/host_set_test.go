@@ -102,6 +102,57 @@ func TestList(t *testing.T) {
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
+func TestList_Plugin(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "plugin", proj.GetPublicId(),
+		hostcatalogs.WithPluginId("pl_1234567890"))
+	require.NoError(err)
+	require.NotNil(hc)
+
+	hClient := hostsets.NewClient(client)
+
+	ul, err := hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	assert.Empty(ul.Items)
+
+	var expected []*hostsets.HostSet
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hostsets.HostSet{Name: fmt.Sprint(i)})
+	}
+
+	hcr, err := hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName(expected[0].Name))
+	require.NoError(err)
+	expected[0] = hcr.Item
+
+	ul, err = hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul.Items))
+
+	for i := 1; i < 10; i++ {
+		hcr, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName(expected[i].Name))
+		require.NoError(err)
+		expected[i] = hcr.Item
+	}
+	ul, err = hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = hClient.List(tc.Context(), hc.Item.Id,
+		hostsets.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
+}
+
 func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {
 	var filtered []hostsets.HostSet
 	for _, i := range in {

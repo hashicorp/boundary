@@ -143,7 +143,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 
 	// The set now exists in the plugin, sync it immediately.
-	r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
 
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
