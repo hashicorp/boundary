@@ -4213,6 +4213,22 @@
           "type": "object",
           "description": "The attributes that are applicable to the specific Host type."
         },
+        "ip_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only.  The list of ip addresses associated with this host.",
+          "readOnly": true
+        },
+        "dns_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only.  The list of dns addresses associated with this host.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

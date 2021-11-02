@@ -62,4 +62,6 @@ const (
 	PluginIdField                        = "plugin_id"
 	PluginField                          = "plugin"
 	PluginNameField                      = "plugin_name"
+	IpAddressesField                     = "ip_addresses"
+	DnsNamesField                        = "dns_names"
 )

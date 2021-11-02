@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -153,14 +154,22 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 
 	pHost := &pb.Host{
-		HostCatalogId: hc.GetPublicId(),
-		Id:            h.GetPublicId(),
-		CreatedTime:   h.CreateTime.GetTimestamp(),
-		UpdatedTime:   h.UpdateTime.GetTimestamp(),
-		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Type:          plugin.Subtype.String(),
+		HostCatalogId:     hc.GetPublicId(),
+		Id:                h.GetPublicId(),
+		CreatedTime:       h.CreateTime.GetTimestamp(),
+		UpdatedTime:       h.UpdateTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		Type:              plugin.Subtype.String(),
+		Plugin: &plugins.PluginInfo{
+			Id:          plg.GetPublicId(),
+			Name:        plg.GetName(),
+			Description: plg.GetDescription(),
+		},
+		HostSetIds: []string{hs.GetPublicId()},
 		AuthorizedActions: testAuthorizedActions,
 	}
 
@@ -342,18 +351,26 @@ func TestList_Plugin(t *testing.T) {
 	}
 	hcs := plugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
 
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
 		h := plugin.TestHost(t, conn, hc.GetPublicId(), fmt.Sprintf("host %d", i))
+		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
-			Id:            h.GetPublicId(),
-			HostCatalogId: h.GetCatalogId(),
-			Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-			CreatedTime:   h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
-			Version:       1,
-			Type:          plugin.Subtype.String(),
+			Id:                h.GetPublicId(),
+			HostCatalogId:     h.GetCatalogId(),
+			Plugin: &plugins.PluginInfo{
+				Id:          plg.GetPublicId(),
+				Name:        plg.GetName(),
+				Description: plg.GetDescription(),
+			},
+			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:       h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
+			HostSetIds: []string{hs.GetPublicId()},
+			Version:           1,
+			Type:              plugin.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 	}
