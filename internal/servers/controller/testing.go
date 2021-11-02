@@ -385,6 +385,10 @@ type TestControllerOpts struct {
 	// The amount of time to wait before marking connections as closed when a
 	// worker has not reported in
 	StatusGracePeriodDuration time.Duration
+
+	// The amount of time between the scheduler waking up to run it's registered
+	// jobs.
+	SchedulerRunJobInterval time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -478,6 +482,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			t.Fatal(err)
 		}
 	}
+	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)

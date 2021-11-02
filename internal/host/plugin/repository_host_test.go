@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	hostplgstore "github.com/hashicorp/boundary/internal/plugin/host/store"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -225,7 +226,8 @@ func TestJob_UpsertHosts(t *testing.T) {
 			require.NotNil(repo)
 
 			// Check again, but via performing an explicit list
-			got, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
+			var gotPlg *hostplg.Plugin
+			got, gotPlg, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Len(got, len(in.phs))
@@ -240,6 +242,14 @@ func TestJob_UpsertHosts(t *testing.T) {
 					}),
 				),
 			)
+			assert.Empty(
+				cmp.Diff(
+					plg,
+					gotPlg,
+					cmpopts.IgnoreUnexported(hostplg.Plugin{}, hostplgstore.Plugin{}),
+					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+				),
+			)
 
 			// Now individually call read on each host, cache the matching set
 			// IDs, and then check membership
@@ -248,7 +258,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 				for _, setId := range exp.SetIds {
 					setIdMap[setId] = append(setIdMap[setId], exp.GetPublicId())
 				}
-				got, err := repo.LookupHost(ctx, exp.GetPublicId())
+				got, gotPlg, err := repo.LookupHost(ctx, exp.GetPublicId())
 				require.NoError(err)
 				require.NotNil(got)
 				assert.NotEmpty(got.SetIds)
@@ -257,6 +267,14 @@ func TestJob_UpsertHosts(t *testing.T) {
 						exp,
 						got,
 						cmpopts.IgnoreUnexported(Host{}, store.Host{}),
+						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+					),
+				)
+				assert.Empty(
+					cmp.Diff(
+						plg,
+						gotPlg,
+						cmpopts.IgnoreUnexported(hostplg.Plugin{}, hostplgstore.Plugin{}),
 						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					),
 				)

@@ -103,7 +103,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		}
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.StaticHostRepoFn)
+		hs, err := hosts.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create host handler service: %w", err)
 		}
