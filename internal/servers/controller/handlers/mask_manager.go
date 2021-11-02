@@ -19,8 +19,9 @@ type (
 	MaskSource      []protoreflect.ProtoMessage
 )
 
-// NewMaskManager returns a mask manager that can translate field masks into the first proto from all subsequent
-// protos assuming they are both using the mask_mapping custom option.  Error is returned if no mappings are
+// NewMaskManager returns a mask manager that can translate field masks into
+// the first proto from all subsequent protos assuming they are both using the
+// mask_mapping custom option.  Error is returned if no mappings are
 // found or if one of the passed protos has a mapping that doesn't reciprocate.
 func NewMaskManager(dest MaskDestination, src MaskSource) (MaskManager, error) {
 	const op = "handlers.NewMaskManager"
@@ -77,9 +78,16 @@ func mapFromProto(ps []protoreflect.ProtoMessage) (map[string]string, error) {
 }
 
 // Translate takes a field mask's paths and returns paths translated for the
-// destination's protobuf. If a path doesn't translate to a destination's proto
-// but does contain a prefix which matches a passedThroughPrefix it will be
-// added unmodified to the result.
+// destination's protobuf.  If a translation doesn't exist for a specific path
+// entry then nothing is returned for that specific path entry unless
+// passedThroughPrefix is used and applies to that entry.
+//
+// passedThroughPrefix is helpful when the field mask's paths cannot be mapped
+// through the mask mapper for some reason (we don't know the mapping at compile
+// time, for example) but we still want certain paths to be passed on.  If a
+// path entry isn't mapped to anything by the MaskManager but does contain
+// a prefix which matches a passedThroughPrefix it will be added unmodified
+// to the returned value.
 func (m MaskManager) Translate(paths []string, passedThroughPrefix ...string) []string {
 	var result []string
 	for _, v := range paths {
