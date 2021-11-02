@@ -6,8 +6,9 @@ begin;
 -- resources.  While this will return rows where there are host_sets where hosts
 -- are not in the host sets, this view is only used when looking up a row by
 -- host, set, and target so the records where hosts and host sets aren't
--- related beyond the shared catalog will be ignored.
--- TODO: Support a host having multiple addresses.
+-- related beyond the shared catalog will be ignored.  Retrieving the ip address
+-- or dns name of plugin based hosts is not supported in this version of the
+-- warehouse.
 drop view whx_host_dimension_source;
 create view whx_host_dimension_source as
 select -- id is the first column in the target view
@@ -22,8 +23,7 @@ select -- id is the first column in the target view
             when ph.public_id is not null then coalesce(ph.description, 'None')
             else 'Unknown' end          as host_description,
 
-       -- TODO: update this to be endpoint address...
-       coalesce(sh.address, 'Unknown')  as host_address,
+       coalesce(sh.address, 'Unsupported')  as host_address,
 
        hs.public_id                     as host_set_id,
        case when shs.public_id is not null then 'static host set'
