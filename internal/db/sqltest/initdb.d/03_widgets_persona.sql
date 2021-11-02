@@ -236,6 +236,44 @@ begin;
            static_host_set as s
      where h.catalog_id = s.catalog_id
        and h.address like '%.widget';
+
+    insert into plugin_host
+      (scope_id, public_id, name)
+    values
+      ('global', 'plg___wb-hplg', 'Short Host Plugin');
+
+    insert into host_plugin_catalog
+      (scope_id, public_id, plugin_id, name, attributes)
+    values
+      ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', ''),
+      ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '');
+
+    insert into host_plugin_host
+      (catalog_id, public_id, external_id)
+    values
+      ('c___wb-plghcl', 'h_____wb__01-plgh', '1 big widget'),
+      ('c___wb-plghcl', 'h_____wb__02-plgh', '2 big widget'),
+      ('c___wb-plghcl', 'h_____wb__03-plgh', '3 big widget'),
+
+      ('c___ws-plghcl', 'h_____ws__01-plgh', '1 small widget'),
+      ('c___ws-plghcl', 'h_____ws__02-plgh', '2 small widget'),
+      ('c___ws-plghcl', 'h_____ws__03-plgh', '3 small widget');
+
+    insert into host_plugin_set
+      (catalog_id, public_id, name, attributes, need_sync)
+    values
+      ('c___wb-plghcl', 's___1wb-plghs', 'Big Widget Plugin Set 1', '', false),
+      ('c___wb-plghcl', 's___2wb-plghs', 'Big Widget Plugin Set 2', '', false),
+      ('c___ws-plghcl', 's___1ws-plghs', 'Small Widget Plugin Set 1', '', false),
+      ('c___ws-plghcl', 's___2ws-plghs', 'Small Widget Plugin Set 2', '', false);
+
+    insert
+      into host_plugin_set_member
+           ( host_id,     set_id,      catalog_id)
+    select h.public_id, s.public_id, s.catalog_id
+      from host_plugin_host as h,
+           host_plugin_set as s
+     where h.catalog_id = s.catalog_id;
   end;
   $$ language plpgsql;
 
@@ -257,7 +295,11 @@ begin;
       ('t_________wb', 's___1wb-sths'),
       ('t_________wb', 's___2wb-sths'),
       ('t_________ws', 's___1ws-sths'),
-      ('t_________ws', 's___2ws-sths');
+      ('t_________ws', 's___2ws-sths'),
+      ('t_________wb', 's___1wb-plghs'),
+      ('t_________wb', 's___2wb-plghs'),
+      ('t_________ws', 's___1ws-plghs'),
+      ('t_________ws', 's___2ws-plghs');
 
   end;
   $$ language plpgsql;
