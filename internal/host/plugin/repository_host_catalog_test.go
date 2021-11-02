@@ -700,14 +700,23 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantIsErr:   errors.RecordNotFound,
 		},
 		{
+			name:        "version mismatch",
+			changeFuncs: []changeHostCatalogFunc{changeName("foo")},
+			version:     1,
+			fieldMask:   []string{"name"},
+			wantIsErr:   errors.VersionMismatch,
+		},
+		{
 			name:               "plugin lookup error",
 			withEmptyPluginMap: true,
+			version:            2,
 			fieldMask:          []string{"name"},
 			wantIsErr:          errors.InvalidParameter,
 		},
 		{
 			name:            "plugin invocation error",
 			withPluginError: errors.New(context.Background(), errors.Internal, "TestRepository_UpdateCatalog/plugin_invocation_error", "test plugin error"),
+			version:         2,
 			fieldMask:       []string{"name"},
 			wantIsErr:       errors.Internal,
 		},

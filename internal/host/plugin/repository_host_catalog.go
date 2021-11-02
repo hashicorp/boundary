@@ -212,6 +212,12 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("catalog with id %q not found", c.PublicId))
 	}
 
+	// Assert the version of the current catalog to make sure we're
+	// updating the correct one.
+	if currentCatalog.GetVersion() != version {
+		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
+	}
+
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
 	var updateAttributes bool
