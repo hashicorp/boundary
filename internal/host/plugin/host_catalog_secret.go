@@ -90,6 +90,12 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	return nil
 }
 
+// TODO: this is necessary as update logic requires a static
+// public_id or private_id field. Once post-lookup updates can
+// support alternate primary key fields, we can port this to native
+// Update and upserts w/OnConflict.
+//
+// Related: JIRA ICU-2835
 func (c *HostCatalogSecret) upsertQuery() (query string, queryValues []interface{}) {
 	query = upsertHostCatalogSecretQuery
 	queryValues = []interface{}{
