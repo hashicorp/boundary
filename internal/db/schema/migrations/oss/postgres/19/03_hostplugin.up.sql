@@ -6,6 +6,7 @@ begin;
   ├──────────────────┤
   │public_id (pk)    │
   │scope_id (fk)     │
+  │name              │
   └──────────────────┘
             ┼
             ┼
@@ -20,8 +21,6 @@ begin;
   │name              │
   │description       │
   │version           │
-  │plugin_name       │
-  │id_prefix         │
   └──────────────────┘
 */
   create table plugin_host (
