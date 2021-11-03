@@ -614,11 +614,19 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
+	var name, description *wrapperspb.StringValue
+	if inName := in.GetName(); inName != "" {
+		name = wrapperspb.String(inName)
+	}
+	if inDescription := in.GetDescription(); inDescription != "" {
+		description = wrapperspb.String(inDescription)
+	}
+
 	hc := &pb.HostCatalog{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.GetScopeId(),
-		Name:        wrapperspb.String(in.GetName()),
-		Description: wrapperspb.String(in.GetDescription()),
+		Name:        name,
+		Description: description,
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}

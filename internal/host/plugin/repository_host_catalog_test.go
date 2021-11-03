@@ -569,11 +569,19 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestCurrentName := func(want string) checkFunc {
+	// checkUpdateCatalogRequestCurrentName := func(want string) checkFunc {
+	// 	return func(t *testing.T, ctx context.Context) {
+	// 		t.Helper()
+	// 		assert := assert.New(t)
+	// 		assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Name)
+	// 	}
+	// }
+
+	checkUpdateCatalogRequestCurrentNameNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Name)
+			assert.Nil(gotOnUpdateCatalogRequest.CurrentCatalog.Name)
 		}
 	}
 
@@ -585,11 +593,27 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestCurrentDescription := func(want string) checkFunc {
+	checkUpdateCatalogRequestNewNameNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Description)
+			assert.Nil(gotOnUpdateCatalogRequest.NewCatalog.Name)
+		}
+	}
+
+	// checkUpdateCatalogRequestCurrentDescription := func(want string) checkFunc {
+	// 	return func(t *testing.T, ctx context.Context) {
+	// 		t.Helper()
+	// 		assert := assert.New(t)
+	// 		assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Description)
+	// 	}
+	// }
+
+	checkUpdateCatalogRequestCurrentDescriptionNil := func() checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Nil(gotOnUpdateCatalogRequest.CurrentCatalog.Description)
 		}
 	}
 
@@ -600,6 +624,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.NewCatalog.Description)
 		}
 	}
+
+	// checkUpdateCatalogRequestNewDescriptionNil := func() checkFunc {
+	// 	return func(t *testing.T, ctx context.Context) {
+	// 		t.Helper()
+	// 		assert := assert.New(t)
+	// 		assert.Nil(gotOnUpdateCatalogRequest.NewCatalog.Description)
+	// 	}
+	// }
 
 	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
@@ -736,7 +768,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
 				checkSecrets(map[string]interface{}{
@@ -753,8 +785,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // Version remains same even though row is updated
-				checkUpdateCatalogRequestCurrentName(""),
-				checkUpdateCatalogRequestNewName(""),
+				checkUpdateCatalogRequestCurrentNameNil(),
+				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
 				checkSecrets(map[string]interface{}{
 					"one": "two",
@@ -770,7 +802,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameOrgScope),
 				checkName(testDuplicateCatalogNameOrgScope),
 				checkSecrets(map[string]interface{}{
@@ -787,7 +819,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"description"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateCatalogRequestCurrentDescription(""),
+				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
 				checkSecrets(map[string]interface{}{
@@ -970,7 +1002,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"name", "secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
