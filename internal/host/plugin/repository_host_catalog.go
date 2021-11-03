@@ -235,7 +235,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			// Flag attributes for updating. While multiple masks may be
 			// sent, we only need to do this once.
 			updateAttributes = true
-		case strings.EqualFold("secrets", f):
+		case strings.EqualFold("secrets", strings.Split(f, ".")[0]):
 			// While in a similar format, secrets are passed along
 			// wholesale (for the time being). Don't append this mask
 			// field, as secrets do not have a database entry. Clear the

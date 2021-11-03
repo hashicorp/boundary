@@ -904,7 +904,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				"three": "four",
 			})},
 			version:   2,
-			fieldMask: []string{"secrets"},
+			fieldMask: []string{"secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
@@ -927,7 +927,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				"three": "four",
 			})},
 			version:   2,
-			fieldMask: []string{"secrets"},
+			fieldMask: []string{"secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // no-op
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
@@ -967,7 +967,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				}),
 			},
 			version:   2,
-			fieldMask: []string{"name", "secrets"},
+			fieldMask: []string{"name", "secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkUpdateCatalogRequestCurrentName(""),
