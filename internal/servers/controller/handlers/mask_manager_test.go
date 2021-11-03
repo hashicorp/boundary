@@ -19,7 +19,7 @@ func TestMaskManager(t *testing.T) {
 	assert.Equal(t, []string{"other_second_field", "other_field_3"}, mm.Translate([]string{"strangly_formatted_field", "field3"}))
 
 	// the passedThroughPrefix allows fields to be passed through unmodified
-	assert.Equal(t, []string{"OtherFirstField", "doesnt_exist_but_matches_prefix"}, mm.Translate([]string{"first_field", "doesnt_exist_but_matches_prefix"}, "doesnt_"))
+	assert.Equal(t, []string{"OtherFirstField", "attributes.doesnt_exist"}, mm.Translate([]string{"first_field", "attributes.doesnt_exist"}, "attributes."))
 	// the passedThroughPrefix is ignored if the field already matches a mapped value
 	assert.Equal(t, []string{"other_second_field", "other_field_3"}, mm.Translate([]string{"strangly_formatted_field", "field3"}, "strangely_"))
 }
