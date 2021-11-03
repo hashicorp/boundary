@@ -378,12 +378,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
 	orgScope, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
-	// Plugins, OnUpdateCatalogRequest state, and returned error -
-	// tests will set s.PluginError if they are expecting an error
-	// back, and gotOnUpdateCatalogRequest will contain the value of
-	// the OnUpdateCatalogRequest for the current running test. Note
-	// that this means that the tests cannot run in parallel, but there
-	// could be other factors affecting that as well.
+	// Define a plugin "manager", basically just a map with a mock
+	// plugin in it.  This also includes functionality to capture the
+	// state, and set an error and the returned secrets to nil. Note
+	// that the way that this is set up means that the tests cannot run
+	// in parallel, but there could be other factors affecting that as
+	// well.
 	var setRespSecretsNil bool
 	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
 	var pluginError error
