@@ -133,7 +133,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 	if len(agg.Secret) > 0 {
 		s = allocHostCatalogSecret()
 		s.CatalogId = agg.PublicId
-		s.Secret = agg.Secret
+		s.CtSecret = agg.Secret
 		s.KeyId = agg.KeyId
 		s.CreateTime = agg.PersistedCreateTime
 		s.UpdateTime = agg.PersistedUpdateTime
