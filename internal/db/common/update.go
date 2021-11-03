@@ -46,6 +46,16 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 	val := reflect.Indirect(reflect.ValueOf(i))
 	structTyp := val.Type()
 	for i := 0; i < structTyp.NumField(); i++ {
+		if f, ok := maskPaths[strings.ToUpper(structTyp.Field(i).Name)]; ok {
+			updateFields[f] = val.Field(i).Interface()
+			found[strings.ToUpper(f)] = struct{}{}
+			continue
+		}
+		if f, ok := nullPaths[strings.ToUpper(structTyp.Field(i).Name)]; ok {
+			updateFields[f] = gorm.Expr("NULL")
+			found[strings.ToUpper(f)] = struct{}{}
+			continue
+		}
 		kind := structTyp.Field(i).Type.Kind()
 		if kind == reflect.Struct || kind == reflect.Ptr {
 			embType := structTyp.Field(i).Type
@@ -75,14 +85,6 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 				}
 				continue
 			}
-		}
-		if f, ok := maskPaths[strings.ToUpper(structTyp.Field(i).Name)]; ok {
-			updateFields[f] = val.Field(i).Interface()
-			found[strings.ToUpper(f)] = struct{}{}
-		}
-		if f, ok := nullPaths[strings.ToUpper(structTyp.Field(i).Name)]; ok {
-			updateFields[f] = gorm.Expr("NULL")
-			found[strings.ToUpper(f)] = struct{}{}
 		}
 	}
 
