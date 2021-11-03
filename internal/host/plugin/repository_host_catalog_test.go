@@ -384,6 +384,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// the OnUpdateCatalogRequest for the current running test. Note
 	// that this means that the tests cannot run in parallel, but there
 	// could be other factors affecting that as well.
+	var setRespSecretsNil bool
 	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
 	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
@@ -392,7 +393,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			Server: &TestPluginServer{
 				OnUpdateCatalogFn: func(_ context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
 					gotOnUpdateCatalogRequest = req
-					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetNewCatalog().GetSecrets()}}, pluginError
+					respSecrets := req.GetNewCatalog().GetSecrets()
+					if setRespSecretsNil {
+						respSecrets = nil
+						setRespSecretsNil = false
+					}
+
+					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets}}, pluginError
 				},
 			},
 		},
@@ -489,9 +496,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// plugin map.
 	type checkFunc func(t *testing.T, ctx context.Context)
 	var (
-		gotCatalog         *HostCatalog
-		gotCatalogsUpdated int
-		gotSecretsUpdated  int
+		gotCatalog    *HostCatalog
+		gotNumUpdated int
 	)
 
 	checkName := func(want string) checkFunc {
@@ -629,19 +635,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkNumCatalogsUpdated := func(want int) checkFunc {
+	checkNumUpdated := func(want int) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotCatalogsUpdated)
-		}
-	}
-
-	checkNumSecretsUpdated := func(want int) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSecretsUpdated)
+			assert.Equal(want, gotNumUpdated)
 		}
 	}
 
@@ -664,6 +662,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	tests := []struct {
 		name               string
 		withEmptyPluginMap bool
+		withRespSecretsNil bool
 		withPluginError    error
 		changeFuncs        []changeHostCatalogFunc
 		version            uint32
@@ -743,8 +742,24 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update name to same",
+			changeFuncs: []changeHostCatalogFunc{changeName("")},
+			version:     2,
+			fieldMask:   []string{"name"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestNewName(""),
+				checkName(""),
+				checkSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -761,8 +776,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -779,8 +793,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -807,8 +820,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -833,8 +845,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -855,8 +866,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -884,8 +894,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumCatalogsUpdated(1),
-				checkNumSecretsUpdated(0),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -907,9 +916,30 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"three": "four",
 				}),
-				checkNumCatalogsUpdated(0),
-				checkNumSecretsUpdated(1),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:               "update secrets, return nil secrets from plugin",
+			withRespSecretsNil: true,
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
+				"three": "four",
+			})},
+			version:   2,
+			fieldMask: []string{"secrets"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(2), // Secret update does not update host catalog record itself
+				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkUpdateCatalogRequestSecrets(map[string]interface{}{
+					"three": "four",
+				}),
+				checkSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumUpdated(db.NoRowsAffected),
 			},
 		},
 		{
@@ -924,8 +954,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				}),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{}),
 				checkSecretsDeleted(),
-				checkNumCatalogsUpdated(0),
-				checkNumSecretsUpdated(1),
+				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -995,8 +1024,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				workingCat = cf(workingCat)
 			}
 
-			gotCatalog, gotCatalogsUpdated, gotSecretsUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
+			setRespSecretsNil = tt.withRespSecretsNil
+			gotCatalog, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {
+				require.Equal(db.NoRowsAffected, gotNumUpdated)
 				require.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				return
 			}

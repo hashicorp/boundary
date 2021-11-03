@@ -170,29 +170,22 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 // updated, along with any secrets included in the new request. This
 // request may alter the returned persisted state. Update of the
 // record in the database is aborted if this call fails.
-//
-// The first integer value represents the number of catalogs updated.
-// The second represents the number of secrets updated. There should
-// always be one catalog updated if there is no error. It's possible
-// that zero rows may be affected for secrets, but this will be rare,
-// as this operation is opaque and the update is only skipped if
-// there are no secrets returned altogether.
-func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, _ ...Option) (*HostCatalog, int, int, error) {
+func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, _ ...Option) (*HostCatalog, int, error) {
 	const op = "plugin.(Repository).UpdateCatalog"
 	if c == nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.PublicId == "" {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	if c.ScopeId == "" {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	// Quickly replace the passed in HostCatalog with a clone. This
@@ -207,17 +200,17 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	// updating.
 	currentCatalog, currentCatalogPersisted, err := r.getCatalog(ctx, c.PublicId)
 	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", c.PublicId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", c.PublicId)))
 	}
 
 	if currentCatalog == nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("catalog with id %q not found", c.PublicId))
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("catalog with id %q not found", c.PublicId))
 	}
 
 	// Assert the version of the current catalog to make sure we're
 	// updating the correct one.
 	if currentCatalog.GetVersion() != version {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
 	}
 
 	// Clone the catalog so that we can set fields.
@@ -251,7 +244,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			c.Secrets = nil
 
 		default:
-			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 
@@ -259,7 +252,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		dbMask = append(dbMask, "attributes")
 		newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
 		if err != nil {
-			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
 		}
 
 		// Patch the working set with the new attributes.
@@ -269,18 +262,18 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	// Get the plugin client.
 	plgClient, ok := r.plugins[currentCatalog.GetPluginId()]
 	if !ok || plgClient == nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
 	}
 
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
 	currPlgHc, err := toPluginCatalog(ctx, currentCatalog)
 	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
 	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	plgResp, err := plgClient.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
@@ -290,7 +283,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	})
 	if err != nil {
 		if status.Code(err) != codes.Unimplemented {
-			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
 
@@ -303,21 +296,21 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			// Flag the secret to be deleted.
 			hcSecret, err = newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 			if err != nil {
-				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 
 			deleteSecrets = true
 		} else {
 			hcSecret, err = newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 			if err != nil {
-				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
-				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 			}
 			if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
-				return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 		}
 	}
@@ -325,10 +318,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	// Get the oplog.
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var catalogsUpdated, secretsUpdated int
+	var numUpdated int
 	var returnedCatalog *HostCatalog
 	_, err = r.writer.DoTx(
 		ctx,
@@ -344,7 +337,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
 				returnedCatalog = c.clone()
 				var cOplogMsg oplog.Message
-				catalogsUpdated, err = w.Update(
+				catalogsUpdated, err := w.Update(
 					ctx,
 					returnedCatalog,
 					dbMask,
@@ -355,10 +348,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				if catalogsUpdated > 1 {
-					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				if catalogsUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be deleted, got %d", catalogsUpdated))
 				}
 				msgs = append(msgs, &cOplogMsg)
+				numUpdated = 1
 			} else {
 				// Returned catalog needs to be the old copy, as no fields in the
 				// catalog itself are being updated (note: secrets may still be
@@ -373,7 +367,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					deletedSecret := hcSecret.clone()
 					q, v := deletedSecret.deleteQuery()
 					var err error
-					secretsUpdated, err = w.Exec(ctx, q, v)
+					secretsUpdated, err := w.Exec(ctx, q, v)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -386,33 +380,38 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					updatedSecret := hcSecret.clone()
 					q, v := updatedSecret.upsertQuery()
 					var err error
-					secretsUpdated, err = w.Exec(ctx, q, v)
+					secretsUpdated, err := w.Exec(ctx, q, v)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsUpdated > 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been updated")
+					if secretsUpdated != 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be updated, got %d", secretsUpdated))
 					}
 					msgs = append(msgs, updatedSecret.oplogMessage(db.UpdateOp))
 				}
+
+				numUpdated = 1
 			}
 
-			metadata := c.oplog(oplog.OpType_OP_TYPE_UPDATE)
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+			if len(msgs) != 0 {
+				metadata := c.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
 			}
+
 			return nil
 		},
 	)
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", c.PublicId, c.Name)))
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", c.PublicId, c.Name)))
 		}
-		return nil, db.NoRowsAffected, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", c.PublicId)))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", c.PublicId)))
 	}
 
-	return returnedCatalog, catalogsUpdated, secretsUpdated, nil
+	return returnedCatalog, numUpdated, nil
 }
 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
