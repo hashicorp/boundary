@@ -321,7 +321,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var numUpdated int
+	var recordUpdated bool
 	var returnedCatalog *HostCatalog
 	_, err = r.writer.DoTx(
 		ctx,
@@ -352,7 +352,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be deleted, got %d", catalogsUpdated))
 				}
 				msgs = append(msgs, &cOplogMsg)
-				numUpdated = 1
+				recordUpdated = true
 			} else {
 				// Returned catalog needs to be the old copy, as no fields in the
 				// catalog itself are being updated (note: secrets may still be
@@ -390,7 +390,29 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					msgs = append(msgs, updatedSecret.oplogMessage(db.UpdateOp))
 				}
 
-				numUpdated = 1
+				if !recordUpdated {
+					// we only updated secrets, so we need to increment the
+					// version of the host catalog manually.
+					returnedCatalog = c.clone()
+					returnedCatalog.Version = uint32(version) + 1
+					var cOplogMsg oplog.Message
+					catalogsUpdated, err := w.Update(
+						ctx,
+						returnedCatalog,
+						[]string{"version"},
+						[]string{},
+						db.NewOplogMsg(&cOplogMsg),
+						db.WithVersion(&version),
+					)
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					if catalogsUpdated != 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be updated, got %d", catalogsUpdated))
+					}
+					msgs = append(msgs, &cOplogMsg)
+					recordUpdated = true
+				}
 			}
 
 			if len(msgs) != 0 {
@@ -409,6 +431,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", c.PublicId, c.Name)))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", c.PublicId)))
+	}
+
+	var numUpdated int
+	if recordUpdated {
+		numUpdated = 1
 	}
 
 	return returnedCatalog, numUpdated, nil

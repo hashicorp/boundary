@@ -906,7 +906,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			version:   2,
 			fieldMask: []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Secret update does not update host catalog record itself
+				checkVersion(3),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -929,7 +929,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			version:   2,
 			fieldMask: []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Secret update does not update host catalog record itself
+				checkVersion(2), // no-op
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -948,7 +948,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			version:     2,
 			fieldMask:   []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Secret update does not update host catalog record itself
+				checkVersion(3),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
