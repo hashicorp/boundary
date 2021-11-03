@@ -958,6 +958,31 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
+		{
+			name: "update name and secrets",
+			changeFuncs: []changeHostCatalogFunc{
+				changeName("foo"),
+				changeSecrets(map[string]interface{}{
+					"three": "four",
+				}),
+			},
+			version:   2,
+			fieldMask: []string{"name", "secrets"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateCatalogRequestCurrentName(""),
+				checkUpdateCatalogRequestNewName("foo"),
+				checkUpdateCatalogRequestSecrets(map[string]interface{}{
+					"three": "four",
+				}),
+				checkName("foo"),
+				checkSecrets(map[string]interface{}{
+					"three": "four",
+				}),
+				checkNumUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
 	}
 
 	// Finally define a function for bringing the test subject catalog.
