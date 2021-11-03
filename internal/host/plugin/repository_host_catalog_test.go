@@ -713,7 +713,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			withEmptyPluginMap: true,
 			version:            2,
 			fieldMask:          []string{"name"},
-			wantIsErr:          errors.InvalidParameter,
+			wantIsErr:          errors.Internal,
 		},
 		{
 			name:            "plugin invocation error",

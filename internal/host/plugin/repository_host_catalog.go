@@ -262,7 +262,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	// Get the plugin client.
 	plgClient, ok := r.plugins[currentCatalog.GetPluginId()]
 	if !ok || plgClient == nil {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", currentCatalog.GetPluginId()))
 	}
 
 	// Convert the catalog values to API protobuf values, which is what
