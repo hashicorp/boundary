@@ -216,6 +216,10 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	sets, _, err := r.getSets(ctx, "", c.GetPublicId())
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	var plgSets []*pbset.HostSet
 	for _, s := range sets {
 		ps, err := toPluginSet(ctx, s)
