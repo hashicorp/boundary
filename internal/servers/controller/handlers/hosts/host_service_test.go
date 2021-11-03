@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -37,7 +38,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var testAuthorizedActions = map[subtypes.Subtype][]string{
+	static.Subtype: {"no-op", "read", "update", "delete"},
+	plugin.Subtype: {"no-op", "read"},
+}
 
 func TestGet_Static(t *testing.T) {
 	t.Parallel()
@@ -73,7 +77,7 @@ func TestGet_Static(t *testing.T) {
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
-		AuthorizedActions: testAuthorizedActions,
+		AuthorizedActions: testAuthorizedActions[static.Subtype],
 	}
 
 	cases := []struct {
@@ -158,19 +162,19 @@ func TestGet_Plugin(t *testing.T) {
 	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 
 	pHost := &pb.Host{
-		HostCatalogId:     hc.GetPublicId(),
-		Id:                h.GetPublicId(),
-		CreatedTime:       h.CreateTime.GetTimestamp(),
-		UpdatedTime:       h.UpdateTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Type:              plugin.Subtype.String(),
+		HostCatalogId: hc.GetPublicId(),
+		Id:            h.GetPublicId(),
+		CreatedTime:   h.CreateTime.GetTimestamp(),
+		UpdatedTime:   h.UpdateTime.GetTimestamp(),
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		Type:          plugin.Subtype.String(),
 		Plugin: &plugins.PluginInfo{
 			Id:          plg.GetPublicId(),
 			Name:        plg.GetName(),
 			Description: plg.GetDescription(),
 		},
-		HostSetIds: []string{hs.GetPublicId()},
-		AuthorizedActions: testAuthorizedActions,
+		HostSetIds:        []string{hs.GetPublicId()},
+		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 	}
 
 	cases := []struct {
@@ -260,7 +264,7 @@ func TestList_Static(t *testing.T) {
 			Type:          static.Subtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
-			AuthorizedActions: testAuthorizedActions,
+			AuthorizedActions: testAuthorizedActions[static.Subtype],
 		})
 	}
 
@@ -358,8 +362,8 @@ func TestList_Plugin(t *testing.T) {
 		h := plugin.TestHost(t, conn, hc.GetPublicId(), fmt.Sprintf("host %d", i))
 		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
-			Id:                h.GetPublicId(),
-			HostCatalogId:     h.GetCatalogId(),
+			Id:            h.GetPublicId(),
+			HostCatalogId: h.GetCatalogId(),
 			Plugin: &plugins.PluginInfo{
 				Id:          plg.GetPublicId(),
 				Name:        plg.GetName(),
@@ -368,10 +372,10 @@ func TestList_Plugin(t *testing.T) {
 			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 			CreatedTime:       h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
-			HostSetIds: []string{hs.GetPublicId()},
+			HostSetIds:        []string{hs.GetPublicId()},
 			Version:           1,
 			Type:              plugin.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions,
+			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 		})
 	}
 	sort.Slice(wantHs, func(i, j int) bool {
@@ -620,7 +624,7 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -687,7 +691,7 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -829,7 +833,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -857,7 +861,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -927,7 +931,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -952,7 +956,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -979,7 +983,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1006,7 +1010,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},

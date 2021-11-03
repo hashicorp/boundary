@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"google.golang.org/grpc/codes"
@@ -50,13 +51,16 @@ var (
 		action.List,
 	}
 
-	collectionTypeMap = map[string]map[resource.Type]action.ActionSet{
-		"static": {
+	collectionTypeMap = map[subtypes.Subtype]map[resource.Type]action.ActionSet{
+		static.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
 			resource.Host:    hosts.CollectionActions,
 		},
-		"plugin": {
+		plugin.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
+			resource.Host: action.ActionSet{
+				action.List,
+			},
 		},
 	}
 )
@@ -160,15 +164,15 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			var collType string
+			var subtype subtypes.Subtype
 			switch item.(type) {
 			case *static.HostCatalog:
-				collType = "static"
+				subtype = static.Subtype
 			case *plugin.HostCatalog:
-				collType = "plugin"
+				subtype = plugin.Subtype
 			}
-			if collType != "" {
-				collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, item.GetPublicId())
+			if subtype != "" {
+				collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
 				if err != nil {
 					return nil, err
 				}
@@ -224,15 +228,15 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var collType string
+		var subtype subtypes.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
-			collType = "static"
+			subtype = static.Subtype
 		case *plugin.HostCatalog:
-			collType = "plugin"
+			subtype = plugin.Subtype
 		}
-		if collType != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, hc.GetPublicId())
+		if subtype != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -281,15 +285,15 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var collType string
+		var subtype subtypes.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
-			collType = "static"
+			subtype = static.Subtype
 		case *plugin.HostCatalog:
-			collType = "plugin"
+			subtype = plugin.Subtype
 		}
-		if collType != "" {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[collType], authResults.Scope.Id, hc.GetPublicId())
+		if subtype != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -341,7 +345,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap["static"], authResults.Scope.Id, hc.GetPublicId())
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[static.Subtype], authResults.Scope.Id, hc.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
