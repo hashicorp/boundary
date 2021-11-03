@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -556,6 +557,7 @@ func (c *Command) Run(args []string) int {
 	var opts []base.Option
 	if c.flagCreateLoopbackHostCatalogPlugin {
 		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
 	}
 	switch c.flagDatabaseUrl {
 	case "":

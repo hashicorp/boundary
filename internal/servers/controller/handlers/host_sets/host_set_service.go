@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -35,14 +36,22 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
-		action.NoOp,
-		action.Read,
-		action.Update,
-		action.Delete,
-		action.AddHosts,
-		action.SetHosts,
-		action.RemoveHosts,
+	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+		static.Subtype: action.ActionSet{
+			action.NoOp,
+			action.Read,
+			action.Update,
+			action.Delete,
+			action.AddHosts,
+			action.SetHosts,
+			action.RemoveHosts,
+		},
+		plugin.Subtype: action.ActionSet{
+			action.NoOp,
+			action.Read,
+			action.Update,
+			action.Delete,
+		},
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -115,7 +124,8 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 	}
 	for _, item := range hl {
 		res.Id = item.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		idActions := idActionsTypeMap[host.SubtypeFromId(res.Id)]
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -172,7 +182,8 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 	if plg != nil {
 		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
@@ -213,7 +224,8 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetItem().GetHostCatalogId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 	if plg != nil {
 		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
@@ -257,7 +269,8 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
 	item, err := toProto(ctx, hs, hosts, outputOpts...)
@@ -311,7 +324,8 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
 	item, err := toProto(ctx, hs, hosts, outputOpts...)
@@ -348,7 +362,8 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
 	item, err := toProto(ctx, hs, hosts, outputOpts...)
@@ -386,7 +401,8 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
 	item, err := toProto(ctx, hs, hosts, outputOpts...)
