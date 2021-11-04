@@ -592,7 +592,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +630,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +668,7 @@ func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.R
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -706,7 +706,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -744,7 +744,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +782,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -1352,12 +1352,17 @@ func (s Service) removeHostSourcesInRepo(ctx context.Context, targetId string, h
 	return out, hs, cl, nil
 }
 
-func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	if err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	}
+
+	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, credLibs)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)
@@ -1368,13 +1373,19 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	return out, hs, credSources, nil
 }
 
-func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	const op = "targets.(Service).setCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+
+	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	if err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	}
+
+	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, credLibs)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
@@ -1390,13 +1401,18 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 	return out, hs, credSources, nil
 }
 
-func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, ids []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	const op = "targets.(Service).removeCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, strutil.RemoveDuplicates(ids, false))
+
+	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	if err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	}
+	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, credLibs)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential sources from target: %v.", err)
@@ -1917,12 +1933,19 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds()) == 0 {
-		badFields[globals.ApplicationCredentialSourceIdsField] = "Must be non-empty."
+	if len(req.GetApplicationCredentialSourceIds())+len(req.GetEgressCredentialSourceIds()) == 0 {
+		badFields[globals.ApplicationCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
+		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
+	for _, cl := range req.GetEgressCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
@@ -1946,6 +1969,12 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			break
 		}
 	}
+	for _, cl := range req.GetEgressCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -1960,12 +1989,19 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds()) == 0 {
-		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
+	if len(req.GetApplicationCredentialSourceIds())+len(req.GetEgressCredentialSourceIds()) == 0 {
+		badFields[globals.ApplicationCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
+		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
+	for _, cl := range req.GetEgressCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
@@ -2014,4 +2050,24 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
+}
+
+func createCredLibs(targetId string, applicationIds, ingressIds, egressIds []string) ([]*target.CredentialLibrary, error) {
+	credLibs := make([]*target.CredentialLibrary, 0, len(applicationIds)+len(ingressIds)+len(egressIds))
+
+	byPurpose := map[credential.Purpose][]string{
+		credential.ApplicationPurpose: strutil.RemoveDuplicates(applicationIds, false),
+		credential.IngressPurpose:     strutil.RemoveDuplicates(ingressIds, false),
+		credential.EgressPurpose:      strutil.RemoveDuplicates(egressIds, false),
+	}
+	for purpose, ids := range byPurpose {
+		for _, id := range ids {
+			l, err := target.NewCredentialLibrary(targetId, id, purpose)
+			if err != nil {
+				return nil, err
+			}
+			credLibs = append(credLibs, l)
+		}
+	}
+	return credLibs, nil
 }

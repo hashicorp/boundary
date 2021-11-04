@@ -2,15 +2,19 @@
 package db_test
 
 import (
+	"errors"
+
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
-	defaultUserTablename    = "db_test_user"
-	defaultCarTableName     = "db_test_car"
-	defaultRentalTableName  = "db_test_rental"
-	defaultScooterTableName = "db_test_scooter"
+	defaultUserTablename             = "db_test_user"
+	defaultCarTableName              = "db_test_car"
+	defaultRentalTableName           = "db_test_rental"
+	defaultScooterTableName          = "db_test_scooter"
+	defaultAccessoryTableName        = "db_test_accessory"
+	defaultScooterAccessoryTableName = "db_test_scooter_accessory"
 )
 
 type TestUser struct {
@@ -150,6 +154,71 @@ func (t *TestScooter) TableName() string {
 }
 
 func (t *TestScooter) SetTableName(name string) {
+	t.table = name
+}
+
+type TestAccessory struct {
+	*StoreTestAccessory
+	table string `gorm:"-"`
+}
+
+func NewTestAccessory(description string) (*TestAccessory, error) {
+	if description == "" {
+		return nil, errors.New("missing description")
+	}
+	return &TestAccessory{StoreTestAccessory: &StoreTestAccessory{Description: description}}, nil
+}
+
+func (t *TestAccessory) Clone() interface{} {
+	s := proto.Clone(t.StoreTestAccessory)
+	return &TestAccessory{
+		StoreTestAccessory: s.(*StoreTestAccessory),
+	}
+}
+
+func (t *TestAccessory) TableName() string {
+	if t.table != "" {
+		return t.table
+	}
+	return defaultAccessoryTableName
+}
+
+func (t *TestAccessory) SetTableName(name string) {
+	t.table = name
+}
+
+type TestScooterAccessory struct {
+	*StoreTestScooterAccessory
+	table string `gorm:"-"`
+}
+
+func NewTestScooterAccessory(scooterId, accessoryId uint32) (*TestScooterAccessory, error) {
+	if accessoryId == 0 {
+		return nil, errors.New("mssing accessory id")
+	}
+	return &TestScooterAccessory{
+		StoreTestScooterAccessory: &StoreTestScooterAccessory{
+			ScooterId:   scooterId,
+			AccessoryId: accessoryId,
+		},
+	}, nil
+}
+
+func (t *TestScooterAccessory) Clone() interface{} {
+	s := proto.Clone(t.StoreTestScooterAccessory)
+	return &TestScooterAccessory{
+		StoreTestScooterAccessory: s.(*StoreTestScooterAccessory),
+	}
+}
+
+func (t *TestScooterAccessory) TableName() string {
+	if t.table != "" {
+		return t.table
+	}
+	return defaultScooterAccessoryTableName
+}
+
+func (t *TestScooterAccessory) SetTableName(name string) {
 	t.table = name
 }
 

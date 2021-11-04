@@ -8,7 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
-	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211029205622-bea322df6865
+	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211104012127-1de471d9c71e
 	github.com/hashicorp/boundary/sdk v0.0.12-0.20211028194642-6eba8a478703
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-plugin v1.4.3 // indirect

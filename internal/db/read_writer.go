@@ -43,9 +43,11 @@ const (
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupById will lookup a resource by its primary key id, which must be
-	// unique. The resourceWithIder must implement either ResourcePublicIder or
-	// ResourcePrivateIder interface.
-	LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error
+	// unique. If the resource implements either ResourcePublicIder or
+	// ResourcePrivateIder interface, then they are used as the resource's
+	// primary key for lookup.  Otherwise, the resource tags are used to
+	// determine it's primary key(s) for lookup.
+	LookupById(ctx context.Context, resource interface{}, opt ...Option) error
 
 	// LookupByPublicId will lookup resource by its public_id which must be unique.
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
@@ -1048,11 +1050,11 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ..
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
 		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
-	primaryKey, where, err := primaryKeyWhere(ctx, resourceWithIder)
+	where, keys, err := rw.primaryKeysWhere(ctx, resourceWithIder)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
+	if err := rw.underlying.Where(where, keys...).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
 		}
@@ -1061,23 +1063,48 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ..
 	return nil
 }
 
-func primaryKeyWhere(ctx context.Context, resourceWithIder interface{}) (pkey string, w string, e error) {
-	const op = "db.primaryKeyWhere"
-	var primaryKey, where string
-	switch resourceType := resourceWithIder.(type) {
+func (rw *Db) primaryKeysWhere(ctx context.Context, i interface{}) (string, []interface{}, error) {
+	const op = "db.primaryKeysWhere"
+	var fieldNames []string
+	var fieldValues []interface{}
+	tx := rw.underlying.Model(i)
+	if err := tx.Statement.Parse(i); err != nil {
+		return "", nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	switch resourceType := i.(type) {
 	case ResourcePublicIder:
-		primaryKey = resourceType.GetPublicId()
-		where = "public_id = ?"
+		if resourceType.GetPublicId() == "" {
+			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "missing primary key", errors.WithoutEvent())
+		}
+		fieldValues = []interface{}{resourceType.GetPublicId()}
+		fieldNames = []string{"public_id"}
 	case ResourcePrivateIder:
-		primaryKey = resourceType.GetPrivateId()
-		where = "private_id = ?"
+		if resourceType.GetPrivateId() == "" {
+			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "missing primary key", errors.WithoutEvent())
+		}
+		fieldValues = []interface{}{resourceType.GetPrivateId()}
+		fieldNames = []string{"private_id"}
 	default:
-		return "", "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder), errors.WithoutEvent())
+		v := reflect.ValueOf(i)
+		for _, f := range tx.Statement.Schema.PrimaryFields {
+			if f.PrimaryKey {
+				val, isZero := f.ValueOf(v)
+				if isZero {
+					return "", nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary field %s is zero", f.Name))
+				}
+				fieldNames = append(fieldNames, f.DBName)
+				fieldValues = append(fieldValues, val)
+			}
+		}
 	}
-	if primaryKey == "" {
-		return "", "", errors.New(ctx, errors.InvalidParameter, op, "missing primary key", errors.WithoutEvent())
+	if len(fieldNames) == 0 {
+		return "", nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no primary key(s) for %t", i))
 	}
-	return primaryKey, where, nil
+	clauses := make([]string, 0, len(fieldNames))
+	for _, col := range fieldNames {
+		clauses = append(clauses, fmt.Sprintf("%s = ?", col))
+	}
+	return strings.Join(clauses, " and "), fieldValues, nil
 }
 
 // LookupByPublicId will lookup resource by its public_id, which must be unique.
