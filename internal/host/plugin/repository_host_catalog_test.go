@@ -376,7 +376,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	dbWrapper := db.TestWrapper(t)
 	sched := scheduler.TestScheduler(t, dbConn, dbWrapper)
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
-	orgScope, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+	_, projectScopeAlt := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
 	// Define a plugin "manager", basically just a map with a mock
 	// plugin in it.  This also includes functionality to capture the
@@ -405,24 +406,25 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 	}
 
-	// Set up two existing catalogs for duplicate tests, one with org
-	// scope, one with project scope.
+	// Set up two existing catalogs for duplicate tests, one in the
+	// same scope that we are working in mostly, and another in a
+	// different one. Both are project scopes.
 	const (
-		testDuplicateCatalogNameOrgScope     = "duplicate-catalog-name-org-scope"
 		testDuplicateCatalogNameProjectScope = "duplicate-catalog-name-project-scope"
+		testDuplicateCatalogNameAltScope     = "duplicate-catalog-name-alt-scope"
 	)
-
-	// Org scope
-	existingOrgScopeCatalog := TestCatalog(t, dbConn, orgScope.PublicId, testPlugin.GetPublicId())
-	existingOrgScopeCatalog.Name = testDuplicateCatalogNameOrgScope
-	numCatUpdated, err := dbRW.Update(ctx, existingOrgScopeCatalog, []string{"name"}, []string{})
-	require.NoError(t, err)
-	require.Equal(t, 1, numCatUpdated)
 
 	// Project scope
 	existingProjectScopeCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
 	existingProjectScopeCatalog.Name = testDuplicateCatalogNameProjectScope
-	numCatUpdated, err = dbRW.Update(ctx, existingProjectScopeCatalog, []string{"name"}, []string{})
+	numCatUpdated, err := dbRW.Update(ctx, existingProjectScopeCatalog, []string{"name"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numCatUpdated)
+
+	// Alternate scope
+	existingAltScopeCatalog := TestCatalog(t, dbConn, projectScopeAlt.PublicId, testPlugin.GetPublicId())
+	existingAltScopeCatalog.Name = testDuplicateCatalogNameAltScope
+	numCatUpdated, err = dbRW.Update(ctx, existingAltScopeCatalog, []string{"name"}, []string{})
 	require.NoError(t, err)
 	require.Equal(t, 1, numCatUpdated)
 
@@ -797,14 +799,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name:        "update name (duplicate, different scope)",
-			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameOrgScope)},
+			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameAltScope)},
 			version:     2,
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkUpdateCatalogRequestCurrentNameNil(),
-				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameOrgScope),
-				checkName(testDuplicateCatalogNameOrgScope),
+				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
+				checkName(testDuplicateCatalogNameAltScope),
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
