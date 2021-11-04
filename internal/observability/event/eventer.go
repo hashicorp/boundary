@@ -547,7 +547,7 @@ func (e *Eventer) RotateAuditWrapper(ctx context.Context, newWrapper wrapping.Wr
 		case *hclogFormatterFilter:
 			w.Rotate(newWrapper)
 		case *cloudEventsFormatterFilter:
-			fmt.Println("TODO: implement RotateAuditWrapper for cloudEventsFormatterFilter type")
+			w.Rotate(newWrapper)
 		case *encrypt.Filter:
 			w.Rotate(encrypt.WithWrapper(newWrapper))
 		default:

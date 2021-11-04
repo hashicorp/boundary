@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sync"
 
 	filterpkg "github.com/hashicorp/boundary/internal/filter"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-bexpr"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // cloudEventsFormatterFilter represents an eventlogger.cloudEventsFormatterFilter which filters events based on allow and
@@ -17,6 +19,7 @@ type cloudEventsFormatterFilter struct {
 	*cloudevents.FormatterFilter
 	allow []*filter
 	deny  []*filter
+	l     sync.RWMutex
 }
 
 // newCloudEventsFormatterFilter creates a new filter node using the optional allow and deny filters
@@ -67,10 +70,21 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 	return &n, nil
 }
 
-// Rotate supports rotating the filter's wrapper, salt and info via the options:
-// WithAuditWrapper
-func (f *cloudEventsFormatterFilter) Rotate(opt ...Option) {
-	panic("todo")
+// Rotate supports rotating the filter's wrapper. No options are currently
+// supported.
+func (f *cloudEventsFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) error {
+	const op = "event.(cloudEventsFormatterFilter).Rotate"
+	if w == nil {
+		return fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
+	}
+	f.l.Lock()
+	defer f.l.Unlock()
+	h, err := newSigner(context.Background(), w, nil, nil)
+	if err != nil {
+		return err
+	}
+	f.Signer = cloudevents.Signer(h)
+	return nil
 }
 
 func newPredicate(allow, deny []*filter) func(ctx context.Context, ce interface{}) (bool, error) {
