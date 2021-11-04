@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
@@ -30,8 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/target/tcp"
-	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -48,8 +45,6 @@ import (
 )
 
 var (
-	maskManager handlers.MaskManager
-
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
@@ -76,16 +71,6 @@ var (
 		action.List,
 	}
 )
-
-func init() {
-	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		handlers.MaskDestination{&tcpStore.Target{}},
-		handlers.MaskSource{&pb.Target{}, &pb.TcpTargetAttributes{}},
-	); err != nil {
-		panic(err)
-	}
-}
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
@@ -1191,14 +1176,14 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	if item.GetWorkerFilter() != nil {
 		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
 	}
-	tcpAttrs := &pb.TcpTargetAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+
+	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), withStruct(item.GetAttributes()))
+	if err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
-	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
-		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
-	}
-	u, err := tcp.New(item.GetScopeId(), opts...)
+	opts = append(opts, attr.Options()...)
+
+	u, err := target.New(ctx, target.SubtypeFromType(item.GetType()), item.GetScopeId(), opts...)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
@@ -1234,19 +1219,28 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if filter := item.GetWorkerFilter(); filter != nil {
 		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
 	}
-	tcpAttrs := &pb.TcpTargetAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	subtype := target.SubtypeFromId(id)
+
+	attr, err := subtypeRegistry.newAttribute(subtype, withStruct(item.GetAttributes()))
+	if err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
-	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
-		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
-	}
+
+	opts = append(opts, attr.Options()...)
+
 	version := item.GetVersion()
-	u, err := tcp.New(scopeId, opts...)
+
+	u, err := target.New(ctx, subtype, scopeId, opts...)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
-	u.PublicId = id
+	u.SetPublicId(ctx, id)
+
+	maskManager, err := subtypeRegistry.maskManager(subtype)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target"))
+	}
+
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
@@ -1595,11 +1589,12 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		}
 	}
 	if outputFields.Has(globals.AttributesField) {
-		attrs := &pb.TcpTargetAttributes{}
-		if in.GetDefaultPort() > 0 {
-			attrs.DefaultPort = &wrappers.UInt32Value{Value: in.GetDefaultPort()}
+		attr, err := subtypeRegistry.newAttribute(in.GetType(), withTarget(in))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		st, err := handlers.ProtoToStruct(attrs)
+
+		st, err := handlers.ProtoToStruct(attr)
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 		}
@@ -1614,7 +1609,7 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetTargetRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, tcp.TargetPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, target.Prefixes()...)
 }
 
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
@@ -1638,16 +1633,6 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
 		}
-		switch target.SubtypeFromType(req.GetItem().GetType()) {
-		case tcp.Subtype:
-			tcpAttrs := &pb.TcpTargetAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
-				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
-			}
-			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
-				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
-			}
-		}
 		if req.GetItem().GetType() == "" {
 			badFields[globals.TypeField] = "This is a required field."
 		} else if target.SubtypeFromType(req.GetItem().GetType()) == "" {
@@ -1656,6 +1641,21 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
 			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
 				badFields[globals.WorkerFilterField] = "Unable to successfully parse filter expression."
+			}
+		}
+
+		subtype := target.SubtypeFromType(req.GetItem().GetType())
+		_, err := subtypeRegistry.get(subtype)
+		if err != nil {
+			badFields[globals.TypeField] = "Unknown type provided."
+		} else {
+			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			if err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+			} else {
+				for k, v := range a.Vet() {
+					badFields[k] = v
+				}
 			}
 		}
 		return badFields
@@ -1680,30 +1680,35 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
 		}
-		switch target.SubtypeFromId(req.GetItem().GetType()) {
-		case tcp.Subtype:
-			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != tcp.Subtype {
-				badFields[globals.TypeField] = "Cannot modify the resource type."
-			}
-			tcpAttrs := &pb.TcpTargetAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
-				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
-			}
-			if tcpAttrs.GetDefaultPort() != nil && tcpAttrs.GetDefaultPort().GetValue() == 0 {
-				badFields["attributes.default_port"] = "This optional field cannot be set to 0."
-			}
-		}
 		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
 			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
 				badFields[globals.WorkerFilterField] = "Unable to successfully parse filter expression."
 			}
 		}
+		subtype := target.SubtypeFromId(req.GetId())
+		_, err := subtypeRegistry.get(subtype)
+		if err != nil {
+			badFields[globals.TypeField] = "Unknown type provided."
+		} else {
+			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != subtype {
+				badFields[globals.TypeField] = "Cannot modify the resource type."
+			}
+
+			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			if err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+			} else {
+				for k, v := range a.Vet() {
+					badFields[k] = v
+				}
+			}
+		}
 		return badFields
-	}, tcp.TargetPrefix)
+	}, target.Prefixes()...)
 }
 
 func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, tcp.TargetPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, target.Prefixes()...)
 }
 
 func validateListRequest(req *pbs.ListTargetsRequest) error {
@@ -1723,7 +1728,7 @@ func validateListRequest(req *pbs.ListTargetsRequest) error {
 
 func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1747,7 +1752,7 @@ func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 
 func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1768,7 +1773,7 @@ func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 
 func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1792,7 +1797,7 @@ func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 
 func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1816,7 +1821,7 @@ func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 
 func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1837,7 +1842,7 @@ func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 
 func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1861,7 +1866,7 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 
 func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1884,7 +1889,7 @@ func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) e
 
 func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1904,7 +1909,7 @@ func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) e
 
 func validateRemoveLibrariesRequest(req *pbs.RemoveTargetCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1927,7 +1932,7 @@ func validateRemoveLibrariesRequest(req *pbs.RemoveTargetCredentialLibrariesRequ
 
 func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1957,7 +1962,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 
 func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1983,7 +1988,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 
 func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourcesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -2017,7 +2022,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	scopeIdEmpty := req.GetScopeId() == ""
 	scopeNameEmpty := req.GetScopeName() == ""
 	if nameEmpty {
-		if !handlers.ValidId(handlers.Id(req.GetId()), tcp.TargetPrefix) {
+		if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
 			badFields[globals.IdField] = "Incorrectly formatted identifier."
 		}
 		if !scopeIdEmpty {

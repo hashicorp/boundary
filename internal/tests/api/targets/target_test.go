@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
 )
 
 func TestHostSetASD(t *testing.T) {

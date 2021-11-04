@@ -1,4 +1,4 @@
-package targets_test
+package tcp_test
 
 import (
 	"context"
@@ -53,6 +53,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
 )
 
 var testAuthorizedActions = []string{
@@ -115,14 +117,15 @@ func TestGet(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	ctx := context.Background()
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 
 	pTar := &pb.Target{
 		Id:                     tar.GetPublicId(),
 		ScopeId:                proj.GetPublicId(),
 		Name:                   wrapperspb.String("test"),
-		CreatedTime:            tar.CreateTime.GetTimestamp(),
-		UpdatedTime:            tar.UpdateTime.GetTimestamp(),
+		CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+		UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Type:                   tcp.Subtype.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
@@ -205,12 +208,13 @@ func TestList(t *testing.T) {
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
 	otherHss := static.TestSets(t, conn, otherHc.GetPublicId(), 2)
+	ctx := context.Background()
 
 	var wantTars []*pb.Target
 	var totalTars []*pb.Target
 	for i := 0; i < 5; i++ {
 		name := fmt.Sprintf("tar%d", i)
-		tar := tcp.TestTarget(t, conn, proj.GetPublicId(), name, target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), name, target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
 		wantTars = append(wantTars, &pb.Target{
 			Id:                     tar.GetPublicId(),
 			ScopeId:                proj.GetPublicId(),
@@ -226,7 +230,7 @@ func TestList(t *testing.T) {
 			AuthorizedActions:      testAuthorizedActions,
 		})
 		totalTars = append(totalTars, wantTars[i])
-		tar = tcp.TestTarget(t, conn, otherProj.GetPublicId(), name, target.WithHostSources([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
+		tar = tcp.TestTarget(ctx, t, conn, otherProj.GetPublicId(), name, target.WithHostSources([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
 		totalTars = append(totalTars, &pb.Target{
 			Id:                     tar.GetPublicId(),
 			ScopeId:                otherProj.GetPublicId(),
@@ -333,8 +337,9 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 
+	ctx := context.Background()
 	_, proj := iam.TestScopes(t, iamRepo)
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Couldn't create a new target service.")
@@ -390,6 +395,7 @@ func TestDelete_twice(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	ctx := context.Background()
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -397,14 +403,14 @@ func TestDelete_twice(t *testing.T) {
 
 	_, proj := iam.TestScopes(t, iamRepo)
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(err, "Couldn't create a new target service.")
 	req := &pbs.DeleteTargetRequest{
 		Id: tar.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+	ctx = auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteTarget(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteTarget(ctx, req)
@@ -588,7 +594,10 @@ func TestUpdate(t *testing.T) {
 		{Id: hs[1].GetPublicId(), HostCatalogId: hs[1].GetCatalogId()},
 	}
 
-	tar, err := tcp.New(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	ctx := context.Background()
+	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	require.NoError(t, err)
+	tar := ttar.(*tcp.Target)
 	tar.DefaultPort = 2
 	require.NoError(t, err)
 	gtar, _, _, err := repo.CreateTarget(context.Background(), tar)
@@ -958,7 +967,9 @@ func TestUpdate_BadVersion(t *testing.T) {
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new target repo.")
 
-	tar, err := tcp.New(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	ctx := context.Background()
+	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	tar := ttar.(*tcp.Target)
 	tar.DefaultPort = 2
 	require.NoError(t, err)
 	gtar, _, _, err := repo.CreateTarget(context.Background(), tar)
@@ -1004,40 +1015,41 @@ func TestAddTargetHostSets(t *testing.T) {
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
+	ctx := context.Background()
 
 	addCases := []struct {
 		name           string
-		tar            *tcp.Target
+		tar            target.Target
 		addHostSets    []string
 		resultHostSets []string
 	}{
 		{
 			name:           "Add set on empty target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			addHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:           "Add set on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:           "Add duplicated sets on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:           "Add plugin set on empty target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin empty"),
 			addHostSets:    []string{pluginHs.GetPublicId()},
 			resultHostSets: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:           "Add plugin set on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{pluginHs.GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
@@ -1060,7 +1072,7 @@ func TestAddTargetHostSets(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	failCases := []struct {
 		name string
@@ -1140,45 +1152,46 @@ func TestSetTargetHostSets(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	setCases := []struct {
 		name           string
-		tar            *tcp.Target
+		tar            target.Target
 		setHostSets    []string
 		resultHostSets []string
 	}{
 		{
 			name:           "Set on empty target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			setHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:           "Set on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:           "Set duplicate host set on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSets: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:           "Set empty on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{},
 			resultHostSets: nil,
 		},
 		{
 			name:           "Set plugin set on empty target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin empty"),
 			setHostSets:    []string{pluginHs.GetPublicId()},
 			resultHostSets: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:           "Set plugin set on populated target",
-			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:            tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{pluginHs.GetPublicId()},
 			resultHostSets: []string{pluginHs.GetPublicId()},
 		},
@@ -1197,7 +1210,7 @@ func TestSetTargetHostSets(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test name")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
 
 	failCases := []struct {
 		name string
@@ -1269,40 +1282,41 @@ func TestRemoveTargetHostSets(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name        string
-		tar         *tcp.Target
+		tar         target.Target
 		removeHosts []string
 		resultHosts []string
 		wantErr     bool
 	}{
 		{
 			name:        "Remove from empty",
-			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			removeHosts: []string{hs[1].GetPublicId()},
 			wantErr:     true,
 		},
 		{
 			name:        "Remove 1 of 2 sets",
-			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[1].GetPublicId()},
 			resultHosts: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:        "Remove 1 duplicate set of 2 sets",
-			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHosts: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:        "Remove all hosts from set",
-			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 			resultHosts: []string{},
 		},
 		{
 			name:        "Remove 1 plugin of 2 sets",
-			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			tar:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
 			removeHosts: []string{pluginHs.GetPublicId()},
 			resultHosts: []string{hs[0].GetPublicId()},
 		},
@@ -1329,7 +1343,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "testing")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
 
 	failCases := []struct {
 		name string
@@ -1410,39 +1424,40 @@ func TestAddTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	addCases := []struct {
 		name              string
-		tar               *tcp.Target
+		tar               target.Target
 		addHostSources    []string
 		resultHostSources []string
 	}{
 		{
 			name:              "Add set on empty target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			addHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add set on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add duplicated sets on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add plugin set on empty target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin empty"),
 			addHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Add plugin set on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
@@ -1465,7 +1480,7 @@ func TestAddTargetHostSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	failCases := []struct {
 		name string
@@ -1545,39 +1560,40 @@ func TestSetTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	setCases := []struct {
 		name              string
-		tar               *tcp.Target
+		tar               target.Target
 		setHostSources    []string
 		resultHostSources []string
 	}{
 		{
 			name:              "Set on empty target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set plugin set on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Set duplicate host set on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set empty on populated target",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{},
 			resultHostSources: nil,
 		},
@@ -1596,7 +1612,7 @@ func TestSetTargetHostSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test name")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
 
 	failCases := []struct {
 		name string
@@ -1668,40 +1684,41 @@ func TestRemoveTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name              string
-		tar               *tcp.Target
+		tar               target.Target
 		removeHostSources []string
 		resultHostSources []string
 		wantErr           bool
 	}{
 		{
 			name:              "Remove from empty",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			removeHostSources: []string{hs[1].GetPublicId()},
 			wantErr:           true,
 		},
 		{
 			name:              "Remove 1 of 2 sets",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove 1 plugin set of 2 sets",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
 			removeHostSources: []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove 1 duplicate set of 2 sets",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove all hosts from set",
-			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{},
 		},
@@ -1728,7 +1745,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "testing")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
 
 	failCases := []struct {
 		name string
@@ -1802,27 +1819,28 @@ func TestAddTargetLibraries(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 
+	ctx := context.Background()
 	addCases := []struct {
 		name             string
-		tar              *tcp.Target
+		tar              target.Target
 		addLibraries     []string
 		resultLibraryIds []string
 	}{
 		{
 			name:             "Add library on empty target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "empty for libraries"),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for libraries"),
 			addLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Add library on populated target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:             "Add duplicated libraries on populated target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addLibraries:     []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
@@ -1853,7 +1871,7 @@ func TestAddTargetLibraries(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	failCases := []struct {
 		name string
@@ -1937,34 +1955,35 @@ func TestSetTargetLibraries(t *testing.T) {
 		}
 	}
 
+	ctx := context.Background()
 	setCases := []struct {
 		name             string
-		tar              *tcp.Target
+		tar              target.Target
 		setLibraries     []string
 		resultLibraryIds []string
 		resultLibraries  []*pb.CredentialLibrary
 	}{
 		{
 			name:             "Set on empty target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			setLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Set on populated target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setLibraries:     []string{cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Set duplicate libraries on populated target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setLibraries:     []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:             "Set empty on populated target",
-			tar:              tcp.TestTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:              tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setLibraries:     []string{},
 			resultLibraryIds: nil,
 		},
@@ -1998,7 +2017,7 @@ func TestSetTargetLibraries(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test name")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
 
 	failCases := []struct {
 		name string
@@ -2063,28 +2082,29 @@ func TestRemoveTargetLibraries(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name         string
-		tar          *tcp.Target
+		tar          target.Target
 		removeLibs   []string
 		resultLibIds []string
 		wantErr      bool
 	}{
 		{
 			name:       "Remove from empty",
-			tar:        tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:        tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			removeLibs: []string{cls[1].GetPublicId()},
 			wantErr:    true,
 		},
 		{
 			name:         "Remove 1 of 2 libraries",
-			tar:          tcp.TestTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:          tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeLibs:   []string{cls[1].GetPublicId()},
 			resultLibIds: []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 duplicate set of 2 libraries",
-			tar:  tcp.TestTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeLibs: []string{
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -2092,7 +2112,7 @@ func TestRemoveTargetLibraries(t *testing.T) {
 		},
 		{
 			name: "Remove all libraries from target",
-			tar:  tcp.TestTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeLibs: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -2119,7 +2139,7 @@ func TestRemoveTargetLibraries(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "testing")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
 
 	failCases := []struct {
 		name string
@@ -2199,27 +2219,28 @@ func TestAddTargetSources(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 
+	ctx := context.Background()
 	addCases := []struct {
 		name            string
-		tar             *tcp.Target
+		tar             target.Target
 		addSources      []string
 		resultSourceIds []string
 	}{
 		{
 			name:            "Add source on empty target",
-			tar:             tcp.TestTarget(t, conn, proj.GetPublicId(), "empty for sources"),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for sources"),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add source on populated target",
-			tar:             tcp.TestTarget(t, conn, proj.GetPublicId(), "populated for sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add duplicated sources on populated target",
-			tar:             tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated for sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
@@ -2250,7 +2271,7 @@ func TestAddTargetSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	failCases := []struct {
 		name string
@@ -2334,34 +2355,35 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		}
 	}
 
+	ctx := context.Background()
 	setCases := []struct {
 		name                      string
-		tar                       *tcp.Target
+		tar                       target.Target
 		setCredentialSources      []string
 		resultCredentialSourceIds []string
 		resultCredentialSources   []*pb.CredentialLibrary
 	}{
 		{
 			name:                      "Set on empty target",
-			tar:                       tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set on populated target",
-			tar:                       tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set duplicate sources on populated target",
-			tar:                       tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set empty on populated target",
-			tar:                       tcp.TestTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{},
 			resultCredentialSourceIds: nil,
 		},
@@ -2395,7 +2417,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test name")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
 
 	failCases := []struct {
 		name string
@@ -2460,28 +2482,29 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name                      string
-		tar                       *tcp.Target
+		tar                       target.Target
 		removeCredentialSources   []string
 		resultCredentialSourceIds []string
 		wantErr                   bool
 	}{
 		{
 			name:                    "Remove from empty",
-			tar:                     tcp.TestTarget(t, conn, proj.GetPublicId(), "empty"),
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			removeCredentialSources: []string{cls[1].GetPublicId()},
 			wantErr:                 true,
 		},
 		{
 			name:                      "Remove 1 of 2 sources",
-			tar:                       tcp.TestTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeCredentialSources:   []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 duplicate set of 2 sources",
-			tar:  tcp.TestTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeCredentialSources: []string{
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -2489,7 +2512,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		},
 		{
 			name: "Remove all sources from target",
-			tar:  tcp.TestTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
 			removeCredentialSources: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -2516,7 +2539,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		})
 	}
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "testing")
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
 
 	failCases := []struct {
 		name string
@@ -2714,7 +2737,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tar := tcp.TestTarget(t, conn, proj.GetPublicId(), tc.name)
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name)
 			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion(),
@@ -2878,7 +2901,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
-	workerExists := func(tar *tcp.Target) (version uint32) {
+	workerExists := func(tar target.Target) (version uint32) {
 		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
 			Worker: &spb.Server{
@@ -2890,7 +2913,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tar.GetVersion()
 	}
 
-	hostSetNoHostExists := func(tar *tcp.Target) (version uint32) {
+	hostSetNoHostExists := func(tar target.Target) (version uint32) {
 		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
@@ -2903,7 +2926,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
-	hostExists := func(tar *tcp.Target) (version uint32) {
+	hostExists := func(tar target.Target) (version uint32) {
 		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -2917,7 +2940,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return apiTar.GetItem().GetVersion()
 	}
 
-	libraryExists := func(tar *tcp.Target) (version uint32) {
+	libraryExists := func(tar target.Target) (version uint32) {
 		credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
@@ -2939,7 +2962,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
-	misConfiguredlibraryExists := func(tar *tcp.Target) (version uint32) {
+	misConfiguredlibraryExists := func(tar target.Target) (version uint32) {
 		credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
@@ -2963,37 +2986,37 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 	cases := []struct {
 		name  string
-		setup []func(*tcp.Target) uint32
+		setup []func(target.Target) uint32
 		err   bool
 	}{
 		{
 			// This one must be run first since it relies on the DB not having any worker details
 			name:  "no worker",
-			setup: []func(tcpTarget *tcp.Target) uint32{hostExists, libraryExists},
+			setup: []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
 			err:   true,
 		},
 		{
 			name:  "success",
-			setup: []func(tcpTarget *tcp.Target) uint32{workerExists, hostExists, libraryExists},
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 		},
 		{
 			name:  "no hosts",
-			setup: []func(tcpTarget *tcp.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
 			err:   true,
 		},
 		{
 			name:  "bad library configuration",
-			setup: []func(tcpTarget *tcp.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
 			err:   true,
 		},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tar := tcp.TestTarget(t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i))
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i))
 
 			for _, fn := range tc.setup {
 				ver := fn(tar)
-				tar.Version = ver
+				tar.SetVersion(ver)
 			}
 
 			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{

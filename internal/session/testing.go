@@ -133,7 +133,7 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
 
-	tcpTarget := tcp.TestTarget(t, conn, proj.PublicId, "test target")
+	tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target")
 
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
@@ -155,10 +155,10 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	return ComposedOf{
 		UserId:          user.PublicId,
 		HostId:          hosts[0].PublicId,
-		TargetId:        tcpTarget.PublicId,
+		TargetId:        tcpTarget.GetPublicId(),
 		HostSetId:       sets[0].PublicId,
 		AuthTokenId:     at.PublicId,
-		ScopeId:         tcpTarget.ScopeId,
+		ScopeId:         tcpTarget.GetScopeId(),
 		Endpoint:        "tcp://127.0.0.1:22",
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
