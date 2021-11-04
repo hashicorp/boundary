@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 
@@ -189,7 +190,7 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	}
 
 	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
-	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
+	reader, err := crypto.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
