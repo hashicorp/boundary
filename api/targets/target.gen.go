@@ -33,6 +33,8 @@ type Target struct {
 	ApplicationCredentialLibraries  []*CredentialLibrary   `json:"application_credential_libraries,omitempty"`
 	ApplicationCredentialSourceIds  []string               `json:"application_credential_source_ids,omitempty"`
 	ApplicationCredentialSources    []*CredentialSource    `json:"application_credential_sources,omitempty"`
+	EgressCredentialSourceIds       []string               `json:"egress_credential_source_ids,omitempty"`
+	EgressCredentialSources         []*CredentialSource    `json:"egress_credential_sources,omitempty"`
 	Attributes                      map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions               []string               `json:"authorized_actions,omitempty"`
 

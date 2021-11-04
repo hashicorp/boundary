@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -19,8 +19,11 @@ func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.P
 	if jobId != "" {
 		jId = []byte(jobId)
 	}
+	if wrapper == nil {
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
+	}
 
-	reader, err := kms.NewDerivedReader(wrapper, 32, uId, jId)
+	reader, err := crypto.NewDerivedReader(wrapper, 32, uId, jId)
 	if err != nil {
 		return nil, nil, errors.WrapDeprecated(err, op)
 	}

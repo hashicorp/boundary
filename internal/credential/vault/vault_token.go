@@ -2,18 +2,16 @@ package vault
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"database/sql"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
-	"golang.org/x/crypto/blake2b"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -74,16 +72,15 @@ func newToken(storeId string, token TokenSecret, accessor []byte, expiration tim
 	accessorCopy := make([]byte, len(accessor))
 	copy(accessorCopy, accessor)
 
-	key := blake2b.Sum256(accessorCopy)
-	mac := hmac.New(sha256.New, key[:])
-	_, _ = mac.Write(tokenCopy)
-	hmac := mac.Sum(nil)
-
+	hmac, err := crypto.HmacSha256WithPrk(context.Background(), tokenCopy, accessorCopy)
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+	}
 	t := &Token{
 		expiration: expiration.Round(time.Second),
 		Token: &store.Token{
 			StoreId:   storeId,
-			TokenHmac: hmac,
+			TokenHmac: []byte(hmac),
 			Token:     tokenCopy,
 			Status:    string(CurrentToken),
 		},

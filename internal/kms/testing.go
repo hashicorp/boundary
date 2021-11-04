@@ -220,7 +220,7 @@ func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappin
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewOidcKeyVersion(oidcKeyId, key, rootKeyVersionId)
 	require.NoError(err)
-	id, err := newDatabaseKeyVersionId()
+	id, err := newOidcKeyVersionId()
 	require.NoError(err)
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)

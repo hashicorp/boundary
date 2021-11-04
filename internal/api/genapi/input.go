@@ -670,6 +670,11 @@ var inputStructs = []*structInfo{
 				ProtoName: "application_credential_source_ids",
 				FieldType: "[]string",
 			},
+			{
+				Name:      "EgressCredentialSourceIds",
+				ProtoName: "egress_credential_source_ids",
+				FieldType: "[]string",
+			},
 		},
 		versionEnabled:      true,
 		typeOnCreate:        true,

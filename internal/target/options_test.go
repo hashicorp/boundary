@@ -3,6 +3,8 @@ package target
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
@@ -106,11 +108,37 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithCredentialSources", func(t *testing.T) {
+	t.Run("WithCredentialLibraries", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithCredentialSources([]string{"alice", "bob"}))
+		opts := GetOpts(WithCredentialLibraries([]*CredentialLibrary{
+			{
+				CredentialLibrary: &store.CredentialLibrary{
+					CredentialLibraryId: "alice",
+					CredentialPurpose:   string(credential.ApplicationPurpose),
+				},
+			},
+			{
+				CredentialLibrary: &store.CredentialLibrary{
+					CredentialLibraryId: "bob",
+					CredentialPurpose:   string(credential.EgressPurpose),
+				},
+			},
+		}))
 		testOpts := getDefaultOptions()
-		testOpts.WithCredentialSources = []string{"alice", "bob"}
+		testOpts.WithCredentialLibraries = []*CredentialLibrary{
+			{
+				CredentialLibrary: &store.CredentialLibrary{
+					CredentialLibraryId: "alice",
+					CredentialPurpose:   string(credential.ApplicationPurpose),
+				},
+			},
+			{
+				CredentialLibrary: &store.CredentialLibrary{
+					CredentialLibraryId: "bob",
+					CredentialPurpose:   string(credential.EgressPurpose),
+				},
+			},
+		}
 		assert.Equal(opts, testOpts)
 	})
 }

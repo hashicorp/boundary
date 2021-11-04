@@ -22,6 +22,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   a missing mandated cipher suite of the HTTP/2 (`h2`) specification that could
   result in no shared cipher suites between the Boundary API listener and those
   clients. ([PR](https://github.com/hashicorp/boundary/pull/1637))
+* vault: Fix credential store support when using Vault namespaces
+  ([Issue](https://github.com/hashicorp/boundary/issues/1597),
+  [PR](https://github.com/hashicorp/boundary/pull/1660))
 
 ## 0.6.2 (2021/09/27)
 

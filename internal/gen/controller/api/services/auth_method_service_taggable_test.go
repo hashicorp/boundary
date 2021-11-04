@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -81,7 +82,7 @@ func TestAuthenticate_Tags(t *testing.T) {
 							"auth_url":                   structpb.NewStringValue("public-auth_url"),
 							"token_id":                   structpb.NewStringValue("public-token_id"),
 							"final_redirect_url":         structpb.NewStringValue("public-final_redirect_url"),
-							"token":                      structpb.NewStringValue("<REDACTED>"),
+							"token":                      structpb.NewStringValue(encrypt.RedactedData),
 						},
 					},
 				},
@@ -121,8 +122,8 @@ func TestAuthenticate_Tags(t *testing.T) {
 							"auth_url":   structpb.NewStringValue("public-auth_url"),
 							"token_id":   structpb.NewStringValue("public-token_id"),
 							"state":      structpb.NewStringValue("public-state"),
-							"password":   structpb.NewStringValue("<REDACTED>"),
-							"code":       structpb.NewStringValue("<REDACTED>"),
+							"password":   structpb.NewStringValue(encrypt.RedactedData),
+							"code":       structpb.NewStringValue(encrypt.RedactedData),
 						},
 					},
 				},
