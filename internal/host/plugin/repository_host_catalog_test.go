@@ -571,14 +571,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	// checkUpdateCatalogRequestCurrentName := func(want string) checkFunc {
-	// 	return func(t *testing.T, ctx context.Context) {
-	// 		t.Helper()
-	// 		assert := assert.New(t)
-	// 		assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Name)
-	// 	}
-	// }
-
 	checkUpdateCatalogRequestCurrentNameNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -603,14 +595,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	// checkUpdateCatalogRequestCurrentDescription := func(want string) checkFunc {
-	// 	return func(t *testing.T, ctx context.Context) {
-	// 		t.Helper()
-	// 		assert := assert.New(t)
-	// 		assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.CurrentCatalog.Description)
-	// 	}
-	// }
-
 	checkUpdateCatalogRequestCurrentDescriptionNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -626,14 +610,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Equal(wrapperspb.String(want), gotOnUpdateCatalogRequest.NewCatalog.Description)
 		}
 	}
-
-	// checkUpdateCatalogRequestNewDescriptionNil := func() checkFunc {
-	// 	return func(t *testing.T, ctx context.Context) {
-	// 		t.Helper()
-	// 		assert := assert.New(t)
-	// 		assert.Nil(gotOnUpdateCatalogRequest.NewCatalog.Description)
-	// 	}
-	// }
 
 	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
