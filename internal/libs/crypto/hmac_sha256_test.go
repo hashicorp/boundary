@@ -128,7 +128,8 @@ func testWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, salt, info [
 	require := require.New(t)
 	require.NotNil(data)
 	require.NotNil(w)
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	require.NoError(err)
 	var key [32]byte
 	switch {
 	case opts.withPrk != nil:
@@ -147,11 +148,13 @@ func testWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, salt, info [
 
 func testHmac(t *testing.T, key, data []byte, opt ...Option) string {
 	t.Helper()
+	require := require.New(t)
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write(data)
 	hmac := mac.Sum(nil)
 	var hmacString string
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	require.NoError(err)
 	switch opts.withBase64Encoding {
 	case true:
 		hmacString = base64.RawURLEncoding.EncodeToString(hmac)

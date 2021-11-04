@@ -26,7 +26,10 @@ func HmacSha256WithPrk(ctx context.Context, data, prk []byte, opt ...Option) (st
 // WithPrefix option will prepend the prefix to the hmac-sha256 value.
 func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt, info []byte, opt ...Option) (string, error) {
 	const op = "crypto.HmacSha256"
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return "", fmt.Errorf("%s: unable to get options: %w", op, err)
+	}
 	if data == nil {
 		return "", fmt.Errorf("%s: missing data: %w", op, ErrInvalidParameter)
 	}
