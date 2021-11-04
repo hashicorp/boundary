@@ -17,7 +17,7 @@ import (
 )
 
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	target.Register(targettest.Subtype, targettest.Alloc, targettest.Vet, targettest.VetCredentialLibraries, targettest.TargetPrefix)
+	target.Register(targettest.Subtype, targettest.New, targettest.Alloc, targettest.Vet, targettest.VetCredentialLibraries, targettest.TargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -181,7 +181,8 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			tar := targettest.TestNewTestTarget(t, conn, proj.PublicId, tt.name)
+			ctx := context.Background()
+			tar := targettest.TestNewTestTarget(ctx, t, conn, proj.PublicId, tt.name)
 
 			var origCredSources []target.CredentialSource
 			var origCredLibraries []*target.CredentialLibrary
@@ -205,11 +206,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				}
 			}
 
-			origTarget, _, lookupCredSources, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			origTarget, _, lookupCredSources, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			assert.Equal(origCredSources, lookupCredSources)
 
-			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), tar.GetPublicId(), tt.args.targetVersion, tt.args.cls)
+			_, got, affectedRows, err := repo.SetTargetCredentialSources(ctx, tar.GetPublicId(), tt.args.targetVersion, tt.args.cls)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -229,7 +230,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
-			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			foundTarget, _, _, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())
