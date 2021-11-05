@@ -13,7 +13,7 @@ import (
 
 // setup is a helper function for tests.
 // It creates a new database using Template1, establishes an connection,
-// and returns a *postgres.Postgrs.
+// and returns a *postgres.Postgres.
 // It also returns the underlying sql.DB and connection url so tests
 // can establish additional connections if necessary.
 func setup(ctx context.Context, t *testing.T) (*postgres.Postgres, *sql.DB, string) {
@@ -30,6 +30,7 @@ func setup(ctx context.Context, t *testing.T) (*postgres.Postgres, *sql.DB, stri
 		require.NoError(t, d.Close())
 	})
 	p, err := postgres.New(ctx, d)
+	require.NoError(t, err)
 
 	return p, d, u
 }
