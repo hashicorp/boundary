@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -1041,6 +1042,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
+			assert := assert.New(t)
 			origCat, cleanup := setupHostCatalog(t, ctx)
 			defer cleanup()
 
@@ -1060,7 +1062,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 
 			setRespSecretsNil = tt.withRespSecretsNil
-			gotCatalog, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
+			var gotPlugin *hostplugin.Plugin
+			gotCatalog, gotPlugin, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
 				require.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -1069,6 +1072,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			require.NoError(err)
 			defer func() { gotOnUpdateCatalogRequest = nil }()
 
+			// Quick assertion that the catalog is not nil and that the plugin ID in
+			// the catalog and the plugin ID in the returned plugin match. Use assert
+			// as that's what our checks use in the table test's defined checks.
+			assert.NotNil(gotCatalog)
+			assert.NotNil(gotPlugin)
+			assert.Equal(gotCatalog.PluginId, gotPlugin.PublicId)
 			// Perform checks
 			for _, check := range tt.wantCheckFuncs {
 				check(t, ctx)
