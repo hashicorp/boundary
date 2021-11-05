@@ -121,6 +121,9 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 		}
 		contents = strings.TrimSpace(contents)
 
+		if _, exists := migrations[fullV]; exists {
+			panic(fmt.Sprintf("migration file for version %d already exists", fullV))
+		}
 		migrations[fullV] = []byte(contents)
 
 		return nil
