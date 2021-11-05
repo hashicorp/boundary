@@ -186,7 +186,12 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						st, err := structpb.NewStruct(map[string]interface{}{
+							"k1": "foo",
+							"removed": nil,
+						})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
 						require.NoError(t, err)
 						return b
 					}(),

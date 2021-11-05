@@ -188,7 +188,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ScopeId:  prj.GetPublicId(),
 					PluginId: plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						st, err := structpb.NewStruct(map[string]interface{}{
+							"k1": "foo",
+							"nilkey": nil,
+						})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
 						require.NoError(t, err)
@@ -999,7 +1002,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// Finally define a function for bringing the test subject catalog.
 	// This function also returns a function to clean up the catalog
 	// afterwards.
-	setupHostCatalog := func(t *testing.T, ctx context.Context) *HostCatalog {
+	setupHostCatalog := func(t *testing.T, ctx context.Context) (*HostCatalog, func()) {
 		t.Helper()
 		require := require.New(t)
 
@@ -1027,15 +1030,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		require.NoError(err)
 		require.Equal(1, secretsUpdated)
 
-		t.Cleanup(func() {
+		cleanupFunc := func() {
 			t.Helper()
 			assert := assert.New(t)
 			n, err := dbRW.Delete(ctx, cat)
 			assert.NoError(err)
 			assert.Equal(1, n)
-		})
+		}
 
-		return cat
+		return cat, cleanupFunc
 	}
 
 	for _, tt := range tests {
@@ -1043,14 +1046,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			origCat := setupHostCatalog(t, ctx)
+			origCat, cleanup := setupHostCatalog(t, ctx)
+			defer cleanup()
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
 			pluginError = tt.withPluginError
-			t.Cleanup(func() { pluginError = nil })
+			defer func() { pluginError = nil }()
 			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
@@ -1069,7 +1073,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			t.Cleanup(func() { gotOnUpdateCatalogRequest = nil })
+			defer func() { gotOnUpdateCatalogRequest = nil }()
 
 			// Quick assertion that the catalog is not nil and that the plugin ID in
 			// the catalog and the plugin ID in the returned plugin match. Use assert

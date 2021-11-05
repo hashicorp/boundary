@@ -111,6 +111,17 @@ var testCases = []testCase{
 			"foo": "bar",
 		},
 	},
+	{
+		name: "nil dst with src nil value",
+		dst:  nil,
+		src: map[string]interface{}{
+			"foo": "bar",
+			"fiz": nil,
+		},
+		expected: map[string]interface{}{
+			"foo": "bar",
+		},
+	},
 }
 
 func TestPatchStruct(t *testing.T) {

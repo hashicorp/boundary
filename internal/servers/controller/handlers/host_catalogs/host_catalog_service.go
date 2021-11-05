@@ -326,7 +326,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, plg, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -338,6 +338,9 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 
 	outputOpts := make([]handlers.Option, 0, 3)
 	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if plg != nil {
+		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
+	}
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -510,8 +513,8 @@ func (s Service) createInRepo(ctx context.Context, projId string, req *pbs.Creat
 	return hc, plg, err
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
-	const op = "host_catalogs.(Service).updateInRepo"
+func (s Service) updateStaticInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+	const op = "host_catalogs.(Service).updateStaticInRepo"
 	h, err := toStorageStaticCatalog(ctx, projId, item)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
@@ -534,6 +537,44 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
+}
+
+func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*plugin.HostCatalog, *plugins.PluginInfo, error) {
+	const op = "host_catalogs.(Service).updatePluginInRepo"
+	h, err := toStoragePluginCatalog(ctx, projId, "", item)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
+	}
+	version := item.GetVersion()
+	h.PublicId = id
+	dbMask := maskManager.Translate(mask, "attributes", "secrets")
+	if len(dbMask) == 0 {
+		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+
+	repo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	out, plg, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host catalog"))
+	}
+	if rowsUpdated == 0 {
+		return nil, nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, toPluginInfo(plg), nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.UpdateHostCatalogRequest) (hc host.Catalog, plg *plugins.PluginInfo, err error) {
+	const op = "host_catalogs.(Service).updateInRepo"
+	switch host.SubtypeFromId(req.GetId()) {
+	case static.Subtype:
+		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	case plugin.Subtype:
+		hc, plg, err = s.updatePluginInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	}
+	return
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -793,9 +834,19 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
+			if req.GetItem().GetPlugin() != nil {
+				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
+			}
+		case plugin.Subtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != plugin.Subtype {
+				badFields[globals.TypeField] = "Cannot modify resource type."
+			}
+			if req.GetItem().GetPlugin() != nil {
+				badFields[globals.PluginField] = "This is a read only field."
+			}
 		}
 		return badFields
-	}, static.HostCatalogPrefix)
+	}, static.HostCatalogPrefix, plugin.HostCatalogPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
