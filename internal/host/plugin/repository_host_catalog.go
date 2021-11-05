@@ -207,6 +207,22 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("catalog version mismatch, want=%d, got=%d", currentCatalog.GetVersion(), version))
 	}
 
+	// Also assert the name of the catalog does not currently exist in
+	// the database. This is to ensure that we don't hit a database
+	// constraint farther down.
+	duplicateCat, _, err := r.getCatalogByName(ctx, c.Name, c.ScopeId)
+	if err != nil {
+		if !errors.IsNotFoundError(err) {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+	} else {
+		// If the ID of the found record is different than the one we're
+		// working on, it's a duplicate.
+		if duplicateCat.GetPublicId() != currentCatalog.GetPublicId() {
+			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("name of %q already exists in scope ID %q", c.Name, c.ScopeId))
+		}
+	}
+
 	// Clone the catalog so that we can set fields.
 	newCatalog := currentCatalog.clone()
 	var updateAttributes bool
@@ -585,6 +601,27 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	ca.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, ca); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
+	}
+	c, s := ca.toCatalogAndPersisted()
+	var p *plgpb.HostCatalogPersisted
+	if s != nil {
+		var err error
+		p, err = toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+	}
+	return c, p, nil
+}
+
+// getCatalogByName retrieves the *HostCatalog with the provided name
+// and scope ID. If it is not found or there is an problem getting it
+// from the database an error is returned instead.
+func (r *Repository) getCatalogByName(ctx context.Context, name, scopeId string) (*HostCatalog, *plgpb.HostCatalogPersisted, error) {
+	const op = "plugin.(Repository).getCatalogByName"
+	ca := &catalogAgg{}
+	if err := r.reader.LookupWhere(ctx, ca, "name=? and scope_id=?", name, scopeId); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for name %q and scope ID %q", name, scopeId)))
 	}
 	c, s := ca.toCatalogAndPersisted()
 	var p *plgpb.HostCatalogPersisted
