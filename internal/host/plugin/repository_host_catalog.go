@@ -101,36 +101,22 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(c)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 
 			newHostCatalog = c.clone()
-			var cOplogMsg oplog.Message
-			if err := w.Create(ctx, newHostCatalog, db.NewOplogMsg(&cOplogMsg)); err != nil {
+			if err := w.Create(ctx, newHostCatalog, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			msgs = append(msgs, &cOplogMsg)
 
 			if hcSecret != nil {
 				newSecret := hcSecret.clone()
-				q, v := newSecret.upsertQuery()
-				rows, err := w.Exec(ctx, q, v)
-				if err != nil {
+				if err := w.Create(ctx, newSecret, db.WithOplog(oplogWrapper, hcSecret.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				if rows > 1 {
-					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been created")
-				}
-				msgs = append(msgs, newSecret.oplogMessage(db.CreateOp))
 			}
 
-			metadata := c.oplog(oplog.OpType_OP_TYPE_CREATE)
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
-			}
 			return nil
 		},
 	)
@@ -328,21 +314,18 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(newCatalog)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
 				returnedCatalog = newCatalog.clone()
-				var cOplogMsg oplog.Message
 				catalogsUpdated, err := w.Update(
 					ctx,
 					returnedCatalog,
 					dbMask,
 					nullFields,
-					db.NewOplogMsg(&cOplogMsg),
+					db.WithOplog(oplogWrapper, newCatalog.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 					db.WithVersion(&version),
 				)
 				if err != nil {
@@ -351,7 +334,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				if catalogsUpdated != 1 {
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be deleted, got %d", catalogsUpdated))
 				}
-				msgs = append(msgs, &cOplogMsg)
 				recordUpdated = true
 			} else {
 				// Returned catalog needs to be the old copy, as no fields in the
@@ -365,29 +347,30 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					// We didn't set/encrypt the persisted data because there was
 					// none returned. Just delete the entry.
 					deletedSecret := hcSecret.clone()
-					q, v := deletedSecret.deleteQuery()
-					var err error
-					secretsUpdated, err := w.Exec(ctx, q, v)
+					secretsDeleted, err := w.Delete(ctx, deletedSecret, db.WithOplog(oplogWrapper, hcSecret.oplog(oplog.OpType_OP_TYPE_DELETE)))
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsUpdated))
+					if secretsDeleted != 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsDeleted))
 					}
-					msgs = append(msgs, deletedSecret.oplogMessage(db.DeleteOp))
 				} else {
-					// Update the secrets.
+					// Update the secrets via upsert so that we create if they don't exist.
 					updatedSecret := hcSecret.clone()
-					q, v := updatedSecret.upsertQuery()
-					var err error
-					secretsUpdated, err := w.Exec(ctx, q, v)
-					if err != nil {
+					if err := w.Create(
+						ctx,
+						updatedSecret,
+						db.WithOnConflict(&db.OnConflict{
+							Target: db.Columns{"catalog_id"},
+							Action: db.SetColumnValues(map[string]interface{}{
+								"secret": updatedSecret.CtSecret,
+								"key_id": updatedSecret.KeyId,
+							}),
+						}),
+						db.WithOplog(oplogWrapper, hcSecret.oplog(oplog.OpType_OP_TYPE_CREATE)),
+					); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be updated, got %d", secretsUpdated))
-					}
-					msgs = append(msgs, updatedSecret.oplogMessage(db.UpdateOp))
 				}
 
 				if !recordUpdated {
@@ -395,13 +378,12 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					// version of the host catalog manually.
 					returnedCatalog = newCatalog.clone()
 					returnedCatalog.Version = uint32(version) + 1
-					var cOplogMsg oplog.Message
 					catalogsUpdated, err := w.Update(
 						ctx,
 						returnedCatalog,
 						[]string{"version"},
 						[]string{},
-						db.NewOplogMsg(&cOplogMsg),
+						db.WithOplog(oplogWrapper, newCatalog.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 						db.WithVersion(&version),
 					)
 					if err != nil {
@@ -410,15 +392,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if catalogsUpdated != 1 {
 						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be updated, got %d", catalogsUpdated))
 					}
-					msgs = append(msgs, &cOplogMsg)
 					recordUpdated = true
-				}
-			}
-
-			if len(msgs) != 0 {
-				metadata := newCatalog.oplog(oplog.OpType_OP_TYPE_UPDATE)
-				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 

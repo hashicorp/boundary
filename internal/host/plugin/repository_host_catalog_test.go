@@ -1047,10 +1047,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
-		cSecretQ, cSecretV := cSecret.upsertQuery()
-		secretsUpdated, err := dbRW.Exec(ctx, cSecretQ, cSecretV)
+		err = dbRW.Create(ctx, cSecret)
 		require.NoError(err)
-		require.Equal(1, secretsUpdated)
 
 		t.Cleanup(func() {
 			t.Helper()
