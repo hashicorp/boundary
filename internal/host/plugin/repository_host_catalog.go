@@ -188,12 +188,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
-	// Quickly replace the passed in HostCatalog with a clone. This
-	// ensures that we don't alter anything in the original passed in
-	// parameters, which we don't do by convention. We will be adding
-	// to this "working set" as we move through the method.
-	c = c.clone()
-
 	// Get the old catalog first. We patch the record first before
 	// sending it to the DB for updating so that we can run on
 	// OnUpdateCatalog. Note that the field masks are still used for
@@ -254,9 +248,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
 		}
-
-		// Patch the working set with the new attributes.
-		c.Attributes = newCatalog.Attributes
 	}
 
 	// Get the plugin for the host catalog - this is to return it back
@@ -314,7 +305,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			if err != nil {
 				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
-			dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+			dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 			}
@@ -325,7 +316,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	}
 
 	// Get the oplog.
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -338,13 +329,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(c)
+			ticket, err := w.GetTicket(newCatalog)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
-				returnedCatalog = c.clone()
+				returnedCatalog = newCatalog.clone()
 				var cOplogMsg oplog.Message
 				catalogsUpdated, err := w.Update(
 					ctx,
@@ -402,7 +393,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				if !recordUpdated {
 					// we only updated secrets, so we need to increment the
 					// version of the host catalog manually.
-					returnedCatalog = c.clone()
+					returnedCatalog = newCatalog.clone()
 					returnedCatalog.Version = uint32(version) + 1
 					var cOplogMsg oplog.Message
 					catalogsUpdated, err := w.Update(
@@ -425,7 +416,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			}
 
 			if len(msgs) != 0 {
-				metadata := c.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				metadata := newCatalog.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
@@ -437,9 +428,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", c.PublicId, c.Name)))
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newCatalog.PublicId, newCatalog.Name)))
 		}
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", c.PublicId)))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newCatalog.PublicId)))
 	}
 
 	var numUpdated int
