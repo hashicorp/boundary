@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
+	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -150,6 +152,198 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return returnedHostSet, plg, nil
+}
+
+// UpdateSet updates the repository for host set entry s with the
+// values populated, for the fields listed in fieldMask. It returns a
+// new HostSet containing the updated values and a count of the
+// number of records updated. s is not changed.
+//
+// s must contain a valid PublicId and CatalogId. Name, Description,
+// Attributes, and PreferredEndpoints can be updated. Name must be
+// unique among all sets associated with a single catalog.
+//
+// An attribute of s will be set to NULL in the database if the
+// attribute in s is the zero value and it is included in fieldMask.
+// Note that this does not apply to s.Attributes - a null
+// s.Attributes is a no-op for modifications. Rather, if fields need
+// to be reset, its field in c.Attributes should individually set to
+// null.
+//
+// Updates are sent to OnUpdateSet with a full copy of both the
+// current set, the state of the new set should it be updated, along
+// with its parent host catalog and persisted state (can include
+// secrets). This is a stateless call and does not affect the final
+// record written, but some plugins may perform some actions on this
+// call. Update of the record in the database is aborted if this call
+// fails.
+func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, fieldMask []string, _ ...Option) (*HostSet, *hostplugin.Plugin, int, error) {
+	const op = "plugin.(Repository).UpdateSet"
+	if s == nil {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
+	}
+	if s.HostSet == nil {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
+	}
+	if s.PublicId == "" {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+	if s.CatalogId == "" {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	}
+	if len(fieldMask) == 0 {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+	}
+
+	// Get the old set first. We patch the record first before
+	// sending it to the DB for updating so that we can run on
+	// OnUpdateSet. Note that the field masks are still used for
+	// updating.
+	sets, plg, err := r.getSets(ctx, s.PublicId, s.CatalogId)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	if len(sets) == 0 {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("host set not found for public id %q and catalog id %q", s.PublicId, s.CatalogId))
+	}
+
+	if len(sets) != 1 {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected amount of sets found, want=1, got=%d", len(sets)))
+	}
+
+	currentSet := sets[0]
+
+	// Assert the version of the current set to make sure we're
+	// updating the correct one.
+	if currentSet.GetVersion() != version {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("set version mismatch, want=%d, got=%d", currentSet.GetVersion(), version))
+	}
+
+	// Clone the set so that we can set fields.
+	newSet := currentSet.clone()
+	var updateAttributes bool
+	var dbMask, nullFields []string
+	for _, f := range fieldMask {
+		switch {
+		case strings.EqualFold("name", f) && s.Name == "":
+			nullFields = append(nullFields, "name")
+			newSet.Name = s.Name
+		case strings.EqualFold("name", f) && s.Name != "":
+			dbMask = append(dbMask, "name")
+			newSet.Name = s.Name
+		case strings.EqualFold("description", f) && s.Description == "":
+			nullFields = append(nullFields, "description")
+			newSet.Description = s.Description
+		case strings.EqualFold("description", f) && s.Description != "":
+			dbMask = append(dbMask, "description")
+			newSet.Description = s.Description
+		case strings.EqualFold("preferred_endpoints", f) && len(s.PreferredEndpoints) == 0:
+			nullFields = append(nullFields, "preferred_endpoints")
+			newSet.PreferredEndpoints = s.PreferredEndpoints
+		case strings.EqualFold("preferred_endpoints", f) && len(s.PreferredEndpoints) != 0:
+			nullFields = append(dbMask, "preferred_endpoints")
+			newSet.PreferredEndpoints = s.PreferredEndpoints
+		case strings.EqualFold("attributes", strings.Split(f, ".")[0]):
+			// Flag attributes for updating. While multiple masks may be
+			// sent, we only need to do this once.
+			updateAttributes = true
+
+		default:
+			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+		}
+	}
+
+	if updateAttributes && s.Attributes != nil {
+		dbMask = append(dbMask, "attributes")
+		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
+		if err != nil {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+		}
+	}
+
+	// Get the host catalog for the set and its persisted data.
+	catalog, persisted, err := r.getCatalog(ctx, newSet.CatalogId)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
+	}
+
+	// Get the plugin client.
+	plgClient, ok := r.plugins[catalog.GetPluginId()]
+	if !ok || plgClient == nil {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
+	}
+
+	// Convert the catalog values to API protobuf values, which is what
+	// we use for the plugin hook calls.
+	plgHc, err := toPluginCatalog(ctx, catalog)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	currentPlgSet, err := toPluginSet(ctx, currentSet)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	newPlgSet, err := toPluginSet(ctx, newSet)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
+		CurrentSet: currentPlgSet,
+		NewSet:     newPlgSet,
+		Catalog:    plgHc,
+		Persisted:  persisted,
+	})
+	if err != nil {
+		if status.Code(err) != codes.Unimplemented {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, catalog.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var numUpdated int
+	var returnedSet *HostSet
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if len(dbMask) != 0 || len(nullFields) != 0 {
+				returnedSet = newSet.clone()
+				var err error
+				numUpdated, err := w.Update(
+					ctx,
+					returnedSet,
+					dbMask,
+					nullFields,
+					db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if numUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+				}
+			}
+
+			return nil
+		},
+	)
+
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
+		}
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
+	}
+
+	return returnedSet, plg, numUpdated, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host set,
