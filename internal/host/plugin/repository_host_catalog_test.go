@@ -612,6 +612,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	checkUpdateCatalogRequestNewDescriptionNil := func() checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Nil(gotOnUpdateCatalogRequest.NewCatalog.Description)
+		}
+	}
+
 	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -801,6 +809,23 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
+				checkSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumUpdated(1),
+				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update description to same",
+			changeFuncs: []changeHostCatalogFunc{changeDescription("")},
+			version:     2,
+			fieldMask:   []string{"description"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkUpdateCatalogRequestCurrentDescriptionNil(),
+				checkUpdateCatalogRequestNewDescriptionNil(),
+				checkDescription(""),
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
