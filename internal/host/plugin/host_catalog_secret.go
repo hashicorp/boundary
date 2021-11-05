@@ -90,7 +90,11 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	return nil
 }
 
-func (c *HostCatalogSecret) insertQuery() (query string, queryValues []interface{}) {
+// TODO(ICU-2835): this is necessary as update logic requires a static
+// public_id or private_id field. Once post-lookup updates can
+// support alternate primary key fields, we can port this to native
+// Update and upserts w/OnConflict.
+func (c *HostCatalogSecret) upsertQuery() (query string, queryValues []interface{}) {
 	query = upsertHostCatalogSecretQuery
 	queryValues = []interface{}{
 		sql.Named("catalog_id", c.CatalogId),
@@ -118,6 +122,7 @@ func (c *HostCatalogSecret) oplogMessage(opType db.OpType) *oplog.Message {
 		msg.OpType = oplog.OpType_OP_TYPE_CREATE
 	case db.UpdateOp:
 		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+		msg.FieldMaskPaths = []string{"secret", "key_id"}
 	case db.DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	}
