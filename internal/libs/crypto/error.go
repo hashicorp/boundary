@@ -4,6 +4,4 @@ import (
 	"errors"
 )
 
-var (
-	ErrInvalidParameter = errors.New("Invalid parameter")
-)
+var ErrInvalidParameter = errors.New("Invalid parameter")
