@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 func init() {
@@ -16,12 +17,13 @@ func init() {
 
 type extraPluginCmdVars struct {
 	flagPreferredEndpoints []string
+	flagSyncInterval       string
 }
 
 func extraPluginActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"preferred-endpoint"},
-		"update": {"preferred-endpoint"},
+		"create": {"preferred-endpoint", "sync-interval"},
+		"update": {"preferred-endpoint", "sync-interval"},
 	}
 }
 
@@ -71,6 +73,17 @@ func extraPluginFlagsFuncImpl(c *PluginCommand, set *base.FlagSets, f *base.Flag
 					`If no preferences are specified, a value will be chosen _at random_ from ` +
 					`all available values. May not be valid for all plugin types.`,
 			})
+		case "sync-interval":
+			fs.StringVar(&base.StringVar{
+				Name:   "sync-interval",
+				Target: &c.flagSyncInterval,
+				Usage: `An interger number of seconds, or a string such as "400s", "5m", or "6h", ` +
+					"indicating the amount of time that should elapse between syncs of the host set. " +
+					"The interval will be applied to the end of the previous sync operation, not the start. " +
+					"Setting to any negative value will disable syncing for that host set; setting to zero " +
+					"(or null) will cause the set to use Boundary's default. The default may change between " +
+					"releases.",
+			})
 		}
 	}
 }
@@ -91,6 +104,20 @@ func extraPluginFlagsHandlingFuncImpl(c *PluginCommand, _ *base.FlagSets, opts *
 			return false
 		}
 		*opts = append(*opts, hostsets.WithPreferredEndpoints(c.flagPreferredEndpoints))
+	}
+
+	switch c.flagSyncInterval {
+	case "":
+	case "null":
+		*opts = append(*opts, hostsets.DefaultSyncIntervalSeconds())
+
+	default:
+		interval, err := parseutil.ParseDurationSecond(c.flagSyncInterval)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse given sync interval: %s", err))
+			return false
+		}
+		*opts = append(*opts, hostsets.WithSyncIntervalSeconds(int32(interval.Seconds())))
 	}
 
 	return true

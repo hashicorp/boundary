@@ -105,6 +105,11 @@ message HostSet {
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 7;
+
+  // This is not used! This is here to satisfy mask manager requirements due to
+  // shared API proto.
+  // @inject_tag: `gorm:"-"`
+  int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {this: "sync_interval_seconds" that: "sync_interval_seconds"}];
 }
 
 message HostSetMember {

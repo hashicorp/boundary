@@ -45,6 +45,9 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if scopeId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
+	if s.SyncIntervalSeconds < -1 {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sync interval")
+	}
 	if s.Attributes == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
 	}
@@ -410,7 +413,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		h := ha.toHost()
 		for _, sId := range hostIdToSetIds[h.GetPublicId()] {
 			s := setIdToSet[sId]
-			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.GetPreferredEndpoints()))
+			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.PreferredEndpoints))
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("getting preferencer for set %q", sId)))
 			}

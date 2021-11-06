@@ -13,8 +13,8 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assertpkg "github.com/stretchr/testify/assert"
+	requirepkg "github.com/stretchr/testify/require"
 )
 
 func TestNewSetSyncJob(t *testing.T) {
@@ -109,7 +109,7 @@ func TestNewSetSyncJob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
+			assert, require := assertpkg.New(t), requirepkg.New(t)
 
 			got, err := newSetSyncJob(ctx, tt.args.r, tt.args.w, tt.args.kms, tt.args.plgm, tt.options...)
 			if tt.wantErr {
@@ -130,7 +130,7 @@ func TestNewSetSyncJob(t *testing.T) {
 
 func TestSetSyncJob_Run(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
+	assert, require := assertpkg.New(t), requirepkg.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -215,6 +215,136 @@ func TestSetSyncJob_Run(t *testing.T) {
 	require.NoError(rw.LookupByPublicId(ctx, hs))
 	assert.Greater(hs.GetLastSyncTime().AsTime().UnixNano(), firstSyncTime.AsTime().UnixNano())
 	assert.False(hs.GetNeedSync())
+
+	// Now, run a battery of tests with values for SyncIntervalSeconds
+	type setArgs struct {
+		syncIntervalSeconds int32
+		lastSyncTime        *timestamp.Timestamp
+		needsSync           bool
+	}
+	tests := []struct {
+		name       string
+		setArgs    setArgs
+		expectSync bool
+	}{
+		{
+			name: "never-synced-before-needs-sync-false",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.New(time.Unix(0, 0)),
+				needsSync:    false,
+			},
+			expectSync: true,
+		},
+		{
+			name: "never-synced-before-needs-sync-true",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.New(time.Unix(0, 0)),
+				needsSync:    true,
+			},
+			expectSync: true,
+		},
+		{
+			name: "never-synced-before-sync-disabled",
+			setArgs: setArgs{
+				syncIntervalSeconds: -1,
+				lastSyncTime:        timestamp.New(time.Unix(0, 0)),
+				needsSync:           true,
+			},
+			expectSync: false,
+		},
+		{
+			name: "synced-just-now",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.Now(),
+				needsSync:    false,
+			},
+			expectSync: false,
+		},
+		{
+			name: "synced-just-now-need-sync",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.Now(),
+				needsSync:    true,
+			},
+			expectSync: true,
+		},
+		{
+			name: "synced-just-now-need-sync-but-sync-disabled",
+			setArgs: setArgs{
+				syncIntervalSeconds: -1,
+				lastSyncTime:        timestamp.Now(),
+				needsSync:           true,
+			},
+			expectSync: false,
+		},
+		{
+			name: "synced-30-seconds-ago-default-time",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.New(time.Now().Add(-60 * time.Second)),
+				needsSync:    false,
+			},
+			expectSync: false,
+		},
+		{
+			name: "synced-30-seconds-ago-custom-time",
+			setArgs: setArgs{
+				syncIntervalSeconds: 5,
+				lastSyncTime:        timestamp.New(time.Now().Add(-60 * time.Second)),
+				needsSync:           false,
+			},
+			expectSync: true,
+		},
+		{
+			name: "synced-30-seconds-ago-custom-larger-time",
+			setArgs: setArgs{
+				syncIntervalSeconds: 90,
+				lastSyncTime:        timestamp.New(time.Now().Add(-60 * time.Second)),
+				needsSync:           false,
+			},
+			expectSync: false,
+		},
+		{
+			name: "synced-30-seconds-ago-custom-larger-time-need-sync",
+			setArgs: setArgs{
+				syncIntervalSeconds: 60,
+				lastSyncTime:        timestamp.New(time.Now().Add(-60 * time.Second)),
+				needsSync:           true,
+			},
+			expectSync: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assertpkg.New(t), requirepkg.New(t)
+
+			// Update set
+			hs.LastSyncTime = tt.setArgs.lastSyncTime
+			hs.NeedSync = tt.setArgs.needsSync
+			hs.SyncIntervalSeconds = tt.setArgs.syncIntervalSeconds
+			fieldMaskPaths := []string{"LastSyncTime", "NeedSync"}
+			var setToNullPaths []string
+			if hs.SyncIntervalSeconds == 0 {
+				setToNullPaths = []string{"SyncIntervalSeconds"}
+			} else {
+				fieldMaskPaths = append(fieldMaskPaths, "SyncIntervalSeconds")
+			}
+			count, err := rw.Update(ctx, hs, fieldMaskPaths, setToNullPaths)
+			require.NoError(err)
+			assert.Equal(1, count)
+
+			// Run job
+			err = r.Run(context.Background())
+			require.NoError(err)
+
+			// Validate results
+			var expNum int
+			if tt.expectSync {
+				expNum = 1
+			}
+			assert.Equal(expNum, r.numSets)
+			assert.Equal(expNum, r.numProcessed)
+		})
+	}
 }
 
 func TestSetSyncJob_NextRunIn(t *testing.T) {
@@ -235,8 +365,9 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 	hostSet := TestSet(t, conn, kmsCache, sched, catalog, plgm)
 
 	type setArgs struct {
-		lastSyncTime *timestamp.Timestamp
-		needsSync    bool
+		syncIntervalSeconds int32
+		lastSyncTime        *timestamp.Timestamp
+		needsSync           bool
 	}
 	tests := []struct {
 		name         string
@@ -250,7 +381,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.New(time.Unix(0, 0)),
 				needsSync:    false,
 			},
-			want: 0,
+			want: 15 * time.Second,
 		},
 		{
 			name: "synced-just-now",
@@ -258,7 +389,9 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.Now(),
 				needsSync:    false,
 			},
-			want: setSyncJobRunInterval,
+			// FIXME: set this back when update is implemented
+			// want: setSyncJobRunInterval,
+			want: 15 * time.Second,
 		},
 		{
 			name: "synced-just-now-need-sync",
@@ -266,26 +399,43 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.Now(),
 				needsSync:    true,
 			},
-			want: 0,
+			want: 15 * time.Second,
+		},
+		{
+			name: "synced-just-now-need-sync-but-sync-disabled",
+			setArgs: setArgs{
+				syncIntervalSeconds: -1,
+				lastSyncTime:        timestamp.Now(),
+				needsSync:           true,
+			},
+			want: 15 * time.Second,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
+			assert, require := assertpkg.New(t), requirepkg.New(t)
 			r, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
 			assert.NoError(err)
 			require.NotNil(r)
 
 			hostSet.NeedSync = tt.setArgs.needsSync
 			hostSet.LastSyncTime = tt.setArgs.lastSyncTime
-			_, err = rw.Update(ctx, hostSet, []string{"LastSyncTime", "NeedSync"}, nil)
+			hostSet.SyncIntervalSeconds = tt.setArgs.syncIntervalSeconds
+			fieldMaskPaths := []string{"LastSyncTime", "NeedSync"}
+			var setToNullPaths []string
+			if hostSet.SyncIntervalSeconds == 0 {
+				setToNullPaths = []string{"SyncIntervalSeconds"}
+			} else {
+				fieldMaskPaths = append(fieldMaskPaths, "SyncIntervalSeconds")
+			}
+			_, err = rw.Update(ctx, hostSet, fieldMaskPaths, setToNullPaths)
 			require.NoError(err)
 
 			got, err := r.NextRunIn()
 			require.NoError(err)
-			// Round to time.Minute to account for lost time between updating set and determining next run
-			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
+			// Round to five seconds to account for lost time between updating set and determining next run
+			assert.Equal(tt.want.Round(5*time.Second), got.Round(5*time.Second))
 		})
 	}
 }

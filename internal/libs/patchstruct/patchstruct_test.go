@@ -155,12 +155,12 @@ func TestPatchBytesErr(t *testing.T) {
 	t.Run("dst", func(t *testing.T) {
 		require := require.New(t)
 		_, err := PatchBytes([]byte("foo"), nil)
-		require.EqualError(err, "error reading destination data: proto: cannot parse invalid wire-format data")
+		require.Contains(err.Error(), "cannot parse invalid wire-format data")
 	})
 	t.Run("src", func(t *testing.T) {
 		require := require.New(t)
 		_, err := PatchBytes(nil, []byte("foo"))
-		require.EqualError(err, "error reading source data: proto: cannot parse invalid wire-format data")
+		require.Contains(err.Error(), "cannot parse invalid wire-format data")
 	})
 }
 

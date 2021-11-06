@@ -96,7 +96,7 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 	// Fetch all sets that will reach their sync point within the syncWindow.
 	// This is done to avoid constantly scheduling the set sync job when there
 	// are multiple sets to sync in sequence.
-	err := r.reader.SearchWhere(ctx, &setAggs, `need_sync or last_sync_time <= wt_add_seconds_to_now(?)`, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -135,6 +135,13 @@ func (r *SetSyncJob) Description() string {
 }
 
 func nextSync(j scheduler.Job) (time.Duration, error) {
+	// FIXME: This function should query the database and figure out the right
+	// time, however, at the time of writing we don't have an update function
+	// for sets which means we cannot call UpdateJobNextRunInAtLeast if a value
+	// changes. So rather than use the DB query, we simply check every five
+	// seconds. The actual job will ensure that only sets needing updates will
+	// be updated.
+	return 15 * time.Second, nil // Scheduler only wakes up every minute anyways
 	const op = "plugin.nextSync"
 	var query string
 	var r db.Reader
@@ -152,23 +159,24 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		type NextResync struct {
-			SyncNow  bool
-			ResyncIn time.Duration
-		}
-		var n NextResync
-		err = r.ScanRows(rows, &n)
-		if err != nil {
-			return 0, errors.WrapDeprecated(err, op)
-		}
-		if n.SyncNow || n.ResyncIn < 0 {
-			// If we are past the next renewal time, return 0 to schedule immediately
-			return 0, nil
-		}
-		return n.ResyncIn * time.Second, nil
+	if !rows.Next() {
+		return setSyncJobRunInterval, nil
 	}
-	return setSyncJobRunInterval, nil
+
+	type NextResync struct {
+		SyncNow  bool
+		ResyncIn time.Duration
+	}
+	var n NextResync
+	err = r.ScanRows(rows, &n)
+	if err != nil {
+		return 0, errors.WrapDeprecated(err, op)
+	}
+	if n.SyncNow || n.ResyncIn < 0 {
+		// If we are past the next renewal time, return 0 to schedule immediately
+		return 0, nil
+	}
+	return n.ResyncIn * time.Second, nil
 }
 
 // syncSets retrieves from their plugins all the host and membership information
@@ -226,7 +234,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		if !ok {
 			si = &setInfo{}
 		}
-		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.GetPreferredEndpoints())
+		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.PreferredEndpoints)
 		si.plgSet, err = toPluginSet(ctx, s)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("converting set %q to plugin set", s.GetPublicId())))
@@ -288,7 +296,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		}
 
 		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-			errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
 		updateSyncDataQuery := `

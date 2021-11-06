@@ -60,6 +60,7 @@ create view host_plugin_host_set_with_value_obj as
     hs.update_time,
     hs.last_sync_time,
     hs.need_sync,
+    hs.sync_interval_seconds,
     hs.version,
     hs.attributes,
     -- the string_agg(..) column will be null if there are no associated value objects
