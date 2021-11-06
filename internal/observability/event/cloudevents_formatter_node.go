@@ -37,9 +37,10 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 	opts := getOpts(opt...)
 	n := cloudEventsFormatterFilter{
 		FormatterFilter: &cloudevents.FormatterFilter{
-			Source: source,
-			Schema: opts.withSchema,
-			Format: format,
+			Source:         source,
+			Schema:         opts.withSchema,
+			Format:         format,
+			SignEventTypes: []string{string(AuditType)},
 		},
 	}
 

@@ -134,6 +134,7 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 			for _, f := range got.deny {
 				assert.Contains(tt.wantDeny, f.raw)
 			}
+			assert.Equal([]string{string(AuditType)}, got.SignEventTypes)
 		})
 	}
 }
