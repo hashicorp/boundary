@@ -92,6 +92,10 @@ message ConnectConnectionRequest {
   string endpoint_tcp_address = 40;  // @gotags: `class:"public"`
   uint32 endpoint_tcp_port = 50;     // @gotags: `class:"public"`
   string type = 60;                  // @gotags: `class:"public"`
+
+  // user_client_ip is the user's client ip for the connection as determined
+  // the inbound http request
+  string user_client_ip = 70;  // @gotags: `class:"public"
 }
 
 message ConnectConnectionResponse {
