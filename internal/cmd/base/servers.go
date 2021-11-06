@@ -192,7 +192,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
+	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig, event.WithAuditWrapper(opts.withEventWrapper))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}

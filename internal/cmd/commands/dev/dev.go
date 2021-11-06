@@ -490,10 +490,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
 
 	// Initialize status grace period (0 denotes using env or default
 	// here)
@@ -511,6 +507,15 @@ func (c *Command) Run(args []string) int {
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
+	}
+	if err := c.SetupEventing(
+		c.Logger,
+		c.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventFlags(eventFlags)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
