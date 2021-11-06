@@ -91,6 +91,7 @@ func TestRepository_ListConnection(t *testing.T) {
 					22,
 					"127.0.0.1",
 					2222,
+					"127.0.0.1",
 				)
 				testConnections = append(testConnections, c)
 			}
@@ -115,6 +116,7 @@ func TestRepository_ListConnection(t *testing.T) {
 				22,
 				"127.0.0.1",
 				2222,
+				"127.0.0.1",
 			)
 		}
 		got, err := repo.ListConnectionsBySessionId(context.Background(), session.PublicId, WithOrderByCreateTime(db.AscendingOrderBy))
@@ -154,7 +156,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				connection: TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222),
+				connection: TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1"),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -261,6 +263,7 @@ func TestRepository_CloseDeadConnectionsOnWorker(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    22,
+				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
 			require.Len(cs, 2)
@@ -404,6 +407,7 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    22,
+				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
 			require.Len(cs, 2)
@@ -658,6 +662,7 @@ func TestRepository_ShouldCloseConnectionsOnWorker(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    22,
+				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
 			require.Len(cs, 2)

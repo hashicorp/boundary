@@ -179,7 +179,7 @@ func TestConnection_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 
 	tests := []struct {
 		name      string
@@ -246,7 +246,7 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 	state := TestConnectionState(t, conn, connection.PublicId, StatusConnected)
 
 	var new ConnectionState
