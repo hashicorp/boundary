@@ -68,6 +68,7 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		SessionClient:  sessClient,
 		SessionInfo:    si,
 		ConnectionId:   "mock-connection",
+		UserClientIp:   "127.0.0.1",
 	}
 
 	go func() {

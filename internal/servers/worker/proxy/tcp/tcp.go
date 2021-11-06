@@ -53,6 +53,7 @@ func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) erro
 		EndpointTcpAddress: endpointAddr.IP.String(),
 		EndpointTcpPort:    uint32(endpointAddr.Port),
 		Type:               "tcp",
+		UserClientIp:       conf.UserClientIp,
 	}
 
 	connStatus, err := session.ConnectConnection(ctx, conf.SessionClient, connectionInfo)
