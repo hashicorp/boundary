@@ -16,6 +16,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* controllers: Add client IP to inbound request information which is included in
+  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
 * tls: Boundary's support for TLS 1.0/1.1 on the API listener was broken. Rather
   than fix this, we are simply not supporting TLS 1.0/1.1 as they are insecure.
 

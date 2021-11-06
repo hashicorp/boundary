@@ -17,12 +17,17 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
+	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )
 
 func (c *Controller) startListeners(ctx context.Context) error {
+	if err := common.InitPrivateNetworks(ctx, common.PrivateCidrBlocks()); err != nil {
+		return err
+	}
+
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {

@@ -45,4 +45,7 @@ message RequestInfo {
 
   // event_id is the request's event id
   string event_id = 130;
+
+  // the client ip for the request
+  string client_ip = 140;
 }
