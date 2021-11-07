@@ -3,13 +3,16 @@ package event
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 const (
@@ -28,14 +31,18 @@ type hclogFormatterFilter struct {
 	predicate  func(ctx context.Context, i interface{}) (bool, error)
 	allow      []*filter
 	deny       []*filter
+	signer     signer
+	l          sync.RWMutex
 }
 
 func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
 	const op = "event.NewHclogFormatter"
+	opts := getOpts(opt...)
+	var s signer
 	n := hclogFormatterFilter{
 		jsonFormat: jsonFormat,
+		signer:     s,
 	}
-	opts := getOpts(opt...)
 	// intentionally not checking if allow and/or deny optional filters were
 	// supplied since having a filter node with no filters is okay.
 
@@ -62,6 +69,23 @@ func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFil
 	n.predicate = newPredicate(n.allow, n.deny)
 
 	return &n, nil
+}
+
+// Rotate supports rotating the filter's wrapper. No options are currently
+// supported.
+func (f *hclogFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) error {
+	const op = "event.(hclogFormatterFilter).Rotate"
+	if w == nil {
+		return fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
+	}
+	f.l.Lock()
+	defer f.l.Unlock()
+	h, err := newSigner(context.Background(), w, nil, nil)
+	if err != nil {
+		return err
+	}
+	f.signer = h
+	return nil
 }
 
 // Reopen is a no op
@@ -154,23 +178,20 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 		args = append(args, k, v)
 	}
 
-	var buf bytes.Buffer
-	logger := hclog.New(&hclog.LoggerOptions{
-		Output:     &buf,
-		Level:      hclog.Trace,
-		JSONFormat: f.jsonFormat,
-	})
-	const eventMarker = " event"
-	switch string(e.Type) {
-	case string(ErrorType):
-		logger.Error(string(e.Type)+eventMarker, args...)
-	case string(ObservationType), string(SystemType), string(AuditType):
-		logger.Info(string(e.Type)+eventMarker, args...)
-	default:
-		// well, we should ever hit this, since we should be specific about the
-		// event type we're processing, but adding this default to just be sure
-		// we haven't missed anything.
-		logger.Trace(string(e.Type)+eventMarker, args...)
+	buf, err := hclogBytes(e.Type, f.jsonFormat, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to format: %w", op, err)
+	}
+	if f.signer != nil && string(e.Type) == string(AuditType) {
+		bufHmac, err := f.signer(ctx, buf.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to hmac-sha256: %w", op, err)
+		}
+		args = append(args, "serialized", base64.RawURLEncoding.EncodeToString(buf.Bytes()), "serialized_hmac", bufHmac)
+		buf, err = hclogBytes(e.Type, f.jsonFormat, args)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to format after hmac-sha256: %w", op, err)
+		}
 	}
 	switch f.jsonFormat {
 	case true:
@@ -180,4 +201,26 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 	}
 
 	return e, nil
+}
+
+func hclogBytes(eventType eventlogger.EventType, jsonFormat bool, args []interface{}) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	logger := hclog.New(&hclog.LoggerOptions{
+		Output:     &buf,
+		Level:      hclog.Trace,
+		JSONFormat: jsonFormat,
+	})
+	const eventMarker = " event"
+	switch string(eventType) {
+	case string(ErrorType):
+		logger.Error(string(eventType)+eventMarker, args...)
+	case string(ObservationType), string(SystemType), string(AuditType):
+		logger.Info(string(eventType)+eventMarker, args...)
+	default:
+		// well, we should ever hit this, since we should be specific about the
+		// event type we're processing, but adding this default to just be sure
+		// we haven't missed anything.
+		logger.Trace(string(eventType)+eventMarker, args...)
+	}
+	return &buf, nil
 }

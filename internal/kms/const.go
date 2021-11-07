@@ -28,6 +28,9 @@ const (
 	// KeyPurposeOidc is used for encrypting oidc states included in
 	// authentication URLs
 	KeyPurposeOidc
+
+	// KeyPurposeAudit is used for audit operations
+	KeyPurposeAudit
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -46,6 +49,8 @@ func (k KeyPurpose) String() string {
 		return "sessions"
 	case KeyPurposeOidc:
 		return "oidc"
+	case KeyPurposeAudit:
+		return "audit"
 	default:
 		return "unknown"
 	}
@@ -69,6 +74,8 @@ const (
 	KeyTypeSessionKeyVersion
 	KeyTypeOidcKey
 	KeyTypeOidcKeyVersion
+	KeyTypeAuditKey
+	KeyTypeAuditKeyVersion
 )
 
 // String returns the key type cast as a string, just so it can be called as
@@ -99,6 +106,10 @@ func (k KeyType) String() string {
 		return "oidcKey"
 	case KeyTypeOidcKeyVersion:
 		return "oidcKeyVersion"
+	case KeyTypeAuditKey:
+		return "auditKey"
+	case KeyTypeAuditKeyVersion:
+		return "auditKeyVersion"
 
 	default:
 		return "unknown"

@@ -997,3 +997,170 @@ func TestOidcKeyVersion_ImmutableFields(t *testing.T) {
 		})
 	}
 }
+
+func TestAuditKey_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocAuditKey()).Error)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	new := kms.TestAuditKey(t, conn, rk.PrivateId)
+
+	tests := []struct {
+		name      string
+		update    *kms.AuditKey
+		fieldMask []string
+	}{
+		{
+			name: "private_id",
+			update: func() *kms.AuditKey {
+				k := new.Clone().(*kms.AuditKey)
+				k.PrivateId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"PrivateId"},
+		},
+		{
+			name: "create time",
+			update: func() *kms.AuditKey {
+				k := new.Clone().(*kms.AuditKey)
+				k.CreateTime = &ts
+				return k
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "root_key_id",
+			update: func() *kms.AuditKey {
+				k := new.Clone().(*kms.AuditKey)
+				k.RootKeyId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"ScopeId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.True(proto.Equal(orig.(*kms.AuditKey), after.(*kms.AuditKey)))
+		})
+	}
+}
+
+func TestAuditKeyVersion_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	rk := kms.TestRootKey(t, conn, org.PublicId)
+	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
+	conn.Debug(true)
+	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
+	new := kms.TestAuditKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("audit key"))
+
+	tests := []struct {
+		name      string
+		update    *kms.AuditKeyVersion
+		fieldMask []string
+	}{
+		{
+			name: "private_id",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.PrivateId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"PrivateId"},
+		},
+		{
+			name: "create time",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.CreateTime = &ts
+				return k
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "audit_key_id",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.AuditKeyId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"RootKeyId"},
+		},
+		{
+			name: "root_key_version_id",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.RootKeyVersionId = "o_thisIsNotAValidId"
+				return k
+			}(),
+			fieldMask: []string{"RootKeyId"},
+		},
+		{
+			name: "version",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.Version = uint32(22)
+				return k
+			}(),
+			fieldMask: []string{"Version"},
+		},
+		{
+			name: "key",
+			update: func() *kms.AuditKeyVersion {
+				k := new.Clone().(*kms.AuditKeyVersion)
+				k.Key = []byte("updated key")
+				return k
+			}(),
+			fieldMask: []string{"CtKey"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			err = tt.update.Encrypt(context.Background(), wrapper)
+			require.NoError(err)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.True(proto.Equal(orig.(*kms.AuditKeyVersion), after.(*kms.AuditKeyVersion)))
+		})
+	}
+}

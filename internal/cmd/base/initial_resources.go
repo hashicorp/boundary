@@ -195,7 +195,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if admin {
 			opts = append(opts,
 				iam.WithName("admin"),
-				iam.WithDescription(`Initial admin user within the "global" scope`),
+				iam.WithDescription(fmt.Sprintf(`Initial admin user within the "%s" scope`, scope.Global.String())),
 			)
 		} else {
 			opts = append(opts,
@@ -219,7 +219,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		// Create a role tying them together
 		pr, err := iam.NewRole(scope.Global.String(),
 			iam.WithName("Administration"),
-			iam.WithDescription(`Provides admin grants within the "global" scope to the initial user`),
+			iam.WithDescription(fmt.Sprintf(`Provides admin grants within the "%s" scope to the initial user`, scope.Global.String())),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
