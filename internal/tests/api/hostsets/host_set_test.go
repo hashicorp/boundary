@@ -222,11 +222,20 @@ func TestCrud(t *testing.T) {
 		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
 	require.NoError(err)
 
-	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"))
+	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"),
+		hostsets.WithAttributes(map[string]interface{}{"foo": "bar"}), hostsets.WithPreferredEndpoints([]string{"dns:test"}))
 	checkHost(t, "create", h.Item, err, "foo", 1)
 
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
 	checkHost(t, "read", h.Item, err, "foo", 1)
+
+	// TODO: Add test for updating the prefered endpoints
+	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
+		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}))
+	checkHost(t, "update", h.Item, err, "bar", 2)
+
+	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})
+	assert.Equal(h.Item.PreferredEndpoints, []string{"dns:update"})
 
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)
 	assert.NoError(err)

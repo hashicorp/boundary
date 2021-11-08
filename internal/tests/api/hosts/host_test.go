@@ -99,20 +99,20 @@ func TestPluginHosts(t *testing.T) {
 	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]interface{}{
 		"host_info": []interface{}{
 			map[string]interface{}{
-				"external_id": "test1",
+				"external_id":  "test1",
 				"ip_addresses": []string{"10.0.0.1", "192.168.1.1"},
-				"dns_names": []string{"foo.hashicorp.com", "boundaryproject.io"},
+				"dns_names":    []string{"foo.hashicorp.com", "boundaryproject.io"},
 			},
 			map[string]interface{}{
-				"external_id": "test2",
+				"external_id":  "test2",
 				"ip_addresses": []string{"10.0.0.2", "192.168.1.2"},
-				"dns_names": []string{"foo2.hashicorp.com", "boundaryproject2.io"},
+				"dns_names":    []string{"foo2.hashicorp.com", "boundaryproject2.io"},
 			},
 		},
 	}))
 	require.NoError(err)
 	require.NotNil(hset)
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
 
 	hClient := hosts.NewClient(client)
 	hl, err := hClient.List(tc.Context(), hc.Item.Id)

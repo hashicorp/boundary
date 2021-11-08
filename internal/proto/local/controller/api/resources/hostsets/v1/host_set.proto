@@ -49,7 +49,7 @@ message HostSet {
 
 	// An ordered list of endpoint preferences used to choose from among
 	// multiple possible endpoints for a host.
-	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true];
+	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"preferred_endpoints" that: "PreferredEndpoints"}];
 
 	// The attributes that are applicable for the specific Host Set type.
 	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
