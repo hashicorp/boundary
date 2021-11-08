@@ -44,6 +44,17 @@ type DB struct {
 	*gorm.DB
 }
 
+// Debug will enable/disable debug info for the connection
+func (db *DB) Debug(on bool) {
+	if on {
+		// info level in the Gorm domain which maps to a debug level in the boundary domain
+		db.Logger = logger.Default.LogMode(logger.Info)
+	} else {
+		// the default level in the gorm domain is: error level
+		db.Logger = logger.Default.LogMode(logger.Error)
+	}
+}
+
 // SqlDB returns the underlying sql.DB
 //
 // Note: This func is not named DB(), because our choice of ORM (gorm) which is
