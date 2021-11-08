@@ -1,6 +1,7 @@
 package patchstruct
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -191,12 +192,14 @@ func TestPatchBytesErr(t *testing.T) {
 	t.Run("dst", func(t *testing.T) {
 		require := require.New(t)
 		_, err := PatchBytes([]byte("foo"), nil)
-		require.EqualValues(err.Error(), "error reading destination data: proto: cannot parse invalid wire-format data")
+		require.ErrorIs(err, proto.Error)
+		require.True(strings.HasPrefix(err.Error(), "error reading destination data: "))
 	})
 	t.Run("src", func(t *testing.T) {
 		require := require.New(t)
 		_, err := PatchBytes(nil, []byte("foo"))
-		require.EqualValues(err.Error(), "error reading source data: proto: cannot parse invalid wire-format data")
+		require.ErrorIs(err, proto.Error)
+		require.True(strings.HasPrefix(err.Error(), "error reading source data: "))
 	})
 }
 
