@@ -21,11 +21,11 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary/api v0.0.19
-	github.com/hashicorp/boundary/sdk v0.0.11
+	github.com/hashicorp/boundary/sdk v0.0.0-00010101000000-000000000000
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
-	github.com/hashicorp/eventlogger v0.1.1-0.20211104100552-e1e801e50144
+	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
