@@ -62,7 +62,7 @@ message HostSet {
 	// negative value will disable syncing for that host set; setting to zero
 	// will cause the set to use Boundary's default. The default may change
 	// between releases. May not be valid for all plugin types.
-	google.protobuf.Int32Value sync_interval_seconds = 102 [json_name="sync_interval_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"sync_interval_seconds" that: "sync_interval_seconds"}];
+	google.protobuf.Int32Value sync_interval_seconds = 102 [json_name="sync_interval_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"sync_interval_seconds" that: "SyncIntervalSeconds"}];
 
 	// The attributes that are applicable for the specific Host Set type.
 	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];

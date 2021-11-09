@@ -96,7 +96,7 @@ message HostSet {
 
   // Sync interval is a value representing a duration in seconds
   // @inject_tag: `gorm:"default:null"`
-  int32 sync_interval_seconds = 12 [(custom_options.v1.mask_mapping) = {this: "sync_interval_seconds" that: "sync_interval_seconds"}];
+  int32 sync_interval_seconds = 12 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
 }
 
 message HostCatalogSecret {

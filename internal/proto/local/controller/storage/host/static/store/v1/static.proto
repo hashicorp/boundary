@@ -109,7 +109,7 @@ message HostSet {
   // This is not used! This is here to satisfy mask manager requirements due to
   // shared API proto.
   // @inject_tag: `gorm:"-"`
-  int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {this: "sync_interval_seconds" that: "sync_interval_seconds"}];
+  int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
 }
 
 message HostSetMember {
