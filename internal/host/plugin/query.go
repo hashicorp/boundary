@@ -28,18 +28,10 @@ limit 1;
 `
 
 	setSyncJobQuery = `
-(
-  sync_interval_seconds is null
-    or
-  sync_interval_seconds > 0
-)
-  and
-(
-  need_sync
-    or
-  sync_interval_seconds is null and last_sync_time <= wt_add_seconds_to_now(?)
-    or
-  wt_add_seconds(sync_interval_seconds, last_sync_time) <= current_timestamp
-)
+need_sync
+  or
+sync_interval_seconds is null and last_sync_time <= wt_add_seconds_to_now(?)
+  or
+sync_interval_seconds > 0 and wt_add_seconds(sync_interval_seconds, last_sync_time) <= current_timestamp
 `
 )

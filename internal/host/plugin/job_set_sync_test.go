@@ -250,7 +250,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 				lastSyncTime:        timestamp.New(time.Unix(0, 0)),
 				needsSync:           true,
 			},
-			expectSync: false,
+			expectSync: true,
 		},
 		{
 			name: "synced-just-now",
@@ -275,7 +275,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 				lastSyncTime:        timestamp.Now(),
 				needsSync:           true,
 			},
-			expectSync: false,
+			expectSync: true,
 		},
 		{
 			name: "synced-30-seconds-ago-default-time",
