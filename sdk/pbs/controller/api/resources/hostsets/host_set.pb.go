@@ -59,15 +59,16 @@ type HostSet struct {
 	// multiple possible endpoints for a host. Preferences are specified by
 	// "cidr:<valid IPv4/6 CIDR>" or "dns:<globbed name>", specifying which IP
 	// address or DNS name out of a host's available possibilities should be
-	// preferred. If no preferences are specified, a value will be chosen _at
-	// random_ from all available values. May not be valid for all plugin types.
+	// preferred. If no preferences are specified, a value will be chosen from
+	// among all avialable values using a built-in priority order. May not be
+	// valid for all plugin types.
 	PreferredEndpoints []string `protobuf:"bytes,101,rep,name=preferred_endpoints,proto3" json:"preferred_endpoints,omitempty"`
 	// An interger number of seconds indicating the amount of time that should
 	// elapse between syncs of the host set. The interval will be applied to the
 	// end of the previous sync operation, not the start. Setting to any
 	// negative value will disable syncing for that host set; setting to zero
-	// (or null) will cause the set to use Boundary's default. The default may
-	// change between releases. May not be valid for all plugin types.
+	// will cause the set to use Boundary's default. The default may change
+	// between releases. May not be valid for all plugin types.
 	SyncIntervalSeconds *wrapperspb.Int32Value `protobuf:"bytes,102,opt,name=sync_interval_seconds,proto3" json:"sync_interval_seconds,omitempty"`
 	// The attributes that are applicable for the specific Host Set type.
 	Attributes *structpb.Struct `protobuf:"bytes,110,opt,name=attributes,proto3" json:"attributes,omitempty"`

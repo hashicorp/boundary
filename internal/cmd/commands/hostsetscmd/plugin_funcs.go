@@ -70,8 +70,9 @@ func extraPluginFlagsFuncImpl(c *PluginCommand, set *base.FlagSets, f *base.Flag
 					`or "dns:<globbed name>", specifying which IP address or DNS name out ` +
 					`of a host's available possibilities should be preferred. May be specified ` +
 					`multiple times, which will build up an in-order set of preferences. ` +
-					`If no preferences are specified, a value will be chosen _at random_ from ` +
-					`all available values. May not be valid for all plugin types.`,
+					`If no preferences are specified, a value will be chosen from among all ` +
+					`available values using a built-in priority order. May not be valid ` +
+					`for all plugin types.`,
 			})
 		case "sync-interval":
 			fs.StringVar(&base.StringVar{
@@ -80,9 +81,8 @@ func extraPluginFlagsFuncImpl(c *PluginCommand, set *base.FlagSets, f *base.Flag
 				Usage: `An interger number of seconds, or a string such as "400s", "5m", or "6h", ` +
 					"indicating the amount of time that should elapse between syncs of the host set. " +
 					"The interval will be applied to the end of the previous sync operation, not the start. " +
-					"Setting to any negative value will disable syncing for that host set; setting to zero " +
-					"(or null) will cause the set to use Boundary's default. The default may change between " +
-					"releases.",
+					"Setting to any negative value will disable syncing for that host set; setting to null " +
+					"will cause the set to use Boundary's default. The default may change between releases.",
 			})
 		}
 	}
