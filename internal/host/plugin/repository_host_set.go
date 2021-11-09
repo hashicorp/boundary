@@ -225,6 +225,12 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	newSet := currentSet.clone()
 	var updateAttributes bool
 	var dbMask, nullFields []string
+	const (
+		endpointOpNoop   = "endpointOpDelete"
+		endpointOpDelete = "endpointOpDelete"
+		endpointOpUpdate = "endpointOpUpdate"
+	)
+	var endpointOp string = endPointOpNoop
 	for _, f := range fieldMask {
 		switch {
 		case strings.EqualFold("name", f) && s.Name == "":
@@ -240,10 +246,10 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			dbMask = append(dbMask, "description")
 			newSet.Description = s.Description
 		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) == 0:
-			nullFields = append(nullFields, "PreferredEndpoints")
+			endpointOp = endpointOpDelete
 			newSet.PreferredEndpoints = s.PreferredEndpoints
 		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) != 0:
-			nullFields = append(dbMask, "PreferredEndpoints")
+			endpointOp = endpointOpUpdate
 			newSet.PreferredEndpoints = s.PreferredEndpoints
 		case strings.EqualFold("attributes", strings.Split(f, ".")[0]):
 			// Flag attributes for updating. While multiple masks may be
@@ -307,6 +313,19 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
+	// Get the preferred endpoints to write out.
+	var preferredEndpoints []interface{}
+	if endpointOp == endpointOpUpdate {
+		preferredEndpoints = make([]interface{}, 0, len(newSet.PreferredEndpoints))
+		for i, e := range newSet.PreferredEndpoints {
+			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
+			if err != nil {
+				return nil, nil, errors.Wrap(ctx, err, op)
+			}
+			preferredEndpoints = append(preferredEndpoints, obj)
+		}
+	}
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
@@ -319,23 +338,69 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
+			ticket, err := w.GetTicket(s)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+
 			if len(dbMask) != 0 || len(nullFields) != 0 {
 				returnedSet = newSet.clone()
+
 				var err error
+				var hsOplogMsg oplog.Message
 				numUpdated, err = w.Update(
 					ctx,
 					returnedSet,
 					dbMask,
 					nullFields,
-					db.WithOplog(oplogWrapper, s.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+					db.NewOpLogMsg(&hsOplogMsg),
 					db.WithVersion(&version),
 				)
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
+
 				if numUpdated != 1 {
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
 				}
+
+				msgs = append(msgs, &hsOplogMsg)
+			}
+
+			switch endpointOp {
+			case endpoitOpDelete:
+				// Delete all old endpoint entries.
+				var peDeleteOplogMsg oplog.Message
+				_, err := w.Delete(ctx, &eput, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOpLogMsg(&peDeleteOplogMsg))
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				msgs = append(msgs, &peDeleteOplogMsg)
+
+			case endpointOpUpdate:
+				// Delete all old endpoint entries.
+				var peDeleteOplogMsg oplog.Message
+				_, err := w.Delete(ctx, &eput, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOpLogMsg(&peDeleteOplogMsg))
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				msgs = append(msgs, &peDeleteOplogMsg)
+
+				// Create the new entries.
+				peCreateOpLogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
+				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peOplogMsgs)); err != nil {
+					return err
+				}
+
+				msgs = append(msgs, peCreateOpLogMsgs...)
+			}
+
+			metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			return nil
