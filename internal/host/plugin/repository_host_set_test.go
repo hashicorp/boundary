@@ -739,17 +739,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 		},
 		{
 			name:        "update preferred endpoints",
-			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"10.0.0.0/24"})},
+			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"cidr:10.0.0.0/24"})},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Version remains same even though row is updated
-				checkUpdateSetRequestCurrentDescriptionNil(),
-				checkUpdateSetRequestNewDescriptionNil(),
-				checkDescription(""),
+				checkVersion(3),
 				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
-				checkUpdateSetRequestNewPreferredEndpoints([]string{"10.0.0.0/24"}),
-				checkPreferredEndpoints([]string{"10.0.0.0/24"}),
+				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -759,22 +756,18 @@ func TestRepository_UpdateSet(t *testing.T) {
 		},
 		{
 			name:        "update preferred endpoints to same",
-			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{})},
+			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Version remains same even though row is updated
-				checkUpdateSetRequestCurrentDescriptionNil(),
-				checkUpdateSetRequestNewDescriptionNil(),
-				checkDescription(""),
+				checkVersion(2),
 				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
-				checkPreferredEndpoints([]string{}),
+				checkPreferredEndpoints(nil),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumUpdated(1),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+				checkNumUpdated(0),
 			},
 		},
 		{
@@ -878,6 +871,29 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
+		{
+			name: "update name and preferred endpoints",
+			changeFuncs: []changeHostSetFunc{
+				changePreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				changeName("foo"),
+			},
+			version:   2,
+			fieldMask: []string{"name", "PreferredEndpoints"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateSetRequestCurrentNameNil(),
+				checkUpdateSetRequestNewName("foo"),
+				checkName("foo"),
+				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumUpdated(1),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
 	}
 
 	// Finally define a function for bringing the test subject host
@@ -946,10 +962,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 			// Quick assertion that the set is not nil and that the plugin
 			// ID in the catalog referenced by the set matches the plugin
-			// ID in the returned plugin. Use assert as that's what our
-			// checks use in the table test's defined checks.
-			assert.NotNil(gotSet)
-			assert.NotNil(gotPlugin)
+			// ID in the returned plugin.
+			require.NotNil(gotSet)
+			require.NotNil(gotPlugin)
 			assert.Equal(testCatalog.PublicId, gotSet.CatalogId)
 			assert.Equal(testCatalog.PluginId, gotPlugin.PublicId)
 			// Perform checks
