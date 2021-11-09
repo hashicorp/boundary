@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // CreateSet inserts s into the repository and returns a new HostSet
@@ -177,7 +178,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // record written, but some plugins may perform some actions on this
 // call. Update of the record in the database is aborted if this call
 // fails.
-func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, fieldMask []string, _ ...Option) (*HostSet, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMask []string, _ ...Option) (*HostSet, *hostplugin.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -188,8 +189,8 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 	if s.PublicId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if s.CatalogId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	if scopeId == "" {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
@@ -199,13 +200,13 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 	// sending it to the DB for updating so that we can run on
 	// OnUpdateSet. Note that the field masks are still used for
 	// updating.
-	sets, plg, err := r.getSets(ctx, s.PublicId, s.CatalogId)
+	sets, plg, err := r.getSets(ctx, s.PublicId, "")
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	if len(sets) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("host set not found for public id %q and catalog id %q", s.PublicId, s.CatalogId))
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("host set id %q not found", s.PublicId))
 	}
 
 	if len(sets) != 1 {
@@ -238,11 +239,11 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 		case strings.EqualFold("description", f) && s.Description != "":
 			dbMask = append(dbMask, "description")
 			newSet.Description = s.Description
-		case strings.EqualFold("preferred_endpoints", f) && len(s.PreferredEndpoints) == 0:
-			nullFields = append(nullFields, "preferred_endpoints")
+		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) == 0:
+			nullFields = append(nullFields, "PreferredEndpoints")
 			newSet.PreferredEndpoints = s.PreferredEndpoints
-		case strings.EqualFold("preferred_endpoints", f) && len(s.PreferredEndpoints) != 0:
-			nullFields = append(dbMask, "preferred_endpoints")
+		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) != 0:
+			nullFields = append(dbMask, "PreferredEndpoints")
 			newSet.PreferredEndpoints = s.PreferredEndpoints
 		case strings.EqualFold("attributes", strings.Split(f, ".")[0]):
 			// Flag attributes for updating. While multiple masks may be
@@ -266,6 +267,11 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 	catalog, persisted, err := r.getCatalog(ctx, newSet.CatalogId)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
+	}
+
+	// Assert that the catalog scope ID and supplied scope ID match.
+	if catalog.ScopeId != scopeId {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in scope id %q", newSet.CatalogId, scopeId))
 	}
 
 	// Get the plugin client.
@@ -301,7 +307,7 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, catalog.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -316,7 +322,7 @@ func (r *Repository) UpdateSet(ctx context.Context, s *HostSet, version uint32, 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
 				returnedSet = newSet.clone()
 				var err error
-				numUpdated, err := w.Update(
+				numUpdated, err = w.Update(
 					ctx,
 					returnedSet,
 					dbMask,
@@ -535,8 +541,19 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
+
+	var name, description *wrapperspb.StringValue
+	if inName := in.GetName(); inName != "" {
+		name = wrapperspb.String(inName)
+	}
+	if inDescription := in.GetDescription(); inDescription != "" {
+		description = wrapperspb.String(inDescription)
+	}
+
 	hs := &pb.HostSet{
-		Id: in.GetPublicId(),
+		Id:          in.GetPublicId(),
+		Name:        name,
+		Description: description,
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
