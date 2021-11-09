@@ -1027,7 +1027,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// Finally define a function for bringing the test subject catalog.
 	// This function also returns a function to clean up the catalog
 	// afterwards.
-	setupHostCatalog := func(t *testing.T, ctx context.Context) (*HostCatalog, func()) {
+	setupHostCatalog := func(t *testing.T, ctx context.Context) *HostCatalog {
 		t.Helper()
 		require := require.New(t)
 
@@ -1055,15 +1055,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		require.NoError(err)
 		require.Equal(1, secretsUpdated)
 
-		cleanupFunc := func() {
+		t.Cleanup(func() {
 			t.Helper()
 			assert := assert.New(t)
 			n, err := dbRW.Delete(ctx, cat)
 			assert.NoError(err)
 			assert.Equal(1, n)
-		}
+		})
 
-		return cat, cleanupFunc
+		return cat
 	}
 
 	for _, tt := range tests {
@@ -1071,15 +1071,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			origCat, cleanup := setupHostCatalog(t, ctx)
-			defer cleanup()
+			origCat := setupHostCatalog(t, ctx)
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
 			pluginError = tt.withPluginError
-			defer func() { pluginError = nil }()
+			t.Cleanup(func() { pluginError = nil })
 			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
@@ -1098,7 +1097,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			defer func() { gotOnUpdateCatalogRequest = nil }()
+			t.Cleanup(func() { gotOnUpdateCatalogRequest = nil })
 
 			// Quick assertion that the catalog is not nil and that the plugin ID in
 			// the catalog and the plugin ID in the returned plugin match. Use assert
