@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
@@ -226,11 +227,11 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	var updateAttributes bool
 	var dbMask, nullFields []string
 	const (
-		endpointOpNoop   = "endpointOpDelete"
+		endpointOpNoop   = "endpointOpNoop"
 		endpointOpDelete = "endpointOpDelete"
 		endpointOpUpdate = "endpointOpUpdate"
 	)
-	var endpointOp string = endPointOpNoop
+	var endpointOp string = endpointOpNoop
 	for _, f := range fieldMask {
 		switch {
 		case strings.EqualFold("name", f) && s.Name == "":
@@ -320,7 +321,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		for i, e := range newSet.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
 			if err != nil {
-				return nil, nil, errors.Wrap(ctx, err, op)
+				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			preferredEndpoints = append(preferredEndpoints, obj)
 		}
@@ -331,7 +332,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var numUpdated int
+	var recordUpdated bool
 	var returnedSet *HostSet
 	_, err = r.writer.DoTx(
 		ctx,
@@ -346,15 +347,13 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
 				returnedSet = newSet.clone()
-
-				var err error
 				var hsOplogMsg oplog.Message
-				numUpdated, err = w.Update(
+				numUpdated, err := w.Update(
 					ctx,
 					returnedSet,
 					dbMask,
 					nullFields,
-					db.NewOpLogMsg(&hsOplogMsg),
+					db.NewOplogMsg(&hsOplogMsg),
 					db.WithVersion(&version),
 				)
 				if err != nil {
@@ -365,42 +364,117 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
 				}
 
+				recordUpdated = true
 				msgs = append(msgs, &hsOplogMsg)
 			}
 
 			switch endpointOp {
-			case endpoitOpDelete:
+			case endpointOpDelete:
 				// Delete all old endpoint entries.
 				var peDeleteOplogMsg oplog.Message
-				_, err := w.Delete(ctx, &eput, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOpLogMsg(&peDeleteOplogMsg))
+				pep := &host.PreferredEndpoint{
+					PreferredEndpoint: &store.PreferredEndpoint{
+						HostSetId: newSet.PublicId,
+						Priority:  1,
+					},
+				}
+				_, err := w.Delete(ctx, pep, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOplogMsg(&peDeleteOplogMsg))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 
-				msgs = append(msgs, &peDeleteOplogMsg)
+				// Only append the oplog message if an operation was actually
+				// performed.
+				if peDeleteOplogMsg.Message != nil {
+					if !recordUpdated {
+						// we only updated secrets, so we need to increment the
+						// version of the host catalog manually.
+						returnedSet = newSet.clone()
+						returnedSet.Version = uint32(version) + 1
+						var hsOplogMsg oplog.Message
+						numUpdated, err := w.Update(
+							ctx,
+							returnedSet,
+							[]string{"version"},
+							[]string{},
+							db.NewOplogMsg(&hsOplogMsg),
+							db.WithVersion(&version),
+						)
+						if err != nil {
+							return errors.Wrap(ctx, err, op)
+						}
+
+						if numUpdated != 1 {
+							return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+						}
+
+						recordUpdated = true
+						msgs = append(msgs, &hsOplogMsg)
+					}
+
+					msgs = append(msgs, &peDeleteOplogMsg)
+				}
 
 			case endpointOpUpdate:
 				// Delete all old endpoint entries.
 				var peDeleteOplogMsg oplog.Message
-				_, err := w.Delete(ctx, &eput, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOpLogMsg(&peDeleteOplogMsg))
+				pep := &host.PreferredEndpoint{
+					PreferredEndpoint: &store.PreferredEndpoint{
+						HostSetId: newSet.PublicId,
+						Priority:  1,
+					},
+				}
+				_, err := w.Delete(ctx, pep, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOplogMsg(&peDeleteOplogMsg))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 
-				msgs = append(msgs, &peDeleteOplogMsg)
+				// Only append the oplog message if an operation was actually
+				// performed.
+				if peDeleteOplogMsg.Message != nil {
+					msgs = append(msgs, &peDeleteOplogMsg)
+				}
 
 				// Create the new entries.
-				peCreateOpLogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
-				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peOplogMsgs)); err != nil {
+				peCreateOplogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
+				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peCreateOplogMsgs)); err != nil {
 					return err
 				}
 
-				msgs = append(msgs, peCreateOpLogMsgs...)
+				if !recordUpdated {
+					// we only updated secrets, so we need to increment the
+					// version of the host catalog manually.
+					returnedSet = newSet.clone()
+					returnedSet.Version = uint32(version) + 1
+					var hsOplogMsg oplog.Message
+					numUpdated, err := w.Update(
+						ctx,
+						returnedSet,
+						[]string{"version"},
+						[]string{},
+						db.NewOplogMsg(&hsOplogMsg),
+						db.WithVersion(&version),
+					)
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+
+					if numUpdated != 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+					}
+
+					recordUpdated = true
+					msgs = append(msgs, &hsOplogMsg)
+				}
+
+				msgs = append(msgs, peCreateOplogMsgs...)
 			}
 
-			metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+			if len(msgs) != 0 {
+				metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
 			}
 
 			return nil
@@ -412,6 +486,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
 		}
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
+	}
+
+	var numUpdated int
+	if recordUpdated {
+		numUpdated = 1
+	} else {
+		// Nothing updated, so returned set will not have been cloned.
+		// Clone it now.
+		returnedSet = newSet.clone()
 	}
 
 	return returnedSet, plg, numUpdated, nil
@@ -616,9 +699,10 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 	}
 
 	hs := &pb.HostSet{
-		Id:          in.GetPublicId(),
-		Name:        name,
-		Description: description,
+		Id:                 in.GetPublicId(),
+		Name:               name,
+		Description:        description,
+		PreferredEndpoints: in.GetPreferredEndpoints(),
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
