@@ -75,11 +75,6 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	var preferredEndpoints []interface{}
 	if s.PreferredEndpoints != nil {
@@ -97,6 +92,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var calledPluginSuccessfully bool
 
 	var returnedHostSet *HostSet
 	_, err = r.writer.DoTx(
@@ -124,6 +121,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return err
 				}
 				msgs = append(msgs, peOplogMsgs...)
+			}
+
+			if !calledPluginSuccessfully {
+				if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				calledPluginSuccessfully = true
 			}
 
 			metadata := s.oplog(oplog.OpType_OP_TYPE_CREATE)
