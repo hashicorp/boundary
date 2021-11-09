@@ -19,6 +19,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	db.TestCreateTables(t, conn)
 
 	// create initial user for on conflict tests
 	id, err := db.NewPublicId("test-user")
