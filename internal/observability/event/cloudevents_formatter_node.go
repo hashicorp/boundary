@@ -67,8 +67,26 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 			n.deny = append(n.deny, f)
 		}
 	}
+	defaultDenyFilters, err := defaultCloudEventsDenyFilters()
+	if err != nil {
+		return nil, err
+	}
+	n.deny = append(n.deny, defaultDenyFilters...)
 	n.Predicate = newPredicate(n.allow, n.deny)
 	return &n, nil
+}
+
+func defaultCloudEventsDenyFilters() ([]*filter, error) {
+	const (
+		op = "event.defaultCloudEventsDenyFilters"
+		// denyWorkStatusEvents is a default filter for worker to controller API status requests
+		denyWorkStatusEvents = `"/Data/RequestInfo/Method" contains "ServerCoordinationService/Status"`
+	)
+	f, err := newFilter(denyWorkStatusEvents)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to create deny filter for worker status events '%s': %w", op, denyWorkStatusEvents, err)
+	}
+	return []*filter{f}, nil
 }
 
 // Rotate supports rotating the filter's wrapper. No options are currently
