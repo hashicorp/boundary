@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/requests"
+	commonSrv "github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -267,4 +268,40 @@ func auditResponseInterceptor(
 
 		return resp, err
 	}
+}
+
+func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (grpc.UnaryServerInterceptor, error) {
+	const op = "worker.requestInfoInterceptor"
+	if eventer == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
+
+	}
+	return func(interceptorCtx context.Context,
+		req interface{},
+		srvInfo *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler) (interface{}, error) {
+		var err error
+		id, err := event.NewId(event.IdPrefix)
+		if err != nil {
+			event.WriteError(interceptorCtx, op, err, event.WithInfoMsg("unable to create id for event", "method", srvInfo.FullMethod))
+			return nil, status.Errorf(codes.Internal, "Error creating id for event: %v", err)
+		}
+		info := &event.RequestInfo{
+			EventId: id,
+			Id:      commonSrv.GeneratedTraceId(interceptorCtx),
+			Method:  srvInfo.FullMethod,
+		}
+		interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
+		if err != nil {
+			event.WriteError(interceptorCtx, op, err, event.WithInfoMsg("unable to create context with request info", "method", srvInfo.FullMethod))
+			return nil, status.Errorf(codes.Internal, "Error creating context with request info: %v", err)
+		}
+		interceptorCtx, err = event.NewEventerContext(interceptorCtx, eventer)
+		if err != nil {
+			event.WriteError(interceptorCtx, op, err, event.WithInfoMsg("unable to create context with eventer", "method", srvInfo.FullMethod))
+			return nil, status.Errorf(codes.Internal, "Error creating context with eventer: %v", err)
+		}
+		// call the handler...
+		return handler(interceptorCtx, req)
+	}, nil
 }
