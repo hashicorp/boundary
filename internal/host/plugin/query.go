@@ -20,13 +20,7 @@ delete from host_plugin_catalog_secret
 	// FIXME: This needs to take into account sync_interval_seconds being positive
 	setSyncNextRunInQuery = `
 select
-  case
-    when sync_interval_seconds = -1
-      then
-        false
-      else
-        need_sync
-  end sync_now,
+  need_sync as sync_now,
 	extract(epoch from (least(now(), last_sync_time) + ?) - now())::int as resync_in
 from host_plugin_set
 order by need_sync desc, last_sync_time desc
