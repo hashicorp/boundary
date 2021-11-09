@@ -28,10 +28,10 @@ type LookupSessionRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The session ID from the client
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The name of the requesting worker, used for filtering to ensure this
 	// worker is allowed to handle this session.
-	ServerId string `protobuf:"bytes,20,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
+	ServerId string `protobuf:"bytes,20,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *LookupSessionRequest) Reset() {
@@ -88,17 +88,17 @@ type LookupSessionResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	Authorization   *targets.SessionAuthorizationData `protobuf:"bytes,10,opt,name=authorization,proto3" json:"authorization,omitempty"`
-	TofuToken       string                            `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty"`
-	Version         uint32                            `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty"`
-	Endpoint        string                            `protobuf:"bytes,40,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	Expiration      *timestamppb.Timestamp            `protobuf:"bytes,50,opt,name=expiration,proto3" json:"expiration,omitempty"`
-	Status          SESSIONSTATUS                     `protobuf:"varint,60,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
-	ConnectionLimit int32                             `protobuf:"varint,70,opt,name=connection_limit,json=connectionLimit,proto3" json:"connection_limit,omitempty"`
-	ConnectionsLeft int32                             `protobuf:"varint,80,opt,name=connections_left,json=connectionsLeft,proto3" json:"connections_left,omitempty"`
-	HostId          string                            `protobuf:"bytes,90,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
-	HostSetId       string                            `protobuf:"bytes,100,opt,name=host_set_id,json=hostSetId,proto3" json:"host_set_id,omitempty"`
-	TargetId        string                            `protobuf:"bytes,110,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
-	UserId          string                            `protobuf:"bytes,120,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	TofuToken       string                            `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty" class:"secret"`                             // @gotags: `class:"secret"`
+	Version         uint32                            `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                                 // @gotags: `class:"public"`
+	Endpoint        string                            `protobuf:"bytes,40,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"`                                                // @gotags: `class:"public"`
+	Expiration      *timestamppb.Timestamp            `protobuf:"bytes,50,opt,name=expiration,proto3" json:"expiration,omitempty" class:"public"`                                            // @gotags: `class:"public"`
+	Status          SESSIONSTATUS                     `protobuf:"varint,60,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
+	ConnectionLimit int32                             `protobuf:"varint,70,opt,name=connection_limit,json=connectionLimit,proto3" json:"connection_limit,omitempty" class:"public"`          // @gotags: `class:"public"`
+	ConnectionsLeft int32                             `protobuf:"varint,80,opt,name=connections_left,json=connectionsLeft,proto3" json:"connections_left,omitempty" class:"public"`          // @gotags: `class:"public"`
+	HostId          string                            `protobuf:"bytes,90,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty" class:"public"`                                      // @gotags: `class:"public"`
+	HostSetId       string                            `protobuf:"bytes,100,opt,name=host_set_id,json=hostSetId,proto3" json:"host_set_id,omitempty" class:"public"`                          // @gotags: `class:"public"`
+	TargetId        string                            `protobuf:"bytes,110,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty" class:"public"`                               // @gotags: `class:"public"`
+	UserId          string                            `protobuf:"bytes,120,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty" class:"public"`                                     // @gotags: `class:"public"`
 }
 
 func (x *LookupSessionResponse) Reset() {
@@ -222,11 +222,11 @@ type ActivateSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId string        `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TofuToken string        `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty"`
-	Version   uint32        `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty"`
-	WorkerId  string        `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
-	Status    SESSIONSTATUS `protobuf:"varint,50,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
+	SessionId string        `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"`                             // @gotags: `class:"public"`
+	TofuToken string        `protobuf:"bytes,20,opt,name=tofu_token,json=tofuToken,proto3" json:"tofu_token,omitempty" class:"secret"`                             // @gotags: `class:"secret"`
+	Version   uint32        `protobuf:"varint,30,opt,name=version,proto3" json:"version,omitempty" class:"public"`                                                 // @gotags: `class:"public"`
+	WorkerId  string        `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public"`                                // @gotags: `class:"public"`
+	Status    SESSIONSTATUS `protobuf:"varint,50,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *ActivateSessionRequest) Reset() {
@@ -301,7 +301,7 @@ type ActivateSessionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Status SESSIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
+	Status SESSIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *ActivateSessionResponse) Reset() {
@@ -348,7 +348,7 @@ type CancelSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CancelSessionRequest) Reset() {
@@ -395,7 +395,7 @@ type CancelSessionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Status SESSIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
+	Status SESSIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CancelSessionResponse) Reset() {
@@ -442,8 +442,8 @@ type AuthorizeConnectionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	WorkerId  string `protobuf:"bytes,20,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	WorkerId  string `protobuf:"bytes,20,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public"`    // @gotags: `class:"public"`
 }
 
 func (x *AuthorizeConnectionRequest) Reset() {
@@ -497,9 +497,9 @@ type AuthorizeConnectionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ConnectionId    string           `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	Status          CONNECTIONSTATUS `protobuf:"varint,20,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty"`
-	ConnectionsLeft int32            `protobuf:"varint,30,opt,name=connections_left,json=connectionsLeft,proto3" json:"connections_left,omitempty"`
+	ConnectionId    string           `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public"`                       // @gotags: `class:"public"`
+	Status          CONNECTIONSTATUS `protobuf:"varint,20,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
+	ConnectionsLeft int32            `protobuf:"varint,30,opt,name=connections_left,json=connectionsLeft,proto3" json:"connections_left,omitempty" class:"public"`             // @gotags: `class:"public"`
 }
 
 func (x *AuthorizeConnectionResponse) Reset() {
@@ -560,12 +560,12 @@ type ConnectConnectionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ConnectionId       string `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	ClientTcpAddress   string `protobuf:"bytes,20,opt,name=client_tcp_address,json=clientTcpAddress,proto3" json:"client_tcp_address,omitempty"`
-	ClientTcpPort      uint32 `protobuf:"varint,30,opt,name=client_tcp_port,json=clientTcpPort,proto3" json:"client_tcp_port,omitempty"`
-	EndpointTcpAddress string `protobuf:"bytes,40,opt,name=endpoint_tcp_address,json=endpointTcpAddress,proto3" json:"endpoint_tcp_address,omitempty"`
-	EndpointTcpPort    uint32 `protobuf:"varint,50,opt,name=endpoint_tcp_port,json=endpointTcpPort,proto3" json:"endpoint_tcp_port,omitempty"`
-	Type               string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty"`
+	ConnectionId       string `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public"`                     // @gotags: `class:"public"`
+	ClientTcpAddress   string `protobuf:"bytes,20,opt,name=client_tcp_address,json=clientTcpAddress,proto3" json:"client_tcp_address,omitempty" class:"public"`       // @gotags: `class:"public"`
+	ClientTcpPort      uint32 `protobuf:"varint,30,opt,name=client_tcp_port,json=clientTcpPort,proto3" json:"client_tcp_port,omitempty" class:"public"`               // @gotags: `class:"public"`
+	EndpointTcpAddress string `protobuf:"bytes,40,opt,name=endpoint_tcp_address,json=endpointTcpAddress,proto3" json:"endpoint_tcp_address,omitempty" class:"public"` // @gotags: `class:"public"`
+	EndpointTcpPort    uint32 `protobuf:"varint,50,opt,name=endpoint_tcp_port,json=endpointTcpPort,proto3" json:"endpoint_tcp_port,omitempty" class:"public"`         // @gotags: `class:"public"`
+	Type               string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty" class:"public"`                                                         // @gotags: `class:"public"`
 }
 
 func (x *ConnectConnectionRequest) Reset() {
@@ -647,7 +647,7 @@ type ConnectConnectionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Status CONNECTIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty"`
+	Status CONNECTIONSTATUS `protobuf:"varint,10,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *ConnectConnectionResponse) Reset() {
@@ -694,10 +694,10 @@ type CloseConnectionRequestData struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ConnectionId string `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	BytesUp      uint64 `protobuf:"varint,20,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty"`
-	BytesDown    uint64 `protobuf:"varint,30,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty"`
-	Reason       string `protobuf:"bytes,40,opt,name=reason,proto3" json:"reason,omitempty"`
+	ConnectionId string `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	BytesUp      uint64 `protobuf:"varint,20,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty" class:"public"`               // @gotags: `class:"public"`
+	BytesDown    uint64 `protobuf:"varint,30,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty" class:"public"`         // @gotags: `class:"public"`
+	Reason       string `protobuf:"bytes,40,opt,name=reason,proto3" json:"reason,omitempty" class:"public"`                                 // @gotags: `class:"public"`
 }
 
 func (x *CloseConnectionRequestData) Reset() {
@@ -765,7 +765,7 @@ type CloseConnectionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	CloseRequestData []*CloseConnectionRequestData `protobuf:"bytes,10,rep,name=close_request_data,json=closeRequestData,proto3" json:"close_request_data,omitempty"`
+	CloseRequestData []*CloseConnectionRequestData `protobuf:"bytes,10,rep,name=close_request_data,json=closeRequestData,proto3" json:"close_request_data,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CloseConnectionRequest) Reset() {
@@ -813,7 +813,7 @@ type CloseConnectionResponseData struct {
 	unknownFields protoimpl.UnknownFields
 
 	ConnectionId string           `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	Status       CONNECTIONSTATUS `protobuf:"varint,20,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty"`
+	Status       CONNECTIONSTATUS `protobuf:"varint,20,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CloseConnectionResponseData) Reset() {
@@ -867,7 +867,7 @@ type CloseConnectionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	CloseResponseData []*CloseConnectionResponseData `protobuf:"bytes,10,rep,name=close_response_data,json=closeResponseData,proto3" json:"close_response_data,omitempty"`
+	CloseResponseData []*CloseConnectionResponseData `protobuf:"bytes,10,rep,name=close_response_data,json=closeResponseData,proto3" json:"close_response_data,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CloseConnectionResponse) Reset() {

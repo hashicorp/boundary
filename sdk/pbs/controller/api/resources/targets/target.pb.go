@@ -755,7 +755,7 @@ type WorkerInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The address of the worker.
-	Address string `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty"`
+	Address string `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *WorkerInfo) Reset() {
@@ -804,25 +804,25 @@ type SessionAuthorizationData struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the Target authorizing this session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this the Target that authorized this session.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Type of the session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
 	ConnectionLimit int32 `protobuf:"varint,90,opt,name=connection_limit,proto3" json:"connection_limit,omitempty"`
 	// Output only. The certificate to use when connecting. Raw DER bytes.
-	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
-	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty"`
+	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
-	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The endpoint, for some special command handling.
-	Endpoint string `protobuf:"bytes,141,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Endpoint string `protobuf:"bytes,141,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Worker information. The first worker in the array should be prioritized.
 	WorkerInfo []*WorkerInfo `protobuf:"bytes,150,rep,name=worker_info,proto3" json:"worker_info,omitempty"`
 }
@@ -943,25 +943,25 @@ type SessionAuthorization struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the Target authorizing this Session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The User for which this Session was authorized.
-	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host Set containing the Host being used for this Session.
-	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty"`
+	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host whose address is being used as the endpoint for this Session.
-	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty"`
+	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
-	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty"`
+	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty" class:"private"` // @gotags: `class:"private"`
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
-	Endpoint string `protobuf:"bytes,100,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Endpoint string `protobuf:"bytes,100,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The credentials for this session.
 	Credentials []*SessionCredential `protobuf:"bytes,110,rep,name=credentials,proto3" json:"credentials,omitempty"`
 }

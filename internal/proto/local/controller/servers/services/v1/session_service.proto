@@ -9,111 +9,111 @@ import "controller/api/resources/targets/v1/target.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
 
 service SessionService {
-	// GetSession allows a worker to retrieve session information from the
-	// controller.
-	rpc LookupSession(LookupSessionRequest) returns (LookupSessionResponse) {}
-	
-	// ActivateSession allows a worker to activate a session on a controller.
-	rpc ActivateSession(ActivateSessionRequest) returns (ActivateSessionResponse) {}
+  // GetSession allows a worker to retrieve session information from the
+  // controller.
+  rpc LookupSession(LookupSessionRequest) returns (LookupSessionResponse) {}
 
-	// CancelSession allows a worker to request that the controller cancel a session.
-	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {}
+  // ActivateSession allows a worker to activate a session on a controller.
+  rpc ActivateSession(ActivateSessionRequest) returns (ActivateSessionResponse) {}
 
-	// AuthorizeConnection allows a worker to authorize a connection on a controller.
-	rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
+  // CancelSession allows a worker to request that the controller cancel a session.
+  rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {}
 
-	// ConnectConnection updates a connection to set it to connected
-	rpc ConnectConnection(ConnectConnectionRequest) returns (ConnectConnectionResponse) {}
+  // AuthorizeConnection allows a worker to authorize a connection on a controller.
+  rpc AuthorizeConnection(AuthorizeConnectionRequest) returns (AuthorizeConnectionResponse) {}
 
-	// CloseConnections updates a connection to set it to closed
-	rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse) {}
+  // ConnectConnection updates a connection to set it to connected
+  rpc ConnectConnection(ConnectConnectionRequest) returns (ConnectConnectionResponse) {}
+
+  // CloseConnections updates a connection to set it to closed
+  rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse) {}
 }
 
 message LookupSessionRequest {
-	// The session ID from the client
-	string session_id = 10;
-	// The name of the requesting worker, used for filtering to ensure this
-	// worker is allowed to handle this session.
-	string server_id = 20;
+  // The session ID from the client
+  string session_id = 10;  // @gotags: `class:"public"`
+  // The name of the requesting worker, used for filtering to ensure this
+  // worker is allowed to handle this session.
+  string server_id = 20;  // @gotags: `class:"public"`
 }
 
 // LookupSessionResponse contains information necessary for a client to
 // establish a session.
 message LookupSessionResponse {
-	api.resources.targets.v1.SessionAuthorizationData authorization = 10;
-	string tofu_token = 20;
-	uint32 version = 30;
-	string endpoint = 40;
-	google.protobuf.Timestamp expiration = 50;
-	controller.servers.services.v1.SESSIONSTATUS status = 60;
-	int32 connection_limit = 70;
-	int32 connections_left = 80;
-	string host_id = 90;
-	string host_set_id = 100;
-	string target_id = 110;
-	string user_id = 120;
+  api.resources.targets.v1.SessionAuthorizationData authorization = 10;
+  string tofu_token = 20;                                    // @gotags: `class:"secret"`
+  uint32 version = 30;                                       // @gotags: `class:"public"`
+  string endpoint = 40;                                      // @gotags: `class:"public"`
+  google.protobuf.Timestamp expiration = 50;                 // @gotags: `class:"public"`
+  controller.servers.services.v1.SESSIONSTATUS status = 60;  // @gotags: `class:"public"`
+  int32 connection_limit = 70;                               // @gotags: `class:"public"`
+  int32 connections_left = 80;                               // @gotags: `class:"public"`
+  string host_id = 90;                                       // @gotags: `class:"public"`
+  string host_set_id = 100;                                  // @gotags: `class:"public"`
+  string target_id = 110;                                    // @gotags: `class:"public"`
+  string user_id = 120;                                      // @gotags: `class:"public"`
 }
 
 message ActivateSessionRequest {
-	string session_id = 10;
-	string tofu_token = 20;
-	uint32 version = 30;
-	string worker_id = 40;
-	controller.servers.services.v1.SESSIONSTATUS status = 50;
+  string session_id = 10;                                    // @gotags: `class:"public"`
+  string tofu_token = 20;                                    // @gotags: `class:"secret"`
+  uint32 version = 30;                                       // @gotags: `class:"public"`
+  string worker_id = 40;                                     // @gotags: `class:"public"`
+  controller.servers.services.v1.SESSIONSTATUS status = 50;  // @gotags: `class:"public"`
 }
 
 message ActivateSessionResponse {
-	controller.servers.services.v1.SESSIONSTATUS status = 10;
+  controller.servers.services.v1.SESSIONSTATUS status = 10;  // @gotags: `class:"public"`
 }
 
 message CancelSessionRequest {
-	string session_id = 10;
+  string session_id = 10;  // @gotags: `class:"public"`
 }
 
 message CancelSessionResponse {
-	controller.servers.services.v1.SESSIONSTATUS status = 10;
+  controller.servers.services.v1.SESSIONSTATUS status = 10;  // @gotags: `class:"public"`
 }
 
 message AuthorizeConnectionRequest {
-	string session_id = 10;
-	string worker_id = 20;
+  string session_id = 10;  // @gotags: `class:"public"`
+  string worker_id = 20;   // @gotags: `class:"public"`
 }
 
 message AuthorizeConnectionResponse {
-	string connection_id = 10;
-	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
-	int32 connections_left = 30;
+  string connection_id = 10;                                    // @gotags: `class:"public"`
+  controller.servers.services.v1.CONNECTIONSTATUS status = 20;  // @gotags: `class:"public"`
+  int32 connections_left = 30;                                  // @gotags: `class:"public"`
 }
 
 message ConnectConnectionRequest {
-	string connection_id = 10;
-	string client_tcp_address = 20;
-	uint32 client_tcp_port = 30;
-	string endpoint_tcp_address = 40;
-	uint32 endpoint_tcp_port = 50;
-	string type = 60;
+  string connection_id = 10;         // @gotags: `class:"public"`
+  string client_tcp_address = 20;    // @gotags: `class:"public"`
+  uint32 client_tcp_port = 30;       // @gotags: `class:"public"`
+  string endpoint_tcp_address = 40;  // @gotags: `class:"public"`
+  uint32 endpoint_tcp_port = 50;     // @gotags: `class:"public"`
+  string type = 60;                  // @gotags: `class:"public"`
 }
 
 message ConnectConnectionResponse {
-	controller.servers.services.v1.CONNECTIONSTATUS status = 10;
+  controller.servers.services.v1.CONNECTIONSTATUS status = 10;  // @gotags: `class:"public"`
 }
 
 message CloseConnectionRequestData {
-	string connection_id = 10;
-	uint64 bytes_up = 20;
-	uint64 bytes_down = 30;
-	string reason = 40;
+  string connection_id = 10;  // @gotags: `class:"public"`
+  uint64 bytes_up = 20;       // @gotags: `class:"public"`
+  uint64 bytes_down = 30;     // @gotags: `class:"public"`
+  string reason = 40;         // @gotags: `class:"public"`
 }
 
 message CloseConnectionRequest {
-	repeated CloseConnectionRequestData close_request_data = 10;
+  repeated CloseConnectionRequestData close_request_data = 10;  // @gotags: `class:"public"`
 }
 
 message CloseConnectionResponseData {
-	string connection_id = 10;
-	controller.servers.services.v1.CONNECTIONSTATUS status = 20;
+  string connection_id = 10;
+  controller.servers.services.v1.CONNECTIONSTATUS status = 20;  // @gotags: `class:"public"`
 }
 
 message CloseConnectionResponse {
-	repeated CloseConnectionResponseData close_response_data = 10;
+  repeated CloseConnectionResponseData close_response_data = 10;  // @gotags: `class:"public"`
 }
