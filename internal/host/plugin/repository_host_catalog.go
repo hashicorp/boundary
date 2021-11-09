@@ -60,6 +60,14 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	}
 	c.PublicId = id
 
+	// Use PatchBytes' functionality that does not add keys where the values
+	// are nil to the resulting struct since we do not want to store nil valued
+	// attributes.
+	c.Attributes, err = patchstruct.PatchBytes([]byte{}, c.Attributes)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)

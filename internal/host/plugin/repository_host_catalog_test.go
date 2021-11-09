@@ -188,7 +188,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ScopeId:  prj.GetPublicId(),
 					PluginId: plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						st, err := structpb.NewStruct(map[string]interface{}{
+							"k1": "foo",
+							"nilkey": nil,
+						})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
 						require.NoError(t, err)

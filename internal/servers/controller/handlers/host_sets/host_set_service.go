@@ -37,7 +37,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
-		static.Subtype: action.ActionSet{
+		static.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -46,7 +46,7 @@ var (
 			action.SetHosts,
 			action.RemoveHosts,
 		},
-		plugin.Subtype: action.ActionSet{
+		plugin.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
