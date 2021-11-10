@@ -158,8 +158,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 // UpdateSet updates the repository for host set entry s with the
 // values populated, for the fields listed in fieldMask. It returns a
-// new HostSet containing the updated values and a count of the
-// number of records updated. s is not changed.
+// new HostSet containing the updated values, the hosts in the set,
+// and a count of the number of records updated. s is not changed.
 //
 // s must contain a valid PublicId and CatalogId. Name, Description,
 // Attributes, and PreferredEndpoints can be updated. Name must be
@@ -179,22 +179,22 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // record written, but some plugins may perform some actions on this
 // call. Update of the record in the database is aborted if this call
 // fails.
-func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMask []string, _ ...Option) (*HostSet, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateSet"
 	if s == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	if scopeId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	// Get the old set first. We patch the record first before
@@ -203,15 +203,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	// updating.
 	sets, plg, err := r.getSets(ctx, s.PublicId, "")
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	if len(sets) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("host set id %q not found", s.PublicId))
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("host set id %q not found", s.PublicId))
 	}
 
 	if len(sets) != 1 {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected amount of sets found, want=1, got=%d", len(sets)))
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected amount of sets found, want=1, got=%d", len(sets)))
 	}
 
 	currentSet := sets[0]
@@ -219,7 +219,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	// Assert the version of the current set to make sure we're
 	// updating the correct one.
 	if currentSet.GetVersion() != version {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("set version mismatch, want=%d, got=%d", currentSet.GetVersion(), version))
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("set version mismatch, want=%d, got=%d", currentSet.GetVersion(), version))
 	}
 
 	// Clone the set so that we can set fields.
@@ -258,7 +258,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			updateAttributes = true
 
 		default:
-			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 
@@ -266,52 +266,40 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		dbMask = append(dbMask, "attributes")
 		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
 		if err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
 		}
 	}
 
 	// Get the host catalog for the set and its persisted data.
 	catalog, persisted, err := r.getCatalog(ctx, newSet.CatalogId)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
 	}
 
 	// Assert that the catalog scope ID and supplied scope ID match.
 	if catalog.ScopeId != scopeId {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in scope id %q", newSet.CatalogId, scopeId))
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in scope id %q", newSet.CatalogId, scopeId))
 	}
 
 	// Get the plugin client.
 	plgClient, ok := r.plugins[catalog.GetPluginId()]
 	if !ok || plgClient == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
 	}
 
 	// Convert the catalog values to API protobuf values, which is what
 	// we use for the plugin hook calls.
 	plgHc, err := toPluginCatalog(ctx, catalog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	currentPlgSet, err := toPluginSet(ctx, currentSet)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	newPlgSet, err := toPluginSet(ctx, newSet)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-	}
-
-	_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
-		CurrentSet: currentPlgSet,
-		NewSet:     newPlgSet,
-		Catalog:    plgHc,
-		Persisted:  persisted,
-	})
-	if err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	// Get the preferred endpoints to write out.
@@ -321,7 +309,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		for i, e := range newSet.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
 			if err != nil {
-				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			preferredEndpoints = append(preferredEndpoints, obj)
 		}
@@ -329,16 +317,21 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	// If the call to the plugin succeeded, we do not want to call it again if
+	// the transaction failed and is being retried.
+	var pluginCalledSuccessfully bool
 
 	var recordUpdated bool
 	var returnedSet *HostSet
+	var hosts []*Host
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(r db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
@@ -470,11 +463,36 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				msgs = append(msgs, peCreateOplogMsgs...)
 			}
 
+			if !pluginCalledSuccessfully {
+				_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
+					CurrentSet: currentPlgSet,
+					NewSet:     newPlgSet,
+					Catalog:    plgHc,
+					Persisted:  persisted,
+				})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+			}
+
 			if len(msgs) != 0 {
 				metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
+			}
+
+			if returnedSet == nil {
+				// Nothing updated, so returned set will not have been
+				// cloned.  Clone it now so that we can fetch hosts from it.
+				returnedSet = newSet.clone()
+			}
+
+			hosts, err = listHostBySetIds(ctx, r, []string{returnedSet.PublicId}, opt...)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
 
 			return nil
@@ -483,21 +501,17 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
 		}
-		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
 	}
 
 	var numUpdated int
 	if recordUpdated {
 		numUpdated = 1
-	} else {
-		// Nothing updated, so returned set will not have been cloned.
-		// Clone it now.
-		returnedSet = newSet.clone()
 	}
 
-	return returnedSet, plg, numUpdated, nil
+	return returnedSet, hosts, plg, numUpdated, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host set,

@@ -324,6 +324,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	// that the way that this is set up means that the tests cannot run
 	// in parallel, but there could be other factors affecting that as
 	// well.
+	var gotOnUpdateCallCount int
 	var gotOnUpdateSetRequest *plgpb.OnUpdateSetRequest
 	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
@@ -331,6 +332,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		testPlugin.GetPublicId(): &WrappingPluginClient{
 			Server: &TestPluginServer{
 				OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+					gotOnUpdateCallCount++
 					gotOnUpdateSetRequest = req
 					return &plgpb.OnUpdateSetResponse{}, pluginError
 				},
@@ -896,6 +898,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 		},
 	}
 
+	// Create a host that will be verified as belonging to the created set below.
+	testHostExternIdPrefix := "test-host-external-id"
+	testHosts := make([]*Host, 3)
+	for i := 0; i <= 2; i++ {
+		testHosts[i] = TestHost(t, dbConn, testCatalog.PublicId, fmt.Sprintf("%s-%d", testHostExternIdPrefix, i))
+	}
+
 	// Finally define a function for bringing the test subject host
 	// set.
 	setupHostSet := func(t *testing.T, ctx context.Context) *HostSet {
@@ -911,6 +920,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 		numSetsUpdated, err := dbRW.Update(ctx, set, []string{"attributes"}, []string{})
 		require.NoError(err)
 		require.Equal(1, numSetsUpdated)
+
+		// Add some hosts to the host set.
+		TestSetMembers(t, dbConn, set.PublicId, testHosts)
 
 		t.Cleanup(func() {
 			t.Helper()
@@ -950,14 +962,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 				scopeId = *tt.withScopeId
 			}
 
+			var gotHosts []*Host
 			var gotPlugin *hostplugin.Plugin
-			gotSet, gotPlugin, gotNumUpdated, err = repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			gotSet, gotHosts, gotPlugin, gotNumUpdated, err = repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
 				require.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				return
 			}
 			require.NoError(err)
+			require.Equal(1, gotOnUpdateCallCount)
 			t.Cleanup(func() { gotOnUpdateSetRequest = nil })
 
 			// Quick assertion that the set is not nil and that the plugin
@@ -967,6 +982,18 @@ func TestRepository_UpdateSet(t *testing.T) {
 			require.NotNil(gotPlugin)
 			assert.Equal(testCatalog.PublicId, gotSet.CatalogId)
 			assert.Equal(testCatalog.PluginId, gotPlugin.PublicId)
+
+			// Also assert that the hosts returned by the request are the ones that belong to the set
+			wantHostMap := make(map[string]string, len(testHosts))
+			for _, h := range testHosts {
+				wantHostMap[h.PublicId] = h.ExternalId
+			}
+			gotHostMap := make(map[string]string, len(gotHosts))
+			for _, h := range gotHosts {
+				gotHostMap[h.PublicId] = h.ExternalId
+			}
+			assert.Equal(wantHostMap, gotHostMap)
+
 			// Perform checks
 			for _, check := range tt.wantCheckFuncs {
 				check(t, ctx)
