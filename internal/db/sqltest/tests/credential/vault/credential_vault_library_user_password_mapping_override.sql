@@ -4,7 +4,7 @@
 --    delete_credential_vault_library_mapping_override_subtype
 
 begin;
-  select plan(10);
+  select plan(11);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials');
 
   -- validate the setup data
@@ -15,6 +15,23 @@ begin;
   select is(count(*), 4::bigint)
     from credential_vault_library_mapping_override
    where library_id in ('vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7');
+
+  prepare select_private_libraries as
+   select public_id::text, credential_type::text, username_attribute::text, password_attribute::text
+     from credential_vault_library_private
+    where public_id in ('vl______wvl2', 'vl______wvl3', 'vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7')
+ order by public_id;
+
+  select results_eq(
+      'select_private_libraries',
+      $$VALUES
+      ('vl______wvl2', 'unspecified',   null,          null),
+      ('vl______wvl3', 'user_password', null,          null),
+      ('vl______wvl4', 'user_password', null,          null),
+      ('vl______wvl5', 'user_password', 'my_username', null),
+      ('vl______wvl6', 'user_password', null,          'my_password'),
+      ('vl______wvl7', 'user_password', 'my_username', 'my_password')$$
+  );
 
   -- validate the insert triggers
   select is(count(*), 0::bigint) from credential_vault_library_user_password_mapping_override where library_id = 'vl______wvl3';
