@@ -328,7 +328,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	// the transaction failed and is being retried.
 	var pluginCalledSuccessfully bool
 
-	var recordUpdated bool
+	var setUpdated, preferredEndpointsUpdated bool
 	var returnedSet *HostSet
 	var hosts []*Host
 	_, err = r.writer.DoTx(
@@ -361,7 +361,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
 				}
 
-				recordUpdated = true
+				setUpdated = true
 				msgs = append(msgs, &hsOplogMsg)
 			}
 
@@ -383,32 +383,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				// Only append the oplog message if an operation was actually
 				// performed.
 				if peDeleteOplogMsg.Message != nil {
-					if !recordUpdated {
-						// we only updated secrets, so we need to increment the
-						// version of the host catalog manually.
-						returnedSet = newSet.clone()
-						returnedSet.Version = uint32(version) + 1
-						var hsOplogMsg oplog.Message
-						numUpdated, err := w.Update(
-							ctx,
-							returnedSet,
-							[]string{"version"},
-							[]string{},
-							db.NewOplogMsg(&hsOplogMsg),
-							db.WithVersion(&version),
-						)
-						if err != nil {
-							return errors.Wrap(ctx, err, op)
-						}
-
-						if numUpdated != 1 {
-							return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
-						}
-
-						recordUpdated = true
-						msgs = append(msgs, &hsOplogMsg)
-					}
-
+					preferredEndpointsUpdated = true
 					msgs = append(msgs, &peDeleteOplogMsg)
 				}
 
@@ -438,32 +413,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return err
 				}
 
-				if !recordUpdated {
-					// we only updated secrets, so we need to increment the
-					// version of the host catalog manually.
-					returnedSet = newSet.clone()
-					returnedSet.Version = uint32(version) + 1
-					var hsOplogMsg oplog.Message
-					numUpdated, err := w.Update(
-						ctx,
-						returnedSet,
-						[]string{"version"},
-						[]string{},
-						db.NewOplogMsg(&hsOplogMsg),
-						db.WithVersion(&version),
-					)
-					if err != nil {
-						return errors.Wrap(ctx, err, op)
-					}
-
-					if numUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
-					}
-
-					recordUpdated = true
-					msgs = append(msgs, &hsOplogMsg)
-				}
-
+				preferredEndpointsUpdated = true
 				msgs = append(msgs, peCreateOplogMsgs...)
 			}
 
@@ -479,6 +429,29 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 						return errors.Wrap(ctx, err, op)
 					}
 				}
+			}
+
+			if !setUpdated && preferredEndpointsUpdated {
+				returnedSet = newSet.clone()
+				returnedSet.Version = uint32(version) + 1
+				var hsOplogMsg oplog.Message
+				numUpdated, err := w.Update(
+					ctx,
+					returnedSet,
+					[]string{"version"},
+					[]string{},
+					db.NewOplogMsg(&hsOplogMsg),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				if numUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+				}
+
+				msgs = append(msgs, &hsOplogMsg)
 			}
 
 			if len(msgs) != 0 {
@@ -511,7 +484,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 
 	var numUpdated int
-	if recordUpdated {
+	if setUpdated || preferredEndpointsUpdated {
 		numUpdated = 1
 	}
 
