@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary/api v0.0.19
-	github.com/hashicorp/boundary/sdk v0.0.12-0.20211028194642-6eba8a478703
+	github.com/hashicorp/boundary/sdk v0.0.12-0.20211107234728-48ac8b8f0b88
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
