@@ -562,7 +562,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pb
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, plg, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, hosts, plg, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 	}
@@ -570,6 +570,9 @@ func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pb
 		return nil, nil, nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", req.GetId())
 	}
 	var hl []host.Host
+	for _, h := range hosts {
+		hl = append(hl, h)
+	}
 	return out, hl, toPluginInfo(plg), nil
 }
 
