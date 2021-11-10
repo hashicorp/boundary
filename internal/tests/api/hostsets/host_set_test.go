@@ -229,9 +229,9 @@ func TestCrud(t *testing.T) {
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
 	checkHost(t, "read", h.Item, err, "foo", 1)
 
-	// TODO: Add test for updating the prefered endpoints
 	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
-		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}))
+		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}),
+		hostsets.WithPreferredEndpoints([]string{"dns:update"}))
 	checkHost(t, "update", h.Item, err, "bar", 2)
 
 	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})

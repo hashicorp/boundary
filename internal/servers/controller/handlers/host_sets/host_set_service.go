@@ -546,10 +546,10 @@ func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId stri
 	return out, hl, nil
 }
 
-func (s Service) updatePluginInRepo(ctx context.Context, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, *plugins.PluginInfo, error) {
+func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, *plugins.PluginInfo, error) {
 	const op = "host_sets.(Service).updatePluginInRepo"
 	item := req.GetItem()
-	h, err := toStoragePluginSet(ctx, catalogId, item)
+	h, err := toStoragePluginSet(ctx, "", item)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
@@ -562,7 +562,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, catalogId string, req *
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, plg, rowsUpdated, err := repo.UpdateSet(ctx, h, item.GetVersion(), dbMask)
+	out, plg, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 	}
@@ -579,7 +579,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, re
 	case static.Subtype:
 		hs, hosts, err = s.updateStaticInRepo(ctx, scopeId, catalogId, req)
 	case plugin.Subtype:
-		hs, hosts, plg, err = s.updatePluginInRepo(ctx, catalogId, req)
+		hs, hosts, plg, err = s.updatePluginInRepo(ctx, scopeId, req)
 	}
 	return
 }

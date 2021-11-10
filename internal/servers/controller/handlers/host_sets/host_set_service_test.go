@@ -1553,18 +1553,17 @@ func TestUpdate_Plugin(t *testing.T) {
 				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
 			},
 		},
-		// TODO: Uncomment once the repo update supports updating the prefered endpoints.
-		// {
-		// 	name:  "Update prefered endpoints",
-		// 	masks: []string{"preferred_endpoints"},
-		// 	changes: []updateFn{
-		// 		clearReadOnlyFields(),
-		// 		updatePreferedEndpoints([]string{"dns:new"}),
-		// 	},
-		// 	check: func(t *testing.T, in *pb.HostSet) {
-		// 		assert.Equal(t, in.PreferredEndpoints, []string{"dns:new"})
-		// 	},
-		// },
+		{
+			name:  "Update preferred endpoints",
+			masks: []string{"preferred_endpoints"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updatePreferedEndpoints([]string{"dns:new"}),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, in.PreferredEndpoints, []string{"dns:new"})
+			},
+		},
 		{
 			name:  "Don't update preferred_endpoints",
 			masks: []string{"name"},
