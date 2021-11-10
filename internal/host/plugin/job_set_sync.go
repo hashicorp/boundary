@@ -157,16 +157,27 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 	}
 
 	type NextResync struct {
-		SyncNow  bool
-		ResyncIn time.Duration
+		SyncNow             bool
+		SyncIntervalSeconds int32
+		ResyncIn            time.Duration
 	}
 	var n NextResync
 	err = r.ScanRows(rows, &n)
 	if err != nil {
 		return 0, errors.WrapDeprecated(err, op)
 	}
-	if n.SyncNow || n.ResyncIn < 0 {
-		// If we are past the next renewal time, return 0 to schedule immediately
+	switch {
+	case n.SyncNow:
+		// Immediate
+		return 0, nil
+	case n.SyncIntervalSeconds < 0:
+		// In this case automatic syncing is disabled; we still sync if SyncNow
+		// but otherwise do not. We schedule the job at the default cadence but
+		// it will do nothing, just calculate a next run time to ensure it
+		// should stay disabled.
+		return setSyncJobRunInterval, nil
+	case n.ResyncIn < 0:
+		// Immediate
 		return 0, nil
 	}
 	return n.ResyncIn * time.Second, nil

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -384,6 +385,15 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "never-synced-before-with-sync-interval",
+			setArgs: setArgs{
+				syncIntervalSeconds: 60,
+				lastSyncTime:        timestamp.New(time.Unix(0, 0)),
+				needsSync:           false,
+			},
+			want: 0,
+		},
+		{
 			name: "synced-just-now",
 			setArgs: setArgs{
 				lastSyncTime: timestamp.Now(),
@@ -392,12 +402,56 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 			want: setSyncJobRunInterval,
 		},
 		{
+			name: "synced-just-now-with-sync-interval",
+			setArgs: setArgs{
+				syncIntervalSeconds: 180,
+				lastSyncTime:        timestamp.Now(),
+				needsSync:           false,
+			},
+			want: 3 * time.Minute,
+		},
+		{
 			name: "synced-just-now-need-sync",
 			setArgs: setArgs{
 				lastSyncTime: timestamp.Now(),
 				needsSync:    true,
 			},
 			want: 0,
+		},
+		{
+			name: "synced-just-now-need-sync-with-sync-interval",
+			setArgs: setArgs{
+				syncIntervalSeconds: 60,
+				lastSyncTime:        timestamp.Now(),
+				needsSync:           true,
+			},
+			want: 0,
+		},
+		{
+			name: "synced-a-bit-ago",
+			setArgs: setArgs{
+				lastSyncTime: timestamp.New(time.Now().Add(-4 * time.Minute)),
+				needsSync:    false,
+			},
+			want: time.Until(time.Now().Add(setSyncJobRunInterval - (4 * time.Minute))),
+		},
+		{
+			name: "synced-a-bit-ago-with-sync-interval",
+			setArgs: setArgs{
+				syncIntervalSeconds: 300,
+				lastSyncTime:        timestamp.New(time.Now().Add(-4 * time.Minute)),
+				needsSync:           false,
+			},
+			want: time.Minute,
+		},
+		{
+			name: "automatic-sync-disabled",
+			setArgs: setArgs{
+				syncIntervalSeconds: -1,
+				lastSyncTime:        timestamp.New(time.Now().Add(-4 * time.Minute)),
+				needsSync:           false,
+			},
+			want: math.MaxInt32 * time.Second,
 		},
 	}
 
