@@ -76,32 +76,16 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if !ok || plgClient == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
-	plgResp, err := plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
-	if err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
-
-	var hcSecret *HostCatalogSecret
-	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
-		hcSecret, err = newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-		dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-		}
-		if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	// If the call to the plugin succeeded, we do not want to call it again if
+	// the transaction failed and is being retried.
+	var pluginCalledSuccessfully bool
+	var plgResp *plgpb.OnCreateCatalogResponse
 
 	var newHostCatalog *HostCatalog
 	_, err = r.writer.DoTx(
@@ -122,17 +106,40 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			}
 			msgs = append(msgs, &cOplogMsg)
 
-			if hcSecret != nil {
-				newSecret := hcSecret.clone()
-				q, v := newSecret.upsertQuery()
-				rows, err := w.Exec(ctx, q, v)
+			if !pluginCalledSuccessfully {
+				plgResp, err = plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				pluginCalledSuccessfully = true
+			}
+
+			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				if rows > 1 {
-					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been created")
+				dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 				}
-				msgs = append(msgs, newSecret.oplogMessage(db.CreateOp))
+				if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if hcSecret != nil {
+					newSecret := hcSecret.clone()
+					q, v := newSecret.upsertQuery()
+					rows, err := w.Exec(ctx, q, v)
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					if rows > 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been created")
+					}
+					msgs = append(msgs, newSecret.oplogMessage(db.CreateOp))
+				}
 			}
 
 			metadata := c.oplog(oplog.OpType_OP_TYPE_CREATE)
@@ -284,50 +291,18 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	plgResp, err := plgClient.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
-		CurrentCatalog: currPlgHc,
-		NewCatalog:     newPlgHc,
-		Persisted:      currentCatalogPersisted,
-	})
+	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 	}
-
-	// Success for OnUpdateCatalog. This means we can start updating.
-	// First, check for returned persisted data and encrypt it.
-	var hcSecret *HostCatalogSecret
-	var deleteSecrets bool
-	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
-		if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
-			// Flag the secret to be deleted.
-			hcSecret, err = newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
-			if err != nil {
-				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-			}
-
-			deleteSecrets = true
-		} else {
-			hcSecret, err = newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
-			if err != nil {
-				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-			}
-			dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeDatabase)
-			if err != nil {
-				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
-			}
-			if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
-				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-			}
-		}
-	}
-
 	// Get the oplog.
 	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var pluginCalledSuccessfully bool
+	var plgResp *plgpb.OnUpdateCatalogResponse
 
 	var recordUpdated bool
 	var returnedCatalog *HostCatalog
@@ -368,13 +343,31 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				returnedCatalog = currentCatalog.clone()
 			}
 
-			if hcSecret != nil {
-				if deleteSecrets {
+			if !pluginCalledSuccessfully {
+				plgResp, err = plgClient.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
+					CurrentCatalog: currPlgHc,
+					NewCatalog:     newPlgHc,
+					Persisted:      currentCatalogPersisted,
+				})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				pluginCalledSuccessfully = true
+			}
+			var updatedPersisted bool
+			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
+					// Flag the secret to be deleted.
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
 					// We didn't set/encrypt the persisted data because there was
 					// none returned. Just delete the entry.
 					deletedSecret := hcSecret.clone()
 					q, v := deletedSecret.deleteQuery()
-					var err error
 					secretsUpdated, err := w.Exec(ctx, q, v)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
@@ -382,12 +375,20 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if secretsUpdated != 1 {
 						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsUpdated))
 					}
+					updatedPersisted = true
 					msgs = append(msgs, deletedSecret.oplogMessage(db.DeleteOp))
 				} else {
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+
 					// Update the secrets.
 					updatedSecret := hcSecret.clone()
 					q, v := updatedSecret.upsertQuery()
-					var err error
 					secretsUpdated, err := w.Exec(ctx, q, v)
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
@@ -395,32 +396,33 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if secretsUpdated != 1 {
 						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be updated, got %d", secretsUpdated))
 					}
+					updatedPersisted = true
 					msgs = append(msgs, updatedSecret.oplogMessage(db.UpdateOp))
 				}
+			}
 
-				if !recordUpdated {
-					// we only updated secrets, so we need to increment the
-					// version of the host catalog manually.
-					returnedCatalog = newCatalog.clone()
-					returnedCatalog.Version = uint32(version) + 1
-					var cOplogMsg oplog.Message
-					catalogsUpdated, err := w.Update(
-						ctx,
-						returnedCatalog,
-						[]string{"version"},
-						[]string{},
-						db.NewOplogMsg(&cOplogMsg),
-						db.WithVersion(&version),
-					)
-					if err != nil {
-						return errors.Wrap(ctx, err, op)
-					}
-					if catalogsUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be updated, got %d", catalogsUpdated))
-					}
-					msgs = append(msgs, &cOplogMsg)
-					recordUpdated = true
+			if !recordUpdated && updatedPersisted {
+				// we only updated secrets, so we need to increment the
+				// version of the host catalog manually.
+				returnedCatalog = newCatalog.clone()
+				returnedCatalog.Version = uint32(version) + 1
+				var cOplogMsg oplog.Message
+				catalogsUpdated, err := w.Update(
+					ctx,
+					returnedCatalog,
+					[]string{"version"},
+					[]string{},
+					db.NewOplogMsg(&cOplogMsg),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
 				}
+				if catalogsUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog to be updated, got %d", catalogsUpdated))
+				}
+				msgs = append(msgs, &cOplogMsg)
+				recordUpdated = true
 			}
 
 			if len(msgs) != 0 {

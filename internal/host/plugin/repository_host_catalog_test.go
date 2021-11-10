@@ -36,26 +36,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "test")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
 
-	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
-	// test against the expected values sent to the plugin.
-	var gotPluginAttrs *structpb.Struct
-	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{
-			Server: &TestPluginServer{
-				OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-					gotPluginAttrs = req.GetCatalog().GetAttributes()
-					return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
-				},
-			},
-		},
-		unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
-	}
-
 	tests := []struct {
 		name       string
 		in         *HostCatalog
 		opts       []Option
 		want       *HostCatalog
+		wantPluginCalled bool
 		wantSecret *structpb.Struct
 		wantIsErr  errors.Code
 	}{
@@ -114,6 +100,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-unimplemented-plugin",
@@ -131,6 +118,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "not-found-plugin",
@@ -161,6 +149,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-description",
@@ -180,6 +169,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes:  []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-attributes",
@@ -212,6 +202,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					}(),
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-secret",
@@ -249,6 +240,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				require.NoError(t, err)
 				return st
 			}(),
+			wantPluginCalled: true,
 		},
 	}
 
@@ -257,10 +249,34 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
+
+			// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
+			// test against the expected values sent to the plugin.
+			var gotPluginAttrs *structpb.Struct
+			var pluginCalled bool
+			plgm := map[string]plgpb.HostPluginServiceClient{
+				plg.GetPublicId(): &WrappingPluginClient{
+					Server: &TestPluginServer{
+						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+							pluginCalled = true
+							gotPluginAttrs = req.GetCatalog().GetAttributes()
+							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+						},
+					},
+				},
+				unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{
+					OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						gotPluginAttrs = req.GetCatalog().GetAttributes()
+						return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateCatalog(ctx, req)
+					},
+				}},
+			}
 			repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, _, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
+			assert.Equal(tt.wantPluginCalled, pluginCalled)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -308,6 +324,17 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): &WrappingPluginClient{
+				Server: &TestPluginServer{
+					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+					},
+				},
+			},
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -324,13 +351,18 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, _, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
+		// Reset pluginCalled so we can see that the plugin wasn't called w/
+		// the duplicate name.
+		pluginCalled = false
 		got2, _, err := repo.CreateCatalog(context.Background(), in)
+		assert.False(pluginCalled)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
@@ -338,6 +370,17 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): &WrappingPluginClient{
+				Server: &TestPluginServer{
+					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+					},
+				},
+			},
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -355,6 +398,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, _, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
@@ -362,9 +406,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.ScopeId = org.GetPublicId()
+		pluginCalled = false // reset pluginCalled for this next call to Create
 		got2, _, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
 		assert.NotNil(got2)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
