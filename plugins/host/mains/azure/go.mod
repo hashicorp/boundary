@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/host/mains/azure
 go 1.17
 
 require (
-	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211110201326-7197294c2cf6
+	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211110222619-3aff7f5aba17
 	github.com/hashicorp/boundary/sdk v0.0.12-0.20211110201157-962c9463fdb3
 	github.com/hashicorp/go-hclog v1.0.0
 )
