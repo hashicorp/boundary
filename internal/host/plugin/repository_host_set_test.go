@@ -415,6 +415,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
+	changeAttributesNil := func() changeHostSetFunc {
+		return func(c *HostSet) *HostSet {
+			c.Attributes = nil
+			return c
+		}
+	}
+
 	// Define some checks that will be used in the below tests. Some of
 	// these are re-used, so we define them here. Most of these are
 	// assertions and no particular one is non-fatal in that they will
@@ -831,6 +838,25 @@ func TestRepository_UpdateSet(t *testing.T) {
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]interface{}{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNumUpdated(1),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (full null)",
+			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
+			version:     2,
+			fieldMask:   []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{

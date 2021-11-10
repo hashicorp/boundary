@@ -262,11 +262,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
-	if updateAttributes && s.Attributes != nil {
+	if updateAttributes {
 		dbMask = append(dbMask, "attributes")
-		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
-		if err != nil {
-			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+		if s.Attributes != nil {
+			newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
+			if err != nil {
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+			}
+		} else {
+			newSet.Attributes = make([]byte, 0)
 		}
 	}
 
