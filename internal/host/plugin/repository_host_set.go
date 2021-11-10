@@ -417,20 +417,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				msgs = append(msgs, peCreateOplogMsgs...)
 			}
 
-			if !pluginCalledSuccessfully {
-				_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
-					CurrentSet: currentPlgSet,
-					NewSet:     newPlgSet,
-					Catalog:    plgHc,
-					Persisted:  persisted,
-				})
-				if err != nil {
-					if status.Code(err) != codes.Unimplemented {
-						return errors.Wrap(ctx, err, op)
-					}
-				}
-			}
-
 			if !setUpdated && preferredEndpointsUpdated {
 				returnedSet = newSet.clone()
 				returnedSet.Version = uint32(version) + 1
@@ -470,6 +456,20 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			hosts, err = listHostBySetIds(ctx, r, []string{returnedSet.PublicId}, opt...)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+
+			if !pluginCalledSuccessfully {
+				_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
+					CurrentSet: currentPlgSet,
+					NewSet:     newPlgSet,
+					Catalog:    plgHc,
+					Persisted:  persisted,
+				})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
 			}
 
 			return nil
