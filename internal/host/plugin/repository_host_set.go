@@ -336,6 +336,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
+			returnedSet = newSet.clone()
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
@@ -343,7 +344,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			}
 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
-				returnedSet = newSet.clone()
 				var hsOplogMsg oplog.Message
 				numUpdated, err := w.Update(
 					ctx,
@@ -418,7 +418,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			}
 
 			if !setUpdated && preferredEndpointsUpdated {
-				returnedSet = newSet.clone()
 				returnedSet.Version = uint32(version) + 1
 				var hsOplogMsg oplog.Message
 				numUpdated, err := w.Update(
@@ -445,17 +444,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
-			}
-
-			if returnedSet == nil {
-				// Nothing updated, so returned set will not have been
-				// cloned.  Clone it now so that we can fetch hosts from it.
-				returnedSet = newSet.clone()
-			}
-
-			hosts, err = listHostBySetIds(ctx, r, []string{returnedSet.PublicId}, opt...)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
 			}
 
 			if !pluginCalledSuccessfully {
@@ -486,6 +474,11 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	var numUpdated int
 	if setUpdated || preferredEndpointsUpdated {
 		numUpdated = 1
+	}
+
+	hosts, err = listHostBySetIds(ctx, r.reader, []string{returnedSet.PublicId}, opt...)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil
