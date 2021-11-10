@@ -313,6 +313,11 @@ begin;
     values
       ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
 
+    insert into credential_vault_token
+      (store_id,       key_id,          status,   token_hmac,   token,         last_renewal_time, expiration_time)
+    values
+      ('vs_______wvs', 'kdkv___widget', 'current', 'hmac-value', 'token-value', now(),             now() + interval '1 hour');
+
     insert into credential_vault_library
       (store_id,       public_id,      name,                    description, vault_path,           http_method, credential_type)
     values

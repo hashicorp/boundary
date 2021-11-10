@@ -64,6 +64,8 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	type libT int
 	const (
 		libDB libT = iota
+		libUsrPassDB
+		libErrUsrPassDB
 		libPKI
 		libErrPKI
 		libKV
@@ -105,22 +107,52 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("secret", "data", "my-secret")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
-		assert.NoError(err)
-		require.NotNil(libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-		assert.NoError(err)
-		require.NotNil(lib)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
 		libs[libKV] = lib.GetPublicId()
 	}
 	{
 		libPath := path.Join("secret", "data", "fake-secret")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
-		assert.NoError(err)
-		require.NotNil(libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-		assert.NoError(err)
-		require.NotNil(lib)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
 		libs[libErrKV] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("database", "creds", "opened")
+		opts := []vault.Option{
+			vault.WithCredentialType(credential.UserPasswordType),
+		}
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
+		libs[libUsrPassDB] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("database", "creds", "opened")
+		opts := []vault.Option{
+			vault.WithCredentialType(credential.UserPasswordType),
+			vault.WithMappingOverride(vault.NewUserPasswordOverride(
+				vault.WithOverrideUsernameAttribute("test-username"),
+				vault.WithOverridePasswordAttribute("test-password"),
+			)),
+		}
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
+		libs[libErrUsrPassDB] = lib.GetPublicId()
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -213,6 +245,16 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			},
 		},
 		{
+			name:      "one-valid-username-password-library",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libUsrPassDB],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
+		},
+		{
 			name:      "invalid-kv-does-not-exist",
 			convertFn: rc2dc,
 			requests: []credential.Request{
@@ -222,6 +264,17 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				},
 			},
 			wantErr: errors.VaultEmptySecret,
+		},
+		{
+			name:      "one-valid-username-password-library",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libErrUsrPassDB],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
 		},
 	}
 	for _, tt := range tests {
@@ -245,7 +298,23 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				return
 			}
 			assert.Len(got, len(tt.requests))
-			assert.NoError(err)
+			require.NoError(err)
+			assert.NotZero(len(got))
+			for _, dc := range got {
+				switch dc.Library().CredentialType() {
+				case credential.UserPasswordType:
+					if upc, ok := dc.(credential.UserPassword); ok {
+						assert.NotEmpty(upc.Username())
+						assert.NotEmpty(upc.Password())
+						break
+					}
+					assert.Fail("want UserPassword credential from library with credential type UserPassword")
+				case credential.UnspecifiedType:
+					if _, ok := dc.(credential.UserPassword); ok {
+						assert.Fail("do not want UserPassword credential from library with credential type Unspecified")
+					}
+				}
+			}
 		})
 	}
 }
