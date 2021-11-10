@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/host/mains/aws
 go 1.17
 
 require (
-	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110201244-a0de5b0c55d0
+	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110224123-563a2b99315c
 	github.com/hashicorp/boundary/sdk v0.0.12-0.20211110201157-962c9463fdb3
 	github.com/hashicorp/go-hclog v1.0.0
 )

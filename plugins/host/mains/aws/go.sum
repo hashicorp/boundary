@@ -257,8 +257,8 @@ github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5m
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
-github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110201244-a0de5b0c55d0 h1:QGlibT6NxZap22A7JyleinwGzlW3HB9hKJuzErmUX0E=
-github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110201244-a0de5b0c55d0/go.mod h1:4tHcCu6L2jtMU7/b+K7QAG6R2d26wHBBuu+lPLVJRio=
+github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110224123-563a2b99315c h1:PWYD0d5D6RNbBzI3iQfUsGSg8hJEH7qe0kfozPAZ7L4=
+github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211110224123-563a2b99315c/go.mod h1:4tHcCu6L2jtMU7/b+K7QAG6R2d26wHBBuu+lPLVJRio=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211110201157-962c9463fdb3 h1:hl/QIALmFBG8bewvH6s/iB4H1kAXOT3DYreX9JTULIs=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211110201157-962c9463fdb3/go.mod h1:gJoqOSNZfoclvLvBqAnfarha9YbZCtuRiYpu64GWX1Q=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
