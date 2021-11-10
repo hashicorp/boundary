@@ -135,13 +135,6 @@ func (r *SetSyncJob) Description() string {
 }
 
 func nextSync(j scheduler.Job) (time.Duration, error) {
-	// FIXME: This function should query the database and figure out the right
-	// time, however, at the time of writing we don't have an update function
-	// for sets which means we cannot call UpdateJobNextRunInAtLeast if a value
-	// changes. So rather than use the DB query, we simply check every five
-	// seconds. The actual job will ensure that only sets needing updates will
-	// be updated.
-	return 15 * time.Second, nil // Scheduler only wakes up every minute anyways
 	const op = "plugin.nextSync"
 	var query string
 	var r db.Reader

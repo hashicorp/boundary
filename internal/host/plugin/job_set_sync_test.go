@@ -381,7 +381,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.New(time.Unix(0, 0)),
 				needsSync:    false,
 			},
-			want: 15 * time.Second,
+			want: 0,
 		},
 		{
 			name: "synced-just-now",
@@ -389,9 +389,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.Now(),
 				needsSync:    false,
 			},
-			// FIXME: set this back when update is implemented
-			// want: setSyncJobRunInterval,
-			want: 15 * time.Second,
+			want: setSyncJobRunInterval,
 		},
 		{
 			name: "synced-just-now-need-sync",
@@ -399,16 +397,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime: timestamp.Now(),
 				needsSync:    true,
 			},
-			want: 15 * time.Second,
-		},
-		{
-			name: "synced-just-now-need-sync-but-sync-disabled",
-			setArgs: setArgs{
-				syncIntervalSeconds: -1,
-				lastSyncTime:        timestamp.Now(),
-				needsSync:           true,
-			},
-			want: 15 * time.Second,
+			want: 0,
 		},
 	}
 
