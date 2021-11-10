@@ -302,18 +302,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
-		CurrentSet: currentPlgSet,
-		NewSet:     newPlgSet,
-		Catalog:    plgHc,
-		Persisted:  persisted,
-	})
-	if err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
-	}
-
 	// Get the preferred endpoints to write out.
 	var preferredEndpoints []interface{}
 	if endpointOp == endpointOpUpdate {
@@ -331,6 +319,10 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	// If the call to the plugin succeeded, we do not want to call it again if
+	// the transaction failed and is being retried.
+	var pluginCalledSuccessfully bool
 
 	var recordUpdated bool
 	var returnedSet *HostSet
@@ -469,6 +461,20 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				}
 
 				msgs = append(msgs, peCreateOplogMsgs...)
+			}
+
+			if !pluginCalledSuccessfully {
+				_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
+					CurrentSet: currentPlgSet,
+					NewSet:     newPlgSet,
+					Catalog:    plgHc,
+					Persisted:  persisted,
+				})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
 			}
 
 			if len(msgs) != 0 {

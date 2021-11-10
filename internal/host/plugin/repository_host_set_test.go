@@ -324,6 +324,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	// that the way that this is set up means that the tests cannot run
 	// in parallel, but there could be other factors affecting that as
 	// well.
+	var gotOnUpdateCallCount int
 	var gotOnUpdateSetRequest *plgpb.OnUpdateSetRequest
 	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
@@ -331,6 +332,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		testPlugin.GetPublicId(): &WrappingPluginClient{
 			Server: &TestPluginServer{
 				OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+					gotOnUpdateCallCount++
 					gotOnUpdateSetRequest = req
 					return &plgpb.OnUpdateSetResponse{}, pluginError
 				},
@@ -963,12 +965,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 			var gotHosts []*Host
 			var gotPlugin *hostplugin.Plugin
 			gotSet, gotHosts, gotPlugin, gotNumUpdated, err = repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
 				require.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				return
 			}
 			require.NoError(err)
+			require.Equal(1, gotOnUpdateCallCount)
 			t.Cleanup(func() { gotOnUpdateSetRequest = nil })
 
 			// Quick assertion that the set is not nil and that the plugin
