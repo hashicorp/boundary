@@ -47,14 +47,13 @@ message HostSet {
 	// Output only. A list of Hosts in this Host Set.
 	repeated string host_ids = 100 [json_name="host_ids"];
 
-	// An ordered list of endpoint preferences used to choose from among
 	// multiple possible endpoints for a host. Preferences are specified by
 	// "cidr:<valid IPv4/6 CIDR>" or "dns:<globbed name>", specifying which IP
 	// address or DNS name out of a host's available possibilities should be
 	// preferred. If no preferences are specified, a value will be chosen from
 	// among all avialable values using a built-in priority order. May not be
 	// valid for all plugin types.
-	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true];
+	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true,  (custom_options.v1.mask_mapping) = {this:"preferred_endpoints" that: "PreferredEndpoints"}];
 
 	// An interger number of seconds indicating the amount of time that should
 	// elapse between syncs of the host set. The interval will be applied to the

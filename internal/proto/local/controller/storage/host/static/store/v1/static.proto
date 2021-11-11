@@ -122,5 +122,6 @@ message HostSetMember {
 // here for the purpose of identifying the mask maps which are on the top level
 // api set resource but aren't present in the static host set storage.
 message UnimplementedSetFields {
+  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {this:"PreferredEndpoints" that: "preferred_endpoints"}];
   int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
 }

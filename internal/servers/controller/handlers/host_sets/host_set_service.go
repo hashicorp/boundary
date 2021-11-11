@@ -256,7 +256,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, hosts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req)
+	hs, hosts, plg, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +268,9 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 
 	outputOpts := make([]handlers.Option, 0, 3)
 	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if plg != nil {
+		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
+	}
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -512,8 +515,8 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return hSet, plg, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, error) {
-	const op = "host_sets.(Service).updateInRepo"
+func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, error) {
+	const op = "host_sets.(Service).updateStaticInRepo"
 	item := req.GetItem()
 	h, err := toStorageStaticSet(ctx, catalogId, item)
 	if err != nil {
@@ -540,6 +543,47 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, re
 		hl = append(hl, h)
 	}
 	return out, hl, nil
+}
+
+func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, *plugins.PluginInfo, error) {
+	const op = "host_sets.(Service).updatePluginInRepo"
+	item := req.GetItem()
+	h, err := toStoragePluginSet(ctx, "", item)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
+	}
+	h.PublicId = req.GetId()
+	dbMask := maskManager[plugin.Subtype].Translate(req.GetUpdateMask().GetPaths(), "attributes.")
+	if len(dbMask) == 0 {
+		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.pluginRepoFn()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	out, hosts, plg, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
+	}
+	if rowsUpdated == 0 {
+		return nil, nil, nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", req.GetId())
+	}
+	var hl []host.Host
+	for _, h := range hosts {
+		hl = append(hl, h)
+	}
+	return out, hl, toPluginInfo(plg), nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (hs host.Set, hosts []host.Host, plg *plugins.PluginInfo, err error) {
+	const op = "host_sets.(Service).updateInRepo"
+	switch host.SubtypeFromId(req.GetId()) {
+	case static.Subtype:
+		hs, hosts, err = s.updateStaticInRepo(ctx, scopeId, catalogId, req)
+	case plugin.Subtype:
+		hs, hosts, plg, err = s.updatePluginInRepo(ctx, scopeId, req)
+	}
+	return
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -908,6 +952,9 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) e
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
+			}
+			if len(req.GetItem().PreferredEndpoints) > 0 {
+				badFields[globals.PreferredEndpointsField] = "This field is not yet supported for static host sets."
 			}
 		case plugin.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != plugin.Subtype.String() {

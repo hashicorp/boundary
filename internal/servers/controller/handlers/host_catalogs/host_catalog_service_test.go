@@ -1380,12 +1380,12 @@ func TestUpdate_Plugin(t *testing.T) {
 		})
 		require.NoError(t, err)
 		resp, err := tested.CreateHostCatalog(ctx, &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-			ScopeId:                     proj.GetPublicId(),
-			PluginId:                    plg.GetPublicId(),
-			Name:                        wrapperspb.String("default"),
-			Description:                 wrapperspb.String("default"),
-			Type:                        "plugin",
-			Attributes:                  attr,
+			ScopeId:     proj.GetPublicId(),
+			PluginId:    plg.GetPublicId(),
+			Name:        wrapperspb.String("default"),
+			Description: wrapperspb.String("default"),
+			Type:        "plugin",
+			Attributes:  attr,
 		}})
 		require.NoError(t, err)
 		id := resp.GetItem().GetId()
@@ -1424,14 +1424,14 @@ func TestUpdate_Plugin(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		masks []string
+		name    string
+		masks   []string
 		changes []updateFn
-		check func(*testing.T, *pb.HostCatalog)
-		err   error
+		check   func(*testing.T, *pb.HostCatalog)
+		err     error
 	}{
 		{
-			name: "Update an Existing HostCatalog",
+			name:  "Update an Existing HostCatalog",
 			masks: []string{"name", "description"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1444,7 +1444,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Update arbitrary attribute for catalog",
+			name:  "Update arbitrary attribute for catalog",
 			masks: []string{"attributes.newkey", "attributes.foo"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1462,7 +1462,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Multiple Paths in single string",
+			name:  "Multiple Paths in single string",
 			masks: []string{"name,description"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1484,7 +1484,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Empty Path",
+			name:  "Empty Path",
 			masks: []string{},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1494,7 +1494,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name:  "Only non-existant paths in Mask",
 			masks: []string{"nonexistant_field"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1504,7 +1504,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Unset Name",
+			name:  "Unset Name",
 			masks: []string{"name"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1517,7 +1517,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Unset Description",
+			name:  "Unset Description",
 			masks: []string{"description"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1530,7 +1530,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Update Only Name",
+			name:  "Update Only Name",
 			masks: []string{"name"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1543,7 +1543,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Update Only Description",
+			name:  "Update Only Description",
 			masks: []string{"description"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1556,7 +1556,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
-			name: "Cant change type",
+			name:  "Cant change type",
 			masks: []string{"type"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1567,7 +1567,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Cant specify Updated Time",
+			name:  "Cant specify Updated Time",
 			masks: []string{"updated_time"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
@@ -1589,8 +1589,8 @@ func TestUpdate_Plugin(t *testing.T) {
 			}
 
 			req := &pbs.UpdateHostCatalogRequest{
-				Id: id,
-				Item: hc,
+				Id:         id,
+				Item:       hc,
 				UpdateMask: &field_mask.FieldMask{Paths: tc.masks},
 			}
 

@@ -92,7 +92,7 @@ message HostSet {
 
   // preferred_endpoints stores string preference values
   // @inject_tag: `gorm:"-"`
-  repeated string preferred_endpoints = 11;
+  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {this:"PreferredEndpoints" that: "preferred_endpoints"}];
 
   // Sync interval is a value representing a duration in seconds
   // @inject_tag: `gorm:"default:null"`
