@@ -152,7 +152,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc:
+	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc, KeyPurposeAudit:
 	case KeyPurposeUnknown:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key purpose")
 	default:
@@ -309,6 +309,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListSessionKeys(ctx)
 	case KeyPurposeOidc:
 		keys, err = repo.ListOidcKeys(ctx)
+	case KeyPurposeAudit:
+		keys, err = repo.ListAuditKeys(ctx)
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -338,6 +340,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeOidc:
 		keyVersions, err = repo.ListOidcKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
+	case KeyPurposeAudit:
+		keyVersions, err = repo.ListAuditKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}

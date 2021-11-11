@@ -1,6 +1,7 @@
 package kms
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -69,5 +70,15 @@ func Test_Ids(t *testing.T) {
 		id, err := newOidcKeyVersionId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, OidcKeyVersionPrefix+"_"))
+	})
+	t.Run("kak", func(t *testing.T) {
+		id, err := newAuditKeyId(context.Background())
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, AuditKeyPrefix+"_"))
+	})
+	t.Run("kakv", func(t *testing.T) {
+		id, err := newAuditKeyVersionId(context.Background())
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, AuditKeyVersionPrefix+"_"))
 	})
 }

@@ -169,6 +169,17 @@ func TestCrud(t *testing.T) {
 		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
 	require.NoError(err)
 
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.WithName("bar"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"key": "val", "foo": nil}),
+		hostcatalogs.WithSecrets(map[string]interface{}{"secretkey": "secretval"}))
+	checkCatalog("update", c.Item, err, "bar", 2)
+	assert.Contains(c.Item.Attributes, "key")
+	assert.NotContains(c.Item.Attributes, "foo")
+	assert.Empty(c.Item.Secrets)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", c.Item, err, "", 3)
+
 	c, err = hcClient.Read(tc.Context(), c.Item.Id)
 	assert.NoError(err)
 

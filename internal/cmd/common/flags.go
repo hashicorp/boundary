@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/posener/complete"
 )
@@ -22,7 +23,7 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Name:       "scope-id",
 				Target:     &c.FlagScopeId,
 				EnvVar:     "BOUNDARY_SCOPE_ID",
-				Default:    "global",
+				Default:    scope.Global.String(),
 				Completion: complete.PredictAnything,
 				Usage:      `Scope in which to make the request.`,
 			})

@@ -3,6 +3,7 @@ package base
 import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // getOpts - iterate the inbound Options and return a struct.
@@ -34,6 +35,7 @@ type Options struct {
 	withDatabaseTemplate           string
 	withEventerConfig              *event.EventerConfig
 	withEventFlags                 *EventFlags
+	withEventWrapper               wrapping.Wrapper
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
@@ -137,6 +139,12 @@ func WithEventerConfig(config *event.EventerConfig) Option {
 func WithEventFlags(flags *EventFlags) Option {
 	return func(o *Options) {
 		o.withEventFlags = flags
+	}
+}
+
+func WithEventAuditWrapper(w wrapping.Wrapper) Option {
+	return func(o *Options) {
+		o.withEventWrapper = w
 	}
 }
 

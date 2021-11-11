@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
@@ -40,15 +41,6 @@ func TestRepository_CreateSet(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "create")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
 
-	var pluginReceivedAttrs *structpb.Struct
-	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
-			pluginReceivedAttrs = req.GetSet().GetAttributes()
-			return &plgpb.OnCreateSetResponse{}, nil
-		}}),
-		unimplementedPlugin.GetPublicId(): NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
-	}
-
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	attrs := []byte{}
@@ -58,6 +50,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in        *HostSet
 		opts      []Option
 		want      *HostSet
+		wantPluginCalled bool
 		wantIsErr errors.Code
 	}{
 		{
@@ -112,6 +105,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes: attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-preferred-endpoints",
@@ -129,6 +123,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-name",
@@ -146,6 +141,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes: attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-unimplemented-plugin",
@@ -163,6 +159,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes: attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-description",
@@ -180,6 +177,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes:  attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-custom-attributes",
@@ -188,7 +186,12 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						st, err := structpb.NewStruct(map[string]interface{}{
+							"k1": "foo",
+							"removed": nil,
+						})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
 						require.NoError(t, err)
 						return b
 					}(),
@@ -205,6 +208,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					}(),
 				},
 			},
+			wantPluginCalled: true,
 		},
 	}
 
@@ -212,10 +216,25 @@ func TestRepository_CreateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			var pluginReceivedAttrs *structpb.Struct
+			var pluginCalled bool
+			plgm := map[string]plgpb.HostPluginServiceClient{
+				plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+					pluginCalled = true
+					pluginReceivedAttrs = req.GetSet().GetAttributes()
+					return &plgpb.OnCreateSetResponse{}, nil
+				}}),
+				unimplementedPlugin.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+					pluginCalled = true
+					pluginReceivedAttrs = req.GetSet().GetAttributes()
+					return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateSet(ctx, req)
+				}}),
+			}
 			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, plgInfo, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			assert.Equal(tt.wantPluginCalled, pluginCalled)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -240,6 +259,13 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+				pluginCalled = true
+				return &plgpb.OnCreateSetResponse{}, nil
+			}}),
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
@@ -258,19 +284,31 @@ func TestRepository_CreateSet(t *testing.T) {
 		got, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
+		assert.True(pluginCalled)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.GetName())
 		assert.Equal(in.Description, got.GetDescription())
 		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
+		// reset pluginCalled so we can see the duplicate name causes the plugin
+		// to not get called.
+		pluginCalled = false
 		got2, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
+		assert.False(pluginCalled)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+				pluginCalled = true
+				return &plgpb.OnCreateSetResponse{}, nil
+			}}),
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
@@ -288,7 +326,11 @@ func TestRepository_CreateSet(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
+		// reset pluginCalled so we can see that the plugin is called during this
+		// createSet call
+		pluginCalled = false
 		got, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
+		assert.True(pluginCalled)
 		require.NoError(err)
 		require.NotNil(got)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
@@ -298,9 +340,13 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
 
 		in2.CatalogId = catalogB.PublicId
+		// reset pluginCalled so we can see that the plugin is called during this
+		// createSet call
+		pluginCalled = false
 		got2, _, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
+		assert.True(pluginCalled)
 		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.GetName())
@@ -415,6 +461,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
+	changeAttributesNil := func() changeHostSetFunc {
+		return func(c *HostSet) *HostSet {
+			c.Attributes = nil
+			return c
+		}
+	}
+
 	// Define some checks that will be used in the below tests. Some of
 	// these are re-used, so we define them here. Most of these are
 	// assertions and no particular one is non-fatal in that they will
@@ -474,6 +527,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
+	checkNeedSync := func(want bool) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotSet.NeedSync)
+		}
+	}
+
 	checkUpdateSetRequestCurrentNameNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -522,11 +583,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkUpdateSetRequestCurrentPreferredEndpointsNil := func() checkFunc {
+	checkUpdateSetRequestCurrentPreferredEndpoints := func(want []string) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints)
+			assert.Equal(want, gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints)
 		}
 	}
 
@@ -684,6 +745,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -701,6 +763,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -718,6 +781,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -735,6 +799,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -746,30 +811,32 @@ func TestRepository_UpdateSet(t *testing.T) {
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
 		{
-			name:        "update preferred endpoints to same",
+			name:        "clear preferred endpoints",
 			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkVersion(3),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
 				checkPreferredEndpoints(nil),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumUpdated(0),
+				checkNeedSync(false),
+				checkNumUpdated(1),
 			},
 		},
 		{
@@ -795,6 +862,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -820,6 +888,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -841,6 +910,27 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
+				checkNumUpdated(1),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (full null)",
+			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
+			version:     2,
+			fieldMask:   []string{"attributes"},
+			wantCheckFuncs: []checkFunc{
+				checkVersion(3),
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]interface{}{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -869,6 +959,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -886,12 +977,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
 				checkName("foo"),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -911,13 +1003,25 @@ func TestRepository_UpdateSet(t *testing.T) {
 		t.Helper()
 		require := require.New(t)
 
-		set := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, testPluginMap)
+		set := TestSet(
+			t,
+			dbConn,
+			dbKmsCache,
+			sched,
+			testCatalog,
+			testPluginMap,
+			WithPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
+		)
 		// Set some (default) attributes on our test set
 		set.Attributes = mustMarshal(map[string]interface{}{
 			"foo": "bar",
 		})
 
-		numSetsUpdated, err := dbRW.Update(ctx, set, []string{"attributes"}, []string{})
+		// Set some fake sync detail to the set.
+		set.LastSyncTime = timestamp.New(time.Now())
+		set.NeedSync = false
+
+		numSetsUpdated, err := dbRW.Update(ctx, set, []string{"attributes", "LastSyncTime", "NeedSync"}, []string{})
 		require.NoError(err)
 		require.Equal(1, numSetsUpdated)
 

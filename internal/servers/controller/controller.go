@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
@@ -166,6 +167,16 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+	// now that the kms is configured, we can get the audit wrapper and rotate
+	// the eventer audit wrapper, so the emitted events can include encrypt and
+	// hmac-sha256 data
+	auditWrapper, err := c.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeAudit)
+	if err != nil {
+		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
+	}
+	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)

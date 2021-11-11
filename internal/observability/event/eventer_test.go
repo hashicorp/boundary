@@ -13,8 +13,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,6 +151,7 @@ func Test_InitSysEventer(t *testing.T) {
 			tt.want.auditPipelines = got.auditPipelines
 			tt.want.errPipelines = got.errPipelines
 			tt.want.observationPipelines = got.observationPipelines
+			tt.want.auditWrapperNodes = got.auditWrapperNodes
 			assert.Equal(tt.want, got)
 		})
 	}
@@ -716,6 +719,7 @@ func Test_NewEventer(t *testing.T) {
 			tt.want.auditPipelines = got.auditPipelines
 			tt.want.errPipelines = got.errPipelines
 			tt.want.observationPipelines = got.observationPipelines
+			tt.want.auditWrapperNodes = got.auditWrapperNodes
 			assert.Equal(tt.want, got)
 
 			assert.Lenf(testBroker.registeredNodeIds, len(tt.wantRegistered), "got nodes: %q", testBroker.registeredNodeIds)
@@ -1180,6 +1184,72 @@ func Test_logAdapter_Write(t *testing.T) {
 				gotData := gotEvent.Data.(map[string]interface{})["data"].(map[string]interface{})
 				t.Log(tt.name, gotData)
 				assert.Equal(tt.wantSystemEvent, gotData["msg"])
+			}
+		})
+	}
+}
+
+func TestEventer_RotateAuditWrapper(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	cloudEventsConfig := TestEventerConfig(t, "TestEventer_RotateAuditWrapper")
+	hclogConfig := TestEventerConfig(t, "TestEventer_RotateAuditWrapper", testWithSinkFormat(t, JSONHclogSinkFormat))
+
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+
+	testCtx := context.Background()
+	tests := []struct {
+		name            string
+		w               wrapping.Wrapper
+		config          TestConfig
+		wantIsError     error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-wrapper",
+			config:          cloudEventsConfig,
+			wantIsError:     ErrInvalidParameter,
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name:   "valid-cloudevents",
+			w:      testWrapper(t),
+			config: cloudEventsConfig,
+		},
+		{
+			name:   "valid-hclog",
+			w:      testWrapper(t),
+			config: hclogConfig,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(InitSysEventer(testLogger, testLock, "TestEventer_RotateAuditWrapper", WithEventerConfig(&tt.config.EventerConfig)))
+			eventer := SysEventer()
+			err := eventer.RotateAuditWrapper(testCtx, tt.w)
+			if tt.wantIsError != nil {
+				require.Error(err)
+				assert.ErrorIs(err, tt.wantIsError)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			for _, n := range eventer.auditWrapperNodes {
+				switch w := n.(type) {
+				case *hclogFormatterFilter:
+					assert.NotNil(w.signer)
+				case *cloudEventsFormatterFilter:
+					assert.NotNil(w.Signer)
+				case *encrypt.Filter:
+					assert.NotNil(w.Wrapper)
+				}
 			}
 		})
 	}

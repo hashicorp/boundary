@@ -54,6 +54,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
+	// Use PatchBytes' functionality that does not add keys where the values
+	// are nil to the resulting struct since we do not want to store nil valued
+	// attributes.
+	var err error
+	s.Attributes, err = patchstruct.PatchBytes([]byte{}, s.Attributes)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	c, per, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
@@ -79,11 +88,6 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	var preferredEndpoints []interface{}
 	if s.PreferredEndpoints != nil {
@@ -101,6 +105,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var calledPluginSuccessfully bool
 
 	var returnedHostSet *HostSet
 	_, err = r.writer.DoTx(
@@ -128,6 +134,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return err
 				}
 				msgs = append(msgs, peOplogMsgs...)
+			}
+
+			if !calledPluginSuccessfully {
+				if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				calledPluginSuccessfully = true
 			}
 
 			metadata := s.oplog(oplog.OpType_OP_TYPE_CREATE)
@@ -262,12 +277,21 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
-	if updateAttributes && s.Attributes != nil {
+	if updateAttributes {
 		dbMask = append(dbMask, "attributes")
-		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
-		if err != nil {
-			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+		if s.Attributes != nil {
+			newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
+			if err != nil {
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+			}
+		} else {
+			newSet.Attributes = make([]byte, 0)
 		}
+
+		// Flag the record as needing a sync since we've updated
+		// attributes.
+		dbMask = append(dbMask, "NeedSync")
+		newSet.NeedSync = true
 	}
 
 	// Get the host catalog for the set and its persisted data.
@@ -324,7 +348,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	// the transaction failed and is being retried.
 	var pluginCalledSuccessfully bool
 
-	var recordUpdated bool
+	var setUpdated, preferredEndpointsUpdated bool
 	var returnedSet *HostSet
 	var hosts []*Host
 	_, err = r.writer.DoTx(
@@ -332,6 +356,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
+			returnedSet = newSet.clone()
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
@@ -339,7 +364,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			}
 
 			if len(dbMask) != 0 || len(nullFields) != 0 {
-				returnedSet = newSet.clone()
 				var hsOplogMsg oplog.Message
 				numUpdated, err := w.Update(
 					ctx,
@@ -357,7 +381,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
 				}
 
-				recordUpdated = true
+				setUpdated = true
 				msgs = append(msgs, &hsOplogMsg)
 			}
 
@@ -379,32 +403,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				// Only append the oplog message if an operation was actually
 				// performed.
 				if peDeleteOplogMsg.Message != nil {
-					if !recordUpdated {
-						// we only updated secrets, so we need to increment the
-						// version of the host catalog manually.
-						returnedSet = newSet.clone()
-						returnedSet.Version = uint32(version) + 1
-						var hsOplogMsg oplog.Message
-						numUpdated, err := w.Update(
-							ctx,
-							returnedSet,
-							[]string{"version"},
-							[]string{},
-							db.NewOplogMsg(&hsOplogMsg),
-							db.WithVersion(&version),
-						)
-						if err != nil {
-							return errors.Wrap(ctx, err, op)
-						}
-
-						if numUpdated != 1 {
-							return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
-						}
-
-						recordUpdated = true
-						msgs = append(msgs, &hsOplogMsg)
-					}
-
+					preferredEndpointsUpdated = true
 					msgs = append(msgs, &peDeleteOplogMsg)
 				}
 
@@ -434,33 +433,37 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return err
 				}
 
-				if !recordUpdated {
-					// we only updated secrets, so we need to increment the
-					// version of the host catalog manually.
-					returnedSet = newSet.clone()
-					returnedSet.Version = uint32(version) + 1
-					var hsOplogMsg oplog.Message
-					numUpdated, err := w.Update(
-						ctx,
-						returnedSet,
-						[]string{"version"},
-						[]string{},
-						db.NewOplogMsg(&hsOplogMsg),
-						db.WithVersion(&version),
-					)
-					if err != nil {
-						return errors.Wrap(ctx, err, op)
-					}
+				preferredEndpointsUpdated = true
+				msgs = append(msgs, peCreateOplogMsgs...)
+			}
 
-					if numUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
-					}
-
-					recordUpdated = true
-					msgs = append(msgs, &hsOplogMsg)
+			if !setUpdated && preferredEndpointsUpdated {
+				returnedSet.Version = uint32(version) + 1
+				var hsOplogMsg oplog.Message
+				numUpdated, err := w.Update(
+					ctx,
+					returnedSet,
+					[]string{"version"},
+					[]string{},
+					db.NewOplogMsg(&hsOplogMsg),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
 				}
 
-				msgs = append(msgs, peCreateOplogMsgs...)
+				if numUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+				}
+
+				msgs = append(msgs, &hsOplogMsg)
+			}
+
+			if len(msgs) != 0 {
+				metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
 			}
 
 			if !pluginCalledSuccessfully {
@@ -477,24 +480,6 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				}
 			}
 
-			if len(msgs) != 0 {
-				metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
-				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
-				}
-			}
-
-			if returnedSet == nil {
-				// Nothing updated, so returned set will not have been
-				// cloned.  Clone it now so that we can fetch hosts from it.
-				returnedSet = newSet.clone()
-			}
-
-			hosts, err = listHostBySetIds(ctx, r, []string{returnedSet.PublicId}, opt...)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-
 			return nil
 		},
 	)
@@ -506,9 +491,19 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
 	}
 
+	hosts, err = listHostBySetIds(ctx, r.reader, []string{returnedSet.PublicId}, opt...)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	var numUpdated int
-	if recordUpdated {
+	if setUpdated || preferredEndpointsUpdated {
 		numUpdated = 1
+	}
+
+	if updateAttributes {
+		// Request a host sync since we have updated attributes.
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil

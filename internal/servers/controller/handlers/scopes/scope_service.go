@@ -225,7 +225,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	}
 	act := IdActions
 	// Can't delete global so elide it
-	if p.GetPublicId() == "global" {
+	if p.GetPublicId() == scope.Global.String() {
 		act = act[0:3]
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
@@ -596,7 +596,7 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 	badFields := map[string]string{}
 	id := req.GetId()
 	switch {
-	case id == "global":
+	case id == scope.Global.String():
 	case strings.HasPrefix(id, scope.Org.Prefix()):
 		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
@@ -654,7 +654,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	badFields := map[string]string{}
 	id := req.GetId()
 	switch {
-	case id == "global":
+	case id == scope.Global.String():
 	case strings.HasPrefix(id, scope.Org.Prefix()):
 		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
@@ -711,7 +711,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	badFields := map[string]string{}
 	id := req.GetId()
 	switch {
-	case id == "global":
+	case id == scope.Global.String():
 		badFields["id"] = "Invalid to delete the global scope."
 	case strings.HasPrefix(id, scope.Org.Prefix()):
 		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {

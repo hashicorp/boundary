@@ -2,9 +2,11 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -246,6 +248,32 @@ func TestHclogFormatter_Process(t *testing.T) {
 			}
 		})
 	}
+	t.Run("with-signing", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		wrapper := testWrapper(t)
+		f, err := newHclogFormatterFilter(true) // produce json formatted events
+		require.NoError(err)
+		require.NoError(f.Rotate(wrapper))
+		require.NotNil(f.signer)
+
+		e := &eventlogger.Event{
+			Type: eventlogger.EventType(AuditType),
+			Payload: &audit{
+				Id:      "1",
+				Version: auditVersion,
+				Auth:    &Auth{UserName: "alice"},
+			},
+		}
+
+		gotEvent, err := f.Process(ctx, e)
+		require.NoError(err)
+		b, ok := gotEvent.Format(string(JSONHclogSinkFormat))
+		require.True(ok)
+		var rep map[string]interface{}
+		require.NoError(json.Unmarshal(b, &rep))
+		assert.NotEmpty(rep["serialized"])
+		assert.NotEmpty(rep["serialized_hmac"])
+	})
 }
 
 func Test_hclogFormatterFilter_Name(t *testing.T) {
@@ -363,6 +391,44 @@ func Test_newHclogFormatterFilter(t *testing.T) {
 			for _, f := range got.deny {
 				assert.Contains(tt.wantDeny, f.raw)
 			}
+		})
+	}
+}
+
+func Test_hclogFormatterFilter_Rotate(t *testing.T) {
+	tests := []struct {
+		name            string
+		f               *hclogFormatterFilter
+		w               wrapping.Wrapper
+		wantIsError     error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-wrapper",
+			f:               &hclogFormatterFilter{},
+			wantIsError:     ErrInvalidParameter,
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name: "valid",
+			f:    &hclogFormatterFilter{},
+			w:    testWrapper(t),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := tt.f.Rotate(tt.w)
+			if tt.wantIsError != nil {
+				require.Error(err)
+				assert.ErrorIs(err, tt.wantIsError)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			assert.NotNil(tt.f.signer)
 		})
 	}
 }

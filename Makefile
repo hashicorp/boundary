@@ -134,6 +134,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
