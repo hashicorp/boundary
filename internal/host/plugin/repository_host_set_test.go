@@ -538,11 +538,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkUpdateSetRequestCurrentPreferredEndpointsNil := func() checkFunc {
+	checkUpdateSetRequestCurrentPreferredEndpoints := func(want []string) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints)
+			assert.Equal(want, gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints)
 		}
 	}
 
@@ -766,7 +766,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
@@ -778,20 +778,20 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 		},
 		{
-			name:        "update preferred endpoints to same",
+			name:        "clear preferred endpoints",
 			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkVersion(3),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
 				checkPreferredEndpoints(nil),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
 				checkNeedSync(false),
-				checkNumUpdated(0),
+				checkNumUpdated(1),
 			},
 		},
 		{
@@ -932,7 +932,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
 				checkName("foo"),
-				checkUpdateSetRequestCurrentPreferredEndpointsNil(),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
@@ -958,7 +958,15 @@ func TestRepository_UpdateSet(t *testing.T) {
 		t.Helper()
 		require := require.New(t)
 
-		set := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, testPluginMap)
+		set := TestSet(
+			t,
+			dbConn,
+			dbKmsCache,
+			sched,
+			testCatalog,
+			testPluginMap,
+			WithPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
+		)
 		// Set some (default) attributes on our test set
 		set.Attributes = mustMarshal(map[string]interface{}{
 			"foo": "bar",
