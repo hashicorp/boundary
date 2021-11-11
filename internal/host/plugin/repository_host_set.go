@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
@@ -358,9 +357,9 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(r db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			returnedSet = newSet.clone()
-			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
+			msgs := make([]*oplog.Message, 0, len(preferredEndpoints) + len(currentSet.PreferredEndpoints) + 2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -391,43 +390,43 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			switch endpointOp {
 			case endpointOpDelete:
 				// Delete all old endpoint entries.
-				var peDeleteOplogMsg oplog.Message
-				pep := &host.PreferredEndpoint{
-					PreferredEndpoint: &store.PreferredEndpoint{
-						HostSetId: newSet.PublicId,
-						Priority:  1,
-					},
+				var peps []interface{}
+				for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
+					p := host.AllocPreferredEndpoint()
+					p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
+					peps = append(peps, p)
 				}
-				_, err := w.Delete(ctx, pep, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOplogMsg(&peDeleteOplogMsg))
+				deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
+				_, err := w.DeleteItems(ctx, peps, db.NewOplogMsgs(&deleteOplogMsgs))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 
 				// Only append the oplog message if an operation was actually
 				// performed.
-				if peDeleteOplogMsg.Message != nil {
+				if len(deleteOplogMsgs) > 0 {
 					preferredEndpointsUpdated = true
-					msgs = append(msgs, &peDeleteOplogMsg)
+					msgs = append(msgs, deleteOplogMsgs...)
 				}
 
 			case endpointOpUpdate:
 				// Delete all old endpoint entries.
-				var peDeleteOplogMsg oplog.Message
-				pep := &host.PreferredEndpoint{
-					PreferredEndpoint: &store.PreferredEndpoint{
-						HostSetId: newSet.PublicId,
-						Priority:  1,
-					},
+				var peps []interface{}
+				for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
+					p := host.AllocPreferredEndpoint()
+					p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
+					peps = append(peps, p)
 				}
-				_, err := w.Delete(ctx, pep, db.WithWhere("host_set_id = ?", newSet.PublicId), db.NewOplogMsg(&peDeleteOplogMsg))
+				deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
+				_, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs))
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 
 				// Only append the oplog message if an operation was actually
 				// performed.
-				if peDeleteOplogMsg.Message != nil {
-					msgs = append(msgs, &peDeleteOplogMsg)
+				if len(deleteOplogMsgs) > 0 {
+					msgs = append(msgs, deleteOplogMsgs...)
 				}
 
 				// Create the new entries.
@@ -467,6 +466,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
+			}
+
+			hsAgg := &hostSetAgg{PublicId: currentSet.GetPublicId()}
+			if err := reader.LookupByPublicId(ctx, hsAgg); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("looking up host after update"))
+			}
+			returnedSet, err = hsAgg.toHostSet(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("converting from host aggregate to host after update"))
 			}
 
 			if !pluginCalledSuccessfully {
@@ -714,7 +722,7 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		Id:                 in.GetPublicId(),
 		Name:               name,
 		Description:        description,
-		PreferredEndpoints: in.GetPreferredEndpoints(),
+		PreferredEndpoints: in.PreferredEndpoints,
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
