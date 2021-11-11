@@ -255,6 +255,8 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	case db.AscendingOrderBy:
 		withOrder = "order by create_time asc"
 	case db.DescendingOrderBy:
+		fallthrough
+	default:
 		withOrder = "order by create_time"
 	}
 
