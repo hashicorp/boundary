@@ -1282,6 +1282,13 @@ func TestDb_Delete(t *testing.T) {
 			"resource-public-id": []string{publicId},
 		}
 	}
+
+	// seed some test users, so we won't just happen to get a false positive
+	// with only 1 entry in the db
+	for i := 0; i < 1000; i++ {
+		_ = newUser()
+	}
+
 	type args struct {
 		i        *db_test.TestUser
 		opt      []Option
@@ -1294,6 +1301,7 @@ func TestDb_Delete(t *testing.T) {
 		args       args
 		want       int
 		wantOplog  bool
+		wantFound  bool
 		wantErr    bool
 		wantErrIs  errors.Code
 	}{
@@ -1303,6 +1311,29 @@ func TestDb_Delete(t *testing.T) {
 			wrapper:    TestWrapper(t),
 			args: args{
 				i: newUser(),
+			},
+			want:    1,
+			wantErr: false,
+		},
+		{
+			name:       "with-where-no-delete",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i:   newUser(),
+				opt: []Option{WithWhere("1 = ?", 2)},
+			},
+			wantFound: true,
+			want:      0,
+			wantErr:   false,
+		},
+		{
+			name:       "with-where-and-delete",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i:   newUser(),
+				opt: []Option{WithWhere("1 = ?", 1)},
 			},
 			want:    1,
 			wantErr: false,
@@ -1394,6 +1425,11 @@ func TestDb_Delete(t *testing.T) {
 			foundUser := tt.args.i.Clone().(*db_test.TestUser)
 			foundUser.PublicId = tt.args.i.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
+			if tt.wantFound {
+				assert.NoError(err)
+				assert.Equal(tt.args.i.PublicId, foundUser.PublicId)
+				return
+			}
 			assert.Error(err)
 			assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 

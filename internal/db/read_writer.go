@@ -463,14 +463,15 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // which almost always should be to rollback.  Update returns the number of
 // rows updated.
 //
-// Supported options: WithOplog, NewOplogMsg and WithVersion.
+// Supported options: WithOplog, NewOplogMsg, WithWhere and WithVersion.
 // WithOplog will write an oplog entry for the update. NewOplogMsg
 // will return in-memory oplog message.  WithOplog and NewOplogMsg cannot be
 // used together.   If WithVersion is used, then the update will include the
 // version number in the update where clause, which basically makes the update
 // use optimistic locking and the update will only succeed if the existing rows
 // version matches the WithVersion option.  Zero is not a valid value for the
-// WithVersion option and will return an error.
+// WithVersion option and will return an error. WithWhere allows specifying an
+// additional constraint on the operation in addition to the PKs.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
@@ -620,8 +621,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // Delete an object in the db with options: WithOplog, NewOplogMsg, WithWhere.
 // WithOplog will write an oplog entry for the delete. NewOplogMsg will return
 // in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
-// WithWhere allows specifying a constraint. Delete returns the number of rows
-// deleted and any errors.
+//WithWhere allows specifying an additional constraint on the operation in
+//addition to the PKs. Delete returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
