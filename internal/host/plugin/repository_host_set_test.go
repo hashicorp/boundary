@@ -43,12 +43,12 @@ func TestRepository_CreateSet(t *testing.T) {
 	attrs := []byte{}
 
 	tests := []struct {
-		name      string
-		in        *HostSet
-		opts      []Option
-		want      *HostSet
+		name             string
+		in               *HostSet
+		opts             []Option
+		want             *HostSet
 		wantPluginCalled bool
-		wantIsErr errors.Code
+		wantIsErr        errors.Code
 	}{
 		{
 			name:      "nil-HostSet",
@@ -167,6 +167,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes:          attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-sync-interval-positive",
@@ -184,6 +185,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Attributes:          attrs,
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-unimplemented-plugin",
@@ -229,7 +231,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1": "foo",
+							"k1":      "foo",
 							"removed": nil,
 						})
 						require.NoError(t, err)

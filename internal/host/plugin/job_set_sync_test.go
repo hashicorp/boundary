@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"math"
 	"testing"
 	"time"
 
@@ -451,7 +450,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 				lastSyncTime:        timestamp.New(time.Now().Add(-4 * time.Minute)),
 				needsSync:           false,
 			},
-			want: math.MaxInt32 * time.Second,
+			want: setSyncJobRunInterval,
 		},
 	}
 
