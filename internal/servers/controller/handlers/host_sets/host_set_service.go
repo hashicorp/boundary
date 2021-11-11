@@ -64,7 +64,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager[static.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&staticstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[static.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
 	if maskManager[plugin.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
