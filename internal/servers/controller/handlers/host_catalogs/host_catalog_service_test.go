@@ -33,6 +33,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -972,7 +973,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1336,6 +1337,285 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdate_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+
+	name := "test"
+	plg := host.TestPlugin(t, conn, name)
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	}
+
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginHostRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	}
+	pluginRepo := func() (*host.Repository, error) {
+		return host.NewRepository(rw, rw, kms)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tested, err := host_catalogs.NewService(repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
+	require.NoError(t, err, "Failed to create a new host catalog service.")
+
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+
+	freshCatalog := func(t *testing.T) *pb.HostCatalog {
+		attr, err := structpb.NewStruct(map[string]interface{}{
+			"foo": "bar",
+		})
+		require.NoError(t, err)
+		resp, err := tested.CreateHostCatalog(ctx, &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+			ScopeId:                     proj.GetPublicId(),
+			PluginId:                    plg.GetPublicId(),
+			Name:                        wrapperspb.String("default"),
+			Description:                 wrapperspb.String("default"),
+			Type:                        "plugin",
+			Attributes:                  attr,
+		}})
+		require.NoError(t, err)
+		id := resp.GetItem().GetId()
+		t.Cleanup(func() {
+			_, err := tested.DeleteHostCatalog(ctx, &pbs.DeleteHostCatalogRequest{Id: id})
+			require.NoError(t, err)
+		})
+		return resp.GetItem()
+	}
+
+	type updateFn func(catalog *pb.HostCatalog)
+	clearReadOnlyFields := func() updateFn {
+		return func(c *pb.HostCatalog) {
+			c.Id = ""
+			c.Plugin = nil
+			c.AuthorizedActions = nil
+			c.AuthorizedCollectionActions = nil
+			c.CreatedTime = nil
+			c.UpdatedTime = nil
+		}
+	}
+	updateName := func(i *wrappers.StringValue) updateFn {
+		return func(c *pb.HostCatalog) {
+			c.Name = i
+		}
+	}
+	updateDesc := func(i *wrappers.StringValue) updateFn {
+		return func(c *pb.HostCatalog) {
+			c.Description = i
+		}
+	}
+	updateAttrs := func(i *structpb.Struct) updateFn {
+		return func(c *pb.HostCatalog) {
+			c.Attributes = i
+		}
+	}
+
+	cases := []struct {
+		name string
+		masks []string
+		changes []updateFn
+		check func(*testing.T, *pb.HostCatalog)
+		err   error
+	}{
+		{
+			name: "Update an Existing HostCatalog",
+			masks: []string{"name", "description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, "new", in.Name.GetValue())
+				assert.Equal(t, "desc", in.Description.GetValue())
+			},
+		},
+		{
+			name: "Update arbitrary attribute for catalog",
+			masks: []string{"attributes.newkey", "attributes.foo"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateAttrs(func() *structpb.Struct {
+					attr, err := structpb.NewStruct(map[string]interface{}{
+						"newkey": "newvalue",
+						"foo":    nil,
+					})
+					require.NoError(t, err)
+					return attr
+				}()),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+			},
+		},
+		{
+			name: "Multiple Paths in single string",
+			masks: []string{"name,description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, "new", in.Name.GetValue())
+				assert.Equal(t, "desc", in.Description.GetValue())
+			},
+		},
+		{
+			name: "No Update Mask",
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Path",
+			masks: []string{},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			masks: []string{"nonexistant_field"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Name",
+			masks: []string{"name"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(nil),
+				updateDesc(wrapperspb.String("ignored")),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Nil(t, in.Name)
+				assert.Equal(t, "default", in.Description.GetValue())
+			},
+		},
+		{
+			name: "Unset Description",
+			masks: []string{"description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("ignored")),
+				updateDesc(nil),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Nil(t, in.Description)
+				assert.Equal(t, "default", in.Name.GetValue())
+			},
+		},
+		{
+			name: "Update Only Name",
+			masks: []string{"name"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("updated")),
+				updateDesc(wrapperspb.String("ignored")),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, "updated", in.Name.GetValue())
+				assert.Equal(t, "default", in.Description.GetValue())
+			},
+		},
+		{
+			name: "Update Only Description",
+			masks: []string{"description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("ignored")),
+				updateDesc(wrapperspb.String("updated")),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, "default", in.Name.GetValue())
+				assert.Equal(t, "updated", in.Description.GetValue())
+			},
+		},
+		{
+			name: "Cant change type",
+			masks: []string{"type"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				func(c *pb.HostCatalog) {
+					c.Type = "static"
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Updated Time",
+			masks: []string{"updated_time"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				func(c *pb.HostCatalog) {
+					c.UpdatedTime = timestamppb.Now()
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			hc := freshCatalog(t)
+
+			id := hc.GetId()
+			for _, f := range tc.changes {
+				f(hc)
+			}
+
+			req := &pbs.UpdateHostCatalogRequest{
+				Id: id,
+				Item: hc,
+				UpdateMask: &field_mask.FieldMask{Paths: tc.masks},
+			}
+
+			// Test some bad versions
+			req.Item.Version = 2
+			_, gErr := tested.UpdateHostCatalog(ctx, req)
+			require.Error(gErr)
+			req.Item.Version = 0
+			_, gErr = tested.UpdateHostCatalog(ctx, req)
+			require.Error(gErr)
+			req.Item.Version = 1
+
+			got, gErr := tested.UpdateHostCatalog(ctx, req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			require.NotNil(got)
+
+			item := got.GetItem()
+			assert.Equal(uint32(2), item.GetVersion())
+			assert.Greater(item.GetUpdatedTime().AsTime().UnixNano(), item.GetCreatedTime().AsTime().UnixNano())
+			tc.check(t, item)
 		})
 	}
 }

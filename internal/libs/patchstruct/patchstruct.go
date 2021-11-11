@@ -71,8 +71,9 @@ func patchM(dst, src map[string]interface{}) map[string]interface{} {
 				// If the value in dst a map, continue to patch
 				dst[k] = patchM(y, x)
 			} else {
-				// Overwrite
-				dst[k] = x
+				// Overwrite after stripping out keys to nil values
+				newX := patchM(make(map[string]interface{}), x)
+				dst[k] = newX
 			}
 
 		default:

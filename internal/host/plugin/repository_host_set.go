@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
+	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -53,6 +54,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 	s = s.clone()
 
+	// Use PatchBytes' functionality that does not add keys where the values
+	// are nil to the resulting struct since we do not want to store nil valued
+	// attributes.
+	var err error
+	s.Attributes, err = patchstruct.PatchBytes([]byte{}, s.Attributes)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	c, per, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("looking up catalog"))
@@ -78,11 +88,6 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	var preferredEndpoints []interface{}
 	if s.PreferredEndpoints != nil {
@@ -100,6 +105,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var calledPluginSuccessfully bool
 
 	var returnedHostSet *HostSet
 	_, err = r.writer.DoTx(
@@ -127,6 +134,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 					return err
 				}
 				msgs = append(msgs, peOplogMsgs...)
+			}
+
+			if !calledPluginSuccessfully {
+				if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				calledPluginSuccessfully = true
 			}
 
 			metadata := s.oplog(oplog.OpType_OP_TYPE_CREATE)

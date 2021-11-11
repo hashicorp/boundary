@@ -818,7 +818,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	testAttrs, err := structpb.NewStruct(map[string]interface{}{
+	attrs := map[string]interface{}{
 		"int":         1,
 		"zero int":    0,
 		"string":      "foo",
@@ -837,7 +837,13 @@ func TestCreate_Plugin(t *testing.T) {
 			"bool":        true,
 			"zero bool":   false,
 		},
-	})
+	}
+	testInputAttrs, err := structpb.NewStruct(attrs)
+	require.NoError(t, err)
+	// The result should clear out all keys with nil values...
+	delete(attrs, "zero bytes")
+	delete(attrs["nested"].(map[string]interface{}), "zero bytes")
+	testOutputAttrs, err := structpb.NewStruct(attrs)
 	require.NoError(t, err)
 
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
@@ -885,7 +891,7 @@ func TestCreate_Plugin(t *testing.T) {
 				Description:         &wrappers.StringValue{Value: "desc"},
 				Type:                plugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
-				Attributes:          testAttrs,
+				Attributes:          testInputAttrs,
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -902,7 +908,7 @@ func TestCreate_Plugin(t *testing.T) {
 					Type:                plugin.Subtype.String(),
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
 					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
-					Attributes:          testAttrs,
+					Attributes:          testOutputAttrs,
 				},
 			},
 		},
