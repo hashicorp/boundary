@@ -59,8 +59,8 @@ func (pe *PreferredEndpoint) validate(ctx context.Context, caller errors.Op) err
 }
 
 // AllocPreferredEndpoint makes an empty one in-memory
-func AllocPreferredEndpoint() PreferredEndpoint {
-	return PreferredEndpoint{
+func AllocPreferredEndpoint() *PreferredEndpoint {
+	return &PreferredEndpoint{
 		PreferredEndpoint: &store.PreferredEndpoint{},
 	}
 }
