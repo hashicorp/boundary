@@ -37,13 +37,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
 
 	tests := []struct {
-		name       string
-		in         *HostCatalog
-		opts       []Option
-		want       *HostCatalog
+		name             string
+		in               *HostCatalog
+		opts             []Option
+		want             *HostCatalog
 		wantPluginCalled bool
-		wantSecret *structpb.Struct
-		wantIsErr  errors.Code
+		wantSecret       *structpb.Struct
+		wantIsErr        errors.Code
 	}{
 		{
 			name:      "nil-catalog",
@@ -179,7 +179,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId: plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1": "foo",
+							"k1":     "foo",
 							"nilkey": nil,
 						})
 						require.NoError(t, err)
