@@ -822,7 +822,7 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 		if outputFields.Has(globals.PreferredEndpointsField) {
 			out.PreferredEndpoints = h.PreferredEndpoints
 		}
-		if outputFields.Has(globals.SyncIntervalSecondsField) {
+		if outputFields.Has(globals.SyncIntervalSecondsField) && h.GetSyncIntervalSeconds() != 0 {
 			out.SyncIntervalSeconds = &wrapperspb.Int32Value{Value: h.GetSyncIntervalSeconds()}
 		}
 		if outputFields.Has(globals.AttributesField) {
