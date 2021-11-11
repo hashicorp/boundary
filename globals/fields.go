@@ -59,6 +59,7 @@ const (
 	ApplicationCredentialSourceIdsField  = "application_credential_source_ids"
 	ApplicationCredentialSourcesField    = "application_credential_sources"
 	PreferredEndpointsField              = "preferred_endpoints"
+	SyncIntervalSecondsField             = "sync_interval_seconds"
 	PluginIdField                        = "plugin_id"
 	PluginField                          = "plugin"
 	PluginNameField                      = "plugin_name"

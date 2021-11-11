@@ -121,3 +121,15 @@ func DefaultPreferredEndpoints() Option {
 		o.postMap["preferred_endpoints"] = nil
 	}
 }
+
+func WithSyncIntervalSeconds(inSyncIntervalSeconds int32) Option {
+	return func(o *options) {
+		o.postMap["sync_interval_seconds"] = inSyncIntervalSeconds
+	}
+}
+
+func DefaultSyncIntervalSeconds() Option {
+	return func(o *options) {
+		o.postMap["sync_interval_seconds"] = nil
+	}
+}

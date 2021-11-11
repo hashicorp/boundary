@@ -125,6 +125,11 @@ begin;
     update_time wt_timestamp,
     last_sync_time wt_timestamp,
     need_sync bool not null,
+    sync_interval_seconds int
+      constraint sync_interval_seconds_not_equal_zero
+        check(sync_interval_seconds != 0)
+      constraint sync_interval_seconds_not_less_then_negative_one
+        check(sync_interval_seconds >= -1),
     version wt_version,
     attributes bytea not null,
     constraint host_plugin_set_catalog_id_name_uq
@@ -148,7 +153,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on host_plugin_set
-    for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+    for each row execute procedure immutable_columns('public_id', 'catalog_id', 'create_time');
 
   create trigger insert_host_set_subtype before insert on host_plugin_set
     for each row execute procedure insert_host_set_subtype();

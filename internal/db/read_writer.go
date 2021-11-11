@@ -1137,7 +1137,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 //
 // Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
 // If WithLimit == 0, then default limits are used for results.
-// Supports the WithOrder option.
+// Supports the WithOrder and WithDebug options.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
@@ -1154,6 +1154,9 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	db := rw.underlying.WithContext(ctx)
 	if opts.withOrder != "" {
 		db = db.Order(opts.withOrder)
+	}
+	if opts.withDebug {
+		db = db.Debug()
 	}
 	// Perform limiting
 	switch {

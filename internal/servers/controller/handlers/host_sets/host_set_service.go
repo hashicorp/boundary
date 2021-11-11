@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	plugstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
-	"github.com/hashicorp/boundary/internal/host/static/store"
+	staticstore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/perms"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
@@ -32,8 +32,7 @@ import (
 )
 
 var (
-	staticMaskManager handlers.MaskManager
-	pluginMaskManager handlers.MaskManager
+	maskManager = map[subtypes.Subtype]handlers.MaskManager{}
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -65,10 +64,10 @@ var (
 
 func init() {
 	var err error
-	if staticMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostSet{}, &store.UnimplementedSetFields{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[static.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
-	if pluginMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[plugin.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
 }
@@ -524,7 +523,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId stri
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = req.GetId()
-	dbMask := staticMaskManager.Translate(req.GetUpdateMask().GetPaths())
+	dbMask := maskManager[static.Subtype].Translate(req.GetUpdateMask().GetPaths())
 	if len(dbMask) == 0 {
 		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -554,7 +553,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pb
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = req.GetId()
-	dbMask := pluginMaskManager.Translate(req.GetUpdateMask().GetPaths(), "attributes.")
+	dbMask := maskManager[plugin.Subtype].Translate(req.GetUpdateMask().GetPaths(), "attributes.")
 	if len(dbMask) == 0 {
 		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -865,7 +864,10 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 	switch h := in.(type) {
 	case *plugin.HostSet:
 		if outputFields.Has(globals.PreferredEndpointsField) {
-			out.PreferredEndpoints = h.GetPreferredEndpoints()
+			out.PreferredEndpoints = h.PreferredEndpoints
+		}
+		if outputFields.Has(globals.SyncIntervalSecondsField) && h.GetSyncIntervalSeconds() != 0 {
+			out.SyncIntervalSeconds = &wrapperspb.Int32Value{Value: h.GetSyncIntervalSeconds()}
 		}
 		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}
@@ -913,6 +915,9 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 	if item.GetPreferredEndpoints() != nil {
 		opts = append(opts, plugin.WithPreferredEndpoints(item.GetPreferredEndpoints()))
 	}
+	if item.GetSyncIntervalSeconds() != nil {
+		opts = append(opts, plugin.WithSyncIntervalSeconds(item.GetSyncIntervalSeconds().GetValue()))
+	}
 	hs, err := plugin.NewHostSet(ctx, catalogId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
@@ -955,6 +960,11 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) e
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != plugin.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
+			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
+				if val.GetValue() == 0 || val.GetValue() < -1 {
+					badFields[globals.SyncIntervalSecondsField] = "Must be -1 or a positive integer."
+				}
+			}
 		}
 		return badFields
 	})
@@ -973,6 +983,12 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
+			}
+		case plugin.Subtype:
+			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
+				if val.GetValue() == 0 || val.GetValue() < -1 {
+					badFields[globals.SyncIntervalSecondsField] = "Must be -1 or a positive integer."
+				}
 			}
 		}
 		return badFields

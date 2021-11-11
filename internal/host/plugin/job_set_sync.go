@@ -96,7 +96,7 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 	// Fetch all sets that will reach their sync point within the syncWindow.
 	// This is done to avoid constantly scheduling the set sync job when there
 	// are multiple sets to sync in sequence.
-	err := r.reader.SearchWhere(ctx, &setAggs, `need_sync or last_sync_time <= wt_add_seconds_to_now(?)`, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -152,29 +152,41 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		type NextResync struct {
-			SyncNow  bool
-			ResyncIn time.Duration
-		}
-		var n NextResync
-		err = r.ScanRows(rows, &n)
-		if err != nil {
-			return 0, errors.WrapDeprecated(err, op)
-		}
-		if n.SyncNow || n.ResyncIn < 0 {
-			// If we are past the next renewal time, return 0 to schedule immediately
-			return 0, nil
-		}
-		return n.ResyncIn * time.Second, nil
+	if !rows.Next() {
+		return setSyncJobRunInterval, nil
 	}
-	return setSyncJobRunInterval, nil
+
+	type NextResync struct {
+		SyncNow             bool
+		SyncIntervalSeconds int32
+		ResyncIn            time.Duration
+	}
+	var n NextResync
+	err = r.ScanRows(rows, &n)
+	if err != nil {
+		return 0, errors.WrapDeprecated(err, op)
+	}
+	switch {
+	case n.SyncNow:
+		// Immediate
+		return 0, nil
+	case n.SyncIntervalSeconds < 0:
+		// In this case automatic syncing is disabled; we still sync if SyncNow
+		// but otherwise do not. We schedule the job at the default cadence but
+		// it will do nothing, just calculate a next run time to ensure it
+		// should stay disabled.
+		return setSyncJobRunInterval, nil
+	case n.ResyncIn < 0:
+		// Immediate
+		return 0, nil
+	}
+	return n.ResyncIn * time.Second, nil
 }
 
 // syncSets retrieves from their plugins all the host and membership information
 // for the provided host sets and updates their values in the database.
 func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
-	const op = "plugin.(Repository).Endpoints"
+	const op = "plugin.(SetSyncJob).syncSets"
 	if len(setIds) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
@@ -226,7 +238,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		if !ok {
 			si = &setInfo{}
 		}
-		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.GetPreferredEndpoints())
+		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.PreferredEndpoints)
 		si.plgSet, err = toPluginSet(ctx, s)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("converting set %q to plugin set", s.GetPublicId())))
@@ -288,7 +300,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		}
 
 		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-			errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
 		updateSyncDataQuery := `

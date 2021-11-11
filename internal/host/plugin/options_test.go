@@ -20,6 +20,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withName = "test"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithSyncIntervalSeconds", func(t *testing.T) {
+		opts := getOpts(WithSyncIntervalSeconds(5))
+		testOpts := getDefaultOptions()
+		testOpts.withSyncIntervalSeconds = 5
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithPluginId", func(t *testing.T) {
 		opts := getOpts(withPluginId("test"))
 		testOpts := getDefaultOptions()

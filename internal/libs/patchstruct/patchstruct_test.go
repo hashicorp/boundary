@@ -81,7 +81,7 @@ var testCases = []testCase{
 	},
 	{
 		name: "nested with nil",
-		dst: nil,
+		dst:  nil,
 		src: map[string]interface{}{
 			"a": "b",
 			"nested": map[string]interface{}{
