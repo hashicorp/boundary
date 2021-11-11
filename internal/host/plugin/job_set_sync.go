@@ -174,7 +174,7 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 // syncSets retrieves from their plugins all the host and membership information
 // for the provided host sets and updates their values in the database.
 func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
-	const op = "plugin.(Repository).Endpoints"
+	const op = "plugin.(SetSyncJob).syncSets"
 	if len(setIds) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
