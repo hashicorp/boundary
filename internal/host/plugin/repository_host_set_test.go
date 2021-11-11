@@ -46,12 +46,12 @@ func TestRepository_CreateSet(t *testing.T) {
 	attrs := []byte{}
 
 	tests := []struct {
-		name      string
-		in        *HostSet
-		opts      []Option
-		want      *HostSet
+		name             string
+		in               *HostSet
+		opts             []Option
+		want             *HostSet
 		wantPluginCalled bool
-		wantIsErr errors.Code
+		wantIsErr        errors.Code
 	}{
 		{
 			name:      "nil-HostSet",
@@ -92,6 +92,17 @@ func TestRepository_CreateSet(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
+			name: "invalid-sync-interval-too-negative",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:           catalog.PublicId,
+					SyncIntervalSeconds: -99,
+					Attributes:          attrs,
+				},
+			},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
 			name: "valid-no-options",
 			in: &HostSet{
 				HostSet: &store.HostSet{
@@ -111,17 +122,17 @@ func TestRepository_CreateSet(t *testing.T) {
 			name: "valid-preferred-endpoints",
 			in: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId:          catalog.PublicId,
-					Attributes:         attrs,
-					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
+					CatalogId:  catalog.PublicId,
+					Attributes: attrs,
 				},
+				PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId:          catalog.PublicId,
-					Attributes:         attrs,
-					PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
+					CatalogId:  catalog.PublicId,
+					Attributes: attrs,
 				},
+				PreferredEndpoints: []string{"cidr:1.2.3.4/32", "dns:a.b.c"},
 			},
 			wantPluginCalled: true,
 		},
@@ -139,6 +150,42 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:  catalog.PublicId,
 					Name:       "test-name-repo",
 					Attributes: attrs,
+				},
+			},
+			wantPluginCalled: true,
+		},
+		{
+			name: "valid-sync-interval-disabled",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:           catalog.PublicId,
+					SyncIntervalSeconds: -1,
+					Attributes:          attrs,
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:           catalog.PublicId,
+					SyncIntervalSeconds: -1,
+					Attributes:          attrs,
+				},
+			},
+			wantPluginCalled: true,
+		},
+		{
+			name: "valid-sync-interval-positive",
+			in: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:           catalog.PublicId,
+					SyncIntervalSeconds: 60,
+					Attributes:          attrs,
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					CatalogId:           catalog.PublicId,
+					SyncIntervalSeconds: 60,
+					Attributes:          attrs,
 				},
 			},
 			wantPluginCalled: true,
@@ -187,7 +234,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1": "foo",
+							"k1":      "foo",
 							"removed": nil,
 						})
 						require.NoError(t, err)
@@ -1129,7 +1176,7 @@ func TestRepository_LookupSet(t *testing.T) {
 				return &plgpb.ListHostsResponse{}, nil
 			},
 		}),
-	})
+	}, WithSyncIntervalSeconds(5))
 	hostSetId, err := newHostSetId(ctx)
 	require.NoError(t, err)
 
@@ -1192,9 +1239,9 @@ func TestRepository_Endpoints(t *testing.T) {
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-	hostSet10 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
-	hostSet192 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
-	hostSet100 := TestSet(t, conn, kms, sched, catalog, plgm, WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
+	hostSet10 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet10"), WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
+	hostSet192 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet192"), WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
+	hostSet100 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet100"), WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
 	hostlessSet := TestSet(t, conn, kms, sched, hostlessCatalog, plgm)
 
 	h1 := TestHost(t, conn, catalog.GetPublicId(), "test", withIpAddresses([]string{"10.0.0.5", "192.168.0.5"}))

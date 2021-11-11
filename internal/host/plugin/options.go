@@ -16,17 +16,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId           string
-	withPluginId           string
-	withName               string
-	withDescription        string
-	withAttributes         *structpb.Struct
-	withSecrets            *structpb.Struct
-	withPreferredEndpoints []string
-	withIpAddresses        []string
-	withDnsNames           []string
-	withLimit              int
-	withSetIds             []string
+	withPublicId            string
+	withPluginId            string
+	withName                string
+	withDescription         string
+	withAttributes          *structpb.Struct
+	withSecrets             *structpb.Struct
+	withPreferredEndpoints  []string
+	withSyncIntervalSeconds int32
+	withIpAddresses         []string
+	withDnsNames            []string
+	withLimit               int
+	withSetIds              []string
 }
 
 func getDefaultOptions() options {
@@ -81,6 +82,13 @@ func WithSecrets(secrets *structpb.Struct) Option {
 func WithPreferredEndpoints(with []string) Option {
 	return func(o *options) {
 		o.withPreferredEndpoints = with
+	}
+}
+
+// WithSyncIntervalSeconds provides an optional sync interval, in seconds
+func WithSyncIntervalSeconds(with int32) Option {
+	return func(o *options) {
+		o.withSyncIntervalSeconds = with
 	}
 }
 

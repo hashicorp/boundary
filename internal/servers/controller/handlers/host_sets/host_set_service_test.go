@@ -37,6 +37,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var testAuthorizedActions = map[subtypes.Subtype][]string{
@@ -168,7 +169,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints))
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -184,8 +185,9 @@ func TestGet_Plugin(t *testing.T) {
 			Name:        plg.GetName(),
 			Description: plg.GetDescription(),
 		},
-		PreferredEndpoints: prefEndpoints,
-		AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
+		PreferredEndpoints:  prefEndpoints,
+		SyncIntervalSeconds: &wrappers.Int32Value{Value: -1},
+		AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
 	}
 
 	cases := []struct {
@@ -373,7 +375,7 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
+		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints), plugin.WithSyncIntervalSeconds(5))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -383,12 +385,13 @@ func TestList_Plugin(t *testing.T) {
 				Name:        plg.GetName(),
 				Description: plg.GetDescription(),
 			},
-			CreatedTime:        h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:        h.GetUpdateTime().GetTimestamp(),
-			Version:            h.GetVersion(),
-			Type:               plugin.Subtype.String(),
-			AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
-			PreferredEndpoints: preferredEndpoints,
+			CreatedTime:         h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:         h.GetUpdateTime().GetTimestamp(),
+			Version:             h.GetVersion(),
+			Type:                plugin.Subtype.String(),
+			AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+			PreferredEndpoints:  preferredEndpoints,
+			SyncIntervalSeconds: &wrappers.Int32Value{Value: 5},
 		})
 	}
 
@@ -856,10 +859,11 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "No Attributes",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "No Attributes"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          plugin.Subtype.String(),
+				HostCatalogId:       hc.GetPublicId(),
+				Name:                &wrappers.StringValue{Value: "No Attributes"},
+				Description:         &wrappers.StringValue{Value: "desc"},
+				Type:                plugin.Subtype.String(),
+				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -871,21 +875,23 @@ func TestCreate_Plugin(t *testing.T) {
 						Name:        plg.GetName(),
 						Description: plg.GetDescription(),
 					},
-					Name:              &wrappers.StringValue{Value: "No Attributes"},
-					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+					Name:                &wrappers.StringValue{Value: "No Attributes"},
+					Description:         &wrappers.StringValue{Value: "desc"},
+					Type:                plugin.Subtype.String(),
+					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 				},
 			},
 		},
 		{
 			name: "With Attributes",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "With Attributes"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          plugin.Subtype.String(),
-				Attributes:    testInputAttrs,
+				HostCatalogId:       hc.GetPublicId(),
+				Name:                &wrappers.StringValue{Value: "With Attributes"},
+				Description:         &wrappers.StringValue{Value: "desc"},
+				Type:                plugin.Subtype.String(),
+				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
+				Attributes:          testInputAttrs,
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -897,11 +903,12 @@ func TestCreate_Plugin(t *testing.T) {
 						Name:        plg.GetName(),
 						Description: plg.GetDescription(),
 					},
-					Name:              &wrappers.StringValue{Value: "With Attributes"},
-					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
-					Attributes:        testOutputAttrs,
+					Name:                &wrappers.StringValue{Value: "With Attributes"},
+					Description:         &wrappers.StringValue{Value: "desc"},
+					Type:                plugin.Subtype.String(),
+					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
+					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					Attributes:          testOutputAttrs,
 				},
 			},
 		},
