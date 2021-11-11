@@ -272,6 +272,11 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		} else {
 			newSet.Attributes = make([]byte, 0)
 		}
+
+		// Flag the record as needing a sync since we've updated
+		// attributes.
+		dbMask = append(dbMask, "NeedSync")
+		newSet.NeedSync = true
 	}
 
 	// Get the host catalog for the set and its persisted data.
@@ -471,14 +476,19 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
 	}
 
+	hosts, err = listHostBySetIds(ctx, r.reader, []string{returnedSet.PublicId}, opt...)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	var numUpdated int
 	if setUpdated || preferredEndpointsUpdated {
 		numUpdated = 1
 	}
 
-	hosts, err = listHostBySetIds(ctx, r.reader, []string{returnedSet.PublicId}, opt...)
-	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	if updateAttributes {
+		// Request a host sync since we have updated attributes.
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
@@ -481,6 +482,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
+	checkNeedSync := func(want bool) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotSet.NeedSync)
+		}
+	}
+
 	checkUpdateSetRequestCurrentNameNil := func() checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -691,6 +700,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -708,6 +718,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -725,6 +736,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -742,6 +754,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -759,6 +772,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -776,6 +790,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(0),
 			},
 		},
@@ -802,6 +817,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -827,6 +843,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -848,6 +865,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -867,6 +885,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -895,6 +914,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(true),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -918,6 +938,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+				checkNeedSync(false),
 				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -943,7 +964,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 			"foo": "bar",
 		})
 
-		numSetsUpdated, err := dbRW.Update(ctx, set, []string{"attributes"}, []string{})
+		// Set some fake sync detail to the set.
+		set.LastSyncTime = timestamp.New(time.Now())
+		set.NeedSync = false
+
+		numSetsUpdated, err := dbRW.Update(ctx, set, []string{"attributes", "LastSyncTime", "NeedSync"}, []string{})
 		require.NoError(err)
 		require.Equal(1, numSetsUpdated)
 
