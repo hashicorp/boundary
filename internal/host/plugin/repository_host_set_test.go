@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -411,26 +410,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
 	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
-	// Define a plugin "manager", basically just a map with a mock
-	// plugin in it.  This also includes functionality to capture the
-	// state, and set an error and the returned secrets to nil. Note
-	// that the way that this is set up means that the tests cannot run
-	// in parallel, but there could be other factors affecting that as
-	// well.
-	var gotOnUpdateCallCount int
-	var gotOnUpdateSetRequest *plgpb.OnUpdateSetRequest
-	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
-	testPluginMap := map[string]plgpb.HostPluginServiceClient{
-		testPlugin.GetPublicId(): &WrappingPluginClient{
-			Server: &TestPluginServer{
-				OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
-					gotOnUpdateCallCount++
-					gotOnUpdateSetRequest = req
-					return &plgpb.OnUpdateSetResponse{}, pluginError
-				},
-			},
-		},
+	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	// Set up a test catalog and the secrets for it
@@ -451,7 +433,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	// exists to ensure that we can test for conflicts when setting
 	// the name.
 	const testDuplicateSetName = "duplicate-set-name"
-	testDuplicateSet := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, testPluginMap)
+	testDuplicateSet := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, dummyPluginMap)
 	testDuplicateSet.Name = testDuplicateSetName
 	setsUpdated, err := dbRW.Update(ctx, testDuplicateSet, []string{"name"}, []string{})
 	require.NoError(t, err)
@@ -525,180 +507,150 @@ func TestRepository_UpdateSet(t *testing.T) {
 	// Note that we define some state here, similar to how we
 	// previously defined gotOnUpdateCatalogRequest above next the
 	// plugin map.
-	type checkFunc func(t *testing.T, ctx context.Context)
-	var (
-		gotSet        *HostSet
-		gotNumUpdated int
-	)
+	type checkHostSetFunc func(t *testing.T, got *HostSet)
 
-	checkVersion := func(want uint32) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkVersion := func(want uint32) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSet.Version, "checkVersion")
+			assert.Equal(t, want, got.Version, "checkVersion")
 		}
 	}
 
-	checkName := func(want string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkName := func(want string) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSet.Name, "checkName")
+			assert.Equal(t, want, got.Name, "checkName")
 		}
 	}
 
-	checkDescription := func(want string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkDescription := func(want string) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSet.Description, "checkDescription")
+			assert.Equal(t, want, got.Description, "checkDescription")
 		}
 	}
 
-	checkPreferredEndpoints := func(want []string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkPreferredEndpoints := func(want []string) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSet.PreferredEndpoints, "checkPreferredEndpoints")
+			assert.Equal(t, want, got.PreferredEndpoints, "checkPreferredEndpoints")
 		}
 	}
 
-	checkAttributes := func(want map[string]interface{}) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkAttributes := func(want map[string]interface{}) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			require := require.New(t)
 			st := &structpb.Struct{}
-			require.NoError(proto.Unmarshal(gotSet.Attributes, st))
-			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+			require.NoError(t, proto.Unmarshal(got.Attributes, st))
+			assert.Empty(t, cmp.Diff(mustStruct(want), st, protocmp.Transform()))
 		}
 	}
 
-	checkNeedSync := func(want bool) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkNeedSync := func(want bool) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotSet.NeedSync, "checkNeedSync")
+			assert.Equal(t, want, got.NeedSync, "checkNeedSync")
 		}
 	}
 
-	checkUpdateSetRequestCurrentNameNil := func() checkFunc {
-		return func(t *testing.T, ctx context.Context) {
+	checkVerifySetOplog := func(op oplog.OpType) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
 			t.Helper()
-			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Name, "checkUpdateSetRequestCurrentNameNil")
-		}
-	}
-
-	checkUpdateSetRequestNewName := func(want string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Name, "checkUpdateSetRequestNewName")
-		}
-	}
-
-	checkUpdateSetRequestNewNameNil := func() checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.Name, "checkUpdateSetRequestNewNameNil")
-		}
-	}
-
-	checkUpdateSetRequestCurrentDescriptionNil := func() checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Description, "checkUpdateSetRequestCurrentDescriptionNil")
-		}
-	}
-
-	checkUpdateSetRequestNewDescription := func(want string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Description, "checkUpdateSetRequestNewDescription")
-		}
-	}
-
-	checkUpdateSetRequestNewDescriptionNil := func() checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.Description, "checkUpdateSetRequestNewDescriptionNil")
-		}
-	}
-
-	checkUpdateSetRequestCurrentPreferredEndpoints := func(want []string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints, "checkUpdateSetRequestCurrentPreferredEndpoints")
-		}
-	}
-
-	checkUpdateSetRequestNewPreferredEndpoints := func(want []string) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotOnUpdateSetRequest.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpoints")
-		}
-	}
-
-	checkUpdateSetRequestNewPreferredEndpointsNil := func() checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpointsNil")
-		}
-	}
-
-	checkUpdateSetRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.CurrentSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
-		}
-	}
-
-	checkUpdateSetRequestNewAttributes := func(want map[string]interface{}) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.NewSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
-		}
-	}
-
-	checkUpdateSetRequestPersistedSecrets := func(want map[string]interface{}) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.Persisted.Secrets, protocmp.Transform()), "checkUpdateSetRequestPersistedSecrets")
-		}
-	}
-
-	checkNumUpdated := func(want int) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.Equal(want, gotNumUpdated)
-		}
-	}
-
-	checkVerifySetOplog := func(op oplog.OpType) checkFunc {
-		return func(t *testing.T, ctx context.Context) {
-			t.Helper()
-			assert := assert.New(t)
-			assert.NoError(
+			assert.NoError(t,
 				db.TestVerifyOplog(
 					t,
 					dbRW,
-					gotSet.PublicId,
+					got.PublicId,
 					db.WithOperation(op),
 					db.WithCreateNotBefore(10*time.Second),
 				),
 			)
+		}
+	}
+
+	type checkPluginReqFunc func(t *testing.T, got *plgpb.OnUpdateSetRequest)
+
+	checkUpdateSetRequestCurrentNameNil := func() checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Nil(t, got.CurrentSet.Name, "checkUpdateSetRequestCurrentNameNil")
+		}
+	}
+
+	checkUpdateSetRequestNewName := func(want string) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Equal(t, wrapperspb.String(want), got.NewSet.Name, "checkUpdateSetRequestNewName")
+		}
+	}
+
+	checkUpdateSetRequestNewNameNil := func() checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Nil(t, got.NewSet.Name, "checkUpdateSetRequestNewNameNil")
+		}
+	}
+
+	checkUpdateSetRequestCurrentDescriptionNil := func() checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Nil(t, got.CurrentSet.Description, "checkUpdateSetRequestCurrentDescriptionNil")
+		}
+	}
+
+	checkUpdateSetRequestNewDescription := func(want string) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Equal(t, wrapperspb.String(want), got.NewSet.Description, "checkUpdateSetRequestNewDescription")
+		}
+	}
+
+	checkUpdateSetRequestNewDescriptionNil := func() checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Nil(t, got.NewSet.Description, "checkUpdateSetRequestNewDescriptionNil")
+		}
+	}
+
+	checkUpdateSetRequestCurrentPreferredEndpoints := func(want []string) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Equal(t, want, got.CurrentSet.PreferredEndpoints, "checkUpdateSetRequestCurrentPreferredEndpoints")
+		}
+	}
+
+	checkUpdateSetRequestNewPreferredEndpoints := func(want []string) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Equal(t, want, got.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpoints")
+		}
+	}
+
+	checkUpdateSetRequestNewPreferredEndpointsNil := func() checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Nil(t, got.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpointsNil")
+		}
+	}
+
+	checkUpdateSetRequestCurrentAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Empty(t, cmp.Diff(mustStruct(want), got.CurrentSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
+		}
+	}
+
+	checkUpdateSetRequestNewAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Empty(t, cmp.Diff(mustStruct(want), got.NewSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
+		}
+	}
+
+	checkUpdateSetRequestPersistedSecrets := func(want map[string]interface{}) checkPluginReqFunc {
+		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
+			t.Helper()
+			assert.Empty(t, cmp.Diff(mustStruct(want), got.Persisted.Secrets, protocmp.Transform()), "checkUpdateSetRequestPersistedSecrets")
 		}
 	}
 
@@ -709,9 +661,10 @@ func TestRepository_UpdateSet(t *testing.T) {
 		withPluginError    error
 		changeFuncs        []changeHostSetFunc
 		version            uint32
-		fieldMask          []string
-		wantCheckFuncs     []checkFunc
-		wantIsErr          errors.Code
+		fieldMask         []string
+		wantCheckSetFuncs []checkHostSetFunc
+		wantCheckPluginReqFuncs []checkPluginReqFunc
+		wantIsErr         errors.Code
 	}{
 		{
 			name:        "nil set",
@@ -784,16 +737,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeName("foo")},
 			version:     2,
 			fieldMask:   []string{"name"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
-				checkName("foo"),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkName("foo"),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -802,16 +756,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeName("")},
 			version:     2,
 			fieldMask:   []string{"name"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Version remains same even though row is updated
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewNameNil(),
-				checkName(""),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkName(""),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -820,16 +775,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeDescription("foo")},
 			version:     2,
 			fieldMask:   []string{"description"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescription("foo"),
-				checkDescription("foo"),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkDescription("foo"),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -838,16 +794,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeDescription("")},
 			version:     2,
 			fieldMask:   []string{"description"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // Version remains same even though row is updated
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescriptionNil(),
-				checkDescription(""),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkDescription(""),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -856,16 +813,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"cidr:10.0.0.0/24"})},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -874,16 +832,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
 			version:     2,
 			fieldMask:   []string{"PreferredEndpoints"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
-				checkPreferredEndpoints(nil),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkPreferredEndpoints(nil),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 			},
 		},
 		{
@@ -893,8 +852,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -902,15 +860,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 					"foo": "bar",
 					"baz": "qux",
 				}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
 				checkAttributes(map[string]interface{}{
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
 				checkNeedSync(true),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -921,22 +881,23 @@ func TestRepository_UpdateSet(t *testing.T) {
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
 				checkUpdateSetRequestNewAttributes(map[string]interface{}{
 					"foo": "baz",
 				}),
-				checkAttributes(map[string]interface{}{
-					"foo": "baz",
-				}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{
+					"foo": "baz",
+				}),
 				checkNeedSync(true),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -947,18 +908,19 @@ func TestRepository_UpdateSet(t *testing.T) {
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
 				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkAttributes(map[string]interface{}{}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{}),
 				checkNeedSync(true),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -967,18 +929,19 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
 			version:     2,
 			fieldMask:   []string{"attributes"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
 				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkAttributes(map[string]interface{}{}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{}),
 				checkNeedSync(true),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -990,8 +953,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			})},
 			version:   2,
 			fieldMask: []string{"attributes.a", "attributes.foo"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -999,15 +961,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 					"a":   "b",
 					"foo": "baz",
 				}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
 				checkAttributes(map[string]interface{}{
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
 				checkNeedSync(true),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -1019,19 +983,20 @@ func TestRepository_UpdateSet(t *testing.T) {
 			},
 			version:   2,
 			fieldMask: []string{"name", "PreferredEndpoints"},
-			wantCheckFuncs: []checkFunc{
-				checkVersion(3),
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
-				checkName("foo"),
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkName("foo"),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
 				checkNeedSync(false),
-				checkNumUpdated(1),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
@@ -1056,7 +1021,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			dbKmsCache,
 			sched,
 			testCatalog,
-			testPluginMap,
+			dummyPluginMap,
 			WithPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 		)
 		// Set some (default) attributes on our test set
@@ -1091,14 +1056,34 @@ func TestRepository_UpdateSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
+
+			// Define a plugin "manager", basically just a map with a mock
+			// plugin in it.  This also includes functionality to capture the
+			// state, and set an error and the returned secrets to nil. Note
+			// that the way that this is set up means that the tests cannot run
+			// in parallel, but there could be other factors affecting that as
+			// well.
+			var gotOnUpdateCallCount int
+			testPluginMap := map[string]plgpb.HostPluginServiceClient{
+				testPlugin.GetPublicId(): &WrappingPluginClient{
+					Server: &TestPluginServer{
+						OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+							gotOnUpdateCallCount++
+							for _, check := range tt.wantCheckPluginReqFuncs {
+								check(t, req)
+							}
+							return &plgpb.OnUpdateSetResponse{}, tt.withPluginError
+						},
+					},
+				},
+			}
+
 			origSet := setupHostSet(t, ctx)
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
-			pluginError = tt.withPluginError
-			t.Cleanup(func() { pluginError = nil })
 			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
@@ -1113,9 +1098,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				scopeId = *tt.withScopeId
 			}
 
-			var gotHosts []*Host
-			var gotPlugin *hostplugin.Plugin
-			gotSet, gotHosts, gotPlugin, gotNumUpdated, err = repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			gotSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
 			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1124,7 +1107,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 			}
 			require.NoError(err)
 			require.Equal(1, gotOnUpdateCallCount)
-			t.Cleanup(func() { gotOnUpdateSetRequest = nil })
+			assert.Equal(1, gotNumUpdated)
+
+			gotSet, gotPlugin, err = repo.LookupSet(ctx, workingSet.GetPublicId())
 
 			// Quick assertion that the set is not nil and that the plugin
 			// ID in the catalog referenced by the set matches the plugin
@@ -1146,8 +1131,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			assert.Equal(wantHostMap, gotHostMap)
 
 			// Perform checks
-			for _, check := range tt.wantCheckFuncs {
-				check(t, ctx)
+			for _, check := range tt.wantCheckSetFuncs {
+				check(t, gotSet)
 			}
 		})
 	}
