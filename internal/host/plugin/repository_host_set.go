@@ -357,7 +357,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(r db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			returnedSet = newSet.clone()
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints) + len(currentSet.PreferredEndpoints) + 2)
 			ticket, err := w.GetTicket(s)
@@ -466,6 +466,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}
+			}
+
+			hsAgg := &hostSetAgg{PublicId: currentSet.GetPublicId()}
+			if err := reader.LookupByPublicId(ctx, hsAgg); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("looking up host after update"))
+			}
+			returnedSet, err = hsAgg.toHostSet(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("converting from host aggregate to host after update"))
 			}
 
 			if !pluginCalledSuccessfully {

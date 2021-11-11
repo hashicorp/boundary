@@ -1098,7 +1098,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				scopeId = *tt.withScopeId
 			}
 
-			gotSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
 			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1109,14 +1109,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 			require.Equal(1, gotOnUpdateCallCount)
 			assert.Equal(1, gotNumUpdated)
 
-			gotSet, gotPlugin, err = repo.LookupSet(ctx, workingSet.GetPublicId())
-
 			// Quick assertion that the set is not nil and that the plugin
 			// ID in the catalog referenced by the set matches the plugin
 			// ID in the returned plugin.
-			require.NotNil(gotSet)
+			require.NotNil(gotUpdatedSet)
 			require.NotNil(gotPlugin)
-			assert.Equal(testCatalog.PublicId, gotSet.CatalogId)
+			assert.Equal(testCatalog.PublicId, gotUpdatedSet.CatalogId)
 			assert.Equal(testCatalog.PluginId, gotPlugin.PublicId)
 
 			// Also assert that the hosts returned by the request are the ones that belong to the set
@@ -1132,8 +1130,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 			// Perform checks
 			for _, check := range tt.wantCheckSetFuncs {
-				check(t, gotSet)
+				check(t, gotUpdatedSet)
 			}
+
+			gotLookupSet, gotPlugin, err := repo.LookupSet(ctx, workingSet.GetPublicId())
+			assert.Empty(cmp.Diff(gotUpdatedSet, gotLookupSet, protocmp.Transform()))
 		})
 	}
 }
