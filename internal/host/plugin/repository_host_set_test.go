@@ -535,7 +535,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotSet.Version)
+			assert.Equal(want, gotSet.Version, "checkVersion")
 		}
 	}
 
@@ -543,7 +543,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotSet.Name)
+			assert.Equal(want, gotSet.Name, "checkName")
 		}
 	}
 
@@ -551,7 +551,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotSet.Description)
+			assert.Equal(want, gotSet.Description, "checkDescription")
 		}
 	}
 
@@ -559,7 +559,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotSet.PreferredEndpoints)
+			assert.Equal(want, gotSet.PreferredEndpoints, "checkPreferredEndpoints")
 		}
 	}
 
@@ -578,7 +578,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotSet.NeedSync)
+			assert.Equal(want, gotSet.NeedSync, "checkNeedSync")
 		}
 	}
 
@@ -586,7 +586,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Name)
+			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Name, "checkUpdateSetRequestCurrentNameNil")
 		}
 	}
 
@@ -594,7 +594,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Name)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Name, "checkUpdateSetRequestNewName")
 		}
 	}
 
@@ -602,7 +602,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.Name)
+			assert.Nil(gotOnUpdateSetRequest.NewSet.Name, "checkUpdateSetRequestNewNameNil")
 		}
 	}
 
@@ -610,7 +610,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Description)
+			assert.Nil(gotOnUpdateSetRequest.CurrentSet.Description, "checkUpdateSetRequestCurrentDescriptionNil")
 		}
 	}
 
@@ -618,7 +618,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Description)
+			assert.Equal(wrapperspb.String(want), gotOnUpdateSetRequest.NewSet.Description, "checkUpdateSetRequestNewDescription")
 		}
 	}
 
@@ -626,7 +626,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.Description)
+			assert.Nil(gotOnUpdateSetRequest.NewSet.Description, "checkUpdateSetRequestNewDescriptionNil")
 		}
 	}
 
@@ -634,7 +634,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints)
+			assert.Equal(want, gotOnUpdateSetRequest.CurrentSet.PreferredEndpoints, "checkUpdateSetRequestCurrentPreferredEndpoints")
 		}
 	}
 
@@ -642,7 +642,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Equal(want, gotOnUpdateSetRequest.NewSet.PreferredEndpoints)
+			assert.Equal(want, gotOnUpdateSetRequest.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpoints")
 		}
 	}
 
@@ -650,7 +650,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Nil(gotOnUpdateSetRequest.NewSet.PreferredEndpoints)
+			assert.Nil(gotOnUpdateSetRequest.NewSet.PreferredEndpoints, "checkUpdateSetRequestNewPreferredEndpointsNil")
 		}
 	}
 
@@ -658,7 +658,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.CurrentSet.Attributes, protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.CurrentSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
 		}
 	}
 
@@ -666,7 +666,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.NewSet.Attributes, protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.NewSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
 		}
 	}
 
@@ -674,7 +674,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.Persisted.Secrets, protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateSetRequest.Persisted.Secrets, protocmp.Transform()), "checkUpdateSetRequestPersistedSecrets")
 		}
 	}
 

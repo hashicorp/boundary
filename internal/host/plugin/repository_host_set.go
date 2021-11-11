@@ -714,7 +714,7 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		Id:                 in.GetPublicId(),
 		Name:               name,
 		Description:        description,
-		PreferredEndpoints: in.GetPreferredEndpoints(),
+		PreferredEndpoints: in.PreferredEndpoints,
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
