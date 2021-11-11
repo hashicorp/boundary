@@ -74,19 +74,29 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	return nil
 }
 
-func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []*sessionView, opt ...Option) ([]*Session, error) {
+func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).convertToSessions"
 	opts := getOpts(opt...)
 
-	if len(sessionsWithState) == 0 {
+	if len(sessionList) == 0 {
 		return nil, nil
 	}
 	sessions := []*Session{}
+	connections := map[string]*Connection{}
+	states := map[Status]*State{}
 	var prevSessionId string
 	var workingSession *Session
-	for _, sv := range sessionsWithState {
+	for _, sv := range sessionList {
 		if sv.PublicId != prevSessionId {
 			if prevSessionId != "" {
+				for _, c := range connections {
+					workingSession.Connections = append(workingSession.Connections, c)
+					connections = map[string]*Connection{}
+				}
+				for _, s := range states {
+					workingSession.States = append(workingSession.States, s)
+					states = map[Status]*State{}
+				}
 				sort.Slice(workingSession.States, func(i, j int) bool {
 					return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
 				})
@@ -134,18 +144,43 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 			}
 		}
 
-		state := &State{
-			SessionId:       sv.PublicId,
-			Status:          Status(sv.Status),
-			PreviousEndTime: sv.PreviousEndTime,
-			StartTime:       sv.StartTime,
-			EndTime:         sv.EndTime,
+		if _, ok := states[Status(sv.Status)]; !ok {
+			states[Status(sv.Status)] = &State{
+				SessionId:       sv.PublicId,
+				Status:          Status(sv.Status),
+				PreviousEndTime: sv.PreviousEndTime,
+				StartTime:       sv.StartTime,
+				EndTime:         sv.EndTime,
+			}
 		}
-		workingSession.States = append(workingSession.States, state)
+
+		if sv.ConnectionId != "" {
+			if _, ok := connections[sv.ConnectionId]; !ok {
+				connections[sv.ConnectionId] = &Connection{
+					PublicId:           sv.ConnectionId,
+					SessionId:          sv.PublicId,
+					ClientTcpAddress:   sv.ClientTcpAddress,
+					ClientTcpPort:      sv.ClientTcpPort,
+					EndpointTcpAddress: sv.EndpointTcpAddress,
+					EndpointTcpPort:    sv.EndpointTcpPort,
+					BytesUp:            sv.BytesUp,
+					BytesDown:          sv.BytesDown,
+					ClosedReason:       sv.ClosedReason,
+				}
+			}
+		}
+
+	}
+	for _, s := range states {
+		workingSession.States = append(workingSession.States, s)
+		states = map[Status]*State{}
 	}
 	sort.Slice(workingSession.States, func(i, j int) bool {
 		return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
 	})
+	for _, c := range connections {
+		workingSession.Connections = append(workingSession.Connections, c)
+	}
 	sessions = append(sessions, workingSession)
 	return sessions, nil
 }
