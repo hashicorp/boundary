@@ -523,9 +523,16 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		numUpdated = 1
 	}
 
-	if updateAttributes || updateSyncInterval {
+	switch {
+	case updateAttributes:
 		// Request a host sync since we have updated attributes.
 		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	case updateSyncInterval:
+		tilNextSync := time.Until(returnedSet.LastSyncTime.AsTime().Add(time.Duration(returnedSet.SyncIntervalSeconds) * time.Second))
+		if tilNextSync < 0 {
+			tilNextSync = 0
+		}
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil
