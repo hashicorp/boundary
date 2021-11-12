@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -123,9 +124,20 @@ func (c *Controller) startListeners(ctx context.Context) error {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
 
+		workerReqInterceptor, err := workerRequestInfoInterceptor(ctx, c.conf.Eventer)
+		if err != nil {
+			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
+		}
 		workerServer := grpc.NewServer(
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
+			grpc.UnaryInterceptor(
+				grpc_middleware.ChainUnaryServer(
+					workerReqInterceptor,
+					auditRequestInterceptor(ctx),  // before we get started, audit the request
+					auditResponseInterceptor(ctx), // as we finish, audit the response
+				),
+			),
 		)
 		workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
 		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)

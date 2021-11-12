@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -60,7 +61,8 @@ var (
 	}
 
 	collectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.Account: accounts.CollectionActions,
+		resource.Account:      accounts.CollectionActions,
+		resource.ManagedGroup: managed_groups.CollectionActions,
 	}
 )
 

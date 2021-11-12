@@ -66,9 +66,27 @@ func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFil
 			n.deny = append(n.deny, f)
 		}
 	}
+	defaultDenyFilters, err := defaultHclogEventsDenyFilters()
+	if err != nil {
+		return nil, err
+	}
+	n.deny = append(n.deny, defaultDenyFilters...)
 	n.predicate = newPredicate(n.allow, n.deny)
 
 	return &n, nil
+}
+
+func defaultHclogEventsDenyFilters() ([]*filter, error) {
+	const (
+		op = "event.defaultHclogEventsDenyFilters"
+		// denyWorkStatusEvents is a default filter for worker to controller API status requests
+		denyWorkStatusEvents = `"/RequestInfo/Method" contains "ServerCoordinationService/Status"`
+	)
+	f, err := newFilter(denyWorkStatusEvents)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to create deny filter for worker status events '%s': %w", op, denyWorkStatusEvents, err)
+	}
+	return []*filter{f}, nil
 }
 
 // Rotate supports rotating the filter's wrapper. No options are currently
