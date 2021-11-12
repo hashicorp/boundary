@@ -444,8 +444,12 @@ func (r *SetSyncJob) upsertHosts(
 					}
 					if len(hi.ipsToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToAdd))
-						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
-							return err
+						onConflict := &db.OnConflict{
+							Target: db.Constraint("host_ip_address_pkey"),
+							Action: db.DoNothing(true),
+						}
+						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), hi.h.GetPublicId())))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -466,7 +470,11 @@ func (r *SetSyncJob) upsertHosts(
 					}
 					if len(hi.dnsNamesToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToAdd))
-						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
+						onConflict := &db.OnConflict{
+							Target: db.Constraint("host_dns_name_pkey"),
+							Action: db.DoNothing(true),
+						}
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)
