@@ -64,6 +64,12 @@ var authorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"managed-groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 }
 
 func TestGet(t *testing.T) {

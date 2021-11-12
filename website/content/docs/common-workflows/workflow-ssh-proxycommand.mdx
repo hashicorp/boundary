@@ -19,7 +19,7 @@ Start by configuring a `Host` entry in `.ssh/ssh_config` for `localhost`:
 
 ```bash
 Host ttcp_*
-  ProxyCommand sh -c "boundary connect -target-id %h -exec nc -- {{boundary.ip}} {{boundary.port}}"
+  ProxyCommand sh -c "boundary connect -target-id %n -exec nc -- {{boundary.ip}} {{boundary.port}}"
 ```
 
 The `ProxyCommand` tells the SSH client to invoke `boundary connect`. We are passing the `-exec nc` flag to

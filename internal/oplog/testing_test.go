@@ -75,7 +75,7 @@ func Test_testInitStore(t *testing.T) {
 	testInitStore(t, cleanup, url)
 
 	const query = `
-select count(*) from information_schema."tables" t where table_name = 'db_test_user';
+select count(*) from information_schema."tables" t where table_name = 'boundary_schema_version';
 `
 	db, err := common.SqlOpen("postgres", url)
 	require.NoError(err)

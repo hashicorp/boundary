@@ -11,230 +11,234 @@ import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
 message HostSource {
-	// Output only. The ID of the Host Set.
-	string id = 10;
+  // Output only. The ID of the Host Set.
+  string id = 10;
 
-	// Output only. The Host Catalog to which this Host Source belongs.
-	string host_catalog_id = 20 [json_name="host_catalog_id"];
+  // Output only. The Host Catalog to which this Host Source belongs.
+  string host_catalog_id = 20 [json_name = "host_catalog_id"];
 }
 
 message HostSet {
-	// Output only. The ID of the Host Set.
-	string id = 10;
+  // Output only. The ID of the Host Set.
+  string id = 10;
 
-	// Output only. The Host Catalog to which this Host Set belongs.
-	string host_catalog_id = 20 [json_name="host_catalog_id"];
+  // Output only. The Host Catalog to which this Host Set belongs.
+  string host_catalog_id = 20 [json_name = "host_catalog_id"];
 }
 
 message CredentialSource {
-	// The ID of the Credential. May be empty if the credential is dynamically generated from a library.
-	string id = 10;
+  // The ID of the Credential. May be empty if the credential is dynamically generated from a library.
+  string id = 10;
 
-	// Output only. The name of the Credential source.
-	string name = 20;
+  // Output only. The name of the Credential source.
+  string name = 20;
 
-	// Output only. The description of the Credential source.
-	string description = 30;
+  // Output only. The description of the Credential source.
+  string description = 30;
 
-	// Output only. The Credential Store to which this Credential source belongs.
-	string credential_store_id = 40 [json_name="credential_store_id"];
+  // Output only. The Credential Store to which this Credential source belongs.
+  string credential_store_id = 40 [json_name = "credential_store_id"];
 
-	// Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
-	string type = 60;
+  // Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
+  string type = 60;
 }
 
 message CredentialLibrary {
-	// The ID of the Credential Library.
-	string id = 10;
+  // The ID of the Credential Library.
+  string id = 10;
 
-	// Output only.  The name of the Credential Library.
-	string name = 20;
+  // Output only.  The name of the Credential Library.
+  string name = 20;
 
-	// Output only. The description of the Credential Library.
-	string description = 30;
+  // Output only. The description of the Credential Library.
+  string description = 30;
 
-	// Output only. The Credential Store to which this Credential Library belongs.
-	string credential_store_id = 40 [json_name="credential_store_id"];
+  // Output only. The Credential Store to which this Credential Library belongs.
+  string credential_store_id = 40 [json_name = "credential_store_id"];
 
-	// Output only. The type of the credential library.
-	string type = 60;
+  // Output only. The type of the credential library.
+  string type = 60;
 }
 
 // The actual secret for a session credential.
 message SessionSecret {
-	// Output only. The base64-encoded value representing the raw bytes from the
-	// credential provider.
-	string raw = 10;
+  // Output only. The base64-encoded value representing the raw bytes from the
+  // credential provider.
+  string raw = 10;
 
-	// Output only. The decoded raw string, if a JSON object.
-	google.protobuf.Struct decoded = 20;
+  // Output only. The decoded raw string, if a JSON object.
+  google.protobuf.Struct decoded = 20;
 }
 
 // Credential information for a session.
 message SessionCredential {
-	// Output only. The credential source information.
-	CredentialSource credential_source = 1;
+  // Output only. The credential source information.
+  CredentialSource credential_source = 1;
 
-	// Output only. The library which generated this credential. Deprecated: use credential_source instead.
-	CredentialLibrary credential_library = 10 [deprecated = true];
+  // Output only. The library which generated this credential. Deprecated: use credential_source instead.
+  CredentialLibrary credential_library = 10 [deprecated = true];
 
-	// Output only. The secret of this credential base64 encoded.
-	SessionSecret secret = 20;
+  // Output only. The secret of this credential base64 encoded.
+  SessionSecret secret = 20;
 }
 
 // Target contains all fields related to a Target resource
 message Target {
-	// Output only. The ID of the resource.
-	string id = 10;
+  // Output only. The ID of the resource.
+  string id = 10;
 
-	// The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
-	string scope_id = 20 [json_name="scope_id"];
+  // The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
+  string scope_id = 20 [json_name = "scope_id"];
 
-	// Output only. Scope information for this resource.
-	resources.scopes.v1.ScopeInfo scope = 30;
-	
-	// Required name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  // Required name for identification purposes.
+  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "name" }];
 
-	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "description" }];
 
-	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"];
 
-	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-	// The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 80;
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"];
 
-	// The type of the Target.
-	string type = 90;
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 80;
 
-	// Output only. The IDs of the Host Sets associated with this Target.
-	repeated string host_set_ids = 100 [json_name="host_set_ids"];
+  // The type of the Target.
+  string type = 90;
 
-	// Output only. The Host Sets associated with this Target.
-	repeated HostSet host_sets = 110 [json_name="host_sets"];
+  // Output only. The IDs of the Host Sets associated with this Target.
+  repeated string host_set_ids = 100 [json_name = "host_set_ids"];
 
-	// Output only. The IDs of the Host Sources associated with this Target.
-	repeated string host_source_ids = 420 [json_name="host_source_ids"];
+  // Output only. The Host Sets associated with this Target.
+  repeated HostSet host_sets = 110 [json_name = "host_sets"];
 
-	// Output only. The Host Sources associated with this Target.
-	repeated HostSource host_sources = 430 [json_name="host_sources"];
+  // Output only. The IDs of the Host Sources associated with this Target.
+  repeated string host_source_ids = 420 [json_name = "host_source_ids"];
 
-	// Maximum total lifetime of a created Session, in seconds.
-	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_max_seconds" that: "SessionMaxSeconds"}];
+  // Output only. The Host Sources associated with this Target.
+  repeated HostSource host_sources = 430 [json_name = "host_sources"];
 
-	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-	google.protobuf.Int32Value session_connection_limit = 130 [json_name="session_connection_limit", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_connection_limit" that: "SessionConnectionLimit"}];
+  // Maximum total lifetime of a created Session, in seconds.
+  google.protobuf.UInt32Value session_max_seconds = 120
+      [json_name = "session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "session_max_seconds" that: "SessionMaxSeconds" }];
 
-	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
-	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
+  // Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
+  google.protobuf.Int32Value session_connection_limit = 130
+      [json_name = "session_connection_limit", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "session_connection_limit" that: "SessionConnectionLimit" }];
 
-	// Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
-	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids", deprecated = true];
-	// Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
-	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries", deprecated = true];
+  // Optional boolean expression to filter the workers that are allowed to satisfy this request.
+  google.protobuf.StringValue worker_filter = 140
+      [json_name = "worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "worker_filter" that: "WorkerFilter" }];
 
-	// Output only. The IDs of the application credential source ids associated with this Target.
-	repeated string application_credential_source_ids = 400 [json_name="application_credential_source_ids"];
-	// Output only. The application credential sources associated with this Target.
-	repeated CredentialSource application_credential_sources = 410 [json_name="application_credential_sources"];
+  // Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
+  repeated string application_credential_library_ids = 150 [json_name = "application_credential_library_ids", deprecated = true];
+  // Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
+  repeated CredentialLibrary application_credential_libraries = 180 [json_name = "application_credential_libraries", deprecated = true];
 
-	// Output only. The IDs of the egress credential source ids associated with this Target.
-	repeated string egress_credential_source_ids = 500 [json_name="egress_credential_source_ids"];
-	// Output only. The egress credential sources associated with this Target.
-	repeated CredentialSource egress_credential_sources = 510 [json_name="egress_credential_sources"];
+  // Output only. The IDs of the application credential source ids associated with this Target.
+  repeated string application_credential_source_ids = 400 [json_name = "application_credential_source_ids"];
+  // Output only. The application credential sources associated with this Target.
+  repeated CredentialSource application_credential_sources = 410 [json_name = "application_credential_sources"];
 
-	// The attributes that are applicable for the specific Target.
-	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
+  // Output only. The IDs of the egress credential source ids associated with this Target.
+  repeated string egress_credential_source_ids = 500 [json_name = "egress_credential_source_ids"];
+  // Output only. The egress credential sources associated with this Target.
+  repeated CredentialSource egress_credential_sources = 510 [json_name = "egress_credential_sources"];
 
-	// Output only. The available actions on this resource for this user.
-	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+  // The attributes that are applicable for the specific Target.
+  google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"];
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
 message TcpTargetAttributes {
-	// The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
-	google.protobuf.UInt32Value default_port = 10 [json_name="default_port", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "attributes.default_port" that: "DefaultPort"}];
+  // The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
+  google.protobuf.UInt32Value default_port = 10
+      [json_name = "default_port", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.default_port" that: "DefaultPort" }];
 }
 
 // WorkerInfo contains information about workers, returned in to the client in SessionAuthorization
 message WorkerInfo {
-	// Output only. The address of the worker.
-	string address = 10;
+  // Output only. The address of the worker.
+  string address = 10;  // @gotags: `class:"public"`
 }
 
 // SessionAuthorizationData contains the fields needed by the proxy command to connect to a worker. It is marshaled inside the SessionAuthorization message.
 message SessionAuthorizationData {
-	// Output only. The ID of the session.
-	string session_id = 10 [json_name="session_id"];
+  // Output only. The ID of the session.
+  string session_id = 10 [json_name = "session_id"];  // @gotags: `class:"public"`
 
-	// Output only. The ID of the Target authorizing this session.
-	string target_id = 20 [json_name="target_id"];
+  // Output only. The ID of the Target authorizing this session.
+  string target_id = 20 [json_name = "target_id"];  // @gotags: `class:"public"`
 
-	// Output only. Scope information for this the Target that authorized this session.
-	resources.scopes.v1.ScopeInfo scope = 30;
+  // Output only. Scope information for this the Target that authorized this session.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"];  // @gotags: `class:"public"`
 
-	// Output only. Type of the session (e.g. tcp, ssh, etc.).
-	string type = 80;
+  // Output only. Type of the session (e.g. tcp, ssh, etc.).
+  string type = 80;  // @gotags: `class:"public"`
 
-	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
-	int32 connection_limit = 90 [json_name="connection_limit"];
+  // Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
+  int32 connection_limit = 90 [json_name = "connection_limit"];
 
-	// Output only. The certificate to use when connecting. Raw DER bytes.
-	bytes certificate = 120;
+  // Output only. The certificate to use when connecting. Raw DER bytes.
+  bytes certificate = 120;  // @gotags: `class:"secret"`
 
-	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
-	bytes private_key = 130 [json_name="private_key"];
+  // Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
+  bytes private_key = 130 [json_name = "private_key"];  // @gotags: `class:"secret"`
 
-	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
-	string host_id = 140;
+  // Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
+  string host_id = 140;  // @gotags: `class:"public"`
 
-	// Output only. The endpoint, for some special command handling.
-	string endpoint = 141;
+  // Output only. The endpoint, for some special command handling.
+  string endpoint = 141;  // @gotags: `class:"public"`
 
-	// Output only. Worker information. The first worker in the array should be prioritized.
-	repeated WorkerInfo worker_info = 150 [json_name="worker_info"];
+  // Output only. Worker information. The first worker in the array should be prioritized.
+  repeated WorkerInfo worker_info = 150 [json_name = "worker_info"];
 }
 
 // SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action.
 message SessionAuthorization {
-	// Output only. The ID of the Session.
-	string session_id = 10 [json_name="session_id"];
+  // Output only. The ID of the Session.
+  string session_id = 10 [json_name = "session_id"];  // @gotags: `class:"public"`
 
-	// Output only. The ID of the Target authorizing this Session.
-	string target_id = 20 [json_name="target_id"];
+  // Output only. The ID of the Target authorizing this Session.
+  string target_id = 20 [json_name = "target_id"];  // @gotags: `class:"public"`
 
-	// Output only. Scope information for this resource.
-	resources.scopes.v1.ScopeInfo scope = 30;
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 40 [json_name="created_time"];
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"];  // @gotags: `class:"public"`
 
-	// Output only. The User for which this Session was authorized.
-	string user_id = 50 [json_name="user_id"];
+  // Output only. The User for which this Session was authorized.
+  string user_id = 50 [json_name = "user_id"];  // @gotags: `class:"public"`
 
-	// Output only. The Host Set containing the Host being used for this Session.
-	string host_set_id = 60 [json_name="host_set_id"];
+  // Output only. The Host Set containing the Host being used for this Session.
+  string host_set_id = 60 [json_name = "host_set_id"];  // @gotags: `class:"public"`
 
-	// Output only. The Host whose address is being used as the endpoint for this Session.
-	string host_id = 70 [json_name="host_id"];
+  // Output only. The Host whose address is being used as the endpoint for this Session.
+  string host_id = 70 [json_name = "host_id"];  // @gotags: `class:"public"`
 
-	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
-	string type = 80;
+  // Output only. Type of the Session (e.g. tcp, ssh, etc.).
+  string type = 80;  // @gotags: `class:"public"`
 
-	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
-	string authorization_token = 90 [json_name="authorization_token"];
+  // Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
+  string authorization_token = 90 [json_name = "authorization_token"];  // @gotags: `class:"private"`
 
-	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
-	string endpoint = 100;
+  // Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
+  string endpoint = 100;  // @gotags: `class:"public"`
 
-	// Output only. The credentials for this session.
-	repeated SessionCredential credentials = 110 [json_name="credentials"];
+  // Output only. The credentials for this session.
+  repeated SessionCredential credentials = 110 [json_name = "credentials"];
 }
