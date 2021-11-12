@@ -17,6 +17,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm/logger"
 )
 
@@ -227,3 +228,255 @@ func WithTemplate(template string) TestOption {
 		o.withTemplate = template
 	}
 }
+
+// TestCreateTables will create the test tables for the db pkg
+func TestCreateTables(t *testing.T, conn *DB) {
+	t.Helper()
+	t.Cleanup(func() { testDropTables(t, conn) })
+	require := require.New(t)
+	testCtx := context.Background()
+	rw := New(conn)
+	_, err := rw.Exec(testCtx, testQueryCreateTables, nil)
+	require.NoError(err)
+	_, err = rw.Exec(testCtx, testQueryAddOplogEntries, nil)
+	require.NoError(err)
+}
+
+func testDropTables(t *testing.T, conn *DB) {
+	t.Helper()
+	require := require.New(t)
+	testCtx := context.Background()
+	rw := New(conn)
+	_, err := rw.Exec(testCtx, testQueryDropTables, nil)
+	require.NoError(err)
+	_, err = rw.Exec(testCtx, testQueryDeleteOplogEntries, nil)
+	require.NoError(err)
+}
+
+const (
+	testQueryCreateTables = `	
+begin;
+
+-- create test tables used in the unit tests for the internal/db package 
+-- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
+-- not part of the boundary domain model... they are simply used for testing
+-- the internal/db package 
+create table if not exists db_test_user (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  phone_number text,
+  email text,
+  version wt_version
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_user 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_user
+create trigger 
+  immutable_columns
+before
+update on db_test_user
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_user 
+  for each row execute procedure default_create_time();
+
+create trigger 
+  update_version_column
+after update on db_test_user
+  for each row execute procedure update_version_column();
+  
+create table if not exists db_test_car (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  model text,
+  mpg smallint
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_car 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_car
+create trigger 
+  immutable_columns
+before
+update on db_test_car
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_car
+  for each row execute procedure default_create_time();
+
+create table if not exists db_test_rental (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  user_id bigint not null references db_test_user(id),
+  car_id bigint not null references db_test_car(id)
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_rental 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_rental
+create trigger 
+  immutable_columns
+before
+update on db_test_rental
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_rental
+  for each row execute procedure default_create_time();
+
+
+create table if not exists db_test_scooter (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  private_id text not null unique,
+  name text unique,
+  model text,
+  mpg smallint
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_scooter 
+  for each row execute procedure update_time_column();
+
+
+-- define the immutable fields for db_test_scooter
+create trigger 
+  immutable_columns
+before
+update on db_test_scooter
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_scooter
+  for each row execute procedure default_create_time();
+
+create table if not exists db_test_accessory (
+  accessory_id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  description text not null
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_accessory 
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  immutable_columns
+before
+update on db_test_accessory
+  for each row execute procedure immutable_columns('create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on db_test_accessory
+  for each row execute procedure default_create_time();
+  
+  
+create table if not exists db_test_scooter_accessory (
+  accessory_id bigint references db_test_accessory(accessory_id),
+  scooter_id bigint references db_test_scooter(id),
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  review text,
+  primary key(accessory_id, scooter_id)
+);
+  
+create trigger 
+  update_time_column 
+before 
+update on db_test_scooter_accessory 
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  immutable_columns
+before
+update on db_test_scooter_accessory
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_scooter_accessory
+  for each row execute procedure default_create_time();
+  
+commit;
+`
+	testQueryDropTables = `
+begin;
+drop table if exists db_test_user cascade;
+drop table if exists db_test_car cascade;
+drop table if exists db_test_rental cascade;
+drop table if exists db_test_scooter cascade;
+drop table if exists db_test_accessory cascade;
+drop table if exists db_test_scooter_accessory cascade;
+commit;
+`
+
+	testQueryAddOplogEntries = `
+begin;
+
+insert into oplog_ticket (name, version)
+values
+  ('db_test_user', 1),
+  ('db_test_car', 1),
+  ('db_test_rental', 1),
+  ('db_test_scooter', 1),
+  ('db_test_accessory', 1),
+  ('db_test_scooter_accessory', 1);
+commit;
+`
+	testQueryDeleteOplogEntries = `
+begin;
+
+delete from oplog_ticket where name in
+(
+  'db_test_user',
+  'db_test_car',
+  'db_test_rental',
+  'db_test_scooter',
+  'db_test_accessory',
+  'db_test_scooter_accessory'
+);
+
+commit;
+`
+)

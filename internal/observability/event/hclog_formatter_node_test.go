@@ -387,7 +387,12 @@ func Test_newHclogFormatterFilter(t *testing.T) {
 			for _, f := range got.allow {
 				assert.Contains(tt.wantAllow, f.raw)
 			}
-			assert.Len(got.deny, len(tt.wantDeny))
+			assert.Len(got.deny, len(tt.wantDeny)+1) // +1 since there's always a default deny
+			defs, err := defaultHclogEventsDenyFilters()
+			require.NoError(err)
+			for _, f := range defs {
+				tt.wantDeny = append(tt.wantDeny, f.raw)
+			}
 			for _, f := range got.deny {
 				assert.Contains(tt.wantDeny, f.raw)
 			}

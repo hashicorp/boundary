@@ -464,6 +464,97 @@ func Test_statusCodeInterceptor(t *testing.T) {
 	}
 }
 
+func Test_workerRequestInfoInterceptor(t *testing.T) {
+	factoryCtx := context.Background()
+	requestCtx := context.Background()
+
+	returnCtxHandler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return ctx, nil
+	}
+
+	c := event.TestEventerConfig(t, "Test_requestCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_requestCtxInterceptor", c.EventerConfig)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                   string
+		requestCtx             context.Context
+		eventer                *event.Eventer
+		wantFactoryErr         bool
+		wantFactoryErrMatch    *errors.Template
+		wantFactoryErrContains string
+		wantRequestErr         bool
+		wantRequestErrMatch    *errors.Template
+		wantRequestErrContains string
+	}{
+
+		{
+			name:                   "missing-eventer",
+			requestCtx:             requestCtx,
+			wantFactoryErr:         true,
+			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
+			wantFactoryErrContains: "missing eventer",
+		},
+
+		{
+			name:       "valid",
+			requestCtx: requestCtx,
+			eventer:    testEventer,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			interceptor, err := workerRequestInfoInterceptor(factoryCtx, tt.eventer)
+			if tt.wantFactoryErr {
+				require.Error(err)
+				assert.Nil(interceptor)
+				if tt.wantFactoryErrMatch != nil {
+					assert.Truef(errors.Match(tt.wantFactoryErrMatch, err), "want err code: %q got: %q", tt.wantFactoryErrMatch.Code, err)
+				}
+				if tt.wantFactoryErrContains != "" {
+					assert.Contains(err.Error(), tt.wantFactoryErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(interceptor)
+
+			info := &grpc.UnaryServerInfo{
+				FullMethod: "FakeMethod",
+			}
+			retCtx, err := interceptor(tt.requestCtx, nil, info, returnCtxHandler)
+			if tt.wantRequestErr {
+				require.Error(err)
+				assert.Nil(retCtx)
+				if tt.wantRequestErrMatch != nil {
+					assert.Truef(errors.Match(tt.wantRequestErrMatch, err), "want err code: %q got: %q", tt.wantRequestErrMatch.Code, err)
+				}
+				if tt.wantRequestErrContains != "" {
+					assert.Contains(err.Error(), tt.wantRequestErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			requestInfo, found := event.RequestInfoFromContext(retCtx.(context.Context))
+			require.True(found)
+			assert.NotNil(requestInfo)
+			assert.NotEmpty(requestInfo.Id)
+			assert.NotEmpty(requestInfo.EventId)
+			assert.Equal("FakeMethod", requestInfo.Method)
+
+			eventer, found := event.EventerFromContext(retCtx.(context.Context))
+			require.True(found)
+			assert.NotNil(eventer)
+		})
+	}
+}
+
 type testGreeter struct {
 	interceptor.UnimplementedGreeterServiceServer
 }
