@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -94,6 +95,7 @@ type Service struct {
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    common.SessionRepoFactory
+	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
 	kmsCache         *kms.Kms
@@ -101,37 +103,43 @@ type Service struct {
 
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
+	ctx context.Context,
 	kmsCache *kms.Kms,
 	repoFn common.TargetRepoFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
+	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing target repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if serversRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing servers repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing servers repository")
 	}
 	if sessionRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing session repository")
+	}
+	if pluginHostRepoFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing plugin host repository")
 	}
 	if staticHostRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static host repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static host repository")
 	}
 	if vaultCredRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	return Service{
 		repoFn:           repoFn,
 		iamRepoFn:        iamRepoFn,
 		serversRepoFn:    serversRepoFn,
 		sessionRepoFn:    sessionRepoFn,
+		pluginHostRepoFn: pluginHostRepoFn,
 		staticHostRepoFn: staticHostRepoFn,
 		vaultCredRepoFn:  vaultCredRepoFn,
 		kmsCache:         kmsCache,
@@ -943,55 +951,65 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No workers are available to handle this session, or all have been filtered.")
 	}
 
-	// First, fetch all available hosts. Unless one was chosen in the request,
-	// we will pick one at random.
-	type compoundHost struct {
-		hostSetId string
-		hostId    string
-	}
-
-	var chosenId *compoundHost
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
 	if err != nil {
 		return nil, err
 	}
+	pluginHostRepo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, err
+	}
 
-	hostIds := make([]compoundHost, 0, len(hostSources)*10)
-
-HostSourceIterationLoop:
+	var pluginHostSetIds []string
+	var endpoints []*host.Endpoint
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
+		// FIXME: read in type from DB rather than rely on prefix
 		switch host.SubtypeFromId(hsId) {
 		case static.Subtype:
-			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
+			eps, err := staticHostRepo.Endpoints(ctx, hsId)
 			if err != nil {
 				return nil, err
 			}
-			for _, host := range hosts {
-				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
-				hostIds = append(hostIds, compoundId)
-				if host.PublicId == requestedId {
-					chosenId = &compoundId
-					break HostSourceIterationLoop
-				}
+			endpoints = append(endpoints, eps...)
+		default:
+			// Batch the plugin host set ids since each round trip to the plugin
+			// has the potential to be expensive.
+			pluginHostSetIds = append(pluginHostSetIds, hsId)
+		}
+	}
+	if len(pluginHostSetIds) > 0 {
+		eps, err := pluginHostRepo.Endpoints(ctx, pluginHostSetIds)
+		if err != nil {
+			return nil, err
+		}
+		endpoints = append(endpoints, eps...)
+	}
+
+	var chosenEndpoint *host.Endpoint
+	if requestedId != "" {
+		for _, ep := range endpoints {
+			if ep.HostId == requestedId {
+				chosenEndpoint = ep
 			}
 		}
-	}
-	if requestedId != "" && chosenId == nil {
-		// We didn't find it
-		return nil, handlers.InvalidArgumentErrorf(
-			"Errors in provided fields.",
-			map[string]string{
-				"host_id": "The requested host id is not available.",
-			})
-	}
-	if chosenId == nil {
-		if len(hostIds) == 0 {
-			// No hosts were found, error
-			return nil, handlers.NotFoundErrorf("No hosts found from available target host sources.")
+		if chosenEndpoint == nil {
+			// We didn't find it
+			return nil, handlers.InvalidArgumentErrorf(
+				"Errors in provided fields.",
+				map[string]string{
+					"host_id": "The requested host id is not available.",
+				})
 		}
-		chosenId = &hostIds[rand.Intn(len(hostIds))]
+	}
+
+	if chosenEndpoint == nil {
+		if len(endpoints) == 0 {
+			// No hosts were found, error
+			return nil, handlers.NotFoundErrorf("No endpoint found from available target host sources.")
+		}
+		chosenEndpoint = endpoints[rand.Intn(len(endpoints))]
 	}
 
 	// Generate the endpoint URL
@@ -999,22 +1017,10 @@ HostSourceIterationLoop:
 		Scheme: t.GetType().String(),
 	}
 	defaultPort := t.GetDefaultPort()
-	var endpointHost string
-	switch host.SubtypeFromId(chosenId.hostId) {
-	case static.Subtype:
-		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
-		if err != nil {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "errors looking up host")
-		}
-		endpointHost = h.Address
-		if endpointHost == "" {
-			return nil, stderrors.New("host had empty address")
-		}
-	}
 	if defaultPort != 0 {
-		endpointUrl.Host = fmt.Sprintf("%s:%d", endpointHost, defaultPort)
+		endpointUrl.Host = fmt.Sprintf("%s:%d", chosenEndpoint.Address, defaultPort)
 	} else {
-		endpointUrl.Host = endpointHost
+		endpointUrl.Host = chosenEndpoint.Address
 	}
 
 	var reqs []credential.Request
@@ -1031,9 +1037,9 @@ HostSourceIterationLoop:
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
 		UserId:             authResults.UserId,
-		HostId:             chosenId.hostId,
+		HostId:             chosenEndpoint.HostId,
 		TargetId:           t.GetPublicId(),
-		HostSetId:          chosenId.hostSetId,
+		HostSetId:          chosenEndpoint.SetId,
 		AuthTokenId:        authResults.AuthTokenId,
 		ScopeId:            authResults.Scope.Id,
 		Endpoint:           endpointUrl.String(),
@@ -1125,7 +1131,7 @@ HostSourceIterationLoop:
 		Type:            t.GetType().String(),
 		Certificate:     sess.Certificate,
 		PrivateKey:      privKey,
-		HostId:          chosenId.hostId,
+		HostId:          chosenEndpoint.HostId,
 		Endpoint:        endpointUrl.String(),
 		WorkerInfo:      workers,
 		ConnectionLimit: t.GetSessionConnectionLimit(),
@@ -1144,8 +1150,8 @@ HostSourceIterationLoop:
 		Type:               t.GetType().String(),
 		AuthorizationToken: string(encodedMarshaledSad),
 		UserId:             authResults.UserId,
-		HostId:             chosenId.hostId,
-		HostSetId:          chosenId.hostSetId,
+		HostId:             chosenEndpoint.HostId,
+		HostSetId:          chosenEndpoint.SetId,
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
 	}
@@ -1727,7 +1733,8 @@ func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1747,7 +1754,8 @@ func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1770,7 +1778,8 @@ func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1793,7 +1802,8 @@ func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1813,7 +1823,8 @@ func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1836,7 +1847,8 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
+			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}

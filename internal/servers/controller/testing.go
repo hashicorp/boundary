@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -384,6 +385,10 @@ type TestControllerOpts struct {
 	// The amount of time to wait before marking connections as closed when a
 	// worker has not reported in
 	StatusGracePeriodDuration time.Duration
+
+	// The amount of time between the scheduler waking up to run it's registered
+	// jobs.
+	SchedulerRunJobInterval time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -477,6 +482,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			t.Fatal(err)
 		}
 	}
+	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
@@ -581,6 +587,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
+		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}

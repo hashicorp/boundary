@@ -88,14 +88,14 @@ type Writer interface {
 	// rows updated or an error. Supported options: WithOplog.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
-	// Create an object in the db with options: WithOplog
-	// the caller is responsible for the transaction life cycle of the writer
+	// Create an object in the db with options: WithOplog, WithOnConflict.
+	// The caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateItems will create multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
 	// WithOplogMsgs may not be used together. WithLookup is not a
 	// supported option. The caller is responsible for the transaction life
 	// cycle of the writer and if an error is returned the caller must decide
@@ -103,15 +103,15 @@ type Writer interface {
 	// rollback.
 	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
 
-	// Delete an object in the db with options: WithOplog
-	// the caller is responsible for the transaction life cycle of the writer
+	// Delete an object in the db with options: WithOplog, WithDebug.
+	// The caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback. Delete
 	// returns the number of rows deleted or an error.
 	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
 
 	// DeleteItems will delete multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
 	// WithOplogMsgs may not be used together. The caller is responsible for the
 	// transaction life cycle of the writer and if an error is returned the
 	// caller must decide what to do with the transaction, which almost always
@@ -621,8 +621,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // Delete an object in the db with options: WithOplog, NewOplogMsg, WithWhere.
 // WithOplog will write an oplog entry for the delete. NewOplogMsg will return
 // in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
-//WithWhere allows specifying an additional constraint on the operation in
-//addition to the PKs. Delete returns the number of rows deleted and any errors.
+// WithWhere allows specifying an additional constraint on the operation in
+// addition to the PKs. Delete returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
@@ -666,6 +666,9 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	db := rw.underlying.DB
 	if opts.withWhereClause != "" {
 		db = db.Where(opts.withWhereClause, opts.withWhereClauseArgs...)
+	}
+	if opts.withDebug {
+		db = db.Debug()
 	}
 	db = db.Delete(i)
 	if db.Error != nil {
@@ -1135,7 +1138,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 //
 // Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
 // If WithLimit == 0, then default limits are used for results.
-// Supports the WithOrder option.
+// Supports the WithOrder and WithDebug options.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
@@ -1152,6 +1155,9 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	db := rw.underlying.WithContext(ctx)
 	if opts.withOrder != "" {
 		db = db.Order(opts.withOrder)
+	}
+	if opts.withDebug {
+		db = db.Debug()
 	}
 	// Perform limiting
 	switch {

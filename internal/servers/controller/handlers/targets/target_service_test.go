@@ -20,9 +20,11 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -39,6 +41,7 @@ import (
 	credpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,10 +90,13 @@ func testService(t *testing.T, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapp
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
+	pluginHostRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	credentialRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
-	return targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
+	return targets.NewService(context.Background(), kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
 }
 
 func TestGet(t *testing.T) {
@@ -978,6 +984,7 @@ func TestAddTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -991,6 +998,12 @@ func TestAddTargetHostSets(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	addCases := []struct {
 		name           string
@@ -1015,6 +1028,18 @@ func TestAddTargetHostSets(t *testing.T) {
 			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSets:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSets: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+		{
+			name:           "Add plugin set on empty target",
+			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			addHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:           "Add plugin set on populated target",
+			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			addHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
 	}
 
@@ -1094,6 +1119,7 @@ func TestSetTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1107,6 +1133,12 @@ func TestSetTargetHostSets(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	setCases := []struct {
 		name           string
@@ -1137,6 +1169,18 @@ func TestSetTargetHostSets(t *testing.T) {
 			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSets:    []string{},
 			resultHostSets: nil,
+		},
+		{
+			name:           "Set plugin set on empty target",
+			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			setHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:           "Set plugin set on populated target",
+			tar:            tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			setHostSets:    []string{pluginHs.GetPublicId()},
+			resultHostSets: []string{pluginHs.GetPublicId()},
 		},
 	}
 	for _, tc := range setCases {
@@ -1204,6 +1248,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1217,6 +1262,12 @@ func TestRemoveTargetHostSets(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	removeCases := []struct {
 		name        string
@@ -1248,6 +1299,12 @@ func TestRemoveTargetHostSets(t *testing.T) {
 			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHosts: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 			resultHosts: []string{},
+		},
+		{
+			name:        "Remove 1 plugin of 2 sets",
+			tar:         tcp.TestTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			removeHosts: []string{pluginHs.GetPublicId()},
+			resultHosts: []string{hs[0].GetPublicId()},
 		},
 	}
 
@@ -1332,6 +1389,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1345,6 +1403,12 @@ func TestAddTargetHostSources(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	addCases := []struct {
 		name              string
@@ -1369,6 +1433,18 @@ func TestAddTargetHostSources(t *testing.T) {
 			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		},
+		{
+			name:              "Add plugin set on empty target",
+			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin empty"),
+			addHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{pluginHs.GetPublicId()},
+		},
+		{
+			name:              "Add plugin set on populated target",
+			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			addHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
 	}
 
@@ -1448,6 +1524,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1461,6 +1538,12 @@ func TestSetTargetHostSources(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	setCases := []struct {
 		name              string
@@ -1479,6 +1562,12 @@ func TestSetTargetHostSources(t *testing.T) {
 			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
+		},
+		{
+			name:              "Set plugin set on populated target",
+			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
+			setHostSources:    []string{pluginHs.GetPublicId()},
+			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Set duplicate host set on populated target",
@@ -1558,6 +1647,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -1571,6 +1661,12 @@ func TestRemoveTargetHostSources(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+
+	plg := host.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	})
 
 	removeCases := []struct {
 		name              string
@@ -1589,6 +1685,12 @@ func TestRemoveTargetHostSources(t *testing.T) {
 			name:              "Remove 1 of 2 sets",
 			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId()},
+			resultHostSources: []string{hs[0].GetPublicId()},
+		},
+		{
+			name:              "Remove 1 plugin set of 2 sets",
+			tar:               tcp.TestTarget(t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
+			removeHostSources: []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
@@ -2477,6 +2579,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 }
 
 func TestAuthorizeSession(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -2509,9 +2612,36 @@ func TestAuthorizeSession(t *testing.T) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
 
+	plg := host.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.TestPluginServer{
+			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+				var setIds []string
+				for _, set := range req.GetSets() {
+					setIds = append(setIds, set.GetId())
+				}
+				return &plgpb.ListHostsResponse{Hosts: []*plgpb.ListHostsResponseHost{
+					{
+						SetIds:      setIds,
+						ExternalId:  "test",
+						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
+					},
+					{
+						SetIds:      setIds,
+						ExternalId:  "test2",
+						IpAddresses: []string{"10.1.1.1", "192.168.1.1"},
+					},
+				}}, nil
+			},
+		}),
+	}
+	pluginHostRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	}
+
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
+	ctx = auth.NewVerifierContext(requests.NewRequestContext(ctx),
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,
@@ -2526,21 +2656,19 @@ func TestAuthorizeSession(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
 	require.NoError(t, err)
 
-	tar := tcp.TestTarget(t, conn, proj.GetPublicId(), "test")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-	_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	shs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	_ = static.TestSetMembers(t, conn, shs.GetPublicId(), []*static.Host{h})
 
-	apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
-		Id:         tar.GetPublicId(),
-		Version:    tar.GetVersion(),
-		HostSetIds: []string{hs.GetPublicId()},
-	})
-	require.NoError(t, err)
+	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	phs := plugin.TestSet(t, conn, kms, sche, phc, plgm, plugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
+
+	// Sync the boundary db from the plugins
+	plugin.TestRunSetSync(t, conn, kms, plgm)
 
 	v := vault.NewTestVaultServer(t)
 	v.MountPKI(t)
@@ -2561,95 +2689,135 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	_, err = s.AddTargetCredentialSources(ctx,
-		&pbs.AddTargetCredentialSourcesRequest{
-			Id:                             tar.GetPublicId(),
-			ApplicationCredentialSourceIds: []string{clsResp.GetItem().GetId()},
-			Version:                        apiTar.GetItem().GetVersion(),
+	cases := []struct {
+		name           string
+		hostSourceId   string
+		credSourceId   string
+		wantedHostId   string
+		wantedEndpoint string
+	}{
+		{
+			name:           "static host",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   clsResp.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+		},
+		{
+			name:           "plugin host",
+			hostSourceId:   phs.GetPublicId(),
+			credSourceId:   clsResp.GetItem().GetId(),
+			wantedHostId:   "?",
+			wantedEndpoint: "10.0.0.1",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tar := tcp.TestTarget(t, conn, proj.GetPublicId(), tc.name)
+			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{tc.hostSourceId},
+			})
+			require.NoError(t, err)
+			_, err = s.AddTargetCredentialSources(ctx,
+				&pbs.AddTargetCredentialSourcesRequest{
+					Id:                             tar.GetPublicId(),
+					ApplicationCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+					Version:                        apiTar.GetItem().GetVersion(),
+				})
+			require.NoError(t, err)
+
+			// Tell our DB that there is a worker ready to serve the data
+			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+			_, err = workerService.Status(ctx, &spbs.StatusRequest{
+				Worker: &spb.Server{
+					PrivateId: "testworker",
+					Address:   "localhost:8457",
+				},
+			})
+			require.NoError(t, err)
+
+			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id: tar.GetPublicId(),
+			})
+			require.NoError(t, err)
+			asRes2, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id: tar.GetPublicId(),
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
+				"the credentials aren't unique per request authorized session")
+
+			wantedHostId := tc.wantedHostId
+			if tc.wantedHostId == "?" {
+				wantedHostId = asRes2.GetItem().GetHostId()
+			}
+
+			want := &pb.SessionAuthorization{
+				Scope: &scopes.ScopeInfo{
+					Id:            proj.GetPublicId(),
+					Type:          proj.GetType(),
+					Name:          proj.GetName(),
+					Description:   proj.GetDescription(),
+					ParentScopeId: proj.GetParentId(),
+				},
+				TargetId:  tar.GetPublicId(),
+				UserId:    at.GetIamUserId(),
+				HostSetId: tc.hostSourceId,
+				HostId:    wantedHostId,
+				Type:      "tcp",
+				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
+				Credentials: []*pb.SessionCredential{{
+					CredentialLibrary: &pb.CredentialLibrary{
+						Id:                clsResp.GetItem().GetId(),
+						Name:              clsResp.GetItem().GetName().GetValue(),
+						Description:       clsResp.GetItem().GetDescription().GetValue(),
+						CredentialStoreId: store.GetPublicId(),
+						Type:              vault.Subtype.String(),
+					},
+					CredentialSource: &pb.CredentialSource{
+						Id:                clsResp.GetItem().GetId(),
+						Name:              clsResp.GetItem().GetName().GetValue(),
+						Description:       clsResp.GetItem().GetDescription().GetValue(),
+						CredentialStoreId: store.GetPublicId(),
+						Type:              vault.Subtype.String(),
+					},
+				}},
+				// TODO: validate the contents of the authorization token is what is expected
+			}
+			wantSecret := map[string]interface{}{
+				"certificate":      "-----BEGIN CERTIFICATE-----\n",
+				"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
+				"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
+				"private_key_type": "rsa",
+			}
+			got := asRes1.GetItem()
+
+			require.Len(t, got.GetCredentials(), 1)
+
+			gotCred := got.Credentials[0]
+			require.NotNil(t, gotCred.Secret)
+			assert.NotEmpty(t, gotCred.Secret.Raw)
+			dSec := decodeJsonSecret(t, gotCred.Secret.Raw)
+			require.NoError(t, err)
+			require.Equal(t, dSec, gotCred.Secret.Decoded.AsMap())
+			for k, v := range wantSecret {
+				gotV, ok := dSec[k]
+				require.True(t, ok)
+				assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
+			}
+			gotCred.Secret = nil
+
+			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 		})
-	require.NoError(t, err)
-
-	// Tell our DB that there is a worker ready to serve the data
-	workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
-	_, err = workerService.Status(ctx, &spbs.StatusRequest{
-		Worker: &spb.Server{
-			PrivateId: "testworker",
-			Address:   "localhost:8457",
-		},
-	})
-	require.NoError(t, err)
-
-	asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-		Id: tar.GetPublicId(),
-	})
-	require.NoError(t, err)
-	asRes2, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-		Id: tar.GetPublicId(),
-	})
-	require.NoError(t, err)
-	assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
-		"the credentials aren't unique per request authorized session")
-
-	want := &pb.SessionAuthorization{
-		Scope: &scopes.ScopeInfo{
-			Id:            proj.GetPublicId(),
-			Type:          proj.GetType(),
-			Name:          proj.GetName(),
-			Description:   proj.GetDescription(),
-			ParentScopeId: proj.GetParentId(),
-		},
-		TargetId:  tar.GetPublicId(),
-		UserId:    at.GetIamUserId(),
-		HostSetId: hs.GetPublicId(),
-		HostId:    h.GetPublicId(),
-		Type:      "tcp",
-		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
-		Credentials: []*pb.SessionCredential{{
-			CredentialLibrary: &pb.CredentialLibrary{
-				Id:                clsResp.GetItem().GetId(),
-				Name:              clsResp.GetItem().GetName().GetValue(),
-				Description:       clsResp.GetItem().GetDescription().GetValue(),
-				CredentialStoreId: store.GetPublicId(),
-				Type:              vault.Subtype.String(),
-			},
-			CredentialSource: &pb.CredentialSource{
-				Id:                clsResp.GetItem().GetId(),
-				Name:              clsResp.GetItem().GetName().GetValue(),
-				Description:       clsResp.GetItem().GetDescription().GetValue(),
-				CredentialStoreId: store.GetPublicId(),
-				Type:              vault.Subtype.String(),
-			},
-		}},
-		// TODO: validate the contents of the authorization token is what is expected
 	}
-	wantSecret := map[string]interface{}{
-		"certificate":      "-----BEGIN CERTIFICATE-----\n",
-		"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
-		"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
-		"private_key_type": "rsa",
-	}
-	got := asRes1.GetItem()
-
-	require.Len(t, got.GetCredentials(), 1)
-
-	gotCred := got.Credentials[0]
-	require.NotNil(t, gotCred.Secret)
-	assert.NotEmpty(t, gotCred.Secret.Raw)
-	dSec := decodeJsonSecret(t, gotCred.Secret.Raw)
-	require.NoError(t, err)
-	require.Equal(t, dSec, gotCred.Secret.Decoded.AsMap())
-	for k, v := range wantSecret {
-		gotV, ok := dSec[k]
-		require.True(t, ok)
-		assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
-	}
-	gotCred.Secret = nil
-
-	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-	assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -2675,6 +2843,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
+	pluginHostRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	credentialRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
@@ -2683,12 +2854,12 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 
-	s, err := targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
+	ctx = auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,

@@ -8,6 +8,7 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/api/resources/plugins/v1/plugin.proto";
 import "controller/custom_options/v1/options.proto";
 
 // Host contains all fields related to a Host resource
@@ -20,6 +21,9 @@ message Host {
 
 	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// Output only. Plugin information for this resource.
+	resources.plugins.v1.PluginInfo plugin = 35;
 
 	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
@@ -45,6 +49,12 @@ message Host {
 
 	// The attributes that are applicable to the specific Host type.
 	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
+
+	// Output only.  The list of ip addresses associated with this host.
+	repeated string ip_addresses = 120;
+
+	// Output only.  The list of dns addresses associated with this host.
+	repeated string dns_names = 130;
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];

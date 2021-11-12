@@ -120,6 +120,7 @@ main
 /bin/
 update-ui-assets*
 /plugins/kms/assets/
+/plugins/host/assets/
 
 # Test config file
 test*.hcl

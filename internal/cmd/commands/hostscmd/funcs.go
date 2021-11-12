@@ -56,7 +56,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 
 func (c *Command) printListTable(items []*hosts.Host) string {
 	if len(items) == 0 {
-		return "No host sets found"
+		return "No hosts found"
 	}
 
 	var output []string

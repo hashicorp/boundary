@@ -54,7 +54,7 @@ func TestStructToProtoToStruct(t *testing.T) {
 			assert.Empty(t, cmp.Diff(wantStruct, st, protocmp.Transform()))
 
 			newAttr := tc.pb.ProtoReflect().New().Interface()
-			StructToProto(st, newAttr)
+			require.NoError(t, StructToProto(st, newAttr))
 			assert.Equal(t, tc.pb, newAttr)
 		})
 	}

@@ -58,6 +58,13 @@ const (
 	ApplicationCredentialLibrariesField  = "application_credential_libraries"
 	ApplicationCredentialSourceIdsField  = "application_credential_source_ids"
 	ApplicationCredentialSourcesField    = "application_credential_sources"
+	PreferredEndpointsField              = "preferred_endpoints"
+	SyncIntervalSecondsField             = "sync_interval_seconds"
+	PluginIdField                        = "plugin_id"
+	PluginField                          = "plugin"
+	PluginNameField                      = "plugin_name"
+	IpAddressesField                     = "ip_addresses"
+	DnsNamesField                        = "dns_names"
 	EgressCredentialSourceIdsField       = "egress_credential_source_ids"
 	EgressCredentialSourcesField         = "egress_credential_sources"
 )

@@ -10,11 +10,13 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -47,36 +49,38 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagUiPassthroughDir             string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
+	flagLogLevel                        string
+	flagLogFormat                       string
+	flagCombineLogs                     bool
+	flagLoginName                       string
+	flagPassword                        string
+	flagUnprivilegedLoginName           string
+	flagUnprivilegedPassword            string
+	flagIdSuffix                        string
+	flagHostAddress                     string
+	flagTargetDefaultPort               int
+	flagTargetSessionMaxSeconds         int
+	flagTargetSessionConnectionLimit    int
+	flagControllerAPIListenAddr         string
+	flagControllerClusterListenAddr     string
+	flagControllerPublicClusterAddr     string
+	flagControllerOnly                  bool
+	flagWorkerAuthKey                   string
+	flagWorkerProxyListenAddr           string
+	flagWorkerPublicAddr                string
+	flagUiPassthroughDir                string
+	flagRecoveryKey                     string
+	flagDatabaseUrl                     string
+	flagContainerImage                  string
+	flagDisableDatabaseDestruction      bool
+	flagEventFormat                     string
+	flagAudit                           string
+	flagObservations                    string
+	flagSysEvents                       string
+	flagEveryEventAllowFilters          []string
+	flagEveryEventDenyFilters           []string
+	flagCreateLoopbackHostCatalogPlugin bool
+	flagPluginExecutionDir              string
 }
 
 func (c *Command) Synopsis() string {
@@ -308,6 +312,19 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  `The optional every event deny filter. May be specified multiple times.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "plugin-execution-dir",
+		Target: &c.flagPluginExecutionDir,
+		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
+		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "create-loopback-hostcatalog-plugin",
+		Target: &c.flagCreateLoopbackHostCatalogPlugin,
+		Hidden: true,
+	})
+
 	return set
 }
 
@@ -343,6 +360,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return base.CommandUserError
 	}
+
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
@@ -351,6 +369,13 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
+
+	c.DevLoginName = c.flagLoginName
+	c.DevPassword = c.flagPassword
+	c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
+	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
+	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -375,19 +400,7 @@ func (c *Command) Run(args []string) int {
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
 		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
 	}
-	if c.flagLoginName != "" {
-		c.DevLoginName = c.flagLoginName
-	}
-	if c.flagPassword != "" {
-		c.DevPassword = c.flagPassword
-	}
-	if c.flagUnprivilegedLoginName != "" {
-		c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
-	}
-	if c.flagUnprivilegedPassword != "" {
-		c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
-	}
-	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+
 	host, port, err := net.SplitHostPort(c.flagHostAddress)
 	if err != nil {
 		if !strings.Contains(err.Error(), "missing port") {
@@ -547,6 +560,10 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
+	if c.flagCreateLoopbackHostCatalogPlugin {
+		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
+	}
 	switch c.flagDatabaseUrl {
 	case "":
 		if c.flagDisableDatabaseDestruction {

@@ -74,6 +74,18 @@ func WithFilter(filter string) Option {
 	}
 }
 
+func WithAttributes(inAttributes map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["attributes"] = inAttributes
+	}
+}
+
+func DefaultAttributes() Option {
+	return func(o *options) {
+		o.postMap["attributes"] = nil
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -95,5 +107,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithPreferredEndpoints(inPreferredEndpoints []string) Option {
+	return func(o *options) {
+		o.postMap["preferred_endpoints"] = inPreferredEndpoints
+	}
+}
+
+func DefaultPreferredEndpoints() Option {
+	return func(o *options) {
+		o.postMap["preferred_endpoints"] = nil
+	}
+}
+
+func WithSyncIntervalSeconds(inSyncIntervalSeconds int32) Option {
+	return func(o *options) {
+		o.postMap["sync_interval_seconds"] = inSyncIntervalSeconds
+	}
+}
+
+func DefaultSyncIntervalSeconds() Option {
+	return func(o *options) {
+		o.postMap["sync_interval_seconds"] = nil
 	}
 }

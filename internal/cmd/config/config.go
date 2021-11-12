@@ -105,6 +105,9 @@ type Config struct {
 
 	// Eventing configuration for the controller
 	Eventing *event.EventerConfig `hcl:"events"`
+
+	// Plugin-related options
+	Plugins Plugins `hcl:"plugins"`
 }
 
 type Controller struct {
@@ -128,6 +131,12 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
+
+	// SchedulerRunJobInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
+	//
+	// TODO: This field is currently internal.
+	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty() (string, error) {
@@ -184,6 +193,10 @@ type Database struct {
 	Url                string `hcl:"url"`
 	MigrationUrl       string `hcl:"migration_url"`
 	MaxOpenConnections int    `hcl:"max_open_connections"`
+}
+
+type Plugins struct {
+	ExecutionDir string `hcl:"execution_dir"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary

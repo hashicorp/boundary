@@ -10,10 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
@@ -587,4 +589,65 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 
 	return tt, nil
+}
+
+// RegisterHostPlugin creates a host plugin in the database if not present.
+// It also registers the plugin in the shared map of running plugins.  Since
+// all boundary provided host plugins must have a name, a name is required
+// when calling RegisterHostPlugin and will be used even if WithName is provided.
+func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+	if name == "" {
+		return nil, fmt.Errorf("no name provided when creating plugin.")
+	}
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
+	}()
+
+	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
+	}
+
+	plugin, err := hpRepo.LookupPluginByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up host plugin by name: %w", err)
+	}
+
+	if plugin == nil {
+		opt = append(opt, hostplugin.WithName(name))
+		plugin = hostplugin.NewPlugin(opt...)
+		plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating host plugin: %w", err)
+		}
+	}
+
+	if b.HostPlugins == nil {
+		b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
+	}
+	b.HostPlugins[plugin.GetPublicId()] = plg
+
+	return plugin, nil
 }
