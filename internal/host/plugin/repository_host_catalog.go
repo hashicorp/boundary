@@ -247,8 +247,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		case strings.EqualFold("secrets", strings.Split(f, ".")[0]):
 			// While in a similar format, secrets are passed along
 			// wholesale (for the time being). Don't append this mask
-			// field, as secrets do not have a database entry. Clear the
-			// secrets out of the working set after.
+			// field, as secrets do not have a database entry.
 			newCatalog.Secrets = c.Secrets
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
