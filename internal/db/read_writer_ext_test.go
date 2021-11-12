@@ -150,4 +150,35 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			}
 		})
 	}
+	t.Run("CreateItems", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		conflictUser, err := db_test.NewTestUser()
+		require.NoError(err)
+		userNameId, err := db.NewPublicId("test-user-name")
+		require.NoError(err)
+		conflictUser.PublicId = initialUser.PublicId
+		conflictUser.Name = userNameId
+		md := oplog.Metadata{
+			"resource-public-id": []string{conflictUser.PublicId},
+			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		}
+		onConflict := db.OnConflict{
+			Target: db.Constraint("db_test_user_public_id_key"),
+			Action: db.SetColumns([]string{"name"}),
+		}
+		users := []interface{}{}
+		users = append(users, conflictUser)
+		var rowsAffected int64
+		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected))
+		require.NoError(err)
+		foundUser, err := db_test.NewTestUser()
+		require.NoError(err)
+		foundUser.PublicId = conflictUser.PublicId
+		err = rw.LookupByPublicId(context.Background(), foundUser)
+		require.NoError(err)
+
+		assert.Equal(int64(1), rowsAffected)
+		assert.Equal(conflictUser.Id, foundUser.Id)
+		assert.Equal(conflictUser.Name, foundUser.Name)
+	})
 }
