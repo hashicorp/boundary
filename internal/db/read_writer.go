@@ -433,7 +433,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 	}
 	for _, item := range createItems {
-		if err := rw.Create(ctx, item); err != nil {
+		if err := rw.Create(ctx, item, WithOnConflict(opts.withOnConflict), WithReturnRowsAffected(opts.withRowsAffected)); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 	}
