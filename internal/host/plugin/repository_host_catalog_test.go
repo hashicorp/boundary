@@ -987,9 +987,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			name: "update secrets",
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
+				"five": "six",
 			})},
 			version:   2,
-			fieldMask: []string{"secrets.three"},
+			fieldMask: []string{"secrets.three", "secrets.five"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
@@ -997,9 +998,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				}),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
+					"five": "six",
 				}),
 				checkSecrets(map[string]interface{}{
 					"three": "four",
+					"five": "six",
 				}),
 				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
@@ -1024,7 +1027,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumUpdated(db.NoRowsAffected),
+				checkNumUpdated(1),
 			},
 		},
 		{

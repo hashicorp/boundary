@@ -359,7 +359,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			returnedSet = newSet.clone()
-			msgs := make([]*oplog.Message, 0, len(preferredEndpoints) + len(currentSet.PreferredEndpoints) + 2)
+			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+len(currentSet.PreferredEndpoints)+2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))

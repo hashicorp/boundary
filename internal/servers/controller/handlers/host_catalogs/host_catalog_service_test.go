@@ -1354,7 +1354,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin()),
 	}
 
 	repoFn := func() (*static.Repository, error) {
@@ -1422,6 +1422,11 @@ func TestUpdate_Plugin(t *testing.T) {
 			c.Attributes = i
 		}
 	}
+	updateSecrets := func(i *structpb.Struct) updateFn {
+		return func(c *pb.HostCatalog) {
+			c.Secrets = i
+		}
+	}
 
 	cases := []struct {
 		name    string
@@ -1459,6 +1464,20 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+			},
+		},
+		{
+			name:  "Update secrets",
+			masks: []string{"secrets.key1", "secrets.key2"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateSecrets(func() *structpb.Struct {
+					attr, err := structpb.NewStruct(map[string]interface{}{
+						"key1": "val1",
+					})
+					require.NoError(t, err)
+					return attr
+				}()),
 			},
 		},
 		{
@@ -1615,7 +1634,9 @@ func TestUpdate_Plugin(t *testing.T) {
 			item := got.GetItem()
 			assert.Equal(uint32(2), item.GetVersion())
 			assert.Greater(item.GetUpdatedTime().AsTime().UnixNano(), item.GetCreatedTime().AsTime().UnixNano())
-			tc.check(t, item)
+			if tc.check != nil {
+				tc.check(t, item)
+			}
 		})
 	}
 }

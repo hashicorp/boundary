@@ -149,6 +149,9 @@ func TestCrud(t *testing.T) {
 	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
 	checkCatalog("read", hc.Item, err, "foo", 1)
 
+	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("foo"))
+	checkCatalog("update", hc.Item, err, "foo", 1)
+
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
 	checkCatalog("update", hc.Item, err, "bar", 2)
 
@@ -179,6 +182,13 @@ func TestCrud(t *testing.T) {
 
 	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.DefaultName())
 	checkCatalog("update", c.Item, err, "", 3)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, 0, hostcatalogs.WithAutomaticVersioning(true),
+		hostcatalogs.WithSecrets(map[string]interface{}{
+			"key1": "val1",
+			"key2": "val2",
+		}))
+	checkCatalog("update", c.Item, err, "", 4)
 
 	c, err = hcClient.Read(tc.Context(), c.Item.Id)
 	assert.NoError(err)

@@ -250,8 +250,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			// field, as secrets do not have a database entry. Clear the
 			// secrets out of the working set after.
 			newCatalog.Secrets = c.Secrets
-			c.Secrets = nil
-
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -443,10 +441,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newCatalog.PublicId)))
 	}
 
-	var numUpdated int
-	if recordUpdated {
-		numUpdated = 1
-	}
+	// Even if we didn't update any records, if we were able to find the record
+	// with the appropriate version, returning 1 row updated is consistant with
+	// static's update catalog behavior.
+	numUpdated := 1
 
 	return returnedCatalog, plg, numUpdated, nil
 }

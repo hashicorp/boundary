@@ -19,7 +19,7 @@ func TestLoopbackPlugin(t *testing.T) {
 
 	plg := NewLoopbackPlugin()
 	secretsMap := map[string]interface{}{
-		"foo": "bar",
+		"key1": "key2",
 		"baz": true,
 	}
 	secrets, err := structpb.NewStruct(secretsMap)
@@ -37,6 +37,30 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NotNil(catResp.GetPersisted())
 	require.NotNil(catResp.GetPersisted().GetSecrets())
 	assert.EqualValues(secretsMap, catResp.GetPersisted().GetSecrets().AsMap())
+
+	newSecretsMap := map[string]interface{}{
+		"key1": "key2",
+		"baz": true,
+	}
+	newSecrets, err := structpb.NewStruct(newSecretsMap)
+	require.NoError(err)
+
+	// First, test that if we give it secrets, those secrets come back as
+	// persisted data
+	upResp, err := plg.OnUpdateCatalog(ctx, &plgpb.OnUpdateCatalogRequest{
+		CurrentCatalog: &hostcatalogs.HostCatalog{},
+		NewCatalog: &hostcatalogs.HostCatalog{
+			Secrets: newSecrets,
+		},
+		Persisted: &plgpb.HostCatalogPersisted{
+			Secrets: secrets,
+		},
+	})
+	require.NoError(err)
+	require.NotNil(upResp)
+	require.NotNil(upResp.GetPersisted())
+	require.NotNil(upResp.GetPersisted().GetSecrets())
+	assert.EqualValues(newSecretsMap, upResp.GetPersisted().GetSecrets().AsMap())
 
 	// Add data to some sets
 	hostInfo1 := map[string]interface{}{
