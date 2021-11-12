@@ -20,7 +20,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	plg := NewLoopbackPlugin()
 	secretsMap := map[string]interface{}{
 		"key1": "key2",
-		"baz": true,
+		"baz":  true,
 	}
 	secrets, err := structpb.NewStruct(secretsMap)
 	require.NoError(err)
@@ -40,7 +40,7 @@ func TestLoopbackPlugin(t *testing.T) {
 
 	newSecretsMap := map[string]interface{}{
 		"key1": "key2",
-		"baz": true,
+		"baz":  true,
 	}
 	newSecrets, err := structpb.NewStruct(newSecretsMap)
 	require.NoError(err)
