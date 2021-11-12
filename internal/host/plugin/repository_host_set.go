@@ -359,7 +359,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			returnedSet = newSet.clone()
-			msgs := make([]*oplog.Message, 0, len(preferredEndpoints) + len(currentSet.PreferredEndpoints) + 2)
+			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+len(currentSet.PreferredEndpoints)+2)
 			ticket, err := w.GetTicket(s)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -410,23 +410,25 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				}
 
 			case endpointOpUpdate:
-				// Delete all old endpoint entries.
-				var peps []interface{}
-				for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
-					p := host.AllocPreferredEndpoint()
-					p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
-					peps = append(peps, p)
-				}
-				deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
-				_, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs))
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
+				if len(currentSet.PreferredEndpoints) > 0 {
+					// Delete all old endpoint entries.
+					var peps []interface{}
+					for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
+						p := host.AllocPreferredEndpoint()
+						p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
+						peps = append(peps, p)
+					}
+					deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
+					_, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs))
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
 
-				// Only append the oplog message if an operation was actually
-				// performed.
-				if len(deleteOplogMsgs) > 0 {
-					msgs = append(msgs, deleteOplogMsgs...)
+					// Only append the oplog message if an operation was actually
+					// performed.
+					if len(deleteOplogMsgs) > 0 {
+						msgs = append(msgs, deleteOplogMsgs...)
+					}
 				}
 
 				// Create the new entries.

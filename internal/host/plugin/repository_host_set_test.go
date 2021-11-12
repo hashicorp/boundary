@@ -654,352 +654,28 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	tests := []struct {
-		name               string
-		withScopeId        *string
-		withEmptyPluginMap bool
-		withPluginError    error
-		changeFuncs        []changeHostSetFunc
-		version            uint32
-		fieldMask         []string
-		wantCheckSetFuncs []checkHostSetFunc
-		wantCheckPluginReqFuncs []checkPluginReqFunc
-		wantIsErr         errors.Code
-	}{
-		{
-			name:        "nil set",
-			changeFuncs: []changeHostSetFunc{changeSetToNil()},
-			wantIsErr:   errors.InvalidParameter,
-		},
-		{
-			name:        "nil embedded set",
-			changeFuncs: []changeHostSetFunc{changeEmbeddedSetToNil()},
-			wantIsErr:   errors.InvalidParameter,
-		},
-		{
-			name:        "missing public id",
-			changeFuncs: []changeHostSetFunc{changePublicId("")},
-			wantIsErr:   errors.InvalidParameter,
-		},
-		{
-			name:        "missing scope id",
-			withScopeId: func() *string { a := ""; return &a }(),
-			wantIsErr:   errors.InvalidParameter,
-		},
-		{
-			name:      "empty field mask",
-			fieldMask: nil, // Should be testing on len
-			wantIsErr: errors.EmptyFieldMask,
-		},
-		{
-			name:        "bad set id",
-			changeFuncs: []changeHostSetFunc{changePublicId("badid")},
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.RecordNotFound,
-		},
-		{
-			name:        "version mismatch",
-			changeFuncs: []changeHostSetFunc{changeName("foo")},
-			version:     1,
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.VersionMismatch,
-		},
-		{
-			name:        "mismatched scope id to catalog scope",
-			withScopeId: func() *string { a := "badid"; return &a }(),
-			version:     2,
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.InvalidParameter,
-		},
-		{
-			name:               "plugin lookup error",
-			withEmptyPluginMap: true,
-			version:            2,
-			fieldMask:          []string{"name"},
-			wantIsErr:          errors.Internal,
-		},
-		{
-			name:            "plugin invocation error",
-			withPluginError: errors.New(context.Background(), errors.Internal, "TestRepository_UpdateSet/plugin_invocation_error", "test plugin error"),
-			version:         2,
-			fieldMask:       []string{"name"},
-			wantIsErr:       errors.Internal,
-		},
-		{
-			name:        "update name (duplicate)",
-			changeFuncs: []changeHostSetFunc{changeName(testDuplicateSetName)},
-			version:     2,
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.NotUnique,
-		},
-		{
-			name:        "update name",
-			changeFuncs: []changeHostSetFunc{changeName("foo")},
-			version:     2,
-			fieldMask:   []string{"name"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentNameNil(),
-				checkUpdateSetRequestNewName("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkName("foo"),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "update name to same",
-			changeFuncs: []changeHostSetFunc{changeName("")},
-			version:     2,
-			fieldMask:   []string{"name"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentNameNil(),
-				checkUpdateSetRequestNewNameNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(2), // Version remains same even though row is updated
-				checkName(""),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "update description",
-			changeFuncs: []changeHostSetFunc{changeDescription("foo")},
-			version:     2,
-			fieldMask:   []string{"description"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentDescriptionNil(),
-				checkUpdateSetRequestNewDescription("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkDescription("foo"),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "update description to same",
-			changeFuncs: []changeHostSetFunc{changeDescription("")},
-			version:     2,
-			fieldMask:   []string{"description"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentDescriptionNil(),
-				checkUpdateSetRequestNewDescriptionNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(2), // Version remains same even though row is updated
-				checkDescription(""),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "update preferred endpoints",
-			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"cidr:10.0.0.0/24"})},
-			version:     2,
-			fieldMask:   []string{"PreferredEndpoints"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
-				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "clear preferred endpoints",
-			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
-			version:     2,
-			fieldMask:   []string{"PreferredEndpoints"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
-				checkUpdateSetRequestNewPreferredEndpointsNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkPreferredEndpoints(nil),
-				checkNeedSync(false),
-			},
-		},
-		{
-			name: "update attributes (add)",
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
-				"baz": "qux",
-			})},
-			version:   2,
-			fieldMask: []string{"attributes"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
-					"foo": "bar",
-				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
-					"foo": "bar",
-					"baz": "qux",
-				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkAttributes(map[string]interface{}{
-					"foo": "bar",
-					"baz": "qux",
-				}),
-				checkNeedSync(true),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name: "update attributes (overwrite)",
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
-				"foo": "baz",
-			})},
-			version:   2,
-			fieldMask: []string{"attributes"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
-					"foo": "bar",
-				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
-					"foo": "baz",
-				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkAttributes(map[string]interface{}{
-					"foo": "baz",
-				}),
-				checkNeedSync(true),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name: "update attributes (null)",
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
-				"foo": nil,
-			})},
-			version:   2,
-			fieldMask: []string{"attributes"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
-					"foo": "bar",
-				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
-				checkNeedSync(true),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name:        "update attributes (full null)",
-			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
-			version:     2,
-			fieldMask:   []string{"attributes"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
-					"foo": "bar",
-				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
-				checkNeedSync(true),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name: "update attributes (combined)",
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
-				"a":   "b",
-				"foo": "baz",
-			})},
-			version:   2,
-			fieldMask: []string{"attributes.a", "attributes.foo"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
-					"foo": "bar",
-				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
-					"a":   "b",
-					"foo": "baz",
-				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkAttributes(map[string]interface{}{
-					"a":   "b",
-					"foo": "baz",
-				}),
-				checkNeedSync(true),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
-		{
-			name: "update name and preferred endpoints",
-			changeFuncs: []changeHostSetFunc{
-				changePreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				changeName("foo"),
-			},
-			version:   2,
-			fieldMask: []string{"name", "PreferredEndpoints"},
-			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentNameNil(),
-				checkUpdateSetRequestNewName("foo"),
-				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
-				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
-					"one": "two",
-				}),
-			},
-			wantCheckSetFuncs: []checkHostSetFunc{
-				checkVersion(3),
-				checkName("foo"),
-				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkNeedSync(false),
-				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
-			},
-		},
+	// Finally define a function for bringing the test subject host
+	// set.
+	setupBareHostSet := func(t *testing.T, ctx context.Context) (*HostSet, []*Host) {
+		t.Helper()
+		set := TestSet(
+			t,
+			dbConn,
+			dbKmsCache,
+			sched,
+			testCatalog,
+			dummyPluginMap,
+		)
+
+		t.Cleanup(func() {
+			t.Helper()
+			assert := assert.New(t)
+			n, err := dbRW.Delete(ctx, set)
+			assert.NoError(err)
+			assert.Equal(1, n)
+		})
+
+		return set, nil
 	}
 
 	// Create a host that will be verified as belonging to the created set below.
@@ -1011,7 +687,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	// Finally define a function for bringing the test subject host
 	// set.
-	setupHostSet := func(t *testing.T, ctx context.Context) *HostSet {
+	setupHostSet := func(t *testing.T, ctx context.Context) (*HostSet, []*Host) {
 		t.Helper()
 		require := require.New(t)
 
@@ -1048,7 +724,382 @@ func TestRepository_UpdateSet(t *testing.T) {
 			assert.Equal(1, n)
 		})
 
-		return set
+		return set, testHosts
+	}
+
+	tests := []struct {
+		name                    string
+		startingSet             func(*testing.T, context.Context) (*HostSet, []*Host)
+		withScopeId             *string
+		withEmptyPluginMap      bool
+		withPluginError         error
+		changeFuncs             []changeHostSetFunc
+		version                 uint32
+		fieldMask               []string
+		wantCheckSetFuncs       []checkHostSetFunc
+		wantCheckPluginReqFuncs []checkPluginReqFunc
+		wantIsErr               errors.Code
+	}{
+		{
+			name:        "nil set",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changeSetToNil()},
+			wantIsErr:   errors.InvalidParameter,
+		},
+		{
+			name:        "nil embedded set",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changeEmbeddedSetToNil()},
+			wantIsErr:   errors.InvalidParameter,
+		},
+		{
+			name:        "missing public id",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changePublicId("")},
+			wantIsErr:   errors.InvalidParameter,
+		},
+		{
+			name:        "missing scope id",
+			startingSet: setupBareHostSet,
+			withScopeId: func() *string { a := ""; return &a }(),
+			wantIsErr:   errors.InvalidParameter,
+		},
+		{
+			name:        "empty field mask",
+			startingSet: setupBareHostSet,
+			fieldMask:   nil, // Should be testing on len
+			wantIsErr:   errors.EmptyFieldMask,
+		},
+		{
+			name:        "bad set id",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changePublicId("badid")},
+			fieldMask:   []string{"name"},
+			wantIsErr:   errors.RecordNotFound,
+		},
+		{
+			name:        "version mismatch",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changeName("foo")},
+			version:     4,
+			fieldMask:   []string{"name"},
+			wantIsErr:   errors.VersionMismatch,
+		},
+		{
+			name:        "mismatched scope id to catalog scope",
+			startingSet: setupBareHostSet,
+			withScopeId: func() *string { a := "badid"; return &a }(),
+			fieldMask:   []string{"name"},
+			wantIsErr:   errors.InvalidParameter,
+		},
+		{
+			name:               "plugin lookup error",
+			startingSet:        setupBareHostSet,
+			withEmptyPluginMap: true,
+			fieldMask:          []string{"name"},
+			wantIsErr:          errors.Internal,
+		},
+		{
+			name:            "plugin invocation error",
+			startingSet:     setupBareHostSet,
+			withPluginError: errors.New(context.Background(), errors.Internal, "TestRepository_UpdateSet/plugin_invocation_error", "test plugin error"),
+			fieldMask:       []string{"name"},
+			wantIsErr:       errors.Internal,
+		},
+		{
+			name:        "update name (duplicate)",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changeName(testDuplicateSetName)},
+			fieldMask:   []string{"name"},
+			wantIsErr:   errors.NotUnique,
+		},
+		{
+			name:        "update name",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeName("foo")},
+			fieldMask:   []string{"name"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentNameNil(),
+				checkUpdateSetRequestNewName("foo"),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkName("foo"),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update name to same",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeName("")},
+			fieldMask:   []string{"name"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentNameNil(),
+				checkUpdateSetRequestNewNameNil(),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkName(""),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update description",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeDescription("foo")},
+			fieldMask:   []string{"description"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentDescriptionNil(),
+				checkUpdateSetRequestNewDescription("foo"),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkDescription("foo"),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update description to same",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeDescription("")},
+			fieldMask:   []string{"description"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentDescriptionNil(),
+				checkUpdateSetRequestNewDescriptionNil(),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2), // Version remains same even though row is updated
+				checkDescription(""),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "add preferred endpoints",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"cidr:10.0.0.0/24"})},
+			fieldMask:   []string{"PreferredEndpoints"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentPreferredEndpoints(nil),
+				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update preferred endpoints",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changePreferredEndpoints([]string{"cidr:10.0.0.0/24"})},
+			fieldMask:   []string{"PreferredEndpoints"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
+				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "clear preferred endpoints",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changePreferredEndpoints(nil)},
+			fieldMask:   []string{"PreferredEndpoints"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
+				checkUpdateSetRequestNewPreferredEndpointsNil(),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkPreferredEndpoints(nil),
+				checkNeedSync(false),
+			},
+		},
+		{
+			name:        "update attributes (add)",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+				"baz": "qux",
+			})},
+			fieldMask: []string{"attributes"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+					"foo": "bar",
+					"baz": "qux",
+				}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{
+					"foo": "bar",
+					"baz": "qux",
+				}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (overwrite)",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+				"foo": "baz",
+			})},
+			fieldMask: []string{"attributes"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+					"foo": "baz",
+				}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{
+					"foo": "baz",
+				}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (null)",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+				"foo": nil,
+			})},
+			fieldMask: []string{"attributes"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (full null)",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
+			fieldMask:   []string{"attributes"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update attributes (combined)",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+				"a":   "b",
+				"foo": "baz",
+			})},
+			fieldMask: []string{"attributes.a", "attributes.foo"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+					"foo": "bar",
+				}),
+				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+					"a":   "b",
+					"foo": "baz",
+				}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkAttributes(map[string]interface{}{
+					"a":   "b",
+					"foo": "baz",
+				}),
+				checkNeedSync(true),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "update name and preferred endpoints",
+			startingSet: setupHostSet,
+			changeFuncs: []changeHostSetFunc{
+				changePreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				changeName("foo"),
+			},
+			fieldMask: []string{"name", "PreferredEndpoints"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestCurrentNameNil(),
+				checkUpdateSetRequestNewName("foo"),
+				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
+				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(3),
+				checkName("foo"),
+				checkPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
+				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1078,7 +1129,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				},
 			}
 
-			origSet := setupHostSet(t, ctx)
+			origSet, wantedHosts := tt.startingSet(t, ctx)
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
@@ -1098,7 +1149,12 @@ func TestRepository_UpdateSet(t *testing.T) {
 				scopeId = *tt.withScopeId
 			}
 
-			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, tt.version, tt.fieldMask)
+			version := origSet.Version
+			if tt.version != 0 {
+				version = tt.version
+			}
+
+			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, version, tt.fieldMask)
 			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1118,8 +1174,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			assert.Equal(testCatalog.PluginId, gotPlugin.PublicId)
 
 			// Also assert that the hosts returned by the request are the ones that belong to the set
-			wantHostMap := make(map[string]string, len(testHosts))
-			for _, h := range testHosts {
+			wantHostMap := make(map[string]string, len(wantedHosts))
+			for _, h := range wantedHosts {
 				wantHostMap[h.PublicId] = h.ExternalId
 			}
 			gotHostMap := make(map[string]string, len(gotHosts))
