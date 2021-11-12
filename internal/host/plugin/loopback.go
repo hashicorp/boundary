@@ -38,6 +38,7 @@ func NewLoopbackPlugin() plgpb.HostPluginServiceServer {
 	}
 	ret.OnCreateCatalogFn = ret.onCreateCatalog
 	ret.OnCreateSetFn = ret.onCreateSet
+	ret.OnUpdateCatalogFn = ret.onUpdateCatalog
 	ret.OnDeleteSetFn = ret.onDeleteSet
 	ret.ListHostsFn = ret.listHosts
 	return ret
@@ -57,7 +58,7 @@ func (l *loopbackPlugin) onCreateCatalog(ctx context.Context, req *plgpb.OnCreat
 			}, nil
 		}
 	}
-	return nil, nil
+	return &plgpb.OnCreateCatalogResponse{}, nil
 }
 
 func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
@@ -93,6 +94,23 @@ func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSet
 		}
 	}
 	return nil, nil
+}
+
+func (l *loopbackPlugin) onUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
+	const op = "plugin.(loopbackPlugin).onUpdateCatalog"
+	if req == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "req is nil")
+	}
+	if cat := req.GetNewCatalog(); cat != nil {
+		if secrets := cat.GetSecrets(); secrets != nil {
+			return &plgpb.OnUpdateCatalogResponse{
+				Persisted: &plgpb.HostCatalogPersisted{
+					Secrets: secrets,
+				},
+			}, nil
+		}
+	}
+	return &plgpb.OnUpdateCatalogResponse{}, nil
 }
 
 func (l *loopbackPlugin) onDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error) {
