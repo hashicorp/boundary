@@ -168,6 +168,22 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if len(item.IpAddresses) > 0 {
+		ret = append(ret,
+			"",
+			"  IP Addresses:",
+			base.WrapSlice(4, item.IpAddresses),
+		)
+	}
+
+	if len(item.DnsNames) > 0 {
+		ret = append(ret,
+			"",
+			"  DNS Names:",
+			base.WrapSlice(4, item.DnsNames),
+		)
+	}
+
 	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
