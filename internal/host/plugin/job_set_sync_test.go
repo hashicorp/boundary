@@ -168,7 +168,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 		return &plgpb.ListHostsResponse{
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
-					ExternalId:  "test",
+					ExternalId:  "first",
 					IpAddresses: []string{"10.0.0.1"},
 					SetIds:      setIds,
 				},
