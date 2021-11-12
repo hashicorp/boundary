@@ -237,6 +237,11 @@ func TestCrud(t *testing.T) {
 	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})
 	assert.Equal(h.Item.PreferredEndpoints, []string{"dns:update"})
 
+	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
+	require.NoError(err)
+	require.NotNil(h)
+	assert.Equal(int32(42), h.Item.SyncIntervalSeconds)
+
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)
 	assert.NoError(err)
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)

@@ -242,6 +242,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	// Clone the set so that we can set fields.
 	newSet := currentSet.clone()
 	var updateAttributes bool
+	var updateSyncInterval bool
 	var dbMask, nullFields []string
 	const (
 		endpointOpNoop   = "endpointOpNoop"
@@ -263,6 +264,14 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("description", f) && s.Description != "":
 			dbMask = append(dbMask, "description")
 			newSet.Description = s.Description
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds == 0:
+			nullFields = append(nullFields, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
+			updateSyncInterval = true
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds != 0:
+			dbMask = append(dbMask, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
+			updateSyncInterval = true
 		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) == 0:
 			endpointOp = endpointOpDelete
 			newSet.PreferredEndpoints = s.PreferredEndpoints
@@ -514,9 +523,16 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		numUpdated = 1
 	}
 
-	if updateAttributes {
+	switch {
+	case updateAttributes:
 		// Request a host sync since we have updated attributes.
 		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	case updateSyncInterval:
+		tilNextSync := time.Until(returnedSet.LastSyncTime.AsTime().Add(time.Duration(returnedSet.SyncIntervalSeconds) * time.Second))
+		if tilNextSync < 0 {
+			tilNextSync = 0
+		}
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil

@@ -1521,6 +1521,11 @@ func TestUpdate_Plugin(t *testing.T) {
 			c.PreferredEndpoints = i
 		}
 	}
+	updateSyncInterval := func(i *wrapperspb.Int32Value) updateFn {
+		return func(c *pb.HostSet) {
+			c.SyncIntervalSeconds = i
+		}
+	}
 	updateAttrs := func(i *structpb.Struct) updateFn {
 		return func(c *pb.HostSet) {
 			c.Attributes = i
@@ -1574,6 +1579,17 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 			check: func(t *testing.T, in *pb.HostSet) {
 				assert.Equal(t, in.PreferredEndpoints, []string{"dns:new"})
+			},
+		},
+		{
+			name:  "Update sync interval",
+			masks: []string{"sync_interval_seconds"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateSyncInterval(wrapperspb.Int32(42)),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, in.SyncIntervalSeconds, wrapperspb.Int32(42))
 			},
 		},
 		{
