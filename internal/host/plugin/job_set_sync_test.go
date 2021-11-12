@@ -170,6 +170,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 				{
 					ExternalId:  "first",
 					IpAddresses: []string{"10.0.0.1"},
+					DnsNames: []string{"foo.com"},
 					SetIds:      setIds,
 				},
 			},
