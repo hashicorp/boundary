@@ -26,8 +26,6 @@ begin;
   create table plugin_host (
     public_id wt_plugin_id primary key,
     scope_id wt_scope_id not null
-    -- TODO: Allow plugins to be created in different scopes and
-    --     constrain the host-catalog's plugin reference accordingly.
     constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
       on delete cascade
