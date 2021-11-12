@@ -160,14 +160,18 @@ func TestSetSyncJob_Run(t *testing.T) {
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
-		assert.Len(req.GetSets(), 1)
-		assert.Equal(set1.GetPublicId(), req.GetSets()[0].GetId())
+		assert.GreaterOrEqual(1, len(req.GetSets()))
+		var setIds []string
+		for _, s := range req.GetSets() {
+			setIds = append(setIds, s.GetId())
+		}
 		return &plgpb.ListHostsResponse{
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
 					ExternalId:  "first",
 					IpAddresses: []string{"10.0.0.1"},
-					SetIds:      []string{req.GetSets()[0].GetId()},
+					DnsNames: []string{"foo.com"},
+					SetIds:      setIds,
 				},
 			},
 		}, nil
@@ -209,6 +213,12 @@ func TestSetSyncJob_Run(t *testing.T) {
 	err = r.Run(context.Background())
 	require.NoError(err)
 	// The single existing set should have been processed
+	assert.Equal(1, r.numSets)
+	assert.Equal(1, r.numProcessed)
+
+	// Run sync with a new second set
+	_ = TestSet(t, conn, kmsCache, sched, cat, plgm)
+	require.NoError(r.Run(context.Background()))
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 
