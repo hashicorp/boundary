@@ -655,16 +655,16 @@ func TestRepository_UpdateSet(t *testing.T) {
 	}
 
 	tests := []struct {
-		name               string
-		withScopeId        *string
-		withEmptyPluginMap bool
-		withPluginError    error
-		changeFuncs        []changeHostSetFunc
-		version            uint32
-		fieldMask         []string
-		wantCheckSetFuncs []checkHostSetFunc
+		name                    string
+		withScopeId             *string
+		withEmptyPluginMap      bool
+		withPluginError         error
+		changeFuncs             []changeHostSetFunc
+		version                 uint32
+		fieldMask               []string
+		wantCheckSetFuncs       []checkHostSetFunc
 		wantCheckPluginReqFuncs []checkPluginReqFunc
-		wantIsErr         errors.Code
+		wantIsErr               errors.Code
 	}{
 		{
 			name:        "nil set",

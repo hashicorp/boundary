@@ -274,7 +274,6 @@ func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (
 	const op = "worker.requestInfoInterceptor"
 	if eventer == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
-
 	}
 	return func(interceptorCtx context.Context,
 		req interface{},

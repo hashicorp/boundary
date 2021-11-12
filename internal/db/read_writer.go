@@ -621,8 +621,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // Delete an object in the db with options: WithOplog, NewOplogMsg, WithWhere.
 // WithOplog will write an oplog entry for the delete. NewOplogMsg will return
 // in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
-//WithWhere allows specifying an additional constraint on the operation in
-//addition to the PKs. Delete returns the number of rows deleted and any errors.
+// WithWhere allows specifying an additional constraint on the operation in
+// addition to the PKs. Delete returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
