@@ -263,6 +263,12 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("description", f) && s.Description != "":
 			dbMask = append(dbMask, "description")
 			newSet.Description = s.Description
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds == 0:
+			nullFields = append(nullFields, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds != 0:
+			dbMask = append(dbMask, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
 		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) == 0:
 			endpointOp = endpointOpDelete
 			newSet.PreferredEndpoints = s.PreferredEndpoints

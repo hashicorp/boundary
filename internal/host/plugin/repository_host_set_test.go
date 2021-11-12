@@ -476,6 +476,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
+	changeSyncInterval := func(s int32) changeHostSetFunc {
+		return func(c *HostSet) *HostSet {
+			c.SyncIntervalSeconds = s
+			return c
+		}
+	}
+
 	changePreferredEndpoints := func(s []string) changeHostSetFunc {
 		return func(c *HostSet) *HostSet {
 			c.PreferredEndpoints = s
@@ -543,6 +550,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 			st := &structpb.Struct{}
 			require.NoError(t, proto.Unmarshal(got.Attributes, st))
 			assert.Empty(t, cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+		}
+	}
+
+	checkSyncInterval := func(want int32) checkHostSetFunc {
+		return func(t *testing.T, got *HostSet) {
+			t.Helper()
+			assert.Equal(t, want, got.SyncIntervalSeconds, "checkSyncInterval")
 		}
 	}
 
@@ -886,6 +900,23 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkVersion(2), // Version remains same even though row is updated
 				checkDescription(""),
 				checkNeedSync(false),
+				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
+			},
+		},
+		{
+			name:        "set sync interval",
+			startingSet: setupBareHostSet,
+			changeFuncs: []changeHostSetFunc{changeSyncInterval(42)},
+			fieldMask:   []string{"SyncIntervalSeconds"},
+			wantCheckPluginReqFuncs: []checkPluginReqFunc{
+				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+					"one": "two",
+				}),
+			},
+			wantCheckSetFuncs: []checkHostSetFunc{
+				checkVersion(2),
+				checkNeedSync(true),
+				checkSyncInterval(42),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
 		},
