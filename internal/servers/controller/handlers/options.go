@@ -32,6 +32,7 @@ type options struct {
 	WithAuthorizedCollectionActions map[string]*structpb.ListValue
 	WithManagedGroupIds             []string
 	WithMemberIds                   []string
+	WithHostSetIds                  []string
 }
 
 func getDefaultOptions() options {
@@ -108,5 +109,13 @@ func WithManagedGroupIds(ids []string) Option {
 func WithMemberIds(ids []string) Option {
 	return func(o *options) {
 		o.WithMemberIds = ids
+	}
+}
+
+// WithHostSetIds provides an option when creating responses to include the
+// given host set IDs if allowed
+func WithHostSetIds(ids []string) Option {
+	return func(o *options) {
+		o.WithHostSetIds = ids
 	}
 }

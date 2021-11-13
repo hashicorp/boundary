@@ -299,8 +299,10 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
+		if len(resp.GetHosts()) > 0 {
+			if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
+			}
 		}
 
 		updateSyncDataQuery := `

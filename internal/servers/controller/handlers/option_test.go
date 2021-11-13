@@ -74,4 +74,16 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithMemberIds(out))
 		require.Equal(out, opts.WithMemberIds)
 	})
+	t.Run("WithHostSetIds", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithHostSetIds)
+
+		out := []string{"foobar"}
+
+		opts = GetOpts(WithHostSetIds(out))
+		require.Equal(out, opts.WithHostSetIds)
+	})
 }

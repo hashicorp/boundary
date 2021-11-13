@@ -174,6 +174,7 @@ func TestGet_Plugin(t *testing.T) {
 			Description: plg.GetDescription(),
 		},
 		HostSetIds:        []string{hs.GetPublicId()},
+		ExternalId:        "test",
 		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 	}
 
@@ -359,7 +360,8 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
-		h := plugin.TestHost(t, conn, hc.GetPublicId(), fmt.Sprintf("host %d", i))
+		extId := fmt.Sprintf("host %d", i)
+		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId)
 		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
@@ -374,6 +376,7 @@ func TestList_Plugin(t *testing.T) {
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			HostSetIds:        []string{hs.GetPublicId()},
 			Version:           1,
+			ExternalId:        extId,
 			Type:              plugin.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 		})
