@@ -36,14 +36,12 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kms := kms.TestKms(t, conn, wrapper)
 
-	assert, require := assert.New(t), require.New(t)
-
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repo, err := vault.NewRepository(rw, rw, kms, sche)
-	require.NoError(err)
-	require.NotNil(repo)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
 	err = vault.RegisterJobs(ctx, sche, rw, rw, kms)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
 
@@ -53,15 +51,15 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	var opts []vault.Option
 	opts = append(opts, vault.WithCACert(v.CaCert))
 	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
-	require.NoError(err)
+	require.NoError(t, err)
 	opts = append(opts, vault.WithClientCert(clientCert))
 
 	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
-	assert.NoError(err)
-	require.NotNil(credStoreIn)
+	assert.NoError(t, err)
+	require.NotNil(t, credStoreIn)
 	origStore, err := repo.CreateCredentialStore(ctx, credStoreIn)
-	assert.NoError(err)
-	require.NotNil(origStore)
+	assert.NoError(t, err)
+	require.NotNil(t, origStore)
 
 	type libT int
 	const (
@@ -76,32 +74,32 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("database", "creds", "opened")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath)
-		assert.NoError(err)
-		require.NotNil(libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-		assert.NoError(err)
-		require.NotNil(lib)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
 		libs[libDB] = lib.GetPublicId()
 	}
 	{
 		libPath := path.Join("pki", "issue", "boundary")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, vault.WithMethod(vault.MethodPost), vault.WithRequestBody([]byte(`{"common_name":"boundary.com"}`)))
-		assert.NoError(err)
-		require.NotNil(libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-		assert.NoError(err)
-		require.NotNil(lib)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
 		libs[libPKI] = lib.GetPublicId()
 	}
 	{
 
 		libPath := path.Join("pki", "issue", "boundary")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, vault.WithMethod(vault.MethodPost))
-		assert.NoError(err)
-		require.NotNil(libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-		assert.NoError(err)
-		require.NotNil(lib)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
 		libs[libErrPKI] = lib.GetPublicId()
 	}
 	{
@@ -229,6 +227,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 				UserId:             uId,
 				HostId:             h.GetPublicId(),
