@@ -88,19 +88,20 @@ type Writer interface {
 	// rows updated or an error. Supported options: WithOplog.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
-	// Create an object in the db with options: WithOplog, WithOnConflict.
-	// The caller is responsible for the transaction life cycle of the writer
-	// and if an error is returned the caller must decide what to do with
-	// the transaction, which almost always should be to rollback.
+	// Create an object in the db with options: WithOplog, WithOnConflict and
+	// WithReturnRowsAffected. The caller is responsible for the transaction
+	// life cycle of the writer and if an error is returned the caller must
+	// decide what to do with the transaction, which almost always should be to
+	// rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateItems will create multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
-	// WithOplogMsgs may not be used together. WithLookup is not a
-	// supported option. The caller is responsible for the transaction life
-	// cycle of the writer and if an error is returned the caller must decide
-	// what to do with the transaction, which almost always should be to
-	// rollback.
+	// Supported options:  WithOnConflict, WithReturnRowsAffected, WithOplog and
+	// WithOplogMsgs. WithOplog and WithOplogMsgs may not be used together.
+	// WithLookup is not a supported option. The caller is responsible for the
+	// transaction life cycle of the writer and if an error is returned the
+	// caller must decide what to do with the transaction, which almost always
+	// should be to rollback.
 	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
 
 	// Delete an object in the db with options: WithOplog, WithDebug.
@@ -263,12 +264,12 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return nil
 }
 
-// Create an object in the db with options: WithOplog, NewOplogMsg, WithLookup
-// and OnConflict.  WithOplog will write an oplog entry for the create.
-// NewOplogMsg will return in-memory oplog message.  WithOplog and NewOplogMsg
-// cannot be used together.  WithLookup with to force a lookup after create.
-// OnConflict specifies alternative actions to take when an insert results in a
-// unique constraint or exclusion constraint error.
+// Create an object in the db with options: WithOplog, NewOplogMsg, WithLookup,
+// OnConflict and WithReturnRowsAffected.  WithOplog will write an oplog entry
+// for the create. NewOplogMsg will return in-memory oplog message.  WithOplog
+// and NewOplogMsg cannot be used together.  WithLookup with to force a lookup
+// after create. OnConflict specifies alternative actions to take when an insert
+// results in a unique constraint or exclusion constraint error.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
@@ -390,8 +391,13 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 }
 
 // CreateItems will create multiple items of the same type. Supported options:
-// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
-// together.  WithLookup is not a supported option.
+// WithOnConflict, WithReturnRowsAffected, WithOplog and WithOplogMsgs.
+// WithOplog and WithOplogMsgs may not be used together. OnConflict specifies
+// alternative actions to take when an insert results in a unique constraint or
+// exclusion constraint error.   WithLookup is not a supported option. The
+// caller is responsible for the transaction life cycle of the writer and if an
+// error is returned the caller must decide what to do with the transaction,
+// which almost always should be to rollback.
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
