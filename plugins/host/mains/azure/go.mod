@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/host/mains/azure
 go 1.17
 
 require (
-	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211110222619-3aff7f5aba17
-	github.com/hashicorp/boundary/sdk v0.0.12-0.20211110201157-962c9463fdb3
+	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211113004840-24a9c0b090c4
+	github.com/hashicorp/boundary/sdk v0.0.12-0.20211112235128-46a1edcb3b7b
 	github.com/hashicorp/go-hclog v1.0.0
 )
 
@@ -26,7 +26,7 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/eventlogger v0.1.1-0.20211104100552-e1e801e50144 // indirect
+	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c // indirect
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-kms-wrapping v0.6.6 // indirect

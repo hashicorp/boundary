@@ -477,7 +477,6 @@ github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brv
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/eventlogger v0.1.0/go.mod h1:a3IXf1aEJfpCPzseTOrwKj4fVW/Qn3oEmpQeaIznzH0=
-github.com/hashicorp/eventlogger v0.1.1-0.20211104100552-e1e801e50144/go.mod h1:a3IXf1aEJfpCPzseTOrwKj4fVW/Qn3oEmpQeaIznzH0=
 github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c h1:u1Zq+LfTXaagmJCHK3XH/fi7pk7oRY933VjGNG7/Ynw=
 github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c/go.mod h1:NaXU8p/pl5a2RX/N0/yncinT3Iw5CLkbF4JRxAVnk3c=
 github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239 h1:Yh9tY0lige+y0trmjQeT9NRDo6+YvtNAzbmUNOsIUzI=
