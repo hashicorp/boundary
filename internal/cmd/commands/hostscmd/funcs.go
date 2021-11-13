@@ -77,6 +77,11 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
+		if item.ExternalId != "" {
+			output = append(output,
+				fmt.Sprintf("    External ID:         %s", item.ExternalId),
+			)
+		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
@@ -134,6 +139,9 @@ func printItemTable(result api.GenericResult) string {
 	}
 	if item.HostCatalogId != "" {
 		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
+	}
+	if item.ExternalId != "" {
+		nonAttributeMap["External ID"] = item.ExternalId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)

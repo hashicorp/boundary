@@ -65,6 +65,7 @@ const (
 	PluginNameField                      = "plugin_name"
 	IpAddressesField                     = "ip_addresses"
 	DnsNamesField                        = "dns_names"
+	ExternalIdField                      = "external_id"
 	EgressCredentialSourceIdsField       = "egress_credential_source_ids"
 	EgressCredentialSourcesField         = "egress_credential_sources"
 )

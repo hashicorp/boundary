@@ -131,12 +131,11 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		var hostSetIds []string
 		switch h := item.(type) {
 		case *plugin.Host:
-			hostSetIds = h.SetIds
+			outputOpts = append(outputOpts, handlers.WithHostSetIds(h.SetIds))
 		}
-		item, err := toProto(ctx, item, hostSetIds, outputOpts...)
+		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -182,12 +181,11 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 
-	var hostSetIds []string
 	switch h := h.(type) {
 	case *plugin.Host:
-		hostSetIds = h.SetIds
+		outputOpts = append(outputOpts, handlers.WithHostSetIds(h.SetIds))
 	}
-	item, err := toProto(ctx, h, hostSetIds, outputOpts...)
+	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +224,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 
-	item, err := toProto(ctx, h, nil, outputOpts...)
+	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +266,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 
-	item, err := toProto(ctx, h, nil, outputOpts...)
+	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +528,7 @@ func toPluginInfo(plg *hostplugin.Plugin) *plugins.PluginInfo {
 	}
 }
 
-func toProto(ctx context.Context, in host.Host, hostSetIds []string, opt ...handlers.Option) (*pb.Host, error) {
+func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Host, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building host proto")
@@ -565,12 +563,7 @@ func toProto(ctx context.Context, in host.Host, hostSetIds []string, opt ...hand
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.VersionField) {
-		switch in.(type) {
-		case *static.Host:
-			out.Version = in.GetVersion()
-		case *plugin.Host:
-			out.Version = 1
-		}
+		out.Version = in.GetVersion()
 	}
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
@@ -578,10 +571,8 @@ func toProto(ctx context.Context, in host.Host, hostSetIds []string, opt ...hand
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	if outputFields.Has(globals.HostSetIdsField) {
-		for _, hs := range hostSetIds {
-			out.HostSetIds = append(out.HostSetIds, hs)
-		}
+	if outputFields.Has(globals.HostSetIdsField) && len(opts.WithHostSetIds) > 0 {
+		out.HostSetIds = opts.WithHostSetIds
 	}
 	if outputFields.Has(globals.AttributesField) {
 		switch h := in.(type) {
@@ -603,6 +594,13 @@ func toProto(ctx context.Context, in host.Host, hostSetIds []string, opt ...hand
 		}
 		if outputFields.Has(globals.DnsNamesField) {
 			out.DnsNames = h.DnsNames
+		}
+		if outputFields.Has(globals.ExternalIdField) {
+			out.ExternalId = h.ExternalId
+		}
+		// FIXME? Seems we should be _using_ a version...
+		if outputFields.Has(globals.VersionField) {
+			out.Version = 1
 		}
 	}
 	return &out, nil
