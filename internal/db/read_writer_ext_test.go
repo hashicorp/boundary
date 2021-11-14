@@ -21,25 +21,28 @@ func TestDb_Create_OnConflict(t *testing.T) {
 	rw := db.New(conn)
 	db.TestCreateTables(t, conn)
 
-	// create initial user for on conflict tests
-	id, err := db.NewPublicId("test-user")
-	require.NoError(t, err)
-	initialUser, err := db_test.NewTestUser()
-	require.NoError(t, err)
-	ts := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
-	initialUser.CreateTime = ts
-	initialUser.UpdateTime = ts
-	initialUser.Name = "foo-" + id
-	err = rw.Create(ctx, initialUser)
-	require.NoError(t, err)
-	assert.NotEmpty(t, initialUser.Id)
-
+	createInitialUser := func() *db_test.TestUser {
+		// create initial user for on conflict tests
+		id, err := db.NewPublicId("test-user")
+		require.NoError(t, err)
+		initialUser, err := db_test.NewTestUser()
+		require.NoError(t, err)
+		ts := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
+		initialUser.CreateTime = ts
+		initialUser.UpdateTime = ts
+		initialUser.Name = "foo-" + id
+		err = rw.Create(ctx, initialUser)
+		require.NoError(t, err)
+		assert.NotEmpty(t, initialUser.Id)
+		return initialUser
+	}
 	tests := []struct {
-		name       string
-		onConflict db.OnConflict
-		wantUpdate bool
-		wantEmail  string
-		wantOplog  bool
+		name           string
+		onConflict     db.OnConflict
+		additionalOpts []db.Option
+		wantUpdate     bool
+		wantEmail      string
+		wantOplog      bool
 	}{
 		{
 			name: "set-columns",
@@ -109,11 +112,52 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			wantUpdate: true,
 			wantOplog:  true,
 		},
+		{
+			name: "set-columns-with-where-success",
+			onConflict: db.OnConflict{
+				Target: db.Columns{"public_id"},
+				Action: db.SetColumns([]string{"name"}),
+			},
+			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 1)},
+			wantUpdate:     true,
+			wantOplog:      true,
+		},
+		{
+			name: "set-columns-with-where-fail",
+			onConflict: db.OnConflict{
+				Target: db.Columns{"public_id"},
+				Action: db.SetColumns([]string{"name"}),
+			},
+			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 100000000000)},
+			wantUpdate:     false,
+			wantOplog:      false,
+		},
+		{
+			name: "set-columns-with-version-success",
+			onConflict: db.OnConflict{
+				Target: db.Columns{"public_id"},
+				Action: db.SetColumns([]string{"name"}),
+			},
+			additionalOpts: []db.Option{db.WithVersion(func() *uint32 { i := uint32(1); return &i }())},
+			wantUpdate:     true,
+			wantOplog:      true,
+		},
+		{
+			name: "set-columns-with-version-fail",
+			onConflict: db.OnConflict{
+				Target: db.Columns{"public_id"},
+				Action: db.SetColumns([]string{"name"}),
+			},
+			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 100000000000)},
+			wantUpdate:     false,
+			wantOplog:      false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			initialUser := createInitialUser()
 			conflictUser, err := db_test.NewTestUser()
 			require.NoError(err)
 			userNameId, err := db.NewPublicId("test-user-name")
@@ -125,7 +169,11 @@ func TestDb_Create_OnConflict(t *testing.T) {
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 			}
 			var rowsAffected int64
-			err = rw.Create(ctx, conflictUser, db.WithOnConflict(&tt.onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected))
+			opts := []db.Option{db.WithOnConflict(&tt.onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected)}
+			if tt.additionalOpts != nil {
+				opts = append(opts, tt.additionalOpts...)
+			}
+			err = rw.Create(ctx, conflictUser, opts...)
 			require.NoError(err)
 			if tt.wantOplog {
 				err = db.TestVerifyOplog(t, rw, conflictUser.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
@@ -136,6 +184,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			foundUser.PublicId = conflictUser.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
 			require.NoError(err)
+			t.Log(foundUser)
 			if tt.wantUpdate {
 				assert.Equal(int64(1), rowsAffected)
 				assert.Equal(conflictUser.Id, foundUser.Id)
@@ -152,6 +201,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 	}
 	t.Run("CreateItems", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		initialUser := createInitialUser()
 		conflictUser, err := db_test.NewTestUser()
 		require.NoError(err)
 		userNameId, err := db.NewPublicId("test-user-name")
