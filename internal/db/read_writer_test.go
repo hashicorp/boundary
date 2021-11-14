@@ -131,7 +131,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: with version option is zero: parameter violation: error #100",
+			wantErrMsg: "with version option is zero: parameter violation: error #100",
 		},
 		{
 			name: "simple-with-version",
