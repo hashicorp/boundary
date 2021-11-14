@@ -606,27 +606,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	var underlying *gorm.DB
 	switch {
 	case opts.WithVersion != nil || opts.withWhereClause != "":
-		var where []string
-		var args []interface{}
-		if opts.WithVersion != nil {
-			if *opts.WithVersion == 0 {
-				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "with version option is zero")
-			}
-			mDb := rw.underlying.Model(i)
-			err = mDb.Statement.Parse(i)
-			if err != nil && mDb.Statement.Schema == nil {
-				return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
-			}
-			if !contains(mDb.Statement.Schema.DBNames, "version") {
-				// if _, ok := stmt.Schema.FieldsByName["version"]; !ok {
-				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
-			}
-			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
+		where, args, err := rw.whereClausesFromOpts(ctx, i, opts)
+		if err != nil {
+			return NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
-		if opts.withWhereClause != "" {
-			where, args = append(where, opts.withWhereClause), append(args, opts.withWhereClauseArgs...)
-		}
-		underlying = rw.underlying.Model(i).Where(strings.Join(where, " and "), args...).Updates(updateFields)
+		underlying = rw.underlying.Model(i).Where(where, args...).Updates(updateFields)
 	default:
 		underlying = rw.underlying.Model(i).Updates(updateFields)
 	}
