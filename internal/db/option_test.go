@@ -201,6 +201,7 @@ func Test_getOpts(t *testing.T) {
 		// try setting to true
 		opts = GetOpts(WithDebug(true))
 		testOpts.withDebug = true
+		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithOnConflict", func(t *testing.T) {
 		assert := assert.New(t)
