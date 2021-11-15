@@ -175,6 +175,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 
 				ph.SetIds = ph.SetIds[0 : len(ph.SetIds)-1]
 				e.SetIds = e.SetIds[0 : len(e.SetIds)-1]
+				e.Version++
 				return &input{
 					catalog: catalog,
 					sets:    setIds,

@@ -116,6 +116,7 @@ type hostAgg struct {
 	Description string
 	CreateTime  *timestamp.Timestamp
 	UpdateTime  *timestamp.Timestamp
+	Version     uint32
 	IpAddresses string
 	DnsNames    string
 	SetIds      string
@@ -132,6 +133,7 @@ func (agg *hostAgg) toHost() *Host {
 	h.Description = agg.Description
 	h.CreateTime = agg.CreateTime
 	h.UpdateTime = agg.UpdateTime
+	h.Version = agg.Version
 
 	if agg.IpAddresses != "" {
 		h.IpAddresses = strings.Split(agg.IpAddresses, aggregateDelimiter)

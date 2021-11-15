@@ -447,8 +447,9 @@ type Host struct {
 	// plugin_host_catalog and must be set.
 	// @inject_tag: `gorm:"not_null"`
 	CatalogId string `protobuf:"bytes,7,opt,name=catalog_id,json=catalogId,proto3" json:"catalog_id,omitempty" gorm:"not_null"`
-	// @inject_tag: `gorm:"-"`
-	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty" gorm:"-"`
+	// version allows optimistic locking of the resource
+	// @inject_tag: `gorm:"default:null"`
+	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// ip_addresses are the ip addresses associated with this host and will
 	// be persisted in the db through the HostAddress message.
 	// @inject_tag: `gorm:"-"`

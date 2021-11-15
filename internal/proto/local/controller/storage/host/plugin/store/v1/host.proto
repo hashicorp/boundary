@@ -160,7 +160,8 @@ message Host {
   // @inject_tag: `gorm:"not_null"`
   string catalog_id = 7;
 
-  // @inject_tag: `gorm:"-"`
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 
   // ip_addresses are the ip addresses associated with this host and will

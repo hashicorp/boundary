@@ -75,6 +75,10 @@ func createNewHostMap(ctx context.Context,
 		// assume catalog ID and external ID don't change because if they do
 		// the public ID will be different as well.
 		currHost := currentHostMap[newHost.PublicId]
+		if currHost != nil {
+			hi.h.Version = currHost.Version
+		}
+
 		switch {
 		case currHost == nil,
 			currHost.Name != newHost.Name,
