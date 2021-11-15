@@ -298,16 +298,11 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
-		result.Controller.Name, err = parseutil.ParsePath(result.Controller.Name)
-		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		result.Controller.Name, err = parsePath(result.Controller.Name)
+		if err != nil {
 			return nil, fmt.Errorf("Error parsing controller name: %w", err)
 		}
-		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
-			return nil, errors.New("Controller name must be all lower-case")
-		}
-		if !strutil.Printable(result.Controller.Name) {
-			return nil, errors.New("Controller name contains non-printable characters")
-		}
+
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
@@ -327,16 +322,11 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
-		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
-		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		result.Worker.Name, err = parsePath(result.Worker.Name)
+		if err != nil {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
 		}
-		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
-			return nil, errors.New("Worker name must be all lower-case")
-		}
-		if !strutil.Printable(result.Worker.Name) {
-			return nil, errors.New("Worker name contains non-printable characters")
-		}
+
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
 			// HCL allows multiple labeled blocks with the same name, turning it
@@ -439,6 +429,22 @@ func Parse(d string) (*Config, error) {
 	}
 
 	return result, nil
+}
+
+func parsePath(urlField string) (string, error) {
+	// input is returned in error states to preserve `parseutil.ParsePath` functionality.
+	field, err := parseutil.ParsePath(urlField)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		return urlField, err
+	}
+	if field != strings.ToLower(field) {
+		return urlField, errors.New("field must be all lower-case")
+	}
+	if !strutil.Printable(field) {
+		return urlField, errors.New("field contains non-printable characters")
+	}
+
+	return field, nil
 }
 
 func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
