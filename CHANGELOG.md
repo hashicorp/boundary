@@ -11,6 +11,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Boundary now supports _plugin-based_ host catalogs, host sets, and hosts. This
+  new sub-type allows for the dynamic discovery of host resources to be used in
+  targets without the need to pre-populate the host in Boundary. See the
+  [documentation](https://www.boundaryproject.io/docs) for configuration
+  instructions. Currently, only Azure and AWS are supported, but more providers
+  will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
   enhanced to be more robust against attackers that have decryption access to
   the shared `worker-auth` KMS key
