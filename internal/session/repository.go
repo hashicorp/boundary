@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 )
@@ -83,7 +84,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 	}
 	sessions := []*Session{}
 	connections := map[string]*Connection{}
-	states := map[Status]*State{}
+	states := map[*timestamp.Timestamp]*State{}
 	var prevSessionId string
 	var workingSession *Session
 	for _, sv := range sessionList {
@@ -95,7 +96,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 				}
 				for _, s := range states {
 					workingSession.States = append(workingSession.States, s)
-					states = map[Status]*State{}
+					states = map[*timestamp.Timestamp]*State{}
 				}
 				sort.Slice(workingSession.States, func(i, j int) bool {
 					return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
@@ -144,8 +145,8 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			}
 		}
 
-		if _, ok := states[Status(sv.Status)]; !ok {
-			states[Status(sv.Status)] = &State{
+		if _, ok := states[sv.EndTime]; !ok {
+			states[sv.EndTime] = &State{
 				SessionId:       sv.PublicId,
 				Status:          Status(sv.Status),
 				PreviousEndTime: sv.PreviousEndTime,
@@ -173,7 +174,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 	}
 	for _, s := range states {
 		workingSession.States = append(workingSession.States, s)
-		states = map[Status]*State{}
+		states = map[*timestamp.Timestamp]*State{}
 	}
 	sort.Slice(workingSession.States, func(i, j int) bool {
 		return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
