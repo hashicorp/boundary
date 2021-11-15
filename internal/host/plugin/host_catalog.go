@@ -5,11 +5,14 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -52,6 +55,35 @@ func allocHostCatalog() *HostCatalog {
 	return &HostCatalog{
 		HostCatalog: &store.HostCatalog{},
 	}
+}
+
+// hmacSecrets before writing it to the db
+func (c *HostCatalog) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "plugin.(HostCatalog).hmacSecrets"
+	if c.Secrets == nil {
+		c.SecretsHmac = ""
+		return nil
+	}
+	secretsMap := c.Secrets.AsMap()
+	if len(secretsMap) == 0 {
+		c.SecretsHmac = ""
+		return nil
+	}
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	// Go's JSON encoding is stable (that is, it alphabetizes keys) so it's a
+	// good option to produce an HMAC-able string.
+	jsonSecrets, err := json.Marshal(secretsMap)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
+	}
+	hm, err := crypto.HmacSha256(ctx, jsonSecrets, cipher, []byte(c.PublicId), nil, crypto.WithBase64Encoding())
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
+	}
+	c.SecretsHmac = hm
+	return nil
 }
 
 // clone provides a deep copy of the HostCatalog with the exception of the
@@ -107,6 +139,7 @@ type catalogAgg struct {
 	CreateTime          *timestamp.Timestamp
 	UpdateTime          *timestamp.Timestamp
 	Version             uint32
+	SecretsHmac         string
 	Attributes          []byte
 	Secret              []byte
 	KeyId               string
@@ -127,6 +160,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 	c.CreateTime = agg.CreateTime
 	c.UpdateTime = agg.UpdateTime
 	c.Version = agg.Version
+	c.SecretsHmac = agg.SecretsHmac
 	c.Attributes = agg.Attributes
 
 	var s *HostCatalogSecret

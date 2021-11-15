@@ -9,7 +9,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -323,6 +326,117 @@ func TestHostCatalog_SetTableName(t *testing.T) {
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(t, tt.want, s.TableName())
+		})
+	}
+}
+
+func TestHostCatalog_SecretsHmac(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	plg := host.TestPlugin(t, conn, "testplugin")
+	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+
+	// stableValue checks that HMACing the same value returns the same result.
+	// The first time it's called to match it will be empty and thus assign the
+	// expected value; the second time it will assert that value.
+	var stableValue string
+	tests := []struct {
+		name             string
+		hcFn             func() *HostCatalog
+		hmacWrapper      wrapping.Wrapper
+		emptyHmac        bool
+		matchStableValue bool
+		wantHmacErrMatch *errors.Template
+	}{
+		{
+			name: "valid-empty-secrets",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = nil
+				cat.SecretsHmac = "foobar"
+				return cat
+			},
+			emptyHmac:   true,
+			hmacWrapper: databaseWrapper,
+		},
+		{
+			name: "valid",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.SecretsHmac = ""
+				return cat
+			},
+			hmacWrapper:      databaseWrapper,
+			matchStableValue: true,
+		},
+		{
+			name: "valid-different-val",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = mustStruct(map[string]interface{}{"zip": "zap"})
+				cat.SecretsHmac = ""
+				return cat
+			},
+			hmacWrapper: databaseWrapper,
+		},
+		{
+			name: "valid-original-val",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.SecretsHmac = ""
+				return cat
+			},
+			hmacWrapper:      databaseWrapper,
+			matchStableValue: true,
+		},
+		{
+			name: "hmac-missing-wrapper",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.SecretsHmac = "foobar"
+				return cat
+			},
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "hmac-bad-wrapper",
+			hcFn: func() *HostCatalog {
+				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.SecretsHmac = ""
+				return cat
+			},
+			hmacWrapper:      &aead.Wrapper{},
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			hmacCat := tt.hcFn().clone()
+			err = hmacCat.hmacSecrets(ctx, tt.hmacWrapper)
+			if tt.wantHmacErrMatch != nil {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.emptyHmac {
+				assert.Empty(hmacCat.SecretsHmac)
+				stableValue = ""
+				return
+			}
+			assert.NotEmpty(hmacCat.SecretsHmac)
+			if tt.matchStableValue {
+				if stableValue == "" {
+					stableValue = hmacCat.SecretsHmac
+				} else {
+					assert.Equal(stableValue, hmacCat.SecretsHmac)
+				}
+			}
 		})
 	}
 }

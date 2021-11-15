@@ -68,6 +68,17 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	// If secrets were passed in, HMAC 'em
+	if c.Secrets != nil && len(c.Secrets.GetFields()) > 0 {
+		databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := c.hmacSecrets(ctx, databaseWrapper); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
+		}
+	}
+
 	plgHc, err := toPluginCatalog(ctx, c)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
@@ -226,6 +237,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	newCatalog := currentCatalog.clone()
 	var updateAttributes bool
 	var dbMask, nullFields []string
+	var alreadySetSecrets bool
 	for _, f := range fieldMask {
 		switch {
 		case strings.EqualFold("name", f) && c.Name == "":
@@ -245,10 +257,29 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			// sent, we only need to do this once.
 			updateAttributes = true
 		case strings.EqualFold("secrets", strings.Split(f, ".")[0]):
+			if alreadySetSecrets {
+				continue
+			}
+			alreadySetSecrets = true
 			// While in a similar format, secrets are passed along
 			// wholesale (for the time being). Don't append this mask
 			// field, as secrets do not have a database entry.
 			newCatalog.Secrets = c.Secrets
+			switch {
+			case newCatalog.Secrets == nil,
+				len(newCatalog.Secrets.GetFields()) == 0:
+				nullFields = append(nullFields, "SecretsHmac")
+			default:
+				// If secrets were passed in, HMAC 'em
+				databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+				if err != nil {
+					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+				}
+				if err := newCatalog.hmacSecrets(ctx, databaseWrapper); err != nil {
+					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error hmac'ing passed-in secrets"))
+				}
+				dbMask = append(dbMask, "SecretsHmac")
+			}
 		default:
 			return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -638,6 +669,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		ScopeId:     in.GetScopeId(),
 		Name:        name,
 		Description: description,
+		SecretsHmac: in.GetSecretsHmac(),
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
