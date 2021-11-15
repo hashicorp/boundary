@@ -49,38 +49,38 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                        string
-	flagLogFormat                       string
-	flagCombineLogs                     bool
-	flagLoginName                       string
-	flagPassword                        string
-	flagUnprivilegedLoginName           string
-	flagUnprivilegedPassword            string
-	flagIdSuffix                        string
-	flagHostAddress                     string
-	flagTargetDefaultPort               int
-	flagTargetSessionMaxSeconds         int
-	flagTargetSessionConnectionLimit    int
-	flagControllerAPIListenAddr         string
-	flagControllerClusterListenAddr     string
-	flagControllerPublicClusterAddr     string
-	flagControllerOnly                  bool
-	flagWorkerAuthKey                   string
-	flagWorkerProxyListenAddr           string
-	flagWorkerPublicAddr                string
-	flagUiPassthroughDir                string
-	flagRecoveryKey                     string
-	flagDatabaseUrl                     string
-	flagContainerImage                  string
-	flagDisableDatabaseDestruction      bool
-	flagEventFormat                     string
-	flagAudit                           string
-	flagObservations                    string
-	flagSysEvents                       string
-	flagEveryEventAllowFilters          []string
-	flagEveryEventDenyFilters           []string
-	flagCreateLoopbackHostCatalogPlugin bool
-	flagPluginExecutionDir              string
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagCombineLogs                  bool
+	flagLoginName                    string
+	flagPassword                     string
+	flagUnprivilegedLoginName        string
+	flagUnprivilegedPassword         string
+	flagIdSuffix                     string
+	flagHostAddress                  string
+	flagTargetDefaultPort            int
+	flagTargetSessionMaxSeconds      int
+	flagTargetSessionConnectionLimit int
+	flagControllerAPIListenAddr      string
+	flagControllerClusterListenAddr  string
+	flagControllerPublicClusterAddr  string
+	flagControllerOnly               bool
+	flagWorkerAuthKey                string
+	flagWorkerProxyListenAddr        string
+	flagWorkerPublicAddr             string
+	flagUiPassthroughDir             string
+	flagRecoveryKey                  string
+	flagDatabaseUrl                  string
+	flagContainerImage               string
+	flagDisableDatabaseDestruction   bool
+	flagEventFormat                  string
+	flagAudit                        string
+	flagObservations                 string
+	flagSysEvents                    string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
+	flagCreateLoopbackHostPlugin     bool
+	flagPluginExecutionDir           string
 }
 
 func (c *Command) Synopsis() string {
@@ -320,8 +320,8 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "create-loopback-hostcatalog-plugin",
-		Target: &c.flagCreateLoopbackHostCatalogPlugin,
+		Name:   "create-loopback-host-plugin",
+		Target: &c.flagCreateLoopbackHostPlugin,
 		Hidden: true,
 	})
 
@@ -560,7 +560,7 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
-	if c.flagCreateLoopbackHostCatalogPlugin {
+	if c.flagCreateLoopbackHostPlugin {
 		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
 	}
