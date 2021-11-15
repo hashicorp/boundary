@@ -83,7 +83,9 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 		return nil, nil
 	}
 	sessions := []*Session{}
+	// deduplication map of connections by connection_id
 	connections := map[string]*Connection{}
+	// deduplication map of states by end_time
 	states := map[*timestamp.Timestamp]*State{}
 	var prevSessionId string
 	var workingSession *Session
@@ -92,12 +94,12 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			if prevSessionId != "" {
 				for _, c := range connections {
 					workingSession.Connections = append(workingSession.Connections, c)
-					connections = map[string]*Connection{}
 				}
+				connections = map[string]*Connection{}
 				for _, s := range states {
 					workingSession.States = append(workingSession.States, s)
-					states = map[*timestamp.Timestamp]*State{}
 				}
+				states = map[*timestamp.Timestamp]*State{}
 				sort.Slice(workingSession.States, func(i, j int) bool {
 					return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
 				})
@@ -174,7 +176,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 	}
 	for _, s := range states {
 		workingSession.States = append(workingSession.States, s)
-		states = map[*timestamp.Timestamp]*State{}
 	}
 	sort.Slice(workingSession.States, func(i, j int) bool {
 		return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
