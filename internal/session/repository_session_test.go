@@ -117,7 +117,7 @@ func TestRepository_ListSession(t *testing.T) {
 				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
 				for i := 0; i < tt.withConnections; i++ {
-					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 22)
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
 				}
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
@@ -130,6 +130,12 @@ func TestRepository_ListSession(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 			for i := 0; i < len(got); i++ {
 				assert.Equal(tt.withConnections, len(got[i].Connections))
+				for _, c := range got[i].Connections {
+					assert.Equal("127.0.0.1", c.ClientTcpAddress)
+					assert.Equal(uint32(22), c.ClientTcpPort)
+					assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+					assert.Equal(uint32(23), c.EndpointTcpPort)
+				}
 			}
 			if tt.wantCnt > 0 {
 				assert.Equal(StatusActive, got[0].States[0].Status)
