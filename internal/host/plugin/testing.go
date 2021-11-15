@@ -189,6 +189,7 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 				ExternalId:  externalId,
 				IpAddresses: []string{ipStr},
 				DnsNames:    []string{dnsName},
+				Version:     1,
 			},
 		})
 	}

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -159,23 +160,28 @@ func TestSetSyncJob_Run(t *testing.T) {
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
+	counter := new(uint32)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 		assert.GreaterOrEqual(1, len(req.GetSets()))
 		var setIds []string
 		for _, s := range req.GetSets() {
 			setIds = append(setIds, s.GetId())
 		}
+		*counter += 1
 		return &plgpb.ListHostsResponse{
 			Hosts: []*plgpb.ListHostsResponseHost{
 				{
 					ExternalId:  "first",
-					IpAddresses: []string{"10.0.0.1"},
+					IpAddresses: []string{fmt.Sprintf("10.0.0.%d", *counter)},
 					DnsNames:    []string{"foo.com"},
 					SetIds:      setIds,
 				},
 			},
 		}, nil
 	}
+
+	hostRepo, err := NewRepository(rw, rw, kmsCache, sche, plgm)
+	require.NoError(err)
 
 	hsa := &hostSetAgg{PublicId: set1.GetPublicId()}
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
@@ -187,6 +193,13 @@ func TestSetSyncJob_Run(t *testing.T) {
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
+	// Check the version number of the host(s)
+	hosts, _, err := hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	require.NoError(err)
+	assert.Len(hosts, 1)
+	for _, host := range hosts {
+		assert.Equal(uint32(1), host.Version)
+	}
 
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
 	assert.Greater(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
@@ -215,6 +228,13 @@ func TestSetSyncJob_Run(t *testing.T) {
 	// The single existing set should have been processed
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
+	// Check the version number of the host(s) again
+	hosts, _, err = hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	require.NoError(err)
+	assert.Len(hosts, 1)
+	for _, host := range hosts {
+		assert.Equal(uint32(2), host.Version)
+	}
 
 	// Run sync with a new second set
 	_ = TestSet(t, conn, kmsCache, sched, cat, plgm)

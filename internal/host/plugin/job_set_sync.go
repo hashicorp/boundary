@@ -414,22 +414,36 @@ func (r *SetSyncJob) upsertHosts(
 			db.ExpBackoff{},
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
-				ticket, err := w.GetTicket(hi.h)
+				ticket, err := w.GetTicket(ret)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
 
-				if hi.dirtyHost {
-					var hOplogMsg oplog.Message
-					onConflict := &db.OnConflict{
-						Target: db.Constraint("host_plugin_host_pkey"),
-						Action: db.SetColumns([]string{"name", "description"}),
-					}
-					if err := w.Create(ctx, ret, db.NewOplogMsg(&hOplogMsg), db.WithOnConflict(onConflict)); err != nil {
-						return errors.Wrap(ctx, err, op)
-					}
-					msgs = append(msgs, &hOplogMsg)
+				// We always write the host itself as we need to update version
+				// for optimistic locking for any value object update.
+				var hOplogMsg oplog.Message
+				onConflict := &db.OnConflict{
+					Target: db.Constraint("host_plugin_host_pkey"),
+					Action: db.SetColumns([]string{"name", "description", "version"}),
 				}
+				var rowsAffected int64
+				dbOpts := []db.Option{
+					db.NewOplogMsg(&hOplogMsg),
+					db.WithOnConflict(onConflict),
+					db.WithReturnRowsAffected(&rowsAffected),
+				}
+				version := ret.Version
+				if version > 0 {
+					dbOpts = append(dbOpts, db.WithVersion(&version))
+					ret.Version += 1
+				}
+				if err := w.Create(ctx, ret, dbOpts...); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if rowsAffected != 1 {
+					return errors.New(ctx, errors.UnexpectedRowsAffected, op, "no rows affected during upsert")
+				}
+				msgs = append(msgs, &hOplogMsg)
 
 				// IP handling
 				{
@@ -440,7 +454,7 @@ func (r *SetSyncJob) upsertHosts(
 							return err
 						}
 						if count != len(hi.ipsToRemove) {
-							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d ips from host %s, removed %d", len(hi.ipsToRemove), hi.h.PublicId, count))
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d ips from host %s, removed %d", len(hi.ipsToRemove), ret.PublicId, count))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -451,7 +465,7 @@ func (r *SetSyncJob) upsertHosts(
 							Action: db.DoNothing(true),
 						}
 						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
-							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), hi.h.GetPublicId())))
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), ret.GetPublicId())))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -466,7 +480,7 @@ func (r *SetSyncJob) upsertHosts(
 							return err
 						}
 						if count != len(hi.dnsNamesToRemove) {
-							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d dns names from host %s, removed %d", len(hi.dnsNamesToRemove), hi.h.PublicId, count))
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d dns names from host %s, removed %d", len(hi.dnsNamesToRemove), ret.PublicId, count))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -483,7 +497,7 @@ func (r *SetSyncJob) upsertHosts(
 					}
 				}
 
-				metadata := hi.h.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				metadata := ret.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}

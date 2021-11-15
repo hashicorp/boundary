@@ -53,10 +53,7 @@ from
 comment on view host_plugin_catalog_with_secret is
   'host plugin catalog with its associated persisted data';
 
--- host_plugin_host_with_value_obj_and_set_memberships is useful for reading a
--- plugin host with its associated value objects (ip addresses, dns names) and
--- set membership as columns with delimited values. The delimiter depends on
--- the value objects (e.g. if they need ordering).
+-- REPLACED in 20/08_plugin_host_views.up.sql
 create view host_plugin_host_with_value_obj_and_set_memberships as
 select
   h.public_id,

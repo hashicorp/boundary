@@ -598,10 +598,6 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 		if outputFields.Has(globals.ExternalIdField) {
 			out.ExternalId = h.ExternalId
 		}
-		// FIXME? Seems we should be _using_ a version...
-		if outputFields.Has(globals.VersionField) {
-			out.Version = 1
-		}
 	}
 	return &out, nil
 }
