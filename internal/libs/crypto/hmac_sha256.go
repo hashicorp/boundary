@@ -10,6 +10,7 @@ import (
 	"io"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -81,10 +82,12 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt,
 	hmac := mac.Sum(nil)
 
 	var hmacString string
-	switch opts.withBase64Encoding {
-	case true:
+	switch {
+	case opts.withBase64Encoding:
 		hmacString = base64.RawURLEncoding.EncodeToString(hmac)
-	case false:
+	case opts.withBase58Encoding:
+		hmacString = base58.Encode(hmac)
+	default:
 		hmacString = string(hmac)
 	}
 	if opts.withPrefix != "" {

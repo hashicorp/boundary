@@ -22,6 +22,7 @@ type options struct {
 	withPrk            []byte
 	withEd25519        bool
 	withBase64Encoding bool
+	withBase58Encoding bool
 }
 
 func getDefaultOptions() *options {
@@ -58,6 +59,14 @@ func WithEd25519() Option {
 func WithBase64Encoding() Option {
 	return func(o *options) error {
 		o.withBase64Encoding = true
+		return nil
+	}
+}
+
+// WithBase58Encoding allows an optional request to base58 encode the data returned
+func WithBase58Encoding() Option {
+	return func(o *options) error {
+		o.withBase58Encoding = true
 		return nil
 	}
 }

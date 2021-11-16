@@ -79,7 +79,7 @@ func (c *HostCatalog) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) 
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
-	hm, err := crypto.HmacSha256(ctx, jsonSecrets, cipher, []byte(c.PublicId), nil, crypto.WithBase64Encoding())
+	hm, err := crypto.HmacSha256(ctx, jsonSecrets, cipher, []byte(c.PublicId), nil, crypto.WithBase58Encoding())
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
