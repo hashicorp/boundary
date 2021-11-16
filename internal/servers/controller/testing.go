@@ -406,6 +406,34 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts:   opts,
 	}
 
+	conf := TestControllerConfig(t, ctx, tc, opts)
+	var err error
+	tc.c, err = New(ctx, conf)
+	if err != nil {
+		tc.Shutdown()
+		t.Fatal(err)
+	}
+
+	tc.buildClient()
+
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
+	}
+
+	return tc
+}
+
+// TestControllerConfig provides a way to create a config for a TestController.
+// The tc passed as a parameter will be modified by this func.
+func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
+	const op = "controller.TestControllerConfig"
+	if opts == nil {
+		opts = new(TestControllerOpts)
+	}
+
 	// Base server
 	tc.b = base.NewServer(&base.Command{
 		Context:    ctx,
@@ -600,28 +628,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	}
 
-	conf := &Config{
+	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
-
-	tc.c, err = New(ctx, conf)
-	if err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
-	}
-
-	tc.buildClient()
-
-	if !opts.DisableAutoStart {
-		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
-			t.Fatal(err)
-		}
-	}
-
-	return tc
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {

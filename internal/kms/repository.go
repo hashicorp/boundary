@@ -177,6 +177,10 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		KeyTypeOidcKeyVersion:     oidcKeyVersion,
 	}
 	if scopeId == scope.Global.String() {
+		k, err = generateKey(ctx, randomReader)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oidc key in scope %s", scopeId)))
+		}
 		auditKey, auditKeyVersion, err := createAuditKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create audit key in scope %s", scopeId)))
