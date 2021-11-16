@@ -7,7 +7,7 @@ alter table host_plugin_catalog
 
 -- host_plugin_catalog_with_secret is useful for reading a plugin catalog with
 -- its associated persisted data.
-drop view if exists host_plugin_catalog_with_secret;
+drop view host_plugin_catalog_with_secret;
 create view host_plugin_catalog_with_secret as
 select
   hc.public_id,

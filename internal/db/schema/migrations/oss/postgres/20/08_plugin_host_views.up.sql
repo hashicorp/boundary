@@ -10,7 +10,7 @@ create trigger update_version_column after update on host_plugin_host
 -- plugin host with its associated value objects (ip addresses, dns names) and
 -- set membership as columns with delimited values. The delimiter depends on
 -- the value objects (e.g. if they need ordering).
-drop view if exists host_plugin_host_with_value_obj_and_set_memberships;
+drop view host_plugin_host_with_value_obj_and_set_memberships;
 create view host_plugin_host_with_value_obj_and_set_memberships as
 select
   h.public_id,
