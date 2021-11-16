@@ -152,6 +152,14 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			wantErrContains: "missing rand reader",
 		},
 		{
+			name:            "reader-interface-is-nil",
+			kms:             kms.TestKms(t, conn, wrapper),
+			reader:          func() io.Reader { var sr *strings.Reader; var r io.Reader = sr; return r }(),
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing rand reader",
+		},
+		{
 			name:    "nothing-to-reconcile",
 			kms:     kms.TestKms(t, conn, wrapper),
 			reader:  rand.Reader,

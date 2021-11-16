@@ -282,16 +282,21 @@ func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader) error {
 	// database was initialized... so check if the audit wrapper is available
 	// for the global scope and if not, then add one to the global scope
 	if _, err := k.GetWrapper(ctx, scope.Global.String(), KeyPurposeAudit); err != nil {
-		globalRootWrapper, _, err := k.loadRoot(ctx, scope.Global.String())
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		key, err := generateKey(ctx, randomReader)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scope.Global.String())))
-		}
-		if _, _, err := k.repo.CreateAuditKey(ctx, globalRootWrapper, key); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
+		switch {
+		case errors.Match(errors.T(errors.KeyNotFound), err):
+			globalRootWrapper, _, err := k.loadRoot(ctx, scope.Global.String())
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			key, err := generateKey(ctx, randomReader)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scope.Global.String())))
+			}
+			if _, _, err := k.repo.CreateAuditKey(ctx, globalRootWrapper, key); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
+			}
+		default:
+			errors.Wrap(ctx, err, op)
 		}
 	}
 	return nil
