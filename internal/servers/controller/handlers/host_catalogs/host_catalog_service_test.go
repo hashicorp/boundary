@@ -183,7 +183,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac("foobar"))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -208,6 +208,7 @@ func TestGet_Plugin(t *testing.T) {
 		Type:                        plugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+		SecretsHmac:                 "foobar",
 	}
 
 	cases := []struct {

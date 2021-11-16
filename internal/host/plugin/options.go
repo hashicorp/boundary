@@ -28,6 +28,7 @@ type options struct {
 	withDnsNames            []string
 	withLimit               int
 	withSetIds              []string
+	withSecretsHmac         string
 }
 
 func getDefaultOptions() options {
@@ -120,5 +121,12 @@ func WithLimit(l int) Option {
 func WithSetIds(with []string) Option {
 	return func(o *options) {
 		o.withSetIds = with
+	}
+}
+
+// WithSecretsHmac provides an optional HMAC of secrets. Used for testing.
+func WithSecretsHmac(secretsHmac string) Option {
+	return func(o *options) {
+		o.withSecretsHmac = secretsHmac
 	}
 }

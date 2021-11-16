@@ -45,6 +45,7 @@ func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option
 			Name:        opts.withName,
 			Description: opts.withDescription,
 			Attributes:  attrs,
+			SecretsHmac: opts.withSecretsHmac,
 		},
 		Secrets: opts.withSecrets,
 	}
