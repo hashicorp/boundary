@@ -497,6 +497,8 @@ github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1 h1:IJgULbAXuvWxzKFfu+Au1
 github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1/go.mod h1:rf5JPE13wi+NwjgsmGkbg4b2CgHq8v7Htn/F0nDe/hg=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1 h1:HlTofNQN49DTzPCMVDppp+AVxMNVWaHUElpUYC0TRRE=
 github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1/go.mod h1:irE9ILwhE8VooWdhHhBy0qXzOMRlHKoWoMlr31mAFCE=
+github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.2-0.20211115120847-158e2b90d58a h1:v2X19MLyjozPoZtJc+ZOqg8yyMeOJZ5TlV44Ab6gajI=
+github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.2-0.20211115120847-158e2b90d58a/go.mod h1:myX7XYMJRIP4PLHtYJiKMTJcKOX0M5ZJNwP0iw+l3uw=
 github.com/hashicorp/go-secure-stdlib/mlock v0.1.1 h1:cCRo8gK7oq6A2L6LICkUZ+/a5rLiRXFMf1Qd4xSwxTc=
 github.com/hashicorp/go-secure-stdlib/mlock v0.1.1/go.mod h1:zq93CJChV6L9QTfGKtfBxKqD7BqqXx5O04A/ns2p5+I=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1 h1:78ki3QBevHwYrVxnyVeaEz+7WtifHhauYF23es/0KlI=

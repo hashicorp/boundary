@@ -38,7 +38,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
-	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1
+	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.2-0.20211115120847-158e2b90d58a
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
