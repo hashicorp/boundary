@@ -7,13 +7,10 @@ description: |-
 
 # Host Sets
 
-A host set is a resource
-that represents a collection of [hosts][]
-which are considered equivalent
-for the purposes of access control.
-A host set can only include hosts
-from the same [host catalog][] as the host set.
-A [target][] can reference host sets from host catalogs
+A host set is a resource that represents a collection of [hosts][]
+which are considered equivalent for the purposes of access control.
+A host set can only include hosts from the same [host catalog][] as
+the host set. A [target][] can reference host sets from host catalogs
 which belong to the same [project][] as the target.
 
 ## Attributes
@@ -24,6 +21,22 @@ A host set has the following configurable attributes:
   If set, the `name` must be unique within the host set's parent [host catalog][].
 
 - `description` - (optional)
+
+- `preferred_endpoints` - (optional)
+  A list of selector strings in the format of either `cidr:<valid IPv4/6 CIDR>`
+  or `dns:<globbed name>` used to select the addresses of a [hosts][] when
+  establishing a [session][] with a [target][].
+
+### Plugin Host Set Attributes
+
+- `attributes` - (optional)
+  A collection of fields which the plugin uses to lookup which hosts should be
+  members of this host set.  Often this includes a type of filter using a
+  syntax which is usable by the backing service.
+
+- `sync_interval_seconds` - (optional)
+  The number of seconds between the time boundary syncs the [hosts][] in this set
+  using this host set's plugin.
 
 ## Referenced By
 
@@ -37,6 +50,8 @@ A host set has the following configurable attributes:
 [hosts]: /docs/concepts/domain-model/hosts
 [project]: /docs/concepts/domain-model/scopes#projects
 [projects]: /docs/concepts/domain-model/scopes#projects
+[session]: /docs/concepts/domain-model/sessions
+[sessions]: /docs/concepts/domain-model/sessions
 [target]: /docs/concepts/domain-model/targets
 [targets]: /docs/concepts/domain-model/targets
 
