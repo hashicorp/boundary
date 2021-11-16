@@ -23,6 +23,35 @@ message SessionState {
   google.protobuf.Timestamp end_time = 30 [json_name = "end_time"];
 }
 
+message Connection {
+    // public_id is used to access the connection via an API
+    string public_id = 1;
+
+    // session_id of the connection
+    string session_id = 2;
+
+    // client_tcp_address of the connection
+    string client_tcp_address = 3;
+
+    // client_tcp_port of the connection
+    uint32 client_tcp_port = 4;
+
+    // endpoint_tcp_address of the connection
+    string endpoint_tcp_address = 5;
+
+    // endpoint_tcp_port of the connection
+    uint32 endpoint_tcp_port = 6;
+
+    // bytes_up of the connection
+    uint64 bytes_up = 7;
+
+    // bytes_down of the connection
+    uint64 bytes_down = 8;
+
+    // closed_reason of the conneciont
+    string closed_reason = 9;
+}
+
 // Session contains all fields related to a Session resource
 message Session {
   // Output only. The ID of the Session.
@@ -84,4 +113,7 @@ message Session {
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name="authorized_actions"];
+
+  // Output only. The associated connections with this session.
+  repeated Connection connections = 310;
 }
