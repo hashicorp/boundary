@@ -281,6 +281,8 @@ func TestList(t *testing.T) {
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
+		c := session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
+
 		status, states := convertStates(sess.States)
 
 		wantSession = append(wantSession, &pb.Session{
@@ -302,6 +304,16 @@ func TestList(t *testing.T) {
 			Certificate:       sess.Certificate,
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					PublicId:           c.PublicId,
+					SessionId:          sess.GetPublicId(),
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -315,6 +327,8 @@ func TestList(t *testing.T) {
 			ScopeId:     pWithOtherSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		c = session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
 
 		status, states = convertStates(sess.States)
 
@@ -337,6 +351,16 @@ func TestList(t *testing.T) {
 			Certificate:       sess.Certificate,
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					PublicId:           c.PublicId,
+					SessionId:          sess.GetPublicId(),
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 	}
 
@@ -403,7 +427,14 @@ func TestList(t *testing.T) {
 				require.Equal(len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.Equal(1, len(wantSess.GetConnections()))
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+					for _, c := range got.GetItems()[i].GetConnections() {
+						assert.Equal("127.0.0.1", c.ClientTcpAddress)
+						assert.Equal(uint32(22), c.ClientTcpPort)
+						assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+						assert.Equal(uint32(23), c.EndpointTcpPort)
+					}
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
