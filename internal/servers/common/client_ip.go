@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 )
 
 const (
@@ -20,7 +21,7 @@ var privateNets atomic.Value
 // ClientIpFromRequest will determine if the client IP of the http request using
 // the provide set of private networks. See InitPrivateNetworks(...) and
 // PrivateNetworks(...) for building the list of private networks.
-func ClientIpFromRequest(ctx context.Context, privateNetworks []*net.IPNet, r *http.Request) (string, error) {
+func ClientIpFromRequest(ctx context.Context, privateNetworks []*net.IPNet, listenerCfg *listenerutil.ListenerConfig, r *http.Request) (string, error) {
 	const op = "common.ClientIpFromRequest"
 	if privateNetworks == nil {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing list of private networks")
@@ -28,9 +29,22 @@ func ClientIpFromRequest(ctx context.Context, privateNetworks []*net.IPNet, r *h
 	if r == nil {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing http request")
 	}
+	if listenerCfg == nil {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing listener config")
+	}
 
 	forwardedFor := r.Header.Get(XForwardedForHeader)
 	realIp := r.Header.Get(RealIpHeader)
+
+	// using the XForwardedFor* listener config settings to determine how/if
+	// X-Forwarded-For are trusted/allowed for an inbound request.
+	trustedForwardedFor, err := listenerutil.TrustedFromXForwardedFor(r, listenerCfg)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("failed to determine trusted X-Forwarded-For"))
+	}
+	if trustedForwardedFor != nil {
+		forwardedFor = net.JoinHostPort(trustedForwardedFor.Host, trustedForwardedFor.Port)
+	}
 
 	// no headers, so we'll use the remote addr
 	if forwardedFor == "" && realIp == "" {

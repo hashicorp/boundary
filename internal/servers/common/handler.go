@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 )
 
 // GeneratedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
@@ -102,7 +103,7 @@ func WrapWithOptionals(ctx context.Context, with *writerWrapper, wrap http.Respo
 // WrapWithEventsHandler will wrap the provided http.Handler with a
 // handler that adds an Eventer to the request context and starts/flushes gated
 // events of type: observation and audit
-func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http.Handler, error) {
+func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms, listenerCfg *listenerutil.ListenerConfig) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
 	if h == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing handler")
@@ -124,7 +125,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
-		clientIp, err := ClientIpFromRequest(ctx, PrivateNetworks(ctx), r)
+		clientIp, err := ClientIpFromRequest(ctx, PrivateNetworks(ctx), listenerCfg, r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to determine client ip"))
