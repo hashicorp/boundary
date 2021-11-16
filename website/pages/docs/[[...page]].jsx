@@ -1,9 +1,6 @@
 import { productName, productSlug } from 'data/metadata'
 import DocsPage from '@hashicorp/react-docs-page'
-import {
-  generateStaticPaths,
-  generateStaticProps,
-} from '@hashicorp/react-docs-page/server'
+import { getStaticGenerationFunctions } from '@hashicorp/react-docs-page/server'
 
 const NAV_DATA_FILE = 'data/docs-nav-data.json'
 const CONTENT_DIR = 'content/docs'
@@ -15,40 +12,28 @@ export default function DocsLayout(props) {
       product={{ name: productName, slug: productSlug }}
       baseRoute={basePath}
       staticProps={props}
-      showVersionSelect={true}
+      showVersionSelect={process.env.ENABLE_VERSIONED_DOCS === 'true'}
     />
   )
 }
 
-export async function getStaticPaths() {
-  return {
-    fallback: 'blocking',
-    paths: await generateStaticPaths({
-      navDataFile: NAV_DATA_FILE,
-      localContentDir: CONTENT_DIR,
-      // new ----
-      product: { name: productName, slug: productSlug },
-      basePath: basePath,
-    }),
-  }
-}
-
-export async function getStaticProps({ params }) {
-  try {
-    return {
-      props: await generateStaticProps({
-        navDataFile: NAV_DATA_FILE,
-        localContentDir: CONTENT_DIR,
-        product: { name: productName, slug: productSlug },
-        params,
+const { getStaticPaths, getStaticProps } = getStaticGenerationFunctions(
+  process.env.ENABLE_VERSIONED_DOCS === 'true'
+    ? {
+        strategy: 'remote',
         basePath: basePath,
-      }),
-      revalidate: 10,
-    }
-  } catch (err) {
-    console.warn(err)
-    return {
-      notFound: true,
-    }
-  }
-}
+        fallback: 'blocking',
+        revalidate: 10, // TODO: Set this to before prod 1 hour
+        product: productSlug,
+      }
+    : {
+        strategy: 'fs',
+        basePath: basePath,
+        localContentDir: CONTENT_DIR,
+        navDataFile: NAV_DATA_FILE,
+        product: productSlug,
+        revalidate: false,
+      }
+)
+
+export { getStaticPaths, getStaticProps }
