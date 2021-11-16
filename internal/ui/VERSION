@@ -1,4 +1,4 @@
-f29a6bc5d9475ee57327f4ca21aa213908bbfd01 Merge pull request #771 from hashicorp/chore-nth-check-resolutions
+8193aac84562b1883465724d67bd43cd763edd7e Merge pull request #863 from hashicorp/add-default-filters
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
