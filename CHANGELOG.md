@@ -11,9 +11,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* Boundary now supports _plugin-based_ host catalogs, host sets, and hosts. This
-  new sub-type allows for the dynamic discovery of host resources to be used in
-  targets without the need to pre-populate the host in Boundary. See the
+* Boundary now supports dynamic discovery of host resources using our (currently
+  internal) new plugin system. See the
   [documentation](https://www.boundaryproject.io/docs) for configuration
   instructions. Currently, only Azure and AWS are supported, but more providers
   will be following in future releases.
