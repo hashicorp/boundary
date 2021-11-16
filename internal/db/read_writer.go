@@ -508,24 +508,24 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 
 // Update an object in the db, fieldMask is required and provides
 // field_mask.proto paths for fields that should be updated. The i interface
-// parameter is the type the caller wants to update in the db and its
-// fields are set to the update values. setToNullPaths is optional and
-// provides field_mask.proto paths for the fields that should be set to
-// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
-// is responsible for the transaction life cycle of the writer and if an
-// error is returned the caller must decide what to do with the transaction,
-// which almost always should be to rollback.  Update returns the number of
-// rows updated.
+// parameter is the type the caller wants to update in the db and its fields are
+// set to the update values. setToNullPaths is optional and provides
+// field_mask.proto paths for the fields that should be set to null.
+// fieldMaskPaths and setToNullPaths must not intersect. The caller is
+// responsible for the transaction life cycle of the writer and if an error is
+// returned the caller must decide what to do with the transaction, which almost
+// always should be to rollback.  Update returns the number of rows updated.
 //
-// Supported options: WithOplog, NewOplogMsg, WithWhere and WithVersion.
-// WithOplog will write an oplog entry for the update. NewOplogMsg
-// will return in-memory oplog message.  WithOplog and NewOplogMsg cannot be
-// used together.   If WithVersion is used, then the update will include the
-// version number in the update where clause, which basically makes the update
-// use optimistic locking and the update will only succeed if the existing rows
-// version matches the WithVersion option.  Zero is not a valid value for the
+// Supported options: WithOplog, NewOplogMsg, WithWhere, WithDebug, and
+// WithVersion. WithOplog will write an oplog entry for the update. NewOplogMsg
+// will return in-memory oplog message. WithOplog and NewOplogMsg cannot be used
+// together. If WithVersion is used, then the update will include the version
+// number in the update where clause, which basically makes the update use
+// optimistic locking and the update will only succeed if the existing rows
+// version matches the WithVersion option. Zero is not a valid value for the
 // WithVersion option and will return an error. WithWhere allows specifying an
-// additional constraint on the operation in addition to the PKs.
+// additional constraint on the operation in addition to the PKs. WithDebug will
+// turn on debugging for the update call.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
@@ -603,16 +603,19 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
-	var underlying *gorm.DB
+	underlying := rw.underlying.Model(i)
+	if opts.withDebug {
+		underlying = underlying.Debug()
+	}
 	switch {
 	case opts.WithVersion != nil || opts.withWhereClause != "":
 		where, args, err := rw.whereClausesFromOpts(ctx, i, opts)
 		if err != nil {
 			return NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
-		underlying = rw.underlying.Model(i).Where(where, args...).Updates(updateFields)
+		underlying = underlying.Where(where, args...).Updates(updateFields)
 	default:
-		underlying = rw.underlying.Model(i).Updates(updateFields)
+		underlying = underlying.Updates(updateFields)
 	}
 	if underlying.Error != nil {
 		if underlying.Error == gorm.ErrRecordNotFound {

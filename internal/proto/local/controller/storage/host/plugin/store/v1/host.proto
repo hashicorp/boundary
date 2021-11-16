@@ -42,9 +42,15 @@ message HostCatalog {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 
+  // secrets_hmac is a sha256-hmac of the unencrypted secrets that is returned
+  // from the API for read.  It is recalculated everytime the raw secrets are
+  // updated.
+  // @inject_tag: `gorm:"default:null"`
+  bytes secrets_hmac = 9;
+
   // attributes is a jsonb formatted field.
   // @inject_tag: `gorm:"not_null"`
-  bytes attributes = 9;
+  bytes attributes = 10;
 }
 
 message HostSet {
