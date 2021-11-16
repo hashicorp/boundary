@@ -168,6 +168,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
+	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader); err != nil {
+		return nil, fmt.Errorf("error reconciling kms keys: %w", err)
+	}
+
 	// now that the kms is configured, we can get the audit wrapper and rotate
 	// the eventer audit wrapper, so the emitted events can include encrypt and
 	// hmac-sha256 data

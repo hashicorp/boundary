@@ -3,6 +3,8 @@ package kms
 import (
 	"context"
 	"fmt"
+	"io"
+	"reflect"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -267,6 +269,43 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	}
 
 	return multi, rootKeyId, nil
+}
+
+// ReconcileKeys will reconcile the keys in the kms against known possible issues.
+func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader) error {
+	const op = "kms.ReconcileKeys"
+	if isNil(randomReader) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing rand reader")
+	}
+
+	// it's possible that the global audit key was created after this instance's
+	// database was initialized... so check if the audit wrapper is available
+	// for the global scope and if not, then add one to the global scope
+	if _, err := k.GetWrapper(ctx, scope.Global.String(), KeyPurposeAudit); err != nil {
+		globalRootWrapper, _, err := k.loadRoot(ctx, scope.Global.String())
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		key, err := generateKey(ctx, randomReader)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scope.Global.String())))
+		}
+		if _, _, err := k.repo.CreateAuditKey(ctx, globalRootWrapper, key); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
+		}
+	}
+	return nil
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }
 
 // Dek is an interface wrapping dek types to allow a lot less switching in loadDek
