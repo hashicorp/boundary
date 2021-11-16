@@ -348,13 +348,21 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[static.Subtype], authResults.Scope.Id, hc.GetPublicId())
-		if err != nil {
-			return nil, err
+		var subtype subtypes.Subtype
+		switch hc.(type) {
+		case *static.HostCatalog:
+			subtype = static.Subtype
+		case *plugin.HostCatalog:
+			subtype = plugin.Subtype
 		}
-		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		if subtype != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
 	}
-
 	item, err := toProto(ctx, hc, outputOpts...)
 	if err != nil {
 		return nil, err
