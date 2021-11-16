@@ -531,36 +531,42 @@ func TestParsingPath(t *testing.T) {
 		name      string
 		in        string
 		expOut    string
+		expErr    bool
 		expErrStr string
 	}{
 		{
 			name:      "env: not present",
 			in:        "env://TEST_ENV_FIELD_THAT_SURELY_DOESNT_EXIST",
 			expOut:    "",
+			expErr:    false,
 			expErrStr: "",
 		},
 		{
 			name:      "file: not present",
 			in:        "file://test_file_that_surely_doesnt_exist",
 			expOut:    "file://test_file_that_surely_doesnt_exist",
+			expErr:    true,
 			expErrStr: "error reading file at file://test_file_that_surely_doesnt_exist: open test_file_that_surely_doesnt_exist: no such file or directory",
 		},
 		{
 			name:      "not a url",
 			in:        "some-value",
 			expOut:    "some-value",
+			expErr:    false,
 			expErrStr: "",
 		},
 		{
 			name:      "upper case value",
 			in:        "some-VALUE",
 			expOut:    "some-VALUE",
+			expErr:    true,
 			expErrStr: "field must be all lower-case",
 		},
 		{
 			name:      "non-printable value",
 			in:        "some-val\u0000ue",
 			expOut:    "some-val\u0000ue",
+			expErr:    true,
 			expErrStr: "field contains non-printable characters",
 		},
 	}
@@ -568,7 +574,7 @@ func TestParsingPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out, err := parsePath(tt.in)
-			if len(tt.expErrStr) > 0 {
+			if tt.expErr {
 				require.EqualError(t, err, tt.expErrStr)
 				require.Equal(t, tt.in, out)
 				return
