@@ -1448,6 +1448,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
+				assert.Equal(t, authorizedCollectionActions[plugin.Subtype], in.GetAuthorizedCollectionActions())
 			},
 		},
 		{
