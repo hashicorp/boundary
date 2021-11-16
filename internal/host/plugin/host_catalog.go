@@ -62,12 +62,12 @@ func allocHostCatalog() *HostCatalog {
 func (c *HostCatalog) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "plugin.(HostCatalog).hmacSecrets"
 	if c.Secrets == nil {
-		c.SecretsHmac = ""
+		c.SecretsHmac = nil
 		return nil
 	}
 	secretsMap := c.Secrets.AsMap()
 	if len(secretsMap) == 0 {
-		c.SecretsHmac = ""
+		c.SecretsHmac = nil
 		return nil
 	}
 	if cipher == nil {
@@ -79,11 +79,11 @@ func (c *HostCatalog) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) 
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
-	hm, err := crypto.HmacSha256(ctx, jsonSecrets, cipher, []byte(c.PublicId), nil, crypto.WithBase58Encoding())
+	hm, err := crypto.HmacSha256(ctx, jsonSecrets, cipher, []byte(c.PublicId), nil)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
-	c.SecretsHmac = hm
+	c.SecretsHmac = []byte(hm)
 	return nil
 }
 
@@ -140,7 +140,7 @@ type catalogAgg struct {
 	CreateTime          *timestamp.Timestamp
 	UpdateTime          *timestamp.Timestamp
 	Version             uint32
-	SecretsHmac         string
+	SecretsHmac         []byte
 	Attributes          []byte
 	Secret              []byte
 	KeyId               string

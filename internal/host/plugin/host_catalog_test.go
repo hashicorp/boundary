@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -358,7 +359,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "valid-empty-secrets",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = nil
-				cat.SecretsHmac = "foobar"
+				cat.SecretsHmac = []byte("foobar")
 				return cat
 			},
 			emptyHmac:   true,
@@ -368,7 +369,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "valid",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
-				cat.SecretsHmac = ""
+				cat.SecretsHmac = nil
 				return cat
 			},
 			hmacWrapper:      databaseWrapper,
@@ -378,7 +379,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "valid-different-val",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = mustStruct(map[string]interface{}{"zip": "zap"})
-				cat.SecretsHmac = ""
+				cat.SecretsHmac = nil
 				return cat
 			},
 			hmacWrapper: databaseWrapper,
@@ -387,7 +388,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "valid-original-val",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
-				cat.SecretsHmac = ""
+				cat.SecretsHmac = nil
 				return cat
 			},
 			hmacWrapper:      databaseWrapper,
@@ -397,7 +398,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "hmac-missing-wrapper",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
-				cat.SecretsHmac = "foobar"
+				cat.SecretsHmac = []byte("foobar")
 				return cat
 			},
 			wantHmacErrMatch: errors.T(errors.InvalidParameter),
@@ -406,7 +407,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			name: "hmac-bad-wrapper",
 			hcFn: func() *HostCatalog {
 				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
-				cat.SecretsHmac = ""
+				cat.SecretsHmac = nil
 				return cat
 			},
 			hmacWrapper:      &aead.Wrapper{},
@@ -432,9 +433,9 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 			assert.NotEmpty(hmacCat.SecretsHmac)
 			if tt.matchStableValue {
 				if stableValue == "" {
-					stableValue = hmacCat.SecretsHmac
+					stableValue = base58.Encode(hmacCat.SecretsHmac)
 				} else {
-					assert.Equal(stableValue, hmacCat.SecretsHmac)
+					assert.Equal(stableValue, base58.Encode(hmacCat.SecretsHmac))
 				}
 			}
 		})

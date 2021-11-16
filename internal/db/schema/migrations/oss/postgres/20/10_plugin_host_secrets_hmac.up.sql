@@ -1,9 +1,9 @@
 begin;
 
 alter table host_plugin_catalog
-  add column secrets_hmac text 
+  add column secrets_hmac bytea
     constraint secrets_hmac_null_or_not_empty
-    check(secrets_hmac is null or length(trim(secrets_hmac)) > 0);
+    check(secrets_hmac is null or length(secrets_hmac) > 0);
 
 -- host_plugin_catalog_with_secret is useful for reading a plugin catalog with
 -- its associated persisted data.

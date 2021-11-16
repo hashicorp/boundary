@@ -16,6 +16,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -669,7 +670,9 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		ScopeId:     in.GetScopeId(),
 		Name:        name,
 		Description: description,
-		SecretsHmac: in.GetSecretsHmac(),
+	}
+	if len(in.GetSecretsHmac()) > 0 {
+		hc.SecretsHmac = base58.Encode(in.GetSecretsHmac())
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}

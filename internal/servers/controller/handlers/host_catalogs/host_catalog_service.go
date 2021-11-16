@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -739,7 +740,7 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 			out.PluginId = h.GetPluginId()
 		}
 		if outputFields.Has(globals.SecretsHmacField) {
-			out.SecretsHmac = h.GetSecretsHmac()
+			out.SecretsHmac = base58.Encode(h.GetSecretsHmac())
 		}
 		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}

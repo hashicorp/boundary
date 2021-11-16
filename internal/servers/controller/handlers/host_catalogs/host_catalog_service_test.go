@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/mr-tron/base58"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -183,7 +184,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac("foobar"))
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -208,7 +209,7 @@ func TestGet_Plugin(t *testing.T) {
 		Type:                        plugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
-		SecretsHmac:                 "foobar",
+		SecretsHmac:                 base58.Encode([]byte("foobar")),
 	}
 
 	cases := []struct {

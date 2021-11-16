@@ -46,7 +46,7 @@ message HostCatalog {
   // from the API for read.  It is recalculated everytime the raw secrets are
   // updated.
   // @inject_tag: `gorm:"default:null"`
-  string secrets_hmac = 9;
+  bytes secrets_hmac = 9;
 
   // attributes is a jsonb formatted field.
   // @inject_tag: `gorm:"not_null"`
