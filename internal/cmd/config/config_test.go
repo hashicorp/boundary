@@ -529,6 +529,7 @@ func TestParsingPath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name      string
+		setupFn   func(*testing.T)
 		in        string
 		expOut    string
 		expErr    bool
@@ -542,11 +543,39 @@ func TestParsingPath(t *testing.T) {
 			expErrStr: "",
 		},
 		{
+			name:      "env: present",
+			in:        "env://SOMEHOW_THIS_EXISTS",
+			setupFn:   func(t *testing.T) { t.Setenv("SOMEHOW_THIS_EXISTS", "cool-env-value") },
+			expOut:    "cool-env-value",
+			expErr:    false,
+			expErrStr: "",
+		},
+		{
 			name:      "file: not present",
 			in:        "file://test_file_that_surely_doesnt_exist",
 			expOut:    "file://test_file_that_surely_doesnt_exist",
 			expErr:    true,
 			expErrStr: "error reading file at file://test_file_that_surely_doesnt_exist: open test_file_that_surely_doesnt_exist: no such file or directory",
+		},
+		{
+			name: "file: present",
+			in:   "file://.file_that_does_exist.test",
+			setupFn: func(t *testing.T) {
+				fpath := "./.file_that_does_exist.test"
+				f, err := os.Create(fpath)
+				require.NoError(t, err)
+
+				_, err = f.WriteString("cool-file-value")
+				require.NoError(t, err)
+
+				t.Cleanup(func() {
+					require.NoError(t, f.Close())
+					require.NoError(t, os.Remove(fpath))
+				})
+			},
+			expOut:    "cool-file-value",
+			expErr:    false,
+			expErrStr: "",
 		},
 		{
 			name:      "not a url",
@@ -573,6 +602,10 @@ func TestParsingPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setupFn != nil {
+				tt.setupFn(t)
+			}
+
 			out, err := parsePath(tt.in)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrStr)
