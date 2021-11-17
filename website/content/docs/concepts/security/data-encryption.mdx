@@ -34,8 +34,10 @@ The current scoped DEKs and their purposes are detailed below:
 ~> Management of these keys is handled entirely internally; the information
 provided in this section is purely for informational purposes.
 
-- `database`: This is the general-purpose DEK used to encrypt sensitive or
-  secret values within the database.
+- `database`: This is the general-purpose DEK used to encrypt values within the
+  database. Values that are encrypted are those generally considered to be
+  secret, such as API keys, third-party tokens, certificate private keys, and so
+  on.
 
 - `oplog`: This is used for encrypting oplog (operation log) values for the
   given scope.
