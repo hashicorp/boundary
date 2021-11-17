@@ -30,8 +30,7 @@ create view host_plugin_host_set_with_value_obj as
 comment on view host_plugin_host_set_with_value_obj is
 'host plugin host set with its associated value objects';
 
--- host_plugin_catalog_with_secret is useful for reading a plugin catalog with
--- its associated persisted data.
+-- REPLACED in 10_plugin_host_secrets_hmac.up.sql
 create view host_plugin_catalog_with_secret as
 select
   hc.public_id,

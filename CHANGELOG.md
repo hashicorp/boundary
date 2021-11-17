@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.7.0 (2021/11/17)
 
 ### Deprecations/Changes
 
@@ -11,6 +11,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Boundary now supports dynamic discovery of host resources using our (currently
+  internal) new plugin system. See the
+  [documentation](https://www.boundaryproject.io/docs) for configuration
+  instructions. Currently, only Azure and AWS are supported, but more providers
+  will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
   enhanced to be more robust against attackers that have decryption access to
   the shared `worker-auth` KMS key

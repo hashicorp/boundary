@@ -256,6 +256,8 @@ github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB7
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211113004840-24a9c0b090c4 h1:uta+xjW53u/cQ3bAmc18Nn2Wn6I/309r1wWnGQvaYPY=
 github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211113004840-24a9c0b090c4/go.mod h1:IU2PuG46Han6ur4RPhfYNAIT7yd5d0q7H975HR1cnUk=
+github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211116230633-d9fe0aaacbf5 h1:rFpfN0z6AOyy+9+0TFXlJ6M+9ou7h3PiFAm/11VT4TY=
+github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211116230633-d9fe0aaacbf5/go.mod h1:IU2PuG46Han6ur4RPhfYNAIT7yd5d0q7H975HR1cnUk=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211112235128-46a1edcb3b7b h1:qURjJaF3/TUbDcPCUAg9PG9a95NCgPrrcrOsurBJ7Rc=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211112235128-46a1edcb3b7b/go.mod h1:Krt7KLGTnDPQTaVlgSygV5SeqWDrOfbYyVBmB0KILD4=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=

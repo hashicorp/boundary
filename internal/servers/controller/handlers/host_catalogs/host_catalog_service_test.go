@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/plugin"
@@ -27,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/mr-tron/base58"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -183,7 +185,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -208,6 +210,7 @@ func TestGet_Plugin(t *testing.T) {
 		Type:                        plugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+		SecretsHmac:                 base58.Encode([]byte("foobar")),
 	}
 
 	cases := []struct {
@@ -1446,6 +1449,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
+				assert.Empty(t, cmp.Diff(authorizedCollectionActions[plugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
 			},
 		},
 		{

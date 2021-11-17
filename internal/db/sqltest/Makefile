@@ -6,6 +6,12 @@ CWD := $(shell pwd)
 PG_DOCKER_TAG ?= 13-alpine
 # Version of pg_tap docker image
 PG_TAP_DOCKER_TAG ?= pg13
+SQL_TEST_DB_PORT ?=
+DOCKER_ARGS ?=
+ifneq ($(strip $(SQL_TEST_DB_PORT)),)
+	DOCKER_ARGS += -p $(SQL_TEST_DB_PORT):5432
+endif
+
 
 # Pass through options to pg_prove
 # See: https://pgtap.org/pg_prove.html
@@ -32,6 +38,7 @@ test:
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
 	@docker run -d \
 		--name $(SQL_TEST_CONTAINER_NAME) \
+		$(DOCKER_ARGS) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
@@ -55,12 +62,16 @@ database-up:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@docker run -d \
 		--name $(SQL_TEST_CONTAINER_NAME) \
+		$(DOCKER_ARGS) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
 		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
+ifdef SQL_TEST_DB_PORT
+	@echo "Test database available at:  postgres://boundary:boundary@localhost:$(SQL_TEST_DB_PORT)/boundary?sslmode=disable"
+endif
 
 run-tests:
 	@echo Using $(PG_TAP_DOCKER_IMAGE)

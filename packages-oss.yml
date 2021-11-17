@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.6.2
+    PRODUCT_VERSION: 0.7.0
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
