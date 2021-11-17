@@ -493,25 +493,27 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	var cat host.Catalog
 	switch host.SubtypeFromId(id) {
 	case static.Subtype:
-		cat, err = staticRepo.LookupCatalog(ctx, parentId)
+		stcat, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return nil, res
 		}
-		if cat == nil {
+		if stcat == nil {
 			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
+		cat = stcat
 	case plugin.Subtype:
-		cat, _, err = pluginRepo.LookupCatalog(ctx, parentId)
+		plcat, _, err := pluginRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return nil, res
 		}
-		if cat == nil {
+		if plcat == nil {
 			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
+		cat = plcat
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
 	return cat, auth.Verify(ctx, opts...)
