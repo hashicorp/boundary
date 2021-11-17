@@ -160,6 +160,14 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if item.Plugin != nil {
+		ret = append(ret,
+			"",
+			"  Plugin:",
+			base.PluginInfoForOutput(item.Plugin, maxLength),
+		)
+	}
+
 	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
