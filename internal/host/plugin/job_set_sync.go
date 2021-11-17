@@ -299,10 +299,13 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		if len(resp.GetHosts()) > 0 {
-			if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
-			}
+		hosts := resp.GetHosts()
+		if hosts == nil {
+			hosts = []*plgpb.ListHostsResponseHost{}
+		}
+
+		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, hosts); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
 		updateSyncDataQuery := `
