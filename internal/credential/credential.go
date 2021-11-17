@@ -32,9 +32,7 @@ const (
 type Library interface {
 	boundary.Resource
 	GetStoreId() string
-
-	// TODO(mgaffney) 10/2021: Add method for returning the credential type
-	// of the library
+	CredentialType() Type
 }
 
 // Purpose is the purpose of the credential.
