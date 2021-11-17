@@ -299,12 +299,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		hosts := resp.GetHosts()
-		if hosts == nil {
-			hosts = []*plgpb.ListHostsResponseHost{}
-		}
-
-		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, hosts); err != nil {
+		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
@@ -345,9 +340,6 @@ func (r *SetSyncJob) upsertHosts(
 	phs []*plgpb.ListHostsResponseHost,
 	_ ...Option) ([]*Host, error) {
 	const op = "plugin.(SetSyncJob).upsertHosts"
-	if phs == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil plugin hosts")
-	}
 	for _, ph := range phs {
 		if ph.GetExternalId() == "" {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host external id")
