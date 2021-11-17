@@ -281,6 +281,11 @@ func TestList_Static(t *testing.T) {
 			res:  &pbs.ListHostsResponse{Items: wantHs},
 		},
 		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hcst_doesntexist"},
+			err: handlers.NotFoundError(),
+		},
+		{
 			name: "List No Hosts",
 			req:  &pbs.ListHostsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
 			res:  &pbs.ListHostsResponse{},
@@ -395,6 +400,11 @@ func TestList_Plugin(t *testing.T) {
 			name: "List Many Hosts",
 			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId()},
 			res:  &pbs.ListHostsResponse{Items: wantHs},
+		},
+		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hc_doesntexist"},
+			err: handlers.NotFoundError(),
 		},
 		{
 			name: "List No Hosts",
