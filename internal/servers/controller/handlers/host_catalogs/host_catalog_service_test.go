@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host/plugin"
@@ -1448,7 +1449,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
-				assert.Equal(t, authorizedCollectionActions[plugin.Subtype], in.GetAuthorizedCollectionActions())
+				assert.Empty(t, cmp.Diff(authorizedCollectionActions[plugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
 			},
 		},
 		{
