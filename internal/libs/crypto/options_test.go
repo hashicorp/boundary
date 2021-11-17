@@ -42,4 +42,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withBase64Encoding = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithBase58Encoding", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := getOpts(WithBase58Encoding())
+		require.NoError(err)
+		testOpts := getDefaultOptions()
+		testOpts.withBase58Encoding = true
+		assert.Equal(opts, testOpts)
+	})
 }

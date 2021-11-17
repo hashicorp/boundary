@@ -9,6 +9,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
+	pluginstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -33,7 +35,8 @@ import (
 )
 
 var (
-	maskManager handlers.MaskManager
+	staticMaskManager handlers.MaskManager
+	pluginMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -67,7 +70,10 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
+	if staticMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
+		panic(err)
+	}
+	if pluginMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pluginstore.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
 }
@@ -529,7 +535,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, projId, id string, mask
 	}
 	version := item.GetVersion()
 	h.PublicId = id
-	dbMask := maskManager.Translate(mask)
+	dbMask := staticMaskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -555,7 +561,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask
 	}
 	version := item.GetVersion()
 	h.PublicId = id
-	dbMask := maskManager.Translate(mask, "attributes", "secrets")
+	dbMask := pluginMaskManager.Translate(mask, "attributes", "secrets")
 	if len(dbMask) == 0 {
 		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -701,12 +707,6 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
 	}
-	if outputFields.Has(globals.PluginIdField) {
-		switch hc := in.(type) {
-		case *plugin.HostCatalog:
-			out.PluginId = hc.GetPluginId()
-		}
-	}
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.HostCatalog:
@@ -742,9 +742,15 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
-	if outputFields.Has(globals.AttributesField) {
-		switch h := in.(type) {
-		case *plugin.HostCatalog:
+	switch h := in.(type) {
+	case *plugin.HostCatalog:
+		if outputFields.Has(globals.PluginIdField) {
+			out.PluginId = h.GetPluginId()
+		}
+		if outputFields.Has(globals.SecretsHmacField) {
+			out.SecretsHmac = base58.Encode(h.GetSecretsHmac())
+		}
+		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}
 			err := proto.Unmarshal(h.Attributes, attrs)
 			if err != nil {

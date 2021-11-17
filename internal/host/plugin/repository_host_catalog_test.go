@@ -576,6 +576,18 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	checkSecretsHmac := func(notNil bool) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			if notNil {
+				assert.NotEmpty(gotCatalog.SecretsHmac)
+			} else {
+				assert.Empty(gotCatalog.SecretsHmac)
+			}
+		}
+	}
+
 	checkAttributes := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -804,6 +816,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
@@ -821,6 +834,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // Version remains same even though row is updated
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
@@ -838,6 +852,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
 				checkName(testDuplicateCatalogNameAltScope),
@@ -855,6 +870,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"description"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
@@ -872,6 +888,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"description"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // Version remains same even though row is updated
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescriptionNil(),
 				checkDescription(""),
@@ -891,6 +908,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -918,6 +936,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -943,6 +962,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -965,6 +985,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes.a", "attributes.foo"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -993,6 +1014,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"secrets.three", "secrets.five"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -1017,7 +1039,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			version:   2,
 			fieldMask: []string{"secrets.three"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // no-op
+				checkVersion(3), // incremented due to secrets_hmac
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -1037,6 +1060,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(false),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -1058,6 +1082,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"name", "secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
@@ -1081,28 +1106,29 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		require := require.New(t)
 
 		cat := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
-		// Set some (default) attributes on our test catalog
-		cat.Attributes = mustMarshal(map[string]interface{}{
-			"foo": "bar",
-		})
-
-		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes"}, []string{})
-		require.NoError(err)
-		require.Equal(1, numCatUpdated)
 
 		// Set up some secrets
-		cSecretProto := mustStruct(map[string]interface{}{
+		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		require.NoError(err)
+		cat.Secrets = mustStruct(map[string]interface{}{
 			"one": "two",
 		})
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cSecretProto)
-		require.NoError(err)
-		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
 		cSecretQ, cSecretV := cSecret.upsertQuery()
 		secretsUpdated, err := dbRW.Exec(ctx, cSecretQ, cSecretV)
 		require.NoError(err)
 		require.Equal(1, secretsUpdated)
+
+		// Set some (default) attributes on our test catalog and update SecretsHmac at the same time
+		cat.Attributes = mustMarshal(map[string]interface{}{
+			"foo": "bar",
+		})
+		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes", "SecretsHmac"}, []string{})
+		require.NoError(err)
+		require.Equal(1, numCatUpdated)
 
 		t.Cleanup(func() {
 			t.Helper()

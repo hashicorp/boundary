@@ -4146,6 +4146,11 @@
           "type": "object",
           "description": "Secrets specific to the catalog type. These are never output."
         },
+        "secrets_hmac": {
+          "type": "string",
+          "description": "Output only. The HMAC of the last secrets supplied via the API, if any.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

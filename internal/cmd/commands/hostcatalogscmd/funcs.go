@@ -146,6 +146,9 @@ func printItemTable(result api.GenericResult) string {
 	if item.Type != "" {
 		nonAttributeMap["Type"] = item.Type
 	}
+	if item.SecretsHmac != "" {
+		nonAttributeMap["Secrets HMAC"] = item.SecretsHmac
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
