@@ -30,5 +30,4 @@ func TestController_New(t *testing.T) {
 		_, err = New(testCtx, conf)
 		require.NoError(err)
 	})
-
 }
