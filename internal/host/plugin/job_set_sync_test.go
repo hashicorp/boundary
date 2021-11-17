@@ -159,6 +159,28 @@ func TestSetSyncJob_Run(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+
+	plgServer.ListHostsFn = func(_ context.Context, _ *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
+		return &plgpb.ListHostsResponse{}, nil
+	}
+	// Start with a set with a member that should be removed
+	setToRemoveHosts := TestSet(t, conn, kmsCache, sched, cat, plgm)
+	hostToRemove := TestHost(t, conn, cat.GetPublicId(), "remove this host")
+	TestSetMembers(t, conn, setToRemoveHosts.GetPublicId(), []*Host{hostToRemove})
+
+	// Run sync again with the newly created set
+	err = r.Run(context.Background())
+	require.NoError(err)
+
+	hsa := &hostSetAgg{PublicId: setToRemoveHosts.GetPublicId()}
+	require.NoError(rw.LookupByPublicId(ctx, hsa))
+	assert.Greater(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
+	hs, err := hsa.toHostSet(ctx)
+	require.NoError(err)
+	assert.Len(hs.HostIds, 0)
+	_, err = rw.Delete(ctx, hostToRemove)
+	require.NoError(err)
+
 	set1 := TestSet(t, conn, kmsCache, sched, cat, plgm)
 	counter := new(uint32)
 	plgServer.ListHostsFn = func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
@@ -183,7 +205,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	hostRepo, err := NewRepository(rw, rw, kmsCache, sche, plgm)
 	require.NoError(err)
 
-	hsa := &hostSetAgg{PublicId: set1.GetPublicId()}
+	hsa = &hostSetAgg{PublicId: set1.GetPublicId()}
 	require.NoError(rw.LookupByPublicId(ctx, hsa))
 	assert.Less(hsa.LastSyncTime.AsTime().UnixNano(), hsa.CreateTime.AsTime().UnixNano())
 
@@ -209,12 +231,11 @@ func TestSetSyncJob_Run(t *testing.T) {
 	// Run sync again with the freshly synced set
 	err = r.Run(context.Background())
 	require.NoError(err)
-	// The single existing set should have been processed
 	assert.Equal(0, r.numSets)
 	assert.Equal(0, r.numProcessed)
 
 	// Set needs update
-	hs, err := hsa.toHostSet(ctx)
+	hs, err = hsa.toHostSet(ctx)
 	require.NoError(err)
 	hs.NeedSync = true
 	count, err := rw.Update(ctx, hs, []string{"NeedSync"}, nil)
