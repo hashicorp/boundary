@@ -299,10 +299,8 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		if len(resp.GetHosts()) > 0 {
-			if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
-			}
+		if _, err := r.upsertAndCleanHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
 		updateSyncDataQuery := `
@@ -326,7 +324,7 @@ where public_id in (?)
 	return nil
 }
 
-// upsertHosts inserts phs into the repository or updates its current
+// upsertAndCleanHosts inserts phs into the repository or updates its current
 // attributes/set memberships and returns Hosts. h is not changed. hc must
 // contain a valid public ID and scope ID. Each ph in phs must not contain a
 // PublicId but must contain an external ID. The PublicId is generated and
@@ -335,16 +333,13 @@ where public_id in (?)
 // NOTE: If phs is empty, this assumes that there are simply no hosts that
 // matched the given sets! Which means it will remove all hosts from the given
 // sets.
-func (r *SetSyncJob) upsertHosts(
+func (r *SetSyncJob) upsertAndCleanHosts(
 	ctx context.Context,
 	hc *HostCatalog,
 	setIds []string,
 	phs []*plgpb.ListHostsResponseHost,
 	_ ...Option) ([]*Host, error) {
-	const op = "plugin.(SetSyncJob).upsertHosts"
-	if phs == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil plugin hosts")
-	}
+	const op = "plugin.(SetSyncJob).upsertAndCleanHosts"
 	for _, ph := range phs {
 		if ph.GetExternalId() == "" {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host external id")

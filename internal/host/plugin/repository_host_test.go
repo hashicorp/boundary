@@ -72,7 +72,6 @@ func TestJob_UpsertHosts(t *testing.T) {
 					sets:    setIds,
 				}
 			},
-			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "no-external-id-hosts",
@@ -194,14 +193,13 @@ func TestJob_UpsertHosts(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(job)
 			in := tt.in()
-			got, err := job.upsertHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
+			got, err := job.upsertAndCleanHosts(ctx, in.catalog, in.sets, in.phs, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
 			}
 			require.NoError(err, fmt.Sprintf("%v", in.catalog))
-			require.NotNil(got)
 
 			// Basic tests
 			assert.Len(got, len(in.phs))
@@ -230,7 +228,6 @@ func TestJob_UpsertHosts(t *testing.T) {
 			var gotPlg *hostplg.Plugin
 			got, gotPlg, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
-			require.NotNil(got)
 			assert.Len(got, len(in.phs))
 			assert.Empty(
 				cmp.Diff(
@@ -243,6 +240,10 @@ func TestJob_UpsertHosts(t *testing.T) {
 					}),
 				),
 			)
+			plg := plg
+			if len(in.phs) == 0 {
+				plg = nil
+			}
 			assert.Empty(
 				cmp.Diff(
 					plg,
@@ -283,7 +284,6 @@ func TestJob_UpsertHosts(t *testing.T) {
 			for setId, expHostIds := range setIdMap {
 				got, err = repo.ListHostsBySetIds(ctx, []string{setId})
 				require.NoError(err)
-				require.NotNil(got)
 				var gotHostIds []string
 				for _, h := range got {
 					gotHostIds = append(gotHostIds, h.GetPublicId())
