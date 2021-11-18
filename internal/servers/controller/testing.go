@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -416,17 +415,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		t.Fatal(err)
 	}
 
-	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
-	plg := plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())
-	plugOpts := []hostplugin.Option{
-		hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-		hostplugin.WithPublicId(tc.b.DevLoopbackHostPluginId),
-	}
-	if _, err = tc.b.RegisterHostPlugin(ctx, "loopback", plg, plugOpts...); err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
-	}
-
 	tc.buildClient()
 
 	if !opts.DisableAutoStart {
@@ -628,7 +616,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
-		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+		createOpts = append(createOpts, base.WithHostPlugin(DefaultTestPluginId, plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
