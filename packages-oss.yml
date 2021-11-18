@@ -83,20 +83,20 @@ layers:
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   ORIG_PATH=$(pwd);
-  echo "orig path is ${$ORIG_PATH}"
+  echo "orig path is ${ORIG_PATH}";
   for PLUGIN_TYPE in host; do
-    echo "mains ls output is $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains)"
+    echo "mains ls output is $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains)";
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
       cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
       go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN} .;
       cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
-    echo "assets are $(ls boundary-plugin*)"
+    echo "assets are $(ls boundary-plugin*)";
     for CURR_PLUGIN in $(ls boundary-plugin*); do
       gzip -9 $CURR_PLUGIN;
     done;
-    echo "assets are $(ls boundary-plugin*)"
+    echo "assets are $(ls boundary-plugin*)";
     cd $ORIG_PATH;
   done;
   go build -v -tags '{{.BUILD_TAGS}}'

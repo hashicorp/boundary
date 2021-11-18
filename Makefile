@@ -174,8 +174,8 @@ test-ci:
 #test-ci: install-go
 #test-ci: export CI_BUILD=1
 #test-ci:
-	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+#	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+#	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
