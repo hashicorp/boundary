@@ -116,7 +116,7 @@ func fillTemplates() {
 			pkgOptionMap := map[string]fieldInfo{}
 			for _, val := range input.Fields {
 				if val.GenerateSdkOption {
-					val.SubtypeName = in.subtypeName
+					val.SubtypeNames = append(val.SubtypeNames, in.subtypeName)
 					pkgOptionMap[val.Name] = val
 				}
 			}
@@ -125,6 +125,7 @@ func fillTemplates() {
 				optionMap = map[string]fieldInfo{}
 			}
 			for name, val := range pkgOptionMap {
+				val.SubtypeNames = append(val.SubtypeNames, optionMap[name].SubtypeNames...)
 				optionMap[name] = val
 			}
 			optionsMap[input.Package] = optionMap
@@ -649,7 +650,12 @@ func (c *Client) ApiClient() *api.Client {
 }
 `))
 
-var optionTemplate = template.Must(template.New("").Parse(`
+var optionTemplate = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"makeSlice":  makeSlice,
+		"removeDups": removeDups,
+	},
+).Parse(`
 package {{ .Package }}
 
 import (
@@ -738,36 +744,42 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 {{ end }}
-{{ range .Fields }}
-func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
-	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
+{{ range $fieldIndex, $field := .Fields }}
+{{ $subtypes := (removeDups $field.SubtypeNames ) }}
+{{ if ( eq ( len ( $subtypes ) ) 0 )}}
+{{ $subtypes = ( makeSlice "" ) }}
+{{ end }}
+{{ range $subtypeIndex, $subtypeName := $subtypes }}
+func With{{ $subtypeName }}{{ $field.Name }}(in{{ $field.Name }} {{ $field.FieldType }}) Option {
+	return func(o *options) {		{{ if ( not ( eq $subtypeName "" ) ) }}
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["{{ .ProtoName }}"] = in{{ .Name }}
+		val["{{ $field.ProtoName }}"] = in{{ $field.Name }}
 		o.postMap["attributes"] = val
-		{{ else if .Query }}
-		o.queryMap["{{ .ProtoName }}"] = fmt.Sprintf("%v", in{{ .Name }})
+		{{ else if $field.Query }}
+		o.queryMap["{{ $field.ProtoName }}"] = fmt.Sprintf("%v", in{{ $field.Name }})
 		{{ else }}
-		o.postMap["{{ .ProtoName }}"] = in{{ .Name }}
+		o.postMap["{{ $field.ProtoName }}"] = in{{ $field.Name }}
 		{{ end }}	}
 }
-{{ if ( not .SkipDefault ) }}
-func Default{{ .SubtypeName }}{{ .Name }}() Option {
-	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
+{{ if ( not $field.SkipDefault ) }}
+func Default{{ $subtypeName }}{{ $field.Name }}() Option {
+	return func(o *options) {		{{ if ( not ( eq $subtypeName "" ) ) }}
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["{{ .ProtoName }}"] = nil
+		val["{{ $field.ProtoName }}"] = nil
 		o.postMap["attributes"] = val
 		{{ else }}
-		o.postMap["{{ .ProtoName }}"] = nil
+		o.postMap["{{ $field.ProtoName }}"] = nil
 		{{ end }}	}
 }
+{{ end }}
 {{ end }}
 {{ end }}
 `))
@@ -787,4 +799,22 @@ func kebabCase(in string) string {
 func getPathWithAction(plResName, parentTypeName, action string) string {
 	_, _, resPath := getArgsAndPaths(plResName, parentTypeName, action)
 	return resPath
+}
+
+func removeDups(in []string) []string {
+	if in == nil {
+		return nil
+	}
+	if len(in) == 0 {
+		return []string{}
+	}
+	vals := make(map[string]struct{}, len(in))
+	for _, val := range in {
+		vals[val] = struct{}{}
+	}
+	ret := make([]string, 0, len(vals))
+	for val := range vals {
+		ret = append(ret, val)
+	}
+	return ret
 }
