@@ -596,6 +596,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	{
+		c.EnabledPlugins = []base.EnabledPlugin{base.EnabledPluginHostAws, base.EnabledPluginHostAzure}
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,

@@ -48,6 +48,7 @@ const (
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
 	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
+	DefaultTestPluginId                      = "pl_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -615,7 +616,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
-		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+		createOpts = append(createOpts, base.WithHostPlugin(DefaultTestPluginId, plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
