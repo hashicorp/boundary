@@ -126,6 +126,15 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	for _, enabledPlugin := range c.enabledPlugins {
 		switch enabledPlugin {
+		case base.EnabledPluginHostLoopback:
+			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
+			opts := []hostplugin.Option{
+				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+			}
+			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+				return nil, err
+			}
 		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(

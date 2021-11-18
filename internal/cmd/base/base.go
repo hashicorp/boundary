@@ -25,12 +25,15 @@ type EnabledPlugin uint
 
 const (
 	EnabledPluginUnknown EnabledPlugin = iota
+	EnabledPluginHostLoopback
 	EnabledPluginHostAws
 	EnabledPluginHostAzure
 )
 
 func (e EnabledPlugin) String() string {
 	switch e {
+	case EnabledPluginHostLoopback:
+		return "Loopback"
 	case EnabledPluginHostAws:
 		return "AWS"
 	case EnabledPluginHostAzure:
