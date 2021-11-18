@@ -302,6 +302,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    GracefullyAborted,
 			want: GracefullyAborted,
 		},
+		{
+			name: "UnexpectedRowsAffected",
+			c:    UnexpectedRowsAffected,
+			want: UnexpectedRowsAffected,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

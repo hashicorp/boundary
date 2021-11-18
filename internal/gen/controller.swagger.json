@@ -1244,6 +1244,13 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
+          },
+          {
+            "name": "plugin_name",
+            "description": "As an alternative to providing the plugin id in the provided HostCatalog,\nthis field can be used to lookup the plugin using its name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -2812,6 +2819,12 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -3048,6 +3061,12 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -3233,9 +3252,15 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "egress_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
-              "description": "Sets the values for application_credential_source_ids.  If any\ncredential_source_id field that is not set in the request will result in\nthose fields being cleared."
+              "description": "Sets the values for credential sources. Any credential_source_id field that\nis not set in the request will result in those fields being cleared."
             }
           }
         ],
@@ -4083,6 +4108,15 @@
           "description": "Output only. Scope information for this resource.",
           "readOnly": true
         },
+        "plugin_id": {
+          "type": "string",
+          "description": "The ID of the plugin of which this catalog is created."
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "description": "Optional name for identification purposes."
@@ -4115,6 +4149,15 @@
         "attributes": {
           "type": "object",
           "description": "Attributes specific to the catalog type."
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets specific to the catalog type. These are never output."
+        },
+        "secrets_hmac": {
+          "type": "string",
+          "description": "Output only. The HMAC of the last secrets supplied via the API, if any.",
+          "readOnly": true
         },
         "authorized_actions": {
           "type": "array",
@@ -4153,6 +4196,11 @@
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
           "readOnly": true
         },
         "name": {
@@ -4196,6 +4244,27 @@
           "type": "object",
           "description": "The attributes that are applicable to the specific Host type."
         },
+        "ip_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only.  The list of ip addresses associated with this host.",
+          "readOnly": true
+        },
+        "dns_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only.  The list of dns addresses associated with this host.",
+          "readOnly": true
+        },
+        "external_id": {
+          "type": "string",
+          "description": "Output only. The external ID of the host, if any.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -4222,6 +4291,11 @@
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
           "readOnly": true
         },
         "name": {
@@ -4260,6 +4334,18 @@
           },
           "description": "Output only. A list of Hosts in this Host Set.",
           "readOnly": true
+        },
+        "preferred_endpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "multiple possible endpoints for a host. Preferences are specified by\n\"cidr:\u003cvalid IPv4/6 CIDR\u003e\" or \"dns:\u003cglobbed name\u003e\", specifying which IP\naddress or DNS name out of a host's available possibilities should be\npreferred. If no preferences are specified, a value will be chosen from\namong all avialable values using a built-in priority order. May not be\nvalid for all plugin types."
+        },
+        "sync_interval_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "An interger number of seconds indicating the amount of time that should\nelapse between syncs of the host set. The interval will be applied to the\nend of the previous sync operation, not the start. Setting to any\nnegative value will disable syncing for that host set; setting to zero\nwill cause the set to use Boundary's default. The default may change\nbetween releases. May not be valid for all plugin types."
         },
         "attributes": {
           "type": "object",
@@ -4344,6 +4430,26 @@
         }
       },
       "title": "ManagedGroup contains all fields related to an ManagedGroup resource"
+    },
+    "controller.api.resources.plugins.v1.PluginInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Plugin.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Output only. The name of the plugin resource in boundary, if any.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Output only. The description of the plugin in boundary, if any.",
+          "readOnly": true
+        }
+      }
     },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
@@ -5060,6 +5166,22 @@
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The application credential sources associated with this Target.",
+          "readOnly": true
+        },
+        "egress_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of the egress credential source ids associated with this Target.",
+          "readOnly": true
+        },
+        "egress_credential_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
+          },
+          "description": "Output only. The egress credential sources associated with this Target.",
           "readOnly": true
         },
         "attributes": {

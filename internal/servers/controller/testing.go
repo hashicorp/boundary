@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -384,6 +385,10 @@ type TestControllerOpts struct {
 	// The amount of time to wait before marking connections as closed when a
 	// worker has not reported in
 	StatusGracePeriodDuration time.Duration
+
+	// The amount of time between the scheduler waking up to run it's registered
+	// jobs.
+	SchedulerRunJobInterval time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -399,6 +404,34 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		ctx:    ctx,
 		cancel: cancel,
 		opts:   opts,
+	}
+
+	conf := TestControllerConfig(t, ctx, tc, opts)
+	var err error
+	tc.c, err = New(ctx, conf)
+	if err != nil {
+		tc.Shutdown()
+		t.Fatal(err)
+	}
+
+	tc.buildClient()
+
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
+	}
+
+	return tc
+}
+
+// TestControllerConfig provides a way to create a config for a TestController.
+// The tc passed as a parameter will be modified by this func.
+func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
+	const op = "controller.TestControllerConfig"
+	if opts == nil {
+		opts = new(TestControllerOpts)
 	}
 
 	// Base server
@@ -477,6 +510,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			t.Fatal(err)
 		}
 	}
+	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
@@ -581,6 +615,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
+		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
@@ -593,28 +628,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	}
 
-	conf := &Config{
+	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
-
-	tc.c, err = New(ctx, conf)
-	if err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
-	}
-
-	tc.buildClient()
-
-	if !opts.DisableAutoStart {
-		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
-			t.Fatal(err)
-		}
-	}
-
-	return tc
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {

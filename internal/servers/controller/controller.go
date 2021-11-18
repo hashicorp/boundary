@@ -14,16 +14,23 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
@@ -61,6 +68,8 @@ type Controller struct {
 	ServersRepoFn         common.ServersRepoFactory
 	SessionRepoFn         common.SessionRepoFactory
 	StaticHostRepoFn      common.StaticRepoFactory
+	PluginHostRepoFn      common.PluginHostRepoFactory
+	HostPluginRepoFn      common.HostPluginRepoFactory
 	TargetRepoFn          common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
@@ -110,6 +119,38 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
+		ctx,
+		"azure",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+	if err != nil {
+		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+	}
+	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
+	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
+		return nil, fmt.Errorf("error registering azure host plugin: %w", err)
+	}
+
+	awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+		ctx,
+		"aws",
+		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+	if err != nil {
+		return nil, fmt.Errorf("error creating aws host plugin")
+	}
+	conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
+	if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
+		return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+	}
+
+	if conf.HostPlugins == nil {
+		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
+	}
+
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
 	kmsRepo, err := kms.NewRepository(dbase, dbase)
@@ -127,12 +168,30 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
+	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader); err != nil {
+		return nil, fmt.Errorf("error reconciling kms keys: %w", err)
+	}
+
+	// now that the kms is configured, we can get the audit wrapper and rotate
+	// the eventer audit wrapper, so the emitted events can include encrypt and
+	// hmac-sha256 data
+	auditWrapper, err := c.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeAudit)
+	if err != nil {
+		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
+	}
+	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
+	}
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
 	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
 	// currently caps the scheduler at running 10 jobs per interval.
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, scheduler.WithRunJobsLimit(10))
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(10)}
+	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -141,6 +200,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
+	}
+	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
+	}
+	c.HostPluginRepoFn = func() (*host.Repository, error) {
+		return host.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
@@ -214,6 +279,9 @@ func (c *Controller) Start() error {
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
 	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
 

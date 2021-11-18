@@ -25,6 +25,23 @@ A host set has the following configurable attributes:
 
 - `description` - (optional)
 
+- `preferred_endpoints` - (optional)
+  A list of selector strings in the format of either `cidr:<valid IPv4/6 CIDR>`
+  or `dns:<globbed name>` used to select the addresses of [hosts][] when
+  establishing a [session][] with a [target][].
+
+### Plugin Host Set Attributes
+
+- `attributes` - (optional)
+  A collection of fields which the plugin uses to lookup which hosts should be
+  members of this host set.  Often this includes a type of filter using a
+  syntax which is usable by the backing service.
+
+- `sync_interval_seconds` - (optional)
+  The number of seconds between the time boundary syncs the [hosts][] in this
+  set using this host set's plugin. If not provided a system determined default
+  is used.
+
 ## Referenced By
 
 - [Host][]
@@ -37,6 +54,8 @@ A host set has the following configurable attributes:
 [hosts]: /docs/concepts/domain-model/hosts
 [project]: /docs/concepts/domain-model/scopes#projects
 [projects]: /docs/concepts/domain-model/scopes#projects
+[session]: /docs/concepts/domain-model/sessions
+[sessions]: /docs/concepts/domain-model/sessions
 [target]: /docs/concepts/domain-model/targets
 [targets]: /docs/concepts/domain-model/targets
 

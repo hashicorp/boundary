@@ -159,6 +159,18 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithEgressCredentialSourceIds(inEgressCredentialSourceIds []string) Option {
+	return func(o *options) {
+		o.postMap["egress_credential_source_ids"] = inEgressCredentialSourceIds
+	}
+}
+
+func DefaultEgressCredentialSourceIds() Option {
+	return func(o *options) {
+		o.postMap["egress_credential_source_ids"] = nil
+	}
+}
+
 func WithHostId(inHostId string) Option {
 	return func(o *options) {
 		o.postMap["host_id"] = inHostId

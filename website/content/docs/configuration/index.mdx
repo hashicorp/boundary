@@ -11,6 +11,7 @@ description: Boundary configuration reference.
 [controller]: /docs/configuration/controller
 [worker]: /docs/configuration/worker
 [kms]: /docs/configuration/kms
+[plugins]: /docs/configuration/plugins
 
 Outside of development mode, Boundary controllers and workers are configured using a file.
 The format of this file is [HCL](https://github.com/hashicorp/hcl). In this section you'll find
@@ -38,6 +39,8 @@ After the configuration is written, use the `-config` flag to specify a local pa
 
 - [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
   purposes](/docs/concepts/security/data-encryption).
+
+- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
   `mlock` syscall, which prevents memory from being swapped to disk. This is

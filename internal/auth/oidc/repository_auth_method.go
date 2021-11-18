@@ -2,9 +2,11 @@ package oidc
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -70,76 +72,140 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+
+	columns := []string{"public_id", "auth_method_id", "issuer", "subject"}
+	values := []interface{}{
+		sql.Named("1", pubId),
+		sql.Named("2", am.PublicId),
+		sql.Named("3", iss),
+		sql.Named("4", sub),
+	}
+	var conflictClauses, fieldMasks, nullMasks []string
+
+	{
+		marshaledTokenClaims, err := json.Marshal(IdTokenClaims)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		columns, values = append(columns, "token_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledTokenClaims)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("token_claims = @%d", len(values)))
+		fieldMasks = append(fieldMasks, TokenClaimsField)
+	}
+	{
+		marshaledAccessTokenClaims, err := json.Marshal(AccessTokenClaims)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		columns, values = append(columns, "userinfo_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledAccessTokenClaims)))
+		conflictClauses = append(conflictClauses, fmt.Sprintf("userinfo_claims = @%d", len(values)))
+		fieldMasks = append(fieldMasks, UserinfoClaimsField)
+	}
+
 	issAsUrl, err := url.Parse(iss)
 	if err != nil {
 		return nil, errors.New(ctx, errors.Unknown, op, "unable to parse issuer", errors.WithWrap(err))
 	}
-
-	acct := AllocAccount()
-	acct.PublicId = pubId
-	acct.AuthMethodId = am.PublicId
-	acct.Issuer = issAsUrl.String()
-	acct.Subject = sub
-
-	oc := db.OnConflict{
-		Target: db.Constraint("auth_oidc_account_auth_method_id_issuer_subject_uq"),
-		Action: db.SetColumns([]string{"public_id", "auth_method_id", "issuer", "subject", "userinfo_claims", "token_claims"}),
-	}
-
-	marshaledTokenClaims, err := json.Marshal(IdTokenClaims)
+	acctForOplog, err := NewAccount(ctx, am.PublicId, sub, WithIssuer(issAsUrl))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}
-	acct.TokenClaims = string(marshaledTokenClaims)
 
-	marshaledAccessTokenClaims, err := json.Marshal(AccessTokenClaims)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	acct.UserinfoClaims = string(marshaledAccessTokenClaims)
-
-	var foundName, foundEmail bool
+	var foundName interface{}
 	switch {
 	case AccessTokenClaims[fromName] != nil:
-		foundName = true
-		acct.FullName = AccessTokenClaims[fromName].(string)
+		foundName = AccessTokenClaims[fromName]
+		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
 	case IdTokenClaims[fromName] != nil:
-		foundName = true
-		acct.FullName = IdTokenClaims[fromName].(string)
+		foundName = IdTokenClaims[fromName]
+		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
+	}
+	if foundName != nil {
+		acctForOplog.FullName = foundName.(string)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = @%d", len(values)))
+		fieldMasks = append(fieldMasks, NameField)
+	} else {
+		conflictClauses = append(conflictClauses, "full_name = NULL")
+		nullMasks = append(nullMasks, NameField)
 	}
 
+	var foundEmail interface{}
 	switch {
 	case AccessTokenClaims[fromEmail] != nil:
-		foundEmail = true
-		acct.Email = AccessTokenClaims[fromEmail].(string)
+		foundEmail = AccessTokenClaims[fromEmail]
+		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
 	case IdTokenClaims[fromEmail] != nil:
-		foundEmail = true
-		acct.Email = IdTokenClaims[fromEmail].(string)
+		foundEmail = IdTokenClaims[fromEmail]
+		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
 	}
-	if foundName {
-		oc.Action = append(oc.Action.([]db.ColumnValue), db.SetColumns([]string{"full_name"})...)
+	if foundEmail != nil {
+		acctForOplog.Email = foundEmail.(string)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("email = @%d", len(values)))
+		fieldMasks = append(fieldMasks, "Email")
+	} else {
+		conflictClauses = append(conflictClauses, "email = NULL")
+		nullMasks = append(nullMasks, "Email")
 	}
-	if foundEmail {
-		oc.Action = append(oc.Action.([]db.ColumnValue), db.SetColumns([]string{"email"})...)
+
+	placeHolders := make([]string, 0, len(columns))
+	for colNum := range columns {
+		placeHolders = append(placeHolders, fmt.Sprintf("@%d", colNum+1))
 	}
+	query := fmt.Sprintf(acctUpsertQuery, strings.Join(columns, ", "), strings.Join(placeHolders, ", "), strings.Join(conflictClauses, ", "))
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	updatedAcct := AllocAccount()
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			var rowCnt int64
-			err := w.Create(ctx, acct, db.WithOnConflict(&oc), db.WithReturnRowsAffected(&rowCnt), db.WithOplog(oplogWrapper, acct.oplog(oplog.OpType_OP_TYPE_CREATE, am.ScopeId)))
+			var err error
+			rows, err := w.Query(ctx, query, values)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to insert/update auth oidc account"))
 			}
+			defer rows.Close()
+			result := struct {
+				PublicId string
+				Version  int
+			}{}
+			var rowCnt int
+			for rows.Next() {
+				rowCnt += 1
+				err = r.reader.ScanRows(rows, &result)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for account"))
+				}
+			}
 			if rowCnt > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
+			}
+			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", am.PublicId, iss, sub); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
+			}
+			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
+			if result.Version == 1 && updatedAcct.PublicId == pubId {
+				if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, am.ScopeId, updatedAcct, nil, nil); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write create oplog for account"))
+				}
+			} else {
+				if len(fieldMasks) > 0 || len(nullMasks) > 0 {
+					acctForOplog := AllocAccount()
+					acctForOplog.PublicId = updatedAcct.PublicId
+					if foundEmail != nil {
+						acctForOplog.Email = foundEmail.(string)
+					}
+					if foundName != nil {
+						acctForOplog.FullName = foundName.(string)
+					}
+					if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, am.ScopeId, acctForOplog, fieldMasks, nullMasks); err != nil {
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write update oplog for account"))
+					}
+				}
 			}
 			return nil
 		},
@@ -147,7 +213,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return acct, nil
+	return updatedAcct, nil
 }
 
 // upsertOplog will write oplog msgs for account upserts. The db.Writer needs to be the writer for the current

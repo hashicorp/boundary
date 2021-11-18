@@ -48,11 +48,12 @@ func TestRepository_ListSession(t *testing.T) {
 		opt []Option
 	}
 	tests := []struct {
-		name      string
-		createCnt int
-		args      args
-		wantCnt   int
-		wantErr   bool
+		name            string
+		createCnt       int
+		args            args
+		wantCnt         int
+		wantErr         bool
+		withConnections int
 	}{
 		{
 			name:      "no-limit",
@@ -97,6 +98,14 @@ func TestRepository_ListSession(t *testing.T) {
 			wantCnt: 0,
 			wantErr: false,
 		},
+		{
+			name:            "multiple-connections",
+			createCnt:       repo.defaultLimit + 1,
+			args:            args{},
+			wantCnt:         repo.defaultLimit,
+			wantErr:         false,
+			withConnections: 3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -107,6 +116,9 @@ func TestRepository_ListSession(t *testing.T) {
 				s := TestSession(t, conn, wrapper, composedOf)
 				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
+				for i := 0; i < tt.withConnections; i++ {
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
+				}
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
 			got, err := repo.ListSessions(context.Background(), tt.args.opt...)
@@ -116,6 +128,15 @@ func TestRepository_ListSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			for i := 0; i < len(got); i++ {
+				assert.Equal(tt.withConnections, len(got[i].Connections))
+				for _, c := range got[i].Connections {
+					assert.Equal("127.0.0.1", c.ClientTcpAddress)
+					assert.Equal(uint32(22), c.ClientTcpPort)
+					assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+					assert.Equal(uint32(23), c.EndpointTcpPort)
+				}
+			}
 			if tt.wantCnt > 0 {
 				assert.Equal(StatusActive, got[0].States[0].Status)
 				assert.Equal(StatusPending, got[0].States[1].Status)

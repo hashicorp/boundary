@@ -1,0 +1,26 @@
+---
+layout: docs
+page_title: Plugins - Configuration
+description: |-
+  The plugins stanza configures plugin-specific parameters.
+---
+
+# `plugin` Stanza
+
+The `plugin` stanza configures plugin-specific parameters. The plugin system was
+introduced in Boundary 0.7.0 and is currently internal; over time, the intent is
+to provide a mechanism for third-party plugins to be able to be used. Available
+plugins are currently bundled with Boundary and executed automatically.
+
+There is currently one configuration parameter available:
+
+```hcl
+plugins {
+  execution_dir = "/var/run/boundary/plugin-exec"
+}
+```
+
+- `execution_dir` - Specifies a directory that Boundary can use to write and
+  execute its built-in plugins. This directory must be writeable by the Boundary
+  user. If not set, Boundary will attempt to create a suitable directory in the
+  system temporary folder.

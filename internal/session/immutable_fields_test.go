@@ -6,10 +6,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm/logger"
 )
 
 func TestSession_ImmutableFields(t *testing.T) {
@@ -245,16 +247,20 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
 	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
-	state := TestConnectionState(t, conn, connection.PublicId, StatusClosed)
+	state := TestConnectionState(t, conn, connection.PublicId, StatusConnected)
 
 	var new ConnectionState
 	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
 	require.NoError(t, err)
 
+	conn.Logger = logger.Default.LogMode(logger.Info)
+
 	tests := []struct {
-		name      string
-		update    *ConnectionState
-		fieldMask []string
+		name            string
+		update          *ConnectionState
+		fieldMask       []string
+		wantErrMatch    *errors.Template
+		wantErrContains string
 	}{
 		{
 			name: "session_id",
@@ -272,7 +278,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.Status = "closed"
 				return s
 			}(),
-			fieldMask: []string{"Status"},
+			fieldMask:       []string{"Status"},
+			wantErrMatch:    errors.T(errors.NotSpecificIntegrity),
+			wantErrContains: "immutable column",
 		},
 		{
 			name: "start time",
@@ -281,7 +289,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.StartTime = &ts
 				return s
 			}(),
-			fieldMask: []string{"StartTime"},
+			fieldMask:       []string{"StartTime"},
+			wantErrMatch:    errors.T(errors.InvalidFieldMask),
+			wantErrContains: "parameter violation",
 		},
 		{
 			name: "previous_end_time",
@@ -290,7 +300,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.PreviousEndTime = &ts
 				return s
 			}(),
-			fieldMask: []string{"PreviousEndTime"},
+			fieldMask:       []string{"PreviousEndTime"},
+			wantErrMatch:    errors.T(errors.NotSpecificIntegrity),
+			wantErrContains: "immutable column",
 		},
 	}
 	for _, tt := range tests {
@@ -304,7 +316,12 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
-
+			if tt.wantErrMatch != nil {
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted error %s and got: %s", tt.wantErrMatch.Code, err.Error())
+			}
+			if tt.wantErrContains != "" {
+				assert.Contains(err.Error(), tt.wantErrContains)
+			}
 			after := new.Clone()
 			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
 			require.NoError(err)

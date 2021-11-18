@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -26,10 +27,12 @@ type options struct {
 	WithUserIsAnonymous             bool
 	WithOutputFields                *perms.OutputFieldsMap
 	WithScope                       *scopes.ScopeInfo
+	WithPlugin                      *plugins.PluginInfo
 	WithAuthorizedActions           []string
 	WithAuthorizedCollectionActions map[string]*structpb.ListValue
 	WithManagedGroupIds             []string
 	WithMemberIds                   []string
+	WithHostSetIds                  []string
 }
 
 func getDefaultOptions() options {
@@ -69,6 +72,14 @@ func WithScope(scp *scopes.ScopeInfo) Option {
 	}
 }
 
+// WithPlugin provides an option when creating responses to include the given
+// plugin if allowed
+func WithPlugin(plg *plugins.PluginInfo) Option {
+	return func(o *options) {
+		o.WithPlugin = plg
+	}
+}
+
 // WithAuthorizedActions provides an option when creating responses to include the given
 // authorized actions if allowed
 func WithAuthorizedActions(acts []string) Option {
@@ -98,5 +109,13 @@ func WithManagedGroupIds(ids []string) Option {
 func WithMemberIds(ids []string) Option {
 	return func(o *options) {
 		o.WithMemberIds = ids
+	}
+}
+
+// WithHostSetIds provides an option when creating responses to include the
+// given host set IDs if allowed
+func WithHostSetIds(ids []string) Option {
+	return func(o *options) {
+		o.WithHostSetIds = ids
 	}
 }

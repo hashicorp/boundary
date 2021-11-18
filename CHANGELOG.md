@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.7.0 (2021/11/17)
 
 ### Deprecations/Changes
 
@@ -11,6 +11,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Boundary now supports dynamic discovery of host resources using our (currently
+  internal) new plugin system. See the
+  [documentation](https://www.boundaryproject.io/docs) for configuration
+  instructions. Currently, only Azure and AWS are supported, but more providers
+  will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
   enhanced to be more robust against attackers that have decryption access to
   the shared `worker-auth` KMS key
@@ -22,6 +27,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   a missing mandated cipher suite of the HTTP/2 (`h2`) specification that could
   result in no shared cipher suites between the Boundary API listener and those
   clients. ([PR](https://github.com/hashicorp/boundary/pull/1637))
+* vault: Fix credential store support when using Vault namespaces
+  ([Issue](https://github.com/hashicorp/boundary/issues/1597),
+  [PR](https://github.com/hashicorp/boundary/pull/1660))
 
 ## 0.6.2 (2021/09/27)
 

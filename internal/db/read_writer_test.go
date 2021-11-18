@@ -26,6 +26,7 @@ import (
 
 func TestDb_UpdateUnsetField(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	rw := &Db{
 		underlying: db,
 	}
@@ -49,6 +50,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 
 func TestDb_Update(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
@@ -129,7 +131,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: with version option is zero: parameter violation: error #100",
+			wantErrMsg: "with version option is zero: parameter violation: error #100",
 		},
 		{
 			name: "simple-with-version",
@@ -571,6 +573,17 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(0, rowsUpdated)
 		assert.Contains(err.Error(), "db.Update: oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
 	})
+	t.Run("multi-column", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+		scooter := testScooter(t, db, "", 0)
+		accessory := testAccessory(t, db, "test accessory")
+		scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+		scooterAccessory.Review = "this is great"
+		rowsUpdated, err := w.Update(context.Background(), scooterAccessory, []string{"Review"}, nil)
+		require.NoError(err)
+		assert.Equal(1, rowsUpdated)
+	})
 }
 
 // testUserWithVet gives us a model that implements VetForWrite() without any
@@ -615,6 +628,7 @@ func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpTy
 func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -790,6 +804,7 @@ func TestDb_Create(t *testing.T) {
 func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -826,7 +841,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.LookupById: db.primaryKeyWhere: missing primary key: parameter violation: error #100")
+		assert.Contains(err.Error(), "db.LookupById: db.primaryKeysWhere: missing primary key: parameter violation: error #100")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -845,6 +860,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 func TestDb_LookupWhere(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -896,6 +912,7 @@ func TestDb_LookupWhere(t *testing.T) {
 func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	knownUser := testUser(t, db, "zedUser", "", "")
 
 	type args struct {
@@ -1048,6 +1065,7 @@ func TestDb_Exec(t *testing.T) {
 	t.Parallel()
 	t.Run("update", func(t *testing.T) {
 		db, _ := TestSetup(t, "postgres")
+		TestCreateTables(t, db)
 		require := require.New(t)
 		w := Db{underlying: db}
 		id := testId(t)
@@ -1067,6 +1085,7 @@ func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
@@ -1239,6 +1258,7 @@ func TestDb_DoTx(t *testing.T) {
 
 func TestDb_Delete(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	newUser := func() *db_test.TestUser {
 		w := &Db{
 			underlying: db,
@@ -1262,6 +1282,13 @@ func TestDb_Delete(t *testing.T) {
 			"resource-public-id": []string{publicId},
 		}
 	}
+
+	// seed some test users, so we won't just happen to get a false positive
+	// with only 1 entry in the db
+	for i := 0; i < 1000; i++ {
+		_ = newUser()
+	}
+
 	type args struct {
 		i        *db_test.TestUser
 		opt      []Option
@@ -1274,6 +1301,7 @@ func TestDb_Delete(t *testing.T) {
 		args       args
 		want       int
 		wantOplog  bool
+		wantFound  bool
 		wantErr    bool
 		wantErrIs  errors.Code
 	}{
@@ -1283,6 +1311,29 @@ func TestDb_Delete(t *testing.T) {
 			wrapper:    TestWrapper(t),
 			args: args{
 				i: newUser(),
+			},
+			want:    1,
+			wantErr: false,
+		},
+		{
+			name:       "with-where-no-delete",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i:   newUser(),
+				opt: []Option{WithWhere("1 = ?", 2)},
+			},
+			wantFound: true,
+			want:      0,
+			wantErr:   false,
+		},
+		{
+			name:       "with-where-and-delete",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i:   newUser(),
+				opt: []Option{WithWhere("1 = ?", 1)},
 			},
 			want:    1,
 			wantErr: false,
@@ -1374,6 +1425,11 @@ func TestDb_Delete(t *testing.T) {
 			foundUser := tt.args.i.Clone().(*db_test.TestUser)
 			foundUser.PublicId = tt.args.i.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
+			if tt.wantFound {
+				assert.NoError(err)
+				assert.Equal(tt.args.i.PublicId, foundUser.PublicId)
+				return
+			}
 			assert.Error(err)
 			assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 
@@ -1448,12 +1504,23 @@ func TestDb_Delete(t *testing.T) {
 			err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
 			require.NoError(err)
 		})
+		t.Run("multi-column", func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := Db{underlying: db}
+			scooter := testScooter(t, db, "", 0)
+			accessory := testAccessory(t, db, "test accessory")
+			scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+			rowsDeleted, err := w.Delete(context.Background(), scooterAccessory)
+			require.NoError(err)
+			assert.Equal(1, rowsDeleted)
+		})
 	}
 }
 
 func TestDb_ScanRows(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -1481,6 +1548,7 @@ func TestDb_ScanRows(t *testing.T) {
 func TestDb_Query(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := Db{underlying: db}
@@ -1509,6 +1577,7 @@ func TestDb_Query(t *testing.T) {
 
 func TestDb_CreateItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	testOplogResourceId := testId(t)
 
 	createFn := func() []interface{} {
@@ -1721,6 +1790,7 @@ func TestDb_CreateItems(t *testing.T) {
 
 func TestDb_DeleteItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	testOplogResourceId := testId(t)
 
 	createFn := func() []interface{} {
@@ -1983,14 +2053,42 @@ func testScooter(t *testing.T, conn *DB, model string, mpg int32) *db_test.TestS
 	return u
 }
 
+func testAccessory(t *testing.T, conn *DB, description string) *db_test.TestAccessory {
+	t.Helper()
+	require := require.New(t)
+	a, err := db_test.NewTestAccessory(description)
+	require.NoError(err)
+	if conn != nil {
+		err = conn.Create(a).Error
+		require.NoError(err)
+	}
+	return a
+}
+
+func testScooterAccessory(t *testing.T, conn *DB, scooterId, accessoryId uint32) *db_test.TestScooterAccessory {
+	t.Helper()
+	require := require.New(t)
+	a, err := db_test.NewTestScooterAccessory(scooterId, accessoryId)
+	require.NoError(err)
+	if conn != nil {
+		err = conn.Create(a).Error
+		require.NoError(err)
+	}
+	return a
+}
+
 func TestDb_LookupById(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	scooter := testScooter(t, db, "", 0)
 	user := testUser(t, db, "", "", "")
+	accessory := testAccessory(t, db, "test accessory")
+	scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+
 	type args struct {
-		resourceWithIder interface{}
-		opt              []Option
+		resource interface{}
+		opt      []Option
 	}
 	tests := []struct {
 		name       string
@@ -2004,7 +2102,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "simple-private-id",
 			underlying: db,
 			args: args{
-				resourceWithIder: scooter,
+				resource: scooter,
 			},
 			wantErr: false,
 			want:    scooter,
@@ -2013,16 +2111,47 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "simple-public-id",
 			underlying: db,
 			args: args{
-				resourceWithIder: user,
+				resource: user,
 			},
 			wantErr: false,
 			want:    user,
 		},
 		{
+			name:       "simple-non-public-non-private-id",
+			underlying: db,
+			args: args{
+				resource: accessory,
+			},
+			wantErr: false,
+			want:    accessory,
+		},
+		{
+			name:       "compond",
+			underlying: db,
+			args: args{
+				resource: scooterAccessory,
+			},
+			wantErr: false,
+			want:    scooterAccessory,
+		},
+		{
+			name:       "compond-with-zero-value-pk",
+			underlying: db,
+			args: args{
+				resource: func() interface{} {
+					cp := scooterAccessory.Clone()
+					cp.(*db_test.TestScooterAccessory).ScooterId = 0
+					return cp
+				}(),
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
 			name:       "missing-public-id",
 			underlying: db,
 			args: args{
-				resourceWithIder: &db_test.TestUser{
+				resource: &db_test.TestUser{
 					StoreTestUser: &db_test.StoreTestUser{},
 				},
 			},
@@ -2033,7 +2162,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "missing-private-id",
 			underlying: db,
 			args: args{
-				resourceWithIder: &db_test.TestScooter{
+				resource: &db_test.TestScooter{
 					StoreTestScooter: &db_test.StoreTestScooter{},
 				},
 			},
@@ -2044,7 +2173,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "not-an-ider",
 			underlying: db,
 			args: args{
-				resourceWithIder: &db_test.NotIder{},
+				resource: &db_test.NotIder{},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -2053,7 +2182,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "missing-underlying-db",
 			underlying: nil,
 			args: args{
-				resourceWithIder: user,
+				resource: user,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -2065,13 +2194,13 @@ func TestDb_LookupById(t *testing.T) {
 			rw := &Db{
 				underlying: tt.underlying,
 			}
-			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
+			cloner, ok := tt.args.resource.(db_test.Cloner)
 			require.True(ok)
 			cp := cloner.Clone()
 			err := rw.LookupById(context.Background(), cp, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				require.True(errors.Match(errors.T(tt.wantIsErr), err))
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err code: %q got: %q", tt.wantIsErr, err)
 				return
 			}
 			require.NoError(err)
@@ -2091,6 +2220,7 @@ func TestDb_LookupById(t *testing.T) {
 
 func TestDb_GetTicket(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	type notReplayable struct{}
 	tests := []struct {
 		name          string
@@ -2150,6 +2280,7 @@ func TestDb_GetTicket(t *testing.T) {
 
 func TestDb_WriteOplogEntryWith(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	w := Db{underlying: db}
 
 	ticket, err := w.GetTicket(&db_test.TestUser{})
@@ -2880,6 +3011,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 func TestDb_lookupAfterWrite(t *testing.T) {
 	t.Parallel()
 	db, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, db)
 	scooter := testScooter(t, db, "", 0)
 	user := testUser(t, db, "", "", "")
 	type args struct {

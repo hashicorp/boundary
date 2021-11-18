@@ -1,6 +1,8 @@
 package kms
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -18,6 +20,8 @@ const (
 	SessionKeyVersionPrefix  = "kskv"
 	OidcKeyPrefix            = "koidck"
 	OidcKeyVersionPrefix     = "koidckv"
+	AuditKeyPrefix           = "kak"
+	AuditKeyVersionPrefix    = "kakv"
 )
 
 func newRootKeyId() (string, error) {
@@ -124,6 +128,24 @@ func newOidcKeyVersionId() (string, error) {
 	id, err := db.NewPublicId(OidcKeyVersionPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
+	}
+	return id, nil
+}
+
+func newAuditKeyId(ctx context.Context) (string, error) {
+	const op = "kms.newAuditKeyId"
+	id, err := db.NewPublicId(AuditKeyPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return id, nil
+}
+
+func newAuditKeyVersionId(ctx context.Context) (string, error) {
+	const op = "kms.newAuditKeyVersionId"
+	id, err := db.NewPublicId(AuditKeyVersionPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
 	}
 	return id, nil
 }

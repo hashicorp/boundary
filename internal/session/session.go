@@ -112,6 +112,9 @@ type Session struct {
 	// DynamicCredentials for the session.
 	DynamicCredentials []*DynamicCredential `gorm:"-"`
 
+	// Connections for the session are for read only and are ignored during write operations
+	Connections []*Connection `gorm:"-"`
+
 	tableName string `gorm:"-"`
 }
 
@@ -401,7 +404,7 @@ func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	return nil
 }
 
-type sessionView struct {
+type sessionListView struct {
 	// Session fields
 	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
 	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
@@ -429,9 +432,19 @@ type sessionView struct {
 	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	StartTime       *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
 	EndTime         *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
+
+	// Connection fields
+	ConnectionId       string `json:"connection_id,omitempty" gorm:"default:null"`
+	ClientTcpAddress   string `json:"client_tcp_address,omitempty" gorm:"default:null"`
+	ClientTcpPort      uint32 `json:"client_tcp_port,omitempty" gorm:"default:null"`
+	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty" gorm:"default:null"`
+	EndpointTcpPort    uint32 `json:"endpoint_tcp_port,omitempty" gorm:"default:null"`
+	BytesUp            uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
+	BytesDown          uint64 `json:"bytes_down,omitempty" gorm:"default:null"`
+	ClosedReason       string `json:"closed_reason,omitempty" gorm:"default:null"`
 }
 
 // TableName returns the tablename to override the default gorm table name
-func (s *sessionView) TableName() string {
-	return "session_with_state"
+func (s *sessionListView) TableName() string {
+	return "session_list"
 }

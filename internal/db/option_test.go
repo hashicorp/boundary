@@ -192,13 +192,23 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withMaxOpenConnections = 22
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithDebug", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+		// try setting to true
+		opts = GetOpts(WithDebug(true))
+		testOpts.withDebug = true
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithOnConflict", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-
 		columns := SetColumns([]string{"name", "description"})
 		columnValues := SetColumnValues(map[string]interface{}{"expiration": "NULL"})
 		testOnConflict := OnConflict{

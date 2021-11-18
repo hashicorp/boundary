@@ -24,6 +24,8 @@ func TestTrySharedLock(t *testing.T) {
 	require.NoError(t, err)
 
 	d2, err := common.SqlOpen(dbtest.Postgres, u)
+	require.NoError(t, err)
+
 	p2, err := postgres.New(ctx, d2)
 	require.NoError(t, err)
 
@@ -47,6 +49,8 @@ func TestTryLock(t *testing.T) {
 	require.NoError(t, err)
 
 	d2, err := common.SqlOpen(dbtest.Postgres, u)
+	require.NoError(t, err)
+
 	p2, err := postgres.New(ctx, d2)
 	require.NoError(t, err)
 
@@ -56,7 +60,9 @@ func TestTryLock(t *testing.T) {
 	err = p2.TryLock(ctx)
 	require.Error(t, err)
 
-	ctx2, _ := context.WithTimeout(ctx, time.Millisecond)
+	ctx2, cancel := context.WithTimeout(ctx, time.Millisecond)
+	defer cancel()
+
 	err = p2.Lock(ctx2)
 	require.Error(t, err)
 }
@@ -74,6 +80,8 @@ func TestLock(t *testing.T) {
 	require.NoError(t, err)
 
 	d2, err := common.SqlOpen(dbtest.Postgres, u)
+	require.NoError(t, err)
+
 	p2, err := postgres.New(ctx, d2)
 	require.NoError(t, err)
 
@@ -83,7 +91,9 @@ func TestLock(t *testing.T) {
 	err = p2.TryLock(ctx)
 	require.Error(t, err)
 
-	ctx2, _ := context.WithTimeout(ctx, time.Millisecond)
+	ctx2, cancel := context.WithTimeout(ctx, time.Millisecond)
+	defer cancel()
+
 	err = p2.Lock(ctx2)
 	require.Error(t, err)
 }
@@ -100,6 +110,8 @@ func TestUnlock(t *testing.T) {
 	require.NoError(t, err)
 
 	d2, err := common.SqlOpen(dbtest.Postgres, u)
+	require.NoError(t, err)
+
 	p2, err := postgres.New(ctx, d2)
 	require.NoError(t, err)
 
@@ -121,6 +133,7 @@ func TestUnlock(t *testing.T) {
 
 	// clear lock on p2
 	err = p2.Unlock(ctx)
+	require.NoError(t, err)
 
 	// p can now get lock
 	err = p.TryLock(ctx)
@@ -138,6 +151,8 @@ func TestUnlockShared(t *testing.T) {
 	require.NoError(t, err)
 
 	d2, err := common.SqlOpen(dbtest.Postgres, u)
+	require.NoError(t, err)
+
 	p2, err := postgres.New(ctx, d2)
 	require.NoError(t, err)
 

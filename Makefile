@@ -28,11 +28,6 @@ dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-
-bin: BUILD_TAGS+=ui
-bin: build-ui
-	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 fmt:
@@ -118,6 +113,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/store/host.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
+	@protoc-go-inject-tag -input=./internal/host/plugin/store/host.pb.go
+	@protoc-go-inject-tag -input=./internal/plugin/host/store/plugin.pb.go
+	@protoc-go-inject-tag -input=./internal/plugin/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
@@ -136,12 +134,14 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
-
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/session_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/targets/target.pb.go
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
@@ -170,6 +170,9 @@ test-database-down:
 	make -C testing/dbtest/docker clean
 
 test-ci: install-go
+test-ci: export CI_BUILD=1
+test-ci:
+	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test-sql:
@@ -184,7 +187,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.6.2
+VERSION?=0.7.0
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker

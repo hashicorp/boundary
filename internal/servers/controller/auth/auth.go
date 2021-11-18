@@ -173,7 +173,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		// Look up scope details to return. We can skip a lookup when using the
 		// global scope
 		switch ret.Scope.Id {
-		case "global":
+		case scope.Global.String():
 			ret.Scope = &scopes.ScopeInfo{
 				Id:            scope.Global.String(),
 				Type:          scope.Global.String(),
@@ -503,7 +503,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// Look up scope details to return. We can skip a lookup when using the
 	// global scope
 	switch v.res.ScopeId {
-	case "global":
+	case scope.Global.String():
 		scopeInfo = &scopes.ScopeInfo{
 			Id:            scope.Global.String(),
 			Type:          scope.Global.String(),

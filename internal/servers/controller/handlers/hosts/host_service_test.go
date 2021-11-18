@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -11,15 +12,21 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -28,11 +35,15 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var testAuthorizedActions = map[subtypes.Subtype][]string{
+	static.Subtype: {"no-op", "read", "update", "delete"},
+	plugin.Subtype: {"no-op", "read"},
+}
 
-func TestGet(t *testing.T) {
+func TestGet_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -46,6 +57,10 @@ func TestGet(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -62,7 +77,7 @@ func TestGet(t *testing.T) {
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
-		AuthorizedActions: testAuthorizedActions,
+		AuthorizedActions: testAuthorizedActions[static.Subtype],
 	}
 
 	cases := []struct {
@@ -98,8 +113,8 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(repoFn)
-			require.NoError(err, "Couldn't create a new host set service.")
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
+			require.NoError(err, "Couldn't create a new host service.")
 
 			got, gErr := s.GetHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
@@ -115,7 +130,107 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestGet_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	plg := hostplugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	}
+
+	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	}
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
+
+	pHost := &pb.Host{
+		HostCatalogId: hc.GetPublicId(),
+		Id:            h.GetPublicId(),
+		CreatedTime:   h.CreateTime.GetTimestamp(),
+		UpdatedTime:   h.UpdateTime.GetTimestamp(),
+		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		Type:          plugin.Subtype.String(),
+		Plugin: &plugins.PluginInfo{
+			Id:          plg.GetPublicId(),
+			Name:        plg.GetName(),
+			Description: plg.GetDescription(),
+		},
+		HostSetIds:        []string{hs.GetPublicId()},
+		ExternalId:        "test",
+		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.GetHostRequest
+		res  *pbs.GetHostResponse
+		err  error
+	}{
+		{
+			name: "Get an Existing Host",
+			req:  &pbs.GetHostRequest{Id: h.GetPublicId()},
+			res:  &pbs.GetHostResponse{Item: pHost},
+		},
+		{
+			name: "non existing",
+			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Wrong id prefix",
+			req:  &pbs.GetHostRequest{Id: "j_1234567890"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "space in id",
+			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_1 23456789"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
+			require.NoError(err, "Couldn't create a new host service.")
+
+			got, gErr := s.GetHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "GetHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+
+			if tc.res != nil {
+				tc.res.Item.Version = 1
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestList_Static(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -128,6 +243,10 @@ func TestList(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -146,7 +265,7 @@ func TestList(t *testing.T) {
 			Type:          static.Subtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
-			AuthorizedActions: testAuthorizedActions,
+			AuthorizedActions: testAuthorizedActions[static.Subtype],
 		})
 	}
 
@@ -160,6 +279,11 @@ func TestList(t *testing.T) {
 			name: "List Many Hosts",
 			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId()},
 			res:  &pbs.ListHostsResponse{Items: wantHs},
+		},
+		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hcst_doesntexist"},
+			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "List No Hosts",
@@ -185,7 +309,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(repoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -196,6 +320,131 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test anonymous listing
+			got, gErr = s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
+		})
+	}
+}
+
+func TestList_Plugin(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	plg := hostplugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	}
+
+	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	}
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	hcs := plugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 2)
+	hc, hcNoHosts := hcs[0], hcs[1]
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+
+	var wantHs []*pb.Host
+	for i := 0; i < 10; i++ {
+		extId := fmt.Sprintf("host %d", i)
+		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId)
+		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
+		wantHs = append(wantHs, &pb.Host{
+			Id:            h.GetPublicId(),
+			HostCatalogId: h.GetCatalogId(),
+			Plugin: &plugins.PluginInfo{
+				Id:          plg.GetPublicId(),
+				Name:        plg.GetName(),
+				Description: plg.GetDescription(),
+			},
+			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:       h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
+			HostSetIds:        []string{hs.GetPublicId()},
+			Version:           1,
+			ExternalId:        extId,
+			Type:              plugin.Subtype.String(),
+			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+		})
+	}
+	sort.Slice(wantHs, func(i, j int) bool {
+		return wantHs[i].GetId() < wantHs[j].GetId()
+	})
+
+	cases := []struct {
+		name string
+		req  *pbs.ListHostsRequest
+		res  *pbs.ListHostsResponse
+		err  error
+	}{
+		{
+			name: "List Many Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId()},
+			res:  &pbs.ListHostsResponse{Items: wantHs},
+		},
+		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hc_doesntexist"},
+			err:  handlers.NotFoundError(),
+		},
+		{
+			name: "List No Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
+			res:  &pbs.ListHostsResponse{},
+		},
+		{
+			name: "Filter to One Host",
+			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantHs[1].GetId())},
+			res:  &pbs.ListHostsResponse{Items: wantHs[1:2]},
+		},
+		{
+			name: "Filter to No Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res:  &pbs.ListHostsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
+			require.NoError(err, "Couldn't create new host set service.")
+
+			// Test non-anonymous listing
+			got, gErr := s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListHosts(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+
+			sort.Slice(got.Items, func(i, j int) bool {
+				return got.Items[i].GetId() < got.Items[j].GetId()
+			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test anonymous listing
@@ -225,13 +474,21 @@ func TestDelete(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := hosts.NewService(repoFn)
+	plg := hostplugin.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginH := plugin.TestHost(t, conn, pluginHc.GetPublicId(), "test")
+
+	s, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -247,6 +504,14 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
+		},
+		{
+			name:    "Delete a plugin Host",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.DeleteHostRequest{
+				Id: pluginH.GetPublicId(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "Delete bad id Host",
@@ -293,13 +558,17 @@ func TestDelete_twice(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := hosts.NewService(repoFn)
+	s, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostRequest{
 		Id: h.GetPublicId(),
@@ -326,10 +595,17 @@ func TestCreate(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+
+	plg := hostplugin.TestPlugin(t, conn, "test")
+	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
@@ -361,9 +637,17 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
+		},
+		{
+			name: "Create a plugin Host",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: pluginHc.GetPublicId(),
+				Type:          "plugin",
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with empty address",
@@ -420,7 +704,7 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("123.456.789"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -454,7 +738,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(repoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -484,7 +768,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -498,6 +782,10 @@ func TestUpdate(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -525,7 +813,7 @@ func TestUpdate(t *testing.T) {
 		Id: h.GetPublicId(),
 	}
 
-	tested, err := hosts.NewService(repoFn)
+	tested, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
@@ -558,7 +846,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -586,7 +874,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -656,7 +944,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -681,7 +969,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -708,7 +996,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -735,7 +1023,7 @@ func TestUpdate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
-					AuthorizedActions: testAuthorizedActions,
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -886,4 +1174,43 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHost(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+}
+
+func TestUpdate_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	pluginRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+
+	plg := hostplugin.TestPlugin(t, conn, "test")
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
+
+	tested, err := hosts.NewService(repoFn, pluginRepoFn)
+	require.NoError(t, err)
+
+	got, err := tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateHostRequest{
+		Id:         h.GetPublicId(),
+		Item:       &pb.Host{Name: wrapperspb.String("foo")},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"name"}},
+	})
+	assert.Nil(t, got)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 }

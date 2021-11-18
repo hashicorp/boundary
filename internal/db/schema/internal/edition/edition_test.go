@@ -74,6 +74,8 @@ var (
 	noMinorVersion embed.FS
 	//go:embed testdata/invalid/no-major-version
 	noMajorVersion embed.FS
+	//go:embed testdata/invalid/duplicate-versions
+	duplicateVersions embed.FS
 )
 
 func TestNewPanics(t *testing.T) {
@@ -102,6 +104,10 @@ func TestNewPanics(t *testing.T) {
 		{
 			"noMajorVersion",
 			noMajorVersion,
+		},
+		{
+			"duplicateVersions",
+			duplicateVersions,
 		},
 	}
 	for _, tt := range tests {

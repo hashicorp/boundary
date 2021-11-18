@@ -474,7 +474,7 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	var where string
 	var args []interface{}
 	switch {
-	case rootScopeId == "global":
+	case rootScopeId == scope.Global.String():
 		// Nothing -- we want all scopes
 	case strings.HasPrefix(rootScopeId, "o_"):
 		// The org itself and any projects that have it as parent

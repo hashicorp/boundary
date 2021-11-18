@@ -79,6 +79,10 @@ func newClient(c *clientConfig) (*client, error) {
 	}
 	vClient.SetToken(string(c.Token))
 
+	if c.Namespace != "" {
+		vClient.SetNamespace(c.Namespace)
+	}
+
 	return &client{
 		cl:    vClient,
 		token: c.Token,

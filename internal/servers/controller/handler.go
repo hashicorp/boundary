@@ -79,12 +79,11 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	// Register*ServiceHandlerServer methods ignore the passed in ctx. Using it
 	// now however in case this changes in the future.
 	ctx := props.CancelCtx
-
 	currentServices := c.gatewayServer.GetServiceInfo()
 	dialOptions := gatewayDialOptions(c.gatewayListener)
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.HostPluginRepoFn, c.IamRepoFn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
@@ -94,7 +93,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		}
 	}
 	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
-		hss, err := host_sets.NewService(c.StaticHostRepoFn)
+		hss, err := host_sets.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create host set handler service: %w", err)
 		}
@@ -104,7 +103,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		}
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.StaticHostRepoFn)
+		hs, err := hosts.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create host handler service: %w", err)
 		}
@@ -165,11 +164,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
+			ctx,
 			c.kms,
 			c.TargetRepoFn,
 			c.IamRepoFn,
 			c.ServersRepoFn,
 			c.SessionRepoFn,
+			c.PluginHostRepoFn,
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn)
 		if err != nil {

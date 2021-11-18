@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
@@ -38,7 +39,7 @@ type fieldInfo struct {
 	ProtoName         string
 	FieldType         string
 	GenerateSdkOption bool
-	SubtypeName       string
+	SubtypeNames      []string
 	Query             bool
 	SkipDefault       bool
 }
@@ -94,13 +95,13 @@ type structInfo struct {
 	// listing
 	recursiveListing bool
 
-	// extraOptions allows specifying extra options that will be created for a
+	// extraFields allows specifying extra options that will be created for a
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
-	extraOptions []fieldInfo
+	extraFields []fieldInfo
 
 	// fieldOverrides allows overriding some field behavior without making them
-	// "new" fields like with extraOptions
+	// "new" fields like with extraFields
 	fieldOverrides []fieldInfo
 
 	// createResponseTypes controls for which structs response types are created
@@ -139,6 +140,11 @@ var inputStructs = []*structInfo{
 		skipOptions: true,
 	},
 	{
+		inProto:     &plugins.PluginInfo{},
+		outFile:     "plugins/plugin_info.gen.go",
+		skipOptions: true,
+	},
+	{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
@@ -150,7 +156,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName: "scopes",
-		extraOptions: []fieldInfo{
+		extraFields: []fieldInfo{
 			{
 				Name:      "SkipAdminRoleCreation",
 				ProtoName: "skip_admin_role_creation",
@@ -502,6 +508,21 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "PluginName",
+				ProtoName:   "plugin_name",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "PluginId",
+				SkipDefault: true,
+			},
+		},
 		pluralResourceName:  "host-catalogs",
 		typeOnCreate:        true,
 		versionEnabled:      true,
@@ -620,7 +641,7 @@ var inputStructs = []*structInfo{
 			"CredentialLibraries": {},
 			"CredentialSources":   {},
 		},
-		extraOptions: []fieldInfo{
+		extraFields: []fieldInfo{
 			{
 				Name:        "HostId",
 				ProtoName:   "host_id",
@@ -647,6 +668,11 @@ var inputStructs = []*structInfo{
 			{
 				Name:      "ApplicationCredentialSourceIds",
 				ProtoName: "application_credential_source_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "EgressCredentialSourceIds",
+				ProtoName: "egress_credential_source_ids",
 				FieldType: "[]string",
 			},
 		},

@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
@@ -28,32 +28,17 @@ func Register(subtype subtypes.Subtype, prefixes ...string) error {
 
 // AuthMethod contains the common methods across all the different types of auth methods.
 type AuthMethod interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
+	boundary.Resource
 	GetScopeId() string
-	GetVersion() uint32
 	GetIsPrimaryAuthMethod() bool
 }
 
 type Account interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
+	boundary.Resource
 	GetAuthMethodId() string
-	GetVersion() uint32
 }
 
 type ManagedGroup interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
+	boundary.Resource
 	GetAuthMethodId() string
-	GetVersion() uint32
 }

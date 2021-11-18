@@ -1,6 +1,7 @@
 package hostcatalogs
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -120,5 +121,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithPluginId(inPluginId string) Option {
+	return func(o *options) {
+		o.postMap["plugin_id"] = inPluginId
+	}
+}
+
+func WithPluginName(inPluginName string) Option {
+	return func(o *options) {
+		o.queryMap["plugin_name"] = fmt.Sprintf("%v", inPluginName)
+	}
+}
+
+func WithSecrets(inSecrets map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["secrets"] = inSecrets
+	}
+}
+
+func DefaultSecrets() Option {
+	return func(o *options) {
+		o.postMap["secrets"] = nil
 	}
 }

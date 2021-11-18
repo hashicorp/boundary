@@ -326,6 +326,10 @@
             "path": "configuration/events/stderr"
           }
         ]
+      },
+      {
+        "title": "plugins",
+        "path": "configuration/plugins"
       }
     ]
   },

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -182,6 +183,26 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	return returnedHostSet, hosts, rowsUpdated, nil
 }
 
+// Endpoints returns a slice of host.Endpoint for the provided set id.
+// If there are no hosts in the provided set id the slice is empty.
+// If the set does not exist an error is returned.
+func (r *Repository) Endpoints(ctx context.Context, setId string) ([]*host.Endpoint, error) {
+	const op = "static.(Repository).Endpoints"
+	_, hs, err := r.lookupSet(ctx, setId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var es []*host.Endpoint
+	for _, h := range hs {
+		es = append(es, &host.Endpoint{
+			HostId:  h.GetPublicId(),
+			SetId:   setId,
+			Address: h.GetAddress(),
+		})
+	}
+	return es, err
+}
+
 // LookupSet will look up a host set in the repository and return the host
 // set and the hosts assigned to the host set. If the host set is not
 // found, it will return nil, nil, nil. The WithLimit option can be used to
@@ -191,6 +212,11 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
+	return r.lookupSet(ctx, publicId, opt...)
+}
+
+func (r *Repository) lookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, []*Host, error) {
+	const op = "static.(Repository).lookupSet"
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
@@ -201,29 +227,20 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 	s := allocHostSet()
 	s.PublicId = publicId
 
+	if err := r.reader.LookupByPublicId(ctx, s); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil, nil
+		}
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 	var hosts []*Host
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, _ db.Writer) error {
-		if err := reader.LookupByPublicId(ctx, s); err != nil {
-			if errors.IsNotFoundError(err) {
-				s = nil
-				return nil
-			}
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		}
-		var err error
-		hosts, err = getHosts(ctx, reader, s.PublicId, limit)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		return nil
-	})
+	var err error
+	if hosts, err = getHosts(ctx, r.reader, s.PublicId, limit); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", s.PublicId)))
 	}
-
 	return s, hosts, nil
 }
 

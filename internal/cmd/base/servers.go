@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -111,6 +112,9 @@ type Server struct {
 	DevTargetDefaultPort             int
 	DevTargetSessionMaxSeconds       int
 	DevTargetSessionConnectionLimit  int
+	DevLoopbackHostPluginId          string
+
+	HostPlugins map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
 
@@ -192,7 +196,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
+	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig, event.WithAuditWrapper(opts.withEventWrapper))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
