@@ -192,6 +192,11 @@ message Target {
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "tcp"
     ];
+    SshTargetAttributes ssh_target_attributes = 202 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "ssh"
+    ];
   }
 
   // Output only. The available actions on this resource for this user.
@@ -207,6 +212,20 @@ message Target {
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
 message TcpTargetAttributes {
   // The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
+  google.protobuf.UInt32Value default_port = 10 [
+    json_name = "default_port",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.default_port"
+      that: "DefaultPort"
+    }
+  ]; // @gotags: `class:"public"`
+}
+
+// SshTargetAttributes contains attributes relevant to Targets of type "ssh"
+message SshTargetAttributes {
+  // The default SSH port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
+  // If this is not specified the DefaultPort will be 22.
   google.protobuf.UInt32Value default_port = 10 [
     json_name = "default_port",
     (custom_options.v1.generate_sdk_option) = true,

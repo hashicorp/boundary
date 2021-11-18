@@ -123,6 +123,30 @@ func DefaultBrokeredCredentialSourceIds() Option {
 	}
 }
 
+func WithSshTargetDefaultPort(inDefaultPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = inDefaultPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultSshTargetDefaultPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_port"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

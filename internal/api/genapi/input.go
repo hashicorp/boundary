@@ -632,6 +632,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "TcpTarget",
 	},
 	{
+		inProto:     &targets.SshTargetAttributes{},
+		outFile:     "targets/ssh_target_attributes.gen.go",
+		subtypeName: "SshTarget",
+	},
+	{
 		inProto: &targets.Target{},
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{

@@ -964,6 +964,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"targets create ssh": func() (cli.Command, error) {
+			return &targetscmd.SshCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"targets update": func() (cli.Command, error) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
@@ -972,6 +978,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"targets update tcp": func() (cli.Command, error) {
 			return &targetscmd.TcpCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"targets update ssh": func() (cli.Command, error) {
+			return &targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
