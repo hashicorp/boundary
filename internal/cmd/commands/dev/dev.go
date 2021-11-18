@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -561,7 +560,8 @@ func (c *Command) Run(args []string) int {
 
 	var opts []base.Option
 	if c.flagCreateLoopbackHostPlugin {
-		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+		c.DevLoopbackHostPluginId = "pl_1234567890"
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
 		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
 	}
 	switch c.flagDatabaseUrl {
