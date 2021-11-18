@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
@@ -75,6 +76,8 @@ type Controller struct {
 	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
+
+	enabledPlugins []base.EnabledPlugin
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -86,6 +89,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		schedulerWg:             new(sync.WaitGroup),
 		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
+		enabledPlugins:          conf.Server.EnabledPlugins,
 	}
 
 	c.started.Store(false)
@@ -119,32 +123,38 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
-		ctx,
-		"azure",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
-	if err != nil {
-		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
-	}
-	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
-	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
-		return nil, fmt.Errorf("error registering azure host plugin: %w", err)
-	}
+	for _, enabledPlugin := range c.enabledPlugins {
+		switch enabledPlugin {
+		case base.EnabledPluginHostAzure:
+			azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
+				ctx,
+				"azure",
+				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+			if err != nil {
+				return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
+				return nil, fmt.Errorf("error registering azure host plugin: %w", err)
+			}
 
-	awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
-		ctx,
-		"aws",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
-	if err != nil {
-		return nil, fmt.Errorf("error creating aws host plugin")
-	}
-	conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
-	if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
-		return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+		case base.EnabledPluginHostAws:
+			awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+				ctx,
+				"aws",
+				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+			if err != nil {
+				return nil, fmt.Errorf("error creating aws host plugin")
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
+				return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+			}
+		}
 	}
 
 	if conf.HostPlugins == nil {

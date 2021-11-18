@@ -59,6 +59,14 @@ const (
 	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
 
+type EnabledPlugin uint
+
+const (
+	EnabledPluginUnknown EnabledPlugin = iota
+	EnabledPluginHostAws
+	EnabledPluginHostAzure
+)
+
 type Server struct {
 	*Command
 
@@ -114,7 +122,8 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
-	HostPlugins map[string]plgpb.HostPluginServiceClient
+	EnabledPlugins []EnabledPlugin
+	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
 

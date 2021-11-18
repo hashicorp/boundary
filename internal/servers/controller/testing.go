@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -48,6 +49,7 @@ const (
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
 	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
+	DefaultTestPluginId                      = "pl_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -410,6 +412,17 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	var err error
 	tc.c, err = New(ctx, conf)
 	if err != nil {
+		tc.Shutdown()
+		t.Fatal(err)
+	}
+
+	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
+	plg := plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())
+	plugOpts := []hostplugin.Option{
+		hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+		hostplugin.WithPublicId(tc.b.DevLoopbackHostPluginId),
+	}
+	if _, err = tc.b.RegisterHostPlugin(ctx, "loopback", plg, plugOpts...); err != nil {
 		tc.Shutdown()
 		t.Fatal(err)
 	}
