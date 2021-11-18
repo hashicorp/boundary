@@ -819,6 +819,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields[globals.ScopeIdField] = "This field must be a valid project scope id."
 		}
+		if req.GetItem().GetSecretsHmac() != "" {
+			badFields[globals.SecretsHmacField] = "This is a read only field."
+		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case static.Subtype:
 		case plugin.Subtype:
@@ -843,6 +846,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if req.GetItem().GetSecretsHmac() != "" {
+			badFields[globals.SecretsHmacField] = "This is a read only field."
+		}
 		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
