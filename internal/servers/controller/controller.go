@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -125,34 +126,20 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	for _, enabledPlugin := range c.enabledPlugins {
 		switch enabledPlugin {
-		case base.EnabledPluginHostAzure:
-			azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
+		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,
-				"azure",
+				pluginType,
 				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
 				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
 				external_host_plugins.WithLogger(hclog.NewNullLogger()))
 			if err != nil {
-				return nil, fmt.Errorf("error creating azure host plugin: %w", err)
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
-			conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
-				return nil, fmt.Errorf("error registering azure host plugin: %w", err)
-			}
-
-		case base.EnabledPluginHostAws:
-			awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
-				ctx,
-				"aws",
-				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-				external_host_plugins.WithLogger(hclog.NewNullLogger()))
-			if err != nil {
-				return nil, fmt.Errorf("error creating aws host plugin")
-			}
-			conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
-				return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
 		}
 	}

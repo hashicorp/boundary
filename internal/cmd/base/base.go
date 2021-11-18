@@ -21,6 +21,25 @@ import (
 	"github.com/posener/complete"
 )
 
+type EnabledPlugin uint
+
+const (
+	EnabledPluginUnknown EnabledPlugin = iota
+	EnabledPluginHostAws
+	EnabledPluginHostAzure
+)
+
+func (e EnabledPlugin) String() string {
+	switch e {
+	case EnabledPluginHostAws:
+		return "AWS"
+	case EnabledPluginHostAzure:
+		return "Azure"
+	default:
+		return ""
+	}
+}
+
 const (
 	CommandSuccess int = iota
 	CommandApiError

@@ -59,14 +59,6 @@ const (
 	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
 
-type EnabledPlugin uint
-
-const (
-	EnabledPluginUnknown EnabledPlugin = iota
-	EnabledPluginHostAws
-	EnabledPluginHostAzure
-)
-
 type Server struct {
 	*Command
 
