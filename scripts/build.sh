@@ -53,7 +53,7 @@ for PLUGIN_TYPE in host; do
         cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
-    for CURR_PLUGIN in $(ls); do
+    for CURR_PLUGIN in $(ls boundary-plugin*); do
         gzip -f -9 $CURR_PLUGIN;
     done;
     cd $ORIG_PATH;
