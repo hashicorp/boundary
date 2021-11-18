@@ -20,21 +20,6 @@ inputs:
     PRODUCT_VERSION_PRE: '{{with .PRODUCT_VERSION | strings.SplitN "-" 2}}{{if gt (len .) 1}}{{index . 1}}{{else}}{{end}}{{end}}'
 
 packages:
-  - inputs: { GOOS: darwin, GOARCH: amd64 }
-  - inputs: { GOOS: darwin, GOARCH: arm64 }
-  - inputs: { GOOS: freebsd, GOARCH: 386 }
-  - inputs: { GOOS: freebsd, GOARCH: amd64 }
-  - inputs: { GOOS: freebsd, GOARCH: arm }
-  - inputs: { GOOS: linux, GOARCH: 386 }
-  - inputs: { GOOS: linux, GOARCH: amd64 }
-  - inputs: { GOOS: linux, GOARCH: arm }
-  - inputs: { GOOS: linux, GOARCH: arm64 }
-  - inputs: { GOOS: netbsd, GOARCH: 386 }
-  - inputs: { GOOS: netbsd, GOARCH: amd64 }
-  - inputs: { GOOS: openbsd, GOARCH: 386 }
-  - inputs: { GOOS: openbsd, GOARCH: amd64 }
-  - inputs: { GOOS: solaris, GOARCH: amd64 }
-  - inputs: { GOOS: windows, GOARCH: 386 }
   - inputs: { GOOS: windows, GOARCH: amd64 }
 
 meta:
@@ -98,16 +83,20 @@ layers:
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   ORIG_PATH=$(pwd);
+  echo "orig path is ${$ORIG_PATH}"
   for PLUGIN_TYPE in host; do
+    echo "mains ls output is $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains)"
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
       cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
       go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN} .;
       cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
+    echo "assets are $(ls boundary-plugin*)"
     for CURR_PLUGIN in $(ls boundary-plugin*); do
       gzip -9 $CURR_PLUGIN;
     done;
+    echo "assets are $(ls boundary-plugin*)"
     cd $ORIG_PATH;
   done;
   go build -v -tags '{{.BUILD_TAGS}}'
