@@ -81,6 +81,7 @@ layers:
     source-include: "*.go *.up.sql"
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
+  if [ "${GOOS}x" == "windowsx" ]; then BINARY_SUFFIX=".exe"; fi;
   unset GOPATH;
   ORIG_PATH=$(pwd);
   echo "orig path is ${ORIG_PATH}";
@@ -88,7 +89,7 @@ build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
     echo "mains ls output is $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains)";
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
       cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
-      CGO_ENABLED=0 go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN} .;
+      CGO_ENABLED=0 go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN}${BINARY_SUFFIX} .;
       cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
