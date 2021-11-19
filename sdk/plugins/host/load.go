@@ -174,6 +174,7 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 			return nil, nil, fmt.Errorf("error creating tmp dir for kms execution: %w", err)
 		}
 		cleanup = func() error {
+			return nil
 			return os.RemoveAll(tmpDir)
 		}
 		dir = tmpDir
@@ -191,6 +192,7 @@ func executeHostPlugin(plugin pluginInfo, opt ...Option) (pb.HostPluginServiceCl
 	origCleanup := cleanup
 	cleanup = func() error {
 		client.Kill()
+		return nil
 		return origCleanup()
 	}
 	rpcClient, err := client.Client()
