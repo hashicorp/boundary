@@ -2,6 +2,16 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.7.1 (2021/11/18)
+
+### Bug Fixes
+
+* db: Fix panic invoking the CLI on Windows. Some changes to how the binary is
+  initialized resulted in running some functions on every startup that looked
+  for some embedded files. However, Go's embed package does not use OS-specific
+  path separators, so a mismatch between path separators caused a failure in the
+  function. ([PR](https://github.com/hashicorp/boundary/pull/1733))
+
 ## 0.7.0 (2021/11/17)
 
 ### Deprecations/Changes
