@@ -96,6 +96,7 @@ layers:
     source-include: "*.go *.up.sql"
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
+  BINARY_SUFFIX="";
   if [ "${GOOS}x" == "windowsx" ]; then BINARY_SUFFIX=".exe"; fi;
   unset GOPATH;
   ORIG_PATH=$(pwd);
