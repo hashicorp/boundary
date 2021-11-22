@@ -1220,7 +1220,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 				check(t, gotUpdatedSet)
 			}
 
-			gotLookupSet, gotPlugin, err := repo.LookupSet(ctx, workingSet.GetPublicId())
+			gotLookupSet, _, err := repo.LookupSet(ctx, workingSet.GetPublicId())
+			assert.NoError(err)
 			assert.Empty(cmp.Diff(gotUpdatedSet, gotLookupSet, protocmp.Transform()))
 		})
 	}
