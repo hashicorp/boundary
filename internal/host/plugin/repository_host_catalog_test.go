@@ -1470,6 +1470,12 @@ func (j *testSyncJob) Name() string                      { return setSyncJobName
 func (j *testSyncJob) Description() string               { return setSyncJobName }
 
 func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
+	// Quick assertion that setSyncJobRunInterval is 10 minutes. This
+	// is due to the timing set for checks below to ensure that a sync
+	// job is only set to run under certain conditions (read: when a
+	// catalog *with sets* has its *attributes* field updated).
+	require.Equal(t, time.Minute*10, setSyncJobRunInterval, "test expects setSyncJobRunInterval to be 10 minutes, please review test and adjust check accordingly")
+
 	ctx := context.Background()
 	dbConn, _ := db.TestSetup(t, "postgres")
 	dbRW := db.New(dbConn)
@@ -1510,7 +1516,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	j := &testSyncJob{
 		F: func() { close(jobRunCh) },
 	}
-	err = sched.RegisterJob(ctx, j)
+	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval*2))
 	require.NoError(t, err)
 	var wg sync.WaitGroup
 	err = sched.Start(ctx, &wg)
@@ -1527,8 +1533,10 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, catalogsUpdated)
 
-	// Wait 2m for the job to not run. The regular sync job is 10 minutes, so waiting 2
-	// should be fine, with the default job interval being 1m.
+	// Wait 2m for the job to not run. The regular sync job is 10
+	// minutes, and we set the "next run" for the test job above to
+	// double that, so waiting 2 minutes should be fine, with the
+	// default job interval being 1m.
 	var jobRan bool
 	select {
 	case <-time.After(time.Minute * 2):
