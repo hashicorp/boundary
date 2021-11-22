@@ -3,11 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
@@ -124,23 +122,6 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 		underlyingDB.SetMaxOpenConns(opts.withMaxOpenConnections)
 	}
 	return &DB{db}, nil
-}
-
-func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
-	const op = "db.GetGormLogFormatter"
-	ctx := context.TODO()
-	return func(values ...interface{}) (messages []interface{}) {
-		if len(values) > 2 && values[0].(string) == "log" {
-			switch values[2].(type) {
-			case *pgconn.PgError:
-				if log.IsTrace() {
-					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo("error", values[2], "location", values[1]))
-				}
-			}
-			return nil
-		}
-		return nil
-	}
 }
 
 type gormLogger struct {
