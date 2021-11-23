@@ -19,6 +19,7 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1446,36 +1447,21 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 // Create a test scheduled job that we can use to catch when a run is executed.
 // We will use this to track whether or not an update was sent in
 // TestRepository_UpdateCatalog_SyncSets.
-type testSyncJob struct {
-	F       func()
-	running int
-}
+type testSyncJob struct{}
 
 func (j *testSyncJob) Status() scheduler.JobStatus {
 	return scheduler.JobStatus{
-		Completed: j.running,
+		Completed: 0,
 		Total:     1,
 	}
 }
 
-func (j *testSyncJob) Run(_ context.Context) error {
-	j.running = 0
-	j.F()
-	j.running++
-	return nil
-}
-
+func (j *testSyncJob) Run(_ context.Context) error       { return nil }
 func (j *testSyncJob) NextRunIn() (time.Duration, error) { return setSyncJobRunInterval, nil }
 func (j *testSyncJob) Name() string                      { return setSyncJobName }
 func (j *testSyncJob) Description() string               { return setSyncJobName }
 
 func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
-	// Quick assertion that setSyncJobRunInterval is 10 minutes. This
-	// is due to the timing set for checks below to ensure that a sync
-	// job is only set to run under certain conditions (read: when a
-	// catalog *with sets* has its *attributes* field updated).
-	require.Equal(t, time.Minute*10, setSyncJobRunInterval, "test expects setSyncJobRunInterval to be 10 minutes, please review test and adjust check accordingly")
-
 	ctx := context.Background()
 	dbConn, _ := db.TestSetup(t, "postgres")
 	dbRW := db.New(dbConn)
@@ -1512,17 +1498,19 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, numSetsUpdated)
 
-	jobRunCh := make(chan struct{})
-	j := &testSyncJob{
-		F: func() { close(jobRunCh) },
-	}
-	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval*2))
+	j := &testSyncJob{}
+	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval))
 	require.NoError(t, err)
 	var wg sync.WaitGroup
 	err = sched.Start(ctx, &wg)
 	require.NoError(t, err)
 
 	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Load the job repository here so that we can validate run times.
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -1533,18 +1521,11 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, catalogsUpdated)
 
-	// Wait 2m for the job to not run. The regular sync job is 10
-	// minutes, and we set the "next run" for the test job above to
-	// double that, so waiting 2 minutes should be fine, with the
-	// default job interval being 1m.
-	var jobRan bool
-	select {
-	case <-time.After(time.Minute * 2):
-	case <-jobRunCh:
-		jobRan = true
-	}
-
-	require.False(t, jobRan)
+	// Job run should have not been requested
+	jj, err := jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 
 	// Updating name should not flag sets for sync
 	testCatalog.Name = "foobar"
@@ -1564,14 +1545,11 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.Equal(t, set2.LastSyncTime, gotSet2.LastSyncTime)
 	require.Equal(t, set2.Version, gotSet2.Version)
 
-	// Wait 2m again for the job to not run.
-	select {
-	case <-time.After(time.Minute * 2):
-	case <-jobRunCh:
-		jobRan = true
-	}
-
-	require.False(t, jobRan)
+	// Job run still should have not been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 
 	// Updating attributes should trigger update
 	testCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
@@ -1589,14 +1567,11 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.True(t, gotSet2.NeedSync)
 	require.Equal(t, set2.Version+1, gotSet2.Version)
 
-	// Wait for the job again, for the same amount of time. This time the job should have ran.
-	select {
-	case <-time.After(time.Minute * 2):
-	case <-jobRunCh:
-		jobRan = true
-	}
-
-	require.True(t, jobRan)
+	// Job run should have been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.Less(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 }
 
 func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {
