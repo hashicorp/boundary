@@ -477,7 +477,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 					}
 
-					if n != 1 {
+					if n > 1 {
 						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 host set to be updated while flagging host set id %q for synchronization, got %d", newSet.PublicId, n))
 					}
 
