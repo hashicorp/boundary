@@ -114,7 +114,8 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
-	HostPlugins map[string]plgpb.HostPluginServiceClient
+	EnabledPlugins []EnabledPlugin
+	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
 

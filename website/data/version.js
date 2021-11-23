@@ -1,2 +1,2 @@
-export const VERSION = '0.7.0'
-export const DESKTOP_VERSION = '1.3.0'
+export const VERSION = '0.7.1'
+export const DESKTOP_VERSION = '1.4.0'
