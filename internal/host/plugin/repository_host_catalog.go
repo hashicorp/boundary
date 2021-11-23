@@ -469,10 +469,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				for _, set := range setsForCatalog {
 					newSet := set.clone()
 					newSet.NeedSync = true
-					currentVersion := newSet.Version
-					newSet.Version = currentVersion + 1
 					var msg oplog.Message
-					n, err := w.Update(ctx, newSet, []string{"NeedSync", "version"}, []string{}, db.NewOplogMsg(&msg), db.WithVersion(&currentVersion))
+					n, err := w.Update(ctx, newSet, []string{"NeedSync"}, []string{}, db.NewOplogMsg(&msg))
 					if err != nil {
 						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 					}
