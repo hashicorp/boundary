@@ -476,7 +476,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					}
 
 					if n > 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 host set to be updated while flagging host set id %q for synchronization, got %d", newSet.PublicId, n))
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected no more than 1 host set to be updated while flagging host set id %q for synchronization, got %d", newSet.PublicId, n))
 					}
 
 					msgs = append(msgs, &msg)
