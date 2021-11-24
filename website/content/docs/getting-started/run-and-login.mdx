@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Run and Login
-description: |-
-  How to run Boundary services in dev mode and login for the first time.
+description: How to run Boundary services in dev mode and login for the first time.
 ---
 
 # Run and Login to Boundary
@@ -21,7 +20,6 @@ dev mode. These can be overridden, or randomly generated, with flags to
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```
 $ boundary authenticate password \
@@ -63,7 +61,6 @@ to track it and voice your thoughts.
 </Tab>
 <Tab heading="Admin Console">
 
-
 To authenticate to the Admin UI, open
 [http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the login
 name and password:
@@ -77,22 +74,22 @@ name and password:
 
 </Tab>
 
-
 <Tab heading="Desktop Client">
 <p>
-
 
 To authenticate using the Boundary desktop client, launch Boundary desktop client
 and connect to boundary to using [http://127.0.0.1:9200](http://127.0.0.1:9200)
 and enter the login name and password:
 
 <video
-  muted
-  playsInline
-  autoPlay
-  loop
-  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+muted
+playsInline
+autoPlay
+loop
+class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+
 >
+
   <source
     type="video/mp4"
     src="https://www.datocms-assets.com/2885/1613612831-boundary-desktop-clickthrough-authenticate-v1-0-0.mp4"
@@ -102,9 +99,7 @@ and enter the login name and password:
 </p>
 </Tab>
 
-
 <Tab heading="Terraform">
-
 
 You can also use these overrides to configure the [Terraform provider for
 Boundary](https://github.com/hashicorp/terraform-provider-boundary):
@@ -123,7 +118,6 @@ the Boundary server does not use TLS in development mode.
 
 </Tab>
 </Tabs>
-
 
 ## Next Steps
 

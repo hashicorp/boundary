@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Connections/TLS
-description: |-
-  How Boundary secures its connections
+description: How Boundary secures its connections
 ---
 
 # TLS in Boundary
@@ -46,25 +45,25 @@ TLS establishment is performed as follows:
    allow for some minor clock drift) and two minutes after (to allow time to
    establish the connection).
 
-2. The Worker marshals the TLS chain and nonce and encrypts the resulting bytes
+1. The Worker marshals the TLS chain and nonce and encrypts the resulting bytes
    via the shared KMS. This value is marshaled and split into chunks.
 
-3. The Worker establishes a TLS 1.3 connection to the Controller. The encrypted
+1. The Worker establishes a TLS 1.3 connection to the Controller. The encrypted
    value is transmitted to the Controller via the TLS ALPN field as numbered
    chunks.
 
-4. The Controller reads the chunks and reassembles them into the original
+1. The Controller reads the chunks and reassembles them into the original
    encrypted value.
 
-5. The Controller decrypts this value via the shared KMS. If successful, the
+1. The Controller decrypts this value via the shared KMS. If successful, the
    Controller validates that the nonce is not known to ensure that this is not a
    replay. The nonce value is checked against and stored into the database,
    ensuring that nonce replay cannot occur across controllers.
 
-6. The Controller uses the decrypted parameters to configures its TLS stack with
+1. The Controller uses the decrypted parameters to configures its TLS stack with
    the same certificate and key.
 
-7. The connection is mutually authenticated; on each end, only the single
+1. The connection is mutually authenticated; on each end, only the single
    self-signed CA certificate that was securely transmitted is configured as a
    valid root CA for validation checking.
 
@@ -85,33 +84,33 @@ TLS establishment is performed as follows:
    derivation uses HKDF-SHA256 with the user ID and the session ID as inputs.
    The lifetime of the certificate is tied to the lifetime of the session.
 
-2. The certificate and private key (along with other session authorization data,
+1. The certificate and private key (along with other session authorization data,
    notably the session ID) are returned to the client as part of the output of an
    `authorize-session` action against a target, in the form of a marshaled object.
    The controller persists the certificate in the database, but not the private
    key.
 
-3. The client (that is, the `boundary connect` command) parses this session
+1. The client (that is, the `boundary connect` command) parses this session
    authorization data and uses the certificate and private key to construct a TLS
    stack. It then makes a TLS 1.3 connection to a Worker, passing the session ID as
    the SNI value.
 
-4. The worker sees the SNI value and makes a call to the Controller to fetch
+1. The worker sees the SNI value and makes a call to the Controller to fetch
    session authorization information, keyed by the session ID.
 
-5. The Controller looks for a session with the given ID and fetches the
+1. The Controller looks for a session with the given ID and fetches the
    information. Using the session ID and the user ID tied to the session, it
    re-derives the private key and passes all of the information back to the Worker.
    Notably, this may include a TOFU (Trust On First Use) token.
 
-6. The Worker uses the given data to construct a TLS stack with the same
+1. The Worker uses the given data to construct a TLS stack with the same
    certificate and key.
 
-7. The connection is mutually authenticated; on each end, only the single
+1. The connection is mutually authenticated; on each end, only the single
    self-signed CA certificate that was securely transmitted is configured as a
    valid root CA for validation checking.
 
-8. If successful, the client and Worker perform a handshake, where the client
+1. If successful, the client and Worker perform a handshake, where the client
    passes a TOFU (Trust On First Use) value to the Worker. This value is derived
    when the client is created; that is, when `boundary connect` is run. This allows
    for a single client to make multiple connections within a session, without the

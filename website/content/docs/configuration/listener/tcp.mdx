@@ -1,8 +1,10 @@
 ---
 layout: docs
 page_title: TCP - Listeners - Configuration
-description: |-
-  The TCP listener configures Boundary to listen on the specified TCP address and
+description: >-
+  The TCP listener configures Boundary to listen on the specified TCP address
+  and
+
   port.
 ---
 
@@ -50,11 +52,11 @@ allowed.
   is read. The default value of `"0"` means infinity. This is specified using a
   label suffix like `"30s"` or `"1h"`.
 
-<!-- We don't have this implemented yet
+{/* We don't have this implemented yet
 - `max_request_size` `(int: 33554432)` – Specifies a hard maximum allowed
   request size, in bytes. Defaults to 32 MB. Specifying a number less than or
   equal to `0` turns off limiting altogether.
-!-->
+!*/}
 
 - `max_request_duration` `(string: "90s")` – Specifies the maximum
   request duration allowed before Boundary cancels the request. This overrides
@@ -137,7 +139,7 @@ page](https://www.boundaryproject.io/docs/concepts/security/connections-tls).
 - `tls_client_ca_file` `(string: "")` – PEM-encoded Certificate Authority file
   used for checking the authenticity of client.
 
-<!-- Not enabled yet
+{/* Not enabled yet
 - `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
   Specifies the list of source IP CIDRs for which an X-Forwarded-For header
   will be trusted. Comma-separated list or JSON array. This turns on
@@ -161,7 +163,7 @@ page](https://www.boundaryproject.io/docs/concepts/security/connections-tls).
 
 - `unauthenticated_metrics_access` `(string: "false")` - If set to true, allows
   unauthenticated access to the `/v1/sys/metrics` endpoint.
-!-->
+!*/}
 
 ## `tcp` Listener Examples
 
@@ -194,5 +196,7 @@ listener "tcp" {
 ```
 
 [golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
+
 [api-addr]: /docs/configuration#api_addr
+
 [cluster-addr]: /docs/configuration#cluster_addr

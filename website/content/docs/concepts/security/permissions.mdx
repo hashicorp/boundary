@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Permissions
-description: |-
-  Boundary's permissions model
+description: Boundary's permissions model
 ---
 
 # Permissions in Boundary
@@ -155,7 +154,7 @@ At the same time, this was not an ideal solution for two reasons:
 1. There is no one-size-fits-all security policy, and what we thought were
    reasonable defaults may not work in all situations
 
-2. It made the scopes and auth methods listing behavior work differently from
+1. It made the scopes and auth methods listing behavior work differently from
    any other `list` action, which is not ideal
 
 As a result, we decided to approach this problem the same way we normally try to
@@ -344,7 +343,7 @@ wildcard or templated grant strings.
 Additionally, this does not include available output fields; see the [service
 documentation](https://www.boundaryproject.io/api-docs) for guidance.
 
-<!-- BEGIN TABLE -->
+{/* BEGIN TABLE */}
 
 <table>
   <thead>
@@ -1775,4 +1774,4 @@ documentation](https://www.boundaryproject.io/api-docs) for guidance.
   </tbody>
 </table>
 
-<!-- END TABLE -->
+{/* END TABLE */}

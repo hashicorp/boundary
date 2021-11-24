@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Filtering - Events
-description: |-
-  How to filter events emitted by Boundary.
+description: How to filter events emitted by Boundary.
 ---
 
 This page describes how to filter events written to Boundary event sinks.
@@ -15,18 +14,19 @@ Starting in Boundary 0.5.0, a variety of event types (error, observation,
 system, etc) are emitted from Boundary.   Boundary events can be emitted in
 several formats including [cloudevents](https://github.com/cloudevents/spec) and
 [hclog](https://github.com/hashicorp/go-hclog), and can be encoded as text and
-json. 
+json.
 
 Boundary allows you to configure any number of
 [sinks](/docs/configuration/events/overview), where these events will be
 written. When configuring an event sink, you can specify [common sink
 parameters](/docs/configuration/events/common) which include both
 `allow_filters` and `deny_filters` which use the standard [filter
-syntax](/docs/concepts/filtering) used 
-elsewhere in Boundary. 
+syntax](/docs/concepts/filtering) used
+elsewhere in Boundary.
 
 Example events encoded as cloudevents-text.  The first event is a system event
 and the second event is an observation event.
+
 ```json
 {
   "id": "DU7u227Jhc",
@@ -68,6 +68,7 @@ and the second event is an observation event.
 
 If I wanted to filter an event sink which was configured for every event type to
 only include the above events, I might use the following sink configuration:
+
 ```
 sink "stderr" = {
     name = "all-events"
@@ -83,15 +84,16 @@ sink "stderr" = {
 ```
 
 When running `boundary dev` the example allow filter can be given via:
+
 ```bash
 boundary dev \
     -event-allow-filter '"/Data/request_info/Path" contains ":authenticate"' \
     -event-allow-filter '"/Data/Op" contains ".createClientConn"'
 ```
+
 ~> Double quotes are part of the filter syntax; when using the CLI, it is likely
 easier to surround the filter with single quotes than to deal with escaping
 double quotes.
 
 ~> Both `-event-allow-filter` and `-event-deny-filter` command flags are
 supported for the `boundary dev` command.
-

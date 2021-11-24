@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Controller/Worker - Events
-description: |-
-  The events stanza configures events-specific parameters.
+description: The events stanza configures events-specific parameters.
 ---
 
 # `events` Stanza
@@ -33,7 +32,7 @@ events {
 }
 ```
 
-- `audit_enabled` - Specifies if audit events should be emitted.  
+- `audit_enabled` - Specifies if audit events should be emitted.\
   Note: audit events are a WIP and will only be emitted if they are both enabled and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true. We anticipate many changes for audit events before they are generally available including what data is included and different options for redacting/encrypting that data.
 
 - `observations_enabled` - Specifies if observation events should be emitted.

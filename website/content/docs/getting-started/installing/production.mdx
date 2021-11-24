@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Production Installation
-description: |-
-  How to install Boundary in a production environment
+description: How to install Boundary in a production environment
 ---
 
 # Production Installation
@@ -161,10 +160,10 @@ name must be unique!
 1. `/etc/boundary-${TYPE}.hcl`: Configuration file for the boundary service
    See above example configurations.
 
-2. `/usr/local/bin/boundary`: The Boundary binary
+1. `/usr/local/bin/boundary`: The Boundary binary
    Can build from https://github.com/hashicorp/boundary or download binary from our release pages.
 
-3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service
+1. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service
    Example:
 
 ```

@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: OCI KMS - KMSs - Configuration
-description: |-
-  The OCI KMS configures Boundary to use OCI KMS for key management.
+description: The OCI KMS configures Boundary to use OCI KMS for key management.
 ---
 
 # `ocikms` KMS
@@ -95,6 +94,9 @@ admit dynamic-group <dynamic-group-name> of tenancy tenantA to use keys in compa
 For the [OCI KMS key rotation feature][oci-kms-rotation], OCI KMS will create a new version of key internally. This process is independent from Boundary, and boundary still uses the same `key_id` without any interruption.
 
 [oci-sdk]: https://docs.cloud.oracle.com/iaas/Content/API/Concepts/sdkconfig.htm
+
 [oci-dg]: https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingdynamicgroups.htm
+
 [oci-id]: https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/policies.htm
+
 [oci-kms-rotation]: https://docs.cloud.oracle.com/iaas/Content/KeyManagement/Tasks/managingkeys.htm

@@ -47,7 +47,6 @@ Create a password-type auth method in the generated default org:
 <Tabs>
 <Tab heading="CLI">
 
-
 ```bash
 $ boundary auth-methods create password -scope-id o_1234567890 -name org_auth_method -description 'Org auth method'
 
@@ -74,7 +73,6 @@ Auth Method information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to an org, then to auth methods.
 1. Choose the **New** button.
 1. Fill in the auth method details.
@@ -90,7 +88,6 @@ Auth Method information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_auth_method" "password" {
   name        = "org_auth_method"
@@ -103,7 +100,6 @@ resource "boundary_auth_method" "password" {
 </Tab>
 </Tabs>
 
-
 ## Create Account
 
 Create an account for the org-scoped auth method. Note that by default, user
@@ -113,7 +109,6 @@ the attributes for the auth method, if desired.)
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 boundary accounts create password -auth-method-id ampw_PbE6nNT72a -login-name 'myuser' -password supersecure -name my_account -description 'My password account'
@@ -141,7 +136,6 @@ Account information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to orgs > auth methods > auth method, then to the **Accounts** tab.
 1. Choose the **New** button.
 1. Fill the account details.
@@ -157,7 +151,6 @@ Account information:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_account" "my_user" {
   name           = "myuser"
@@ -172,14 +165,12 @@ resource "boundary_account" "my_user" {
 </Tab>
 </Tabs>
 
-
 ## Create a User
 
 Next, create a user at the org scope.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 First, create the user resource:
 
@@ -228,7 +219,6 @@ User information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to an org, then to users.
 1. Choose the **New** button.
 1. Fill the user details.
@@ -258,7 +248,6 @@ Then associate the user with an account:
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_user" "myuser" {
   name        = "myuser"
@@ -273,7 +262,6 @@ resource "boundary_user" "myuser" {
 </Tab>
 </Tabs>
 
-
 ## Login
 
 Now you can test logging in.
@@ -281,14 +269,12 @@ Now you can test logging in.
 <Tabs>
 <Tab heading="CLI">
 
-
 ```bash
 $ boundary authenticate password -login-name myuser -password supersecure -auth-method-id ampw_PbE6nNT72a
 ```
 
 </Tab>
 <Tab heading="Admin Console">
-
 
 1. Navigate to the authenticate page.
 1. Choose an org scope with which to authenticate.
@@ -305,7 +291,6 @@ $ boundary authenticate password -login-name myuser -password supersecure -auth-
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 provider "boundary" {
   addr                            = "http://127.0.0.1:9200"
@@ -317,4 +302,3 @@ provider "boundary" {
 
 </Tab>
 </Tabs>
-

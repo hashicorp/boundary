@@ -1,8 +1,7 @@
 ---
 layout: docs
 page_title: Boundary Desktop
-description: |-
-  Get up and running with Boundary Desktop
+description: Get up and running with Boundary Desktop
 ---
 
 # Boundary Desktop
@@ -35,18 +34,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-open.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-open.png)
 
 </Tab>
 </Tabs>
-
 
 1. You'll be prompted for the Boundary server origin, this is the URL for the client
    to connect to the Boundary API. If you are running a local `dev` mode server, this
@@ -55,18 +51,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-origin.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-origin.png)
 
 </Tab>
 </Tabs>
-
 
 1. You can now login to Boundary. We're using a `dev` mode server in this example with the
    username `admin` and the password `password`
@@ -74,18 +67,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-login.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-login.png)
 
 </Tab>
 </Tabs>
-
 
 1. After logging in, you should see the targets your user is authorized to connect to. Since
    we are using a `dev` mode server we see the default generated target for `127.0.0.1:22`
@@ -93,18 +83,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-landing.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-landing.png)
 
 </Tab>
 </Tabs>
-
 
 ### Connect!
 
@@ -116,18 +103,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-connect.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-connect.png)
 
 </Tab>
 </Tabs>
-
 
 1. Navigate to the `Sessions` pane and you'll see this session is in `pending` state because we
    haven't made a connection to it yet (but will!)
@@ -135,18 +119,15 @@ $ boundary dev
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-pending.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-pending.png)
 
 </Tab>
 </Tabs>
-
 
 -> The next step assumes you have a SSH server running that the default target will connect to.
 
@@ -168,35 +149,29 @@ $
 <Tabs>
 <Tab heading="MacOS">
 
-
 ![](/img/desktop/macos/boundary-desktop-active.png)
 
 </Tab>
 <Tab heading="Windows">
-
 
 ![](/img/desktop/windows/boundary-desktop-active.png)
 
 </Tab>
 </Tabs>
 
-
 1. Click `Cancel` to cancel the session and you'll see the status go to `canceling` briefly, then `terminated`
 
 <Tabs>
 <Tab heading="MacOS">
-
 
 ![](/img/desktop/macos/boundary-desktop-terminated.png)
 
 </Tab>
 <Tab heading="Windows">
 
-
 ![](/img/desktop/windows/boundary-desktop-terminated.png)
 
 </Tab>
 </Tabs>
-
 
 1. Navigate back to the CLI and you'll see your SSH session has closed
