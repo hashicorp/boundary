@@ -1471,6 +1471,20 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
+			name:  "Update empty attributes for catalog",
+			masks: []string{"attributes"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateAttrs(func() *structpb.Struct {
+					ret, _ := structpb.NewStruct(nil)
+					return ret
+				}()),
+			},
+			check: func(t *testing.T, in *pb.HostCatalog) {
+				assert.Equal(t, (*structpb.Struct)(nil), in.GetAttributes())
+			},
+		},
+		{
 			name:  "Update secrets",
 			masks: []string{"secrets.key1", "secrets.key2"},
 			changes: []updateFn{
