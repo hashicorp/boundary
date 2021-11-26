@@ -9,35 +9,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
-func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
-	opts := &option{
-		tcOptions: &controller.TestControllerOpts{},
-	}
-	for _, o := range opt {
-		if err := o(opts); err != nil {
-			return nil, err
-		}
-	}
-	if opts.setWithConfigFile && opts.setWithConfigText {
-		return nil, fmt.Errorf("Cannot provide both WithConfigFile and WithConfigText")
-	}
-	var setDbParams bool
-	if opts.setDefaultPasswordAuthMethodId || opts.setDefaultOidcAuthMethodId || opts.setDefaultLoginName || opts.setDefaultPassword {
-		setDbParams = true
-	}
-	if opts.setDisableAuthMethodCreation {
-		if setDbParams {
-			return nil, fmt.Errorf("Cannot both disable auth method creation and provide auth method parameters")
-		}
-	}
-	if opts.setDisableDatabaseCreation {
-		if setDbParams {
-			return nil, fmt.Errorf("Cannot both disable database creation and provide auth method parameters")
-		}
-	}
-	return opts.tcOptions, nil
-}
-
 type option struct {
 	tcOptions                      *controller.TestControllerOpts
 	setWithConfigFile              bool
@@ -53,9 +24,43 @@ type option struct {
 	setWorkerAuthKms               bool
 	setRecoveryKms                 bool
 	setDatabaseUrl                 bool
+	setEnableTemplatedDatabase     bool
 }
 
 type Option func(*option) error
+
+func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
+	opts := &option{
+		tcOptions: &controller.TestControllerOpts{},
+	}
+	for _, o := range opt {
+		if err := o(opts); err != nil {
+			return nil, err
+		}
+	}
+	opts.tcOptions.DisableDatabaseTemplate = !opts.setEnableTemplatedDatabase
+	if opts.setWithConfigFile && opts.setWithConfigText {
+		return nil, fmt.Errorf("Cannot provide both WithConfigFile and WithConfigText")
+	}
+	var setDbParams bool
+	if opts.setDefaultPasswordAuthMethodId ||
+		opts.setDefaultOidcAuthMethodId ||
+		opts.setDefaultLoginName ||
+		opts.setDefaultPassword {
+		setDbParams = true
+	}
+	if opts.setDisableAuthMethodCreation {
+		if setDbParams {
+			return nil, fmt.Errorf("Cannot both disable auth method creation and provide auth method parameters")
+		}
+	}
+	if opts.setDisableDatabaseCreation {
+		if setDbParams {
+			return nil, fmt.Errorf("Cannot both disable database creation and provide auth method parameters")
+		}
+	}
+	return opts.tcOptions, nil
+}
 
 // WithConfigFile provides the given ConfigFile to the built TestController.
 // This option cannot be used if WithConfigText is used.
@@ -184,6 +189,20 @@ func WithDatabaseUrl(url string) Option {
 	}
 }
 
+// WithEnableTemplatedDatabase enables usage of a local database test instance
+// with a template. Generally outside tests will probably want to use the
+// non-templated database, so this defaults to enabling instead of disabling.
+func WithEnableTemplatedDatabase(enable bool) Option {
+	return func(c *option) error {
+		c.setEnableTemplatedDatabase = enable
+		return nil
+	}
+}
+
+type TestController struct {
+	*controller.TestController
+}
+
 // NewTestController blocks until a new TestController is created, returns the url for the TestController and a function
 // that can be called to tear down the controller after it has been used for testing.
 func NewTestController(t *testing.T, opt ...Option) *TestController {
@@ -193,8 +212,4 @@ func NewTestController(t *testing.T, opt ...Option) *TestController {
 	}
 	tc := controller.NewTestController(t, conf)
 	return &TestController{TestController: tc}
-}
-
-type TestController struct {
-	*controller.TestController
 }
