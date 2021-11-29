@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -1500,9 +1499,6 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 
 	j := &testSyncJob{}
 	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval))
-	require.NoError(t, err)
-	var wg sync.WaitGroup
-	err = sched.Start(ctx, &wg)
 	require.NoError(t, err)
 
 	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
