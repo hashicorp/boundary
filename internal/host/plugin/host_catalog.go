@@ -132,20 +132,21 @@ func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 }
 
 type catalogAgg struct {
-	PublicId            string `gorm:"primary_key"`
-	ScopeId             string
-	PluginId            string
-	Name                string
-	Description         string
-	CreateTime          *timestamp.Timestamp
-	UpdateTime          *timestamp.Timestamp
-	Version             uint32
-	SecretsHmac         []byte
-	Attributes          []byte
-	Secret              []byte
-	KeyId               string
-	PersistedCreateTime *timestamp.Timestamp
-	PersistedUpdateTime *timestamp.Timestamp
+	PublicId               string `gorm:"primary_key"`
+	ScopeId                string
+	PluginId               string
+	Name                   string
+	Description            string
+	CreateTime             *timestamp.Timestamp
+	UpdateTime             *timestamp.Timestamp
+	Version                uint32
+	SecretsHmac            []byte
+	Attributes             []byte
+	Secret                 []byte
+	KeyId                  string
+	PersistedCreateTime    *timestamp.Timestamp
+	PersistedUpdateTime    *timestamp.Timestamp
+	PersistedRefreshAtTime *timestamp.Timestamp
 }
 
 func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret) {
@@ -172,6 +173,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 		s.KeyId = agg.KeyId
 		s.CreateTime = agg.PersistedCreateTime
 		s.UpdateTime = agg.PersistedUpdateTime
+		s.RefreshAtTime = agg.PersistedRefreshAtTime
 	}
 	return c, s
 }

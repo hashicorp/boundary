@@ -131,6 +131,10 @@ message HostCatalogSecret {
   // It must be set.
   // @inject_tag: `gorm:"not_null"`
   string key_id = 6;
+  
+  // The time to refresh the secret. A null value denotes never
+  // refresh.
+  timestamp.v1.Timestamp refresh_at_time = 7;
 }
 
 // TODO: Add a field which tracks if the host in cache should be considered

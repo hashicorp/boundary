@@ -2,13 +2,17 @@ package plugin
 
 import (
 	"context"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // HostCatalogSecret contains the encrypted secret for a host catalog.
@@ -20,11 +24,20 @@ type HostCatalogSecret struct {
 
 // newHostCatalogSecret creates an in memory host catalog secret.
 // All options are ignored.
-func newHostCatalogSecret(ctx context.Context, catalogId string, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
+//
+// The TTL indicates the refresh time in from the current time in
+// seconds. A negative value indicates never refresh.
+func newHostCatalogSecret(ctx context.Context, catalogId string, ttl *wrapperspb.UInt32Value, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
 	const op = "plugin.newHostCatlogSecret"
+	var refreshAtTime *timestamp.Timestamp
+	if ttl != nil {
+		refreshAtTime = timestamp.New(time.Now().UTC().Add(time.Second * time.Duration(ttl.GetValue())))
+	}
+
 	hcs := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
-			CatalogId: catalogId,
+			CatalogId:     catalogId,
+			RefreshAtTime: refreshAtTime,
 		},
 	}
 
@@ -85,4 +98,12 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.CtSecret = nil
 	return nil
+}
+
+func (c *HostCatalogSecret) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-catalog-id": []string{c.CatalogId},
+		"op-type":             []string{op.String()},
+	}
+	return metadata
 }

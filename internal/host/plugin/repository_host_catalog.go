@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -100,6 +102,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	var plgResp *plgpb.OnCreateCatalogResponse
 
 	var newHostCatalog *HostCatalog
+	var secretRefreshAtTime *timestamp.Timestamp
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -128,11 +131,14 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				pluginCalledSuccessfully = true
 			}
 
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
-				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
+			if plgResp != nil && plgResp.GetPersisted() != nil && plgResp.GetPersisted().GetSecrets() != nil {
+				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
+
+				secretRefreshAtTime = hcSecret.RefreshAtTime
+
 				dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
@@ -168,6 +174,22 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
+
+	if secretRefreshAtTime != nil {
+		if err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, refreshHostCatalogPersistedJobName, time.Until(secretRefreshAtTime.AsTime())); err != nil {
+			event.WriteError(
+				ctx,
+				op,
+				err,
+				event.WithInfoMsg(
+					"requesting new run time for job",
+					"job name", refreshHostCatalogPersistedJobName,
+					"new duration", time.Until(secretRefreshAtTime.AsTime()).String(),
+				),
+			)
+		}
+	}
+
 	return newHostCatalog, plg, nil
 }
 
@@ -335,6 +357,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 	var recordUpdated bool
 	var returnedCatalog *HostCatalog
+	var secretRefreshAtTime *timestamp.Timestamp
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -386,10 +409,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				pluginCalledSuccessfully = true
 			}
 			var updatedPersisted bool
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+			if plgResp != nil && plgResp.GetPersisted() != nil && plgResp.GetPersisted().GetSecrets() != nil {
 				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
 					// Flag the secret to be deleted.
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -407,10 +430,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					updatedPersisted = true
 					msgs = append(msgs, &sOplogMsg)
 				} else {
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
+
+					secretRefreshAtTime = hcSecret.RefreshAtTime
+
 					if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -423,7 +449,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 						updatedSecret,
 						db.WithOnConflict(&db.OnConflict{
 							Target: db.Columns{"catalog_id"},
-							Action: db.SetColumns([]string{"secret", "key_id"}),
+							Action: db.SetColumns([]string{"secret", "key_id", "refresh_at_time"}),
 						}),
 						db.NewOplogMsg(&sOplogMsg),
 					); err != nil {
@@ -503,7 +529,35 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	}
 
 	if runSyncJob {
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+		// Run the sync job if we flagged it for a run due to attribute
+		// update.
+		err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+		if err != nil {
+			event.WriteError(
+				ctx,
+				op,
+				err,
+				event.WithInfoMsg(
+					"requesting job run for set sync job",
+					"job name", setSyncJobName,
+				),
+			)
+		}
+	}
+
+	if secretRefreshAtTime != nil {
+		if err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, refreshHostCatalogPersistedJobName, time.Until(secretRefreshAtTime.AsTime())); err != nil {
+			event.WriteError(
+				ctx,
+				op,
+				err,
+				event.WithInfoMsg(
+					"requesting new run time for job",
+					"job name", refreshHostCatalogPersistedJobName,
+					"new duration", time.Until(secretRefreshAtTime.AsTime()).String(),
+				),
+			)
+		}
 	}
 
 	// Even if we didn't update any records, if we were able to find the record
@@ -743,5 +797,5 @@ func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId strin
 	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
-	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+	return &plgpb.HostCatalogPersisted{Secrets: secrets, RefreshAtTime: cSecret.GetRefreshAtTime().GetTimestamp()}, nil
 }

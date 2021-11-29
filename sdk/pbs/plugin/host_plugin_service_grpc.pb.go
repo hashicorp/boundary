@@ -35,6 +35,9 @@ type HostPluginServiceClient interface {
 	OnDeleteSet(ctx context.Context, in *OnDeleteSetRequest, opts ...grpc.CallOption) (*OnDeleteSetResponse, error)
 	// ListHosts looks up all the hosts in the provided host sets.
 	ListHosts(ctx context.Context, in *ListHostsRequest, opts ...grpc.CallOption) (*ListHostsResponse, error)
+	// RefreshHostCatalogPersisted instructs the plugin to refresh its
+	// persisted data (usually used for refreshing secrets).
+	RefreshHostCatalogPersisted(ctx context.Context, in *RefreshHostCatalogPersistedRequest, opts ...grpc.CallOption) (*RefreshHostCatalogPersistedResponse, error)
 }
 
 type hostPluginServiceClient struct {
@@ -108,6 +111,15 @@ func (c *hostPluginServiceClient) ListHosts(ctx context.Context, in *ListHostsRe
 	return out, nil
 }
 
+func (c *hostPluginServiceClient) RefreshHostCatalogPersisted(ctx context.Context, in *RefreshHostCatalogPersistedRequest, opts ...grpc.CallOption) (*RefreshHostCatalogPersistedResponse, error) {
+	out := new(RefreshHostCatalogPersistedResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/RefreshHostCatalogPersisted", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HostPluginServiceServer is the server API for HostPluginService service.
 // All implementations must embed UnimplementedHostPluginServiceServer
 // for forward compatibility
@@ -129,6 +141,9 @@ type HostPluginServiceServer interface {
 	OnDeleteSet(context.Context, *OnDeleteSetRequest) (*OnDeleteSetResponse, error)
 	// ListHosts looks up all the hosts in the provided host sets.
 	ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error)
+	// RefreshHostCatalogPersisted instructs the plugin to refresh its
+	// persisted data (usually used for refreshing secrets).
+	RefreshHostCatalogPersisted(context.Context, *RefreshHostCatalogPersistedRequest) (*RefreshHostCatalogPersistedResponse, error)
 	mustEmbedUnimplementedHostPluginServiceServer()
 }
 
@@ -156,6 +171,9 @@ func (UnimplementedHostPluginServiceServer) OnDeleteSet(context.Context, *OnDele
 }
 func (UnimplementedHostPluginServiceServer) ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHosts not implemented")
+}
+func (UnimplementedHostPluginServiceServer) RefreshHostCatalogPersisted(context.Context, *RefreshHostCatalogPersistedRequest) (*RefreshHostCatalogPersistedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshHostCatalogPersisted not implemented")
 }
 func (UnimplementedHostPluginServiceServer) mustEmbedUnimplementedHostPluginServiceServer() {}
 
@@ -296,6 +314,24 @@ func _HostPluginService_ListHosts_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostPluginService_RefreshHostCatalogPersisted_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshHostCatalogPersistedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostPluginServiceServer).RefreshHostCatalogPersisted(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.HostPluginService/RefreshHostCatalogPersisted",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostPluginServiceServer).RefreshHostCatalogPersisted(ctx, req.(*RefreshHostCatalogPersistedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HostPluginService_ServiceDesc is the grpc.ServiceDesc for HostPluginService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -330,6 +366,10 @@ var HostPluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListHosts",
 			Handler:    _HostPluginService_ListHosts_Handler,
+		},
+		{
+			MethodName: "RefreshHostCatalogPersisted",
+			Handler:    _HostPluginService_RefreshHostCatalogPersisted_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

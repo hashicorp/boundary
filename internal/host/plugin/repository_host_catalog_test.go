@@ -45,6 +45,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		want             *HostCatalog
 		wantPluginCalled bool
 		wantSecret       *structpb.Struct
+		wantSecretTtl    *wrapperspb.UInt32Value
 		wantIsErr        errors.Code
 	}{
 		{
@@ -244,6 +245,45 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}(),
 			wantPluginCalled: true,
 		},
+		{
+			name: "valid-with-secret-ttl",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo-ttltest",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+				Secrets: func() *structpb.Struct {
+					st, err := structpb.NewStruct(map[string]interface{}{
+						"k1": "v1",
+						"k2": 2,
+						"k3": nil,
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo-ttltest",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+			},
+			wantSecret: func() *structpb.Struct {
+				st, err := structpb.NewStruct(map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				})
+				require.NoError(t, err)
+				return st
+			}(),
+			wantSecretTtl:    wrapperspb.UInt32(42),
+			wantPluginCalled: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -262,7 +302,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 							pluginCalled = true
 							gotPluginAttrs = req.GetCatalog().GetAttributes()
-							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+							var ttl *wrapperspb.UInt32Value
+							if req.GetCatalog().GetDescription().GetValue() == "test-description-repo-ttltest" {
+								ttl = wrapperspb.UInt32(42)
+							}
+							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets(), TtlSeconds: ttl}}, nil
 						},
 					},
 				},
@@ -312,6 +356,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, cSecret.Secret)
 			require.NotEmpty(t, cSecret.CtSecret)
+			if tt.wantSecretTtl != nil {
+				assert.Equal(
+					time.Now().UTC().Add(time.Second*time.Duration(tt.wantSecretTtl.GetValue())).Truncate(time.Second),
+					cSecret.RefreshAtTime.AsTime().Truncate(time.Second),
+				)
+			}
 
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
 			require.NoError(t, err)
@@ -438,6 +488,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// in parallel, but there could be other factors affecting that as
 	// well.
 	var setRespSecretsNil bool
+	var setRespSecretsTtl *wrapperspb.UInt32Value
 	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
 	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
@@ -452,7 +503,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 						setRespSecretsNil = false
 					}
 
-					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets}}, pluginError
+					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets, TtlSeconds: setRespSecretsTtl}}, pluginError
 				},
 			},
 		},
@@ -601,7 +652,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkSecrets := func(want map[string]interface{}) checkFunc {
+	// Note that wantTtl for checkSecrets will check RefreshAtTime at the number
+	// of seconds after the current time.
+	checkSecrets := func(wantTtl *wrapperspb.UInt32Value, wantSecret map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -619,7 +672,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 			st := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(cSecret.Secret, st))
-			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+			if wantTtl != nil {
+				assert.Equal(
+					time.Now().UTC().Add(time.Second*time.Duration(wantTtl.GetValue())).Truncate(time.Second),
+					cSecret.RefreshAtTime.AsTime().Truncate(time.Second),
+				)
+			} else {
+				assert.Nil(wantTtl)
+			}
+			assert.Empty(cmp.Diff(mustStruct(wantSecret), st, protocmp.Transform()))
 		}
 	}
 
@@ -707,6 +768,29 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	checkUpdateCatalogRequestPersistedRefreshAtTimeNil := func() checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Nil(gotOnUpdateCatalogRequest.Persisted.RefreshAtTime)
+			// Assert TtlSeconds is zero (we don't set it on update)
+			assert.Nil(gotOnUpdateCatalogRequest.Persisted.TtlSeconds)
+		}
+	}
+
+	checkUpdateCatalogRequestPersistedRefreshAtTimeFromTtl := func(want uint32) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(
+				time.Now().UTC().Add(time.Second*time.Duration(want)).Truncate(time.Second),
+				gotOnUpdateCatalogRequest.Persisted.RefreshAtTime.AsTime().Truncate(time.Second),
+			)
+			// Assert TtlSeconds is zero (we don't set it on update)
+			assert.Nil(gotOnUpdateCatalogRequest.Persisted.TtlSeconds)
+		}
+	}
+
 	checkUpdateCatalogRequestSecrets := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -745,6 +829,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		name               string
 		withEmptyPluginMap bool
 		withRespSecretsNil bool
+		withSecretsTtl     *wrapperspb.UInt32Value
+		withRespSecretsTtl *wrapperspb.UInt32Value
 		withPluginError    error
 		changeFuncs        []changeHostCatalogFunc
 		version            uint32
@@ -822,7 +908,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -840,7 +926,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -858,7 +944,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
 				checkName(testDuplicateCatalogNameAltScope),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -876,7 +962,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -894,7 +980,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescriptionNil(),
 				checkDescription(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -922,7 +1008,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -948,7 +1034,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkAttributes(map[string]interface{}{
 					"foo": "baz",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -970,7 +1056,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				}),
 				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{}),
 				checkAttributes(map[string]interface{}{}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -999,7 +1085,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1007,7 +1093,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 		},
 		{
-			name: "update secrets",
+			name:               "update secrets",
+			withSecretsTtl:     wrapperspb.UInt32(30),
+			withRespSecretsTtl: wrapperspb.UInt32(60),
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
 				"five":  "six",
@@ -1024,7 +1112,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"three": "four",
 					"five":  "six",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedRefreshAtTimeFromTtl(30),
+				checkSecrets(wrapperspb.UInt32(60), map[string]interface{}{
 					"three": "four",
 					"five":  "six",
 				}),
@@ -1035,6 +1124,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		{
 			name:               "update secrets, return nil secrets from plugin",
 			withRespSecretsNil: true,
+			withSecretsTtl:     wrapperspb.UInt32(30),
+			withRespSecretsTtl: wrapperspb.UInt32(60),
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
 			})},
@@ -1049,7 +1140,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedRefreshAtTimeFromTtl(30),
+				checkSecrets(wrapperspb.UInt32(30), map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1090,8 +1182,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
 				}),
+				checkUpdateCatalogRequestPersistedRefreshAtTimeNil(),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(nil, map[string]interface{}{
 					"three": "four",
 				}),
 				checkNumUpdated(1),
@@ -1103,7 +1196,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// Finally define a function for bringing the test subject catalog.
 	// This function also returns a function to clean up the catalog
 	// afterwards.
-	setupHostCatalog := func(t *testing.T, ctx context.Context) *HostCatalog {
+	setupHostCatalog := func(t *testing.T, ctx context.Context, secretsTtl *wrapperspb.UInt32Value) *HostCatalog {
 		t.Helper()
 		require := require.New(t)
 
@@ -1116,7 +1209,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			"one": "two",
 		})
 		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), secretsTtl, cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
 		err = dbRW.Create(ctx, cSecret)
@@ -1146,7 +1239,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			origCat := setupHostCatalog(t, ctx)
+			origCat := setupHostCatalog(t, ctx, tt.withSecretsTtl)
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
@@ -1164,6 +1257,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 
 			setRespSecretsNil = tt.withRespSecretsNil
+			setRespSecretsTtl = tt.withRespSecretsTtl
 			var gotPlugin *hostplugin.Plugin
 			gotCatalog, gotPlugin, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {
@@ -1506,7 +1600,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	// Load the job repository here so that we can validate run times.
 	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
 	require.NoError(t, err)
-	require.NotNil(t, repo)
+	require.NotNil(t, jobRepo)
 
 	// Updating an empty catalog should not trigger an update.
 	emptyTestCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
@@ -1596,4 +1690,216 @@ func mustMarshal(in map[string]interface{}) []byte {
 	}
 
 	return b
+}
+
+func TestRepository_CreateCatalog_UpdateRefreshJob(t *testing.T) {
+	ctx := context.Background()
+	dbConn, _ := db.TestSetup(t, "postgres")
+	dbRW := db.New(dbConn)
+	dbWrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, dbConn, dbWrapper)
+	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
+	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+
+	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	var ttl *wrapperspb.UInt32Value
+	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{
+			Server: &TestPluginServer{
+				OnCreateCatalogFn: func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+					return &plgpb.OnCreateCatalogResponse{
+						Persisted: &plgpb.HostCatalogPersisted{
+							Secrets:    mustStruct(map[string]interface{}{"foo": "bar"}),
+							TtlSeconds: ttl,
+						},
+					}, nil
+				},
+			},
+		},
+	}
+	refreshJob, err := newRefreshHostCatalogPersistedJob(ctx, dbRW, dbRW, dbKmsCache, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, refreshJob)
+	require.NoError(t, sched.RegisterJob(ctx, refreshJob))
+
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, jobRepo)
+
+	gotJob, err := jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+
+	gotJob.NextScheduledRun = timestamp.New(time.Now().UTC().Add(refreshHostCatalogPersistedJobInterval))
+	n, err := dbRW.Update(ctx, gotJob, []string{"NextScheduledRun"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, refreshHostCatalogPersistedJobInterval, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Start by creating a catalog without a TTL
+	hc, err := NewHostCatalog(ctx, projectScope.GetPublicId(), testPlugin.GetPublicId())
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	_, _, err = repo.CreateCatalog(ctx, hc)
+	require.NoError(t, err)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, refreshHostCatalogPersistedJobInterval, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Now create a TTL with 2m. Next run time should change
+	ttl = wrapperspb.UInt32(120)
+	hc, err = NewHostCatalog(ctx, projectScope.GetPublicId(), testPlugin.GetPublicId())
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	_, _, err = repo.CreateCatalog(ctx, hc)
+	require.NoError(t, err)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*120, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Set TTL to 3m, create new catalog. Next run time should not
+	// change
+	ttl = wrapperspb.UInt32(180)
+	hc, err = NewHostCatalog(ctx, projectScope.GetPublicId(), testPlugin.GetPublicId())
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	_, _, err = repo.CreateCatalog(ctx, hc)
+	require.NoError(t, err)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*120, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Set TTL to 1m, create new catalog. Next run time should now be 1m
+	ttl = wrapperspb.UInt32(60)
+	hc, err = NewHostCatalog(ctx, projectScope.GetPublicId(), testPlugin.GetPublicId())
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	_, _, err = repo.CreateCatalog(ctx, hc)
+	require.NoError(t, err)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*60, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+}
+
+func TestRepository_UpdateCatalog_UpdateRefreshJob(t *testing.T) {
+	ctx := context.Background()
+	dbConn, _ := db.TestSetup(t, "postgres")
+	dbRW := db.New(dbConn)
+	dbWrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, dbConn, dbWrapper)
+	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
+	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+
+	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	var ttl *wrapperspb.UInt32Value
+	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{
+			Server: &TestPluginServer{
+				OnUpdateCatalogFn: func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
+					return &plgpb.OnUpdateCatalogResponse{
+						Persisted: &plgpb.HostCatalogPersisted{
+							Secrets:    mustStruct(map[string]interface{}{"foo": "bar"}),
+							TtlSeconds: ttl,
+						},
+					}, nil
+				},
+			},
+		},
+	}
+	refreshJob, err := newRefreshHostCatalogPersistedJob(ctx, dbRW, dbRW, dbKmsCache, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, refreshJob)
+	require.NoError(t, sched.RegisterJob(ctx, refreshJob))
+
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, jobRepo)
+
+	gotJob, err := jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+
+	gotJob.NextScheduledRun = timestamp.New(time.Now().UTC().Add(refreshHostCatalogPersistedJobInterval))
+	n, err := dbRW.Update(ctx, gotJob, []string{"NextScheduledRun"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, refreshHostCatalogPersistedJobInterval, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	hc := TestCatalog(t, dbConn, projectScope.GetPublicId(), testPlugin.GetPublicId())
+	require.NotNil(t, hc)
+
+	// Update the catalog secrets without TTL adjustment
+	hc.Secrets = mustStruct(map[string]interface{}{"a": "b"})
+	hc, _, n, err = repo.UpdateCatalog(ctx, hc, 1, []string{"secrets"})
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, refreshHostCatalogPersistedJobInterval, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Now create a TTL with 2m. Next run time should change
+	ttl = wrapperspb.UInt32(120)
+	hc.Secrets = mustStruct(map[string]interface{}{"c": "d"})
+	hc, _, n, err = repo.UpdateCatalog(ctx, hc, 2, []string{"secrets"})
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*120, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Set TTL to 3m and update. Next run time should not change
+	ttl = wrapperspb.UInt32(180)
+	hc.Secrets = mustStruct(map[string]interface{}{"e": "f"})
+	hc, _, n, err = repo.UpdateCatalog(ctx, hc, 3, []string{"secrets"})
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*120, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
+
+	// Set TTL to 1m and update. Next run time should now be 1m
+	ttl = wrapperspb.UInt32(60)
+	hc.Secrets = mustStruct(map[string]interface{}{"g": "h"})
+	hc, _, n, err = repo.UpdateCatalog(ctx, hc, 4, []string{"secrets"})
+	require.NoError(t, err)
+	require.NotNil(t, hc)
+	require.Equal(t, 1, n)
+
+	gotJob, err = jobRepo.LookupJob(ctx, refreshHostCatalogPersistedJobName)
+	require.NoError(t, err)
+	require.NotNil(t, gotJob)
+	require.Equal(t, time.Second*60, time.Until(gotJob.GetNextScheduledRun().AsTime()).Round(time.Minute))
 }

@@ -27,6 +27,13 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 	if err = scheduler.RegisterJob(ctx, orphanedHostCleanupJob); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("orphaned host cleanup job"))
 	}
+	refreshHostCatalogPersistedJob, err := newRefreshHostCatalogPersistedJob(ctx, r, w, kms, plgm)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, refreshHostCatalogPersistedJob); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("refresh host catalog persisted job"))
+	}
 
 	return nil
 }

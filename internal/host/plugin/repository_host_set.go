@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -164,7 +165,17 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 
 	// The set now exists in the plugin, sync it immediately.
-	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	if err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0); err != nil {
+		event.WriteError(
+			ctx,
+			op,
+			err,
+			event.WithInfoMsg(
+				"requesting job run for set sync job",
+				"job name", setSyncJobName,
+			),
+		)
+	}
 
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
@@ -522,13 +533,35 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	switch {
 	case updateAttributes:
 		// Request a host sync since we have updated attributes.
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+		if err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0); err != nil {
+			event.WriteError(
+				ctx,
+				op,
+				err,
+				event.WithInfoMsg(
+					"requesting job run for set sync job",
+					"job name", setSyncJobName,
+				),
+			)
+		}
+
 	case updateSyncInterval:
 		tilNextSync := time.Until(returnedSet.LastSyncTime.AsTime().Add(time.Duration(returnedSet.SyncIntervalSeconds) * time.Second))
 		if tilNextSync < 0 {
 			tilNextSync = 0
 		}
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync)
+		if err := r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync); err != nil {
+			event.WriteError(
+				ctx,
+				op,
+				err,
+				event.WithInfoMsg(
+					"requesting job run for set sync job",
+					"job name", setSyncJobName,
+					"new duration", tilNextSync,
+				),
+			)
+		}
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil

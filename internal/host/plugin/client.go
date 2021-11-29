@@ -46,3 +46,7 @@ func (tpc *WrappingPluginClient) OnDeleteSet(ctx context.Context, req *plgpb.OnD
 func (tpc *WrappingPluginClient) ListHosts(ctx context.Context, req *plgpb.ListHostsRequest, opts ...grpc.CallOption) (*plgpb.ListHostsResponse, error) {
 	return tpc.Server.ListHosts(ctx, req)
 }
+
+func (tpc *WrappingPluginClient) RefreshHostCatalogPersisted(ctx context.Context, req *plgpb.RefreshHostCatalogPersistedRequest, opts ...grpc.CallOption) (*plgpb.RefreshHostCatalogPersistedResponse, error) {
+	return tpc.Server.RefreshHostCatalogPersisted(ctx, req)
+}
