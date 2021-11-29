@@ -3,17 +3,24 @@ package accounts_test
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	testsapi "github.com/hashicorp/boundary/internal/tests/api"
 )
 
 func TestListPassword(t *testing.T) {
@@ -228,8 +235,22 @@ func TestCrudOidc(t *testing.T) {
 }
 
 func TestCustomMethods(t *testing.T) {
+	// this cannot run in parallel because it relies on envvar
+	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
+	event.TestEnableEventing(t, true)
+
 	assert, require := assert.New(t), require.New(t)
-	tc := controller.NewTestController(t, nil)
+
+	eventConfig := event.TestEventerConfig(t, "TestCustomMethods", event.TestWithAuditSink(t))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{Mutex: testLock, Name: "test"})
+	require.NoError(event.InitSysEventer(testLogger, testLock, "TestCustomMethods", event.WithEventerConfig(&eventConfig.EventerConfig)))
+
+	tcConfig, err := config.DevController()
+	require.NoError(err)
+	tcConfig.Eventing = &eventConfig.EventerConfig
+
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{Config: tcConfig})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -251,8 +272,14 @@ func TestCustomMethods(t *testing.T) {
 		userAcct = al.Items[1]
 	}
 
+	require.NotNil(eventConfig.AuditEvents)
+	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
+
 	_, err = userAccountClient.SetPassword(tc.Context(), userAcct.Id, "setpassword", userAcct.Version)
 	require.Error(err)
+
+	req := testsapi.GetEventDetails(t, testsapi.CloudEventFromFile(t, eventConfig.AuditEvents.Name()), "request")
+	testsapi.AssertRedactedValues(t, req, "password")
 
 	setAcct, err := adminAccountClient.SetPassword(tc.Context(), userAcct.Id, "setpassword", userAcct.Version)
 	require.NoError(err)
@@ -264,10 +291,16 @@ func TestCustomMethods(t *testing.T) {
 	require.NotNil(changeAcct)
 	assert.Equal(userAcct.Version+2, changeAcct.Item.Version)
 
+	require.NotNil(eventConfig.AuditEvents)
+	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
+
 	changeAcct, err = userAccountClient.ChangePassword(tc.Context(), userAcct.Id, "changepassword", "password2", changeAcct.Item.Version)
 	require.NoError(err)
 	require.NotNil(changeAcct)
 	assert.Equal(userAcct.Version+3, changeAcct.Item.Version)
+
+	req = testsapi.GetEventDetails(t, testsapi.CloudEventFromFile(t, eventConfig.AuditEvents.Name()), "request")
+	testsapi.AssertRedactedValues(t, req, "current_password", "new_password")
 }
 
 func TestErrors(t *testing.T) {

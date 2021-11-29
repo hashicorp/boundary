@@ -32,30 +32,30 @@ type Account struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Account.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for the Account.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
+	Scope *scopes.ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,50,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of this Account.
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The ID of the Auth Method that is associated with this Account.
-	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
+	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The attributes that are applicable for the specific Account type.
 	Attributes *structpb.Struct `protobuf:"bytes,100,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
-	ManagedGroupIds []string `protobuf:"bytes,110,rep,name=managed_group_ids,proto3" json:"managed_group_ids,omitempty"`
+	ManagedGroupIds []string `protobuf:"bytes,110,rep,name=managed_group_ids,proto3" json:"managed_group_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Account) Reset() {

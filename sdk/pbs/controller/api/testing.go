@@ -19,5 +19,6 @@ func NewEncryptFilter(t *testing.T, w wrapping.Wrapper) *encrypt.Filter {
 		IgnoreTypes: []reflect.Type{
 			reflect.TypeOf(&fieldmaskpb.FieldMask{}),
 		},
+		FilterOperationOverrides: encrypt.DefaultFilterOperations(),
 	}
 }
