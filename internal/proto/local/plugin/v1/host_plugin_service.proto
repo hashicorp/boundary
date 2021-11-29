@@ -35,6 +35,10 @@ service HostPluginService {
 
 	// ListHosts looks up all the hosts in the provided host sets.
 	rpc ListHosts(ListHostsRequest) returns (ListHostsResponse);
+	
+  // RefreshHostCatalogPersisted instructs the plugin to refresh its
+  // persisted data (usually used for refreshing secrets).
+	rpc RefreshHostCatalogPersisted(RefreshHostCatalogPersistedRequest) returns (RefreshHostCatalogPersistedResponse);
 }
 
 message OnCreateCatalogRequest {
@@ -172,6 +176,22 @@ message ListHostsResponseHost {
 	// host. Example: host descriptions, tags, alternate network
 	// addresses, etc.
 	google.protobuf.Struct attributes = 100;
+}
+
+message RefreshHostCatalogPersistedRequest {
+  // The existing host catalog that needs refreshing.
+	controller.api.resources.hostcatalogs.v1.HostCatalog catalog = 10;
+
+  // The existing persisted secret data.
+	HostCatalogPersisted persisted = 20;
+}
+
+message RefreshHostCatalogPersistedResponse {
+  // The updated secret data to persist encrypted within Boundary. If
+  // an error is returned, the update of the persisted data is
+  // aborted. If this is nil, no changes are written. To remove all
+  // values, simply return an allocated but empty map.
+	HostCatalogPersisted persisted = 10;
 }
 
 // HostCatalogPersisted represents state persisted between host catalog calls.
