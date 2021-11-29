@@ -11,6 +11,9 @@ module.exports = withHashicorp({
   mdx: { resolveIncludes: path.join(__dirname, 'pages/partials') },
   nextOptimizedImages: true,
 })({
+  experimental: {
+    esmExternals: true,
+  },
   async redirects() {
     return await redirects
   },
