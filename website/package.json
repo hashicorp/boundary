@@ -60,7 +60,8 @@
     }
   },
   "engines": {
-    "npm": ">=7.0.0"
+    "npm": ">=7.0.0",
+    "node": ">=14.0.0"
   },
   "scripts": {
     "build": "node --max-old-space-size=2048 ./node_modules/.bin/next build",
