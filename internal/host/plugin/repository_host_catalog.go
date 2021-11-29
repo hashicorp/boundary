@@ -480,9 +480,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					}
 
 					msgs = append(msgs, &msg)
-					if len(setsForCatalog) != 0 {
-						runSyncJob = true
-					}
+					runSyncJob = true
 				}
 			}
 
