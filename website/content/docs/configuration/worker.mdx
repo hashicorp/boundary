@@ -28,7 +28,10 @@ worker {
   at which the worker can be reached _by clients for proxying_. This defaults to
   the address of the listener marked for `proxy` purpose. This is especially
   useful for cloud environments that do not bind a publicly accessible IP to a NIC
-  on the host directly, such as an Amazon EIP.
+  on the host directly, such as an Amazon EIP. This value can be a direct address string,
+  can refer to a file on disk (file://) from which an address will be read;
+  an env var (env://) from which the address will be read;
+  or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
 
 - `controllers` - A list of hosts/IP addresses and optionally ports for reaching
   controllers. The port will default to :9201 if not specified.
