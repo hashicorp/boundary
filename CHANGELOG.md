@@ -7,7 +7,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### New and Improved
 
 * config: Add support for go-sockaddr templates to Worker and Controller
-  addresses. [(PR)](https://github.com/hashicorp/boundary/pull/1731)
+  addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
 
 ## 0.7.1 (2021/11/18)
 
