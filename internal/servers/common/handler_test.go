@@ -170,12 +170,9 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	// this cannot run in parallel because it relies on envvar
 	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
 	event.TestEnableEventing(t, true)
-	testCtx := context.Background()
 	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	testKms := kms.TestKms(t, conn, wrapper)
-
-	require.NoError(t, InitPrivateNetworks(testCtx, PrivateCidrBlocks()))
 
 	testHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)

@@ -125,7 +125,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms, liste
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI()))
 			return
 		}
-		clientIp, err := ClientIpFromRequest(ctx, PrivateNetworks(ctx), listenerCfg, r)
+		clientIp, err := ClientIpFromRequest(ctx, listenerCfg, r)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to determine client ip"))

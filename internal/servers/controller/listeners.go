@@ -17,17 +17,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
-	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )
 
 func (c *Controller) startListeners(ctx context.Context) error {
-	if err := common.InitPrivateNetworks(ctx, common.PrivateCidrBlocks()); err != nil {
-		return err
-	}
-
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
@@ -44,22 +39,6 @@ func (c *Controller) startListeners(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
-		/*
-			// TODO: As I write this Vault's having this code audited, make sure to
-			// port over any recommendations
-			//
-			// We perform validation on the config earlier, we can just cast here
-			if _, ok := ln.config["x_forwarded_for_authorized_addrs"]; ok {
-				hopSkips := ln.config["x_forwarded_for_hop_skips"].(int)
-				authzdAddrs := ln.config["x_forwarded_for_authorized_addrs"].([]*sockaddr.SockAddrMarshaler)
-				rejectNotPresent := ln.config["x_forwarded_for_reject_not_present"].(bool)
-				rejectNonAuthz := ln.config["x_forwarded_for_reject_not_authorized"].(bool)
-				if len(authzdAddrs) > 0 {
-					handler = vaulthttp.WrapForwardedForHandler(handler, authzdAddrs, rejectNotPresent, rejectNonAuthz, hopSkips)
-				}
-			}
-		*/
 
 		// Resolve it here to avoid race conditions if the base context is
 		// replaced
