@@ -286,12 +286,16 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		}
 	}
 
+	var needSetSync, runSyncJob bool
 	if updateAttributes {
 		dbMask = append(dbMask, "attributes")
 		newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in catalog attribute JSON"))
 		}
+
+		// Flag for host sets under this catalog to be synced.
+		needSetSync = true
 	}
 
 	// Get the plugin for the host catalog - this is to return it back
@@ -454,6 +458,32 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				recordUpdated = true
 			}
 
+			if needSetSync {
+				// We also need to mark all host sets in this catalog to be
+				// synced as well.
+				setsForCatalog, _, err := r.getSets(ctx, "", returnedCatalog.PublicId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get sets for host catalog"))
+				}
+
+				for _, set := range setsForCatalog {
+					newSet := set.clone()
+					newSet.NeedSync = true
+					var msg oplog.Message
+					n, err := w.Update(ctx, newSet, []string{"NeedSync"}, []string{}, db.NewOplogMsg(&msg))
+					if err != nil {
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
+					}
+
+					if n > 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected no more than 1 host set to be updated while flagging host set id %q for synchronization, got %d", newSet.PublicId, n))
+					}
+
+					msgs = append(msgs, &msg)
+					runSyncJob = true
+				}
+			}
+
 			if len(msgs) != 0 {
 				metadata := newCatalog.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
@@ -472,8 +502,12 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newCatalog.PublicId)))
 	}
 
+	if runSyncJob {
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	}
+
 	// Even if we didn't update any records, if we were able to find the record
-	// with the appropriate version, returning 1 row updated is consistant with
+	// with the appropriate version, returning 1 row updated is consistent with
 	// static's update catalog behavior.
 	numUpdated := 1
 

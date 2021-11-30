@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -17,6 +18,7 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1439,6 +1441,133 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Create a test scheduled job that we can use to catch when a run is executed.
+// We will use this to track whether or not an update was sent in
+// TestRepository_UpdateCatalog_SyncSets.
+type testSyncJob struct{}
+
+func (j *testSyncJob) Status() scheduler.JobStatus {
+	return scheduler.JobStatus{
+		Completed: 0,
+		Total:     1,
+	}
+}
+
+func (j *testSyncJob) Run(_ context.Context) error       { return nil }
+func (j *testSyncJob) NextRunIn() (time.Duration, error) { return setSyncJobRunInterval, nil }
+func (j *testSyncJob) Name() string                      { return setSyncJobName }
+func (j *testSyncJob) Description() string               { return setSyncJobName }
+
+func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
+	ctx := context.Background()
+	dbConn, _ := db.TestSetup(t, "postgres")
+	dbRW := db.New(dbConn)
+	dbWrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, dbConn, dbWrapper)
+	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
+	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+
+	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+	}
+
+	// Set up a test catalog and the secrets for it
+	testCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+	// Set up another test catalog that will not have sets on it
+	emptyTestCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+
+	// Create a couple of host sets.
+	set1 := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, dummyPluginMap)
+	set1.LastSyncTime = timestamp.New(time.Now())
+	set1.NeedSync = false
+
+	numSetsUpdated, err := dbRW.Update(ctx, set1, []string{"LastSyncTime", "NeedSync"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numSetsUpdated)
+
+	// Set 2
+	set2 := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, dummyPluginMap)
+	set2.LastSyncTime = timestamp.New(time.Now())
+	set2.NeedSync = false
+
+	numSetsUpdated, err = dbRW.Update(ctx, set2, []string{"LastSyncTime", "NeedSync"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numSetsUpdated)
+
+	j := &testSyncJob{}
+	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval))
+	require.NoError(t, err)
+
+	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Load the job repository here so that we can validate run times.
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Updating an empty catalog should not trigger an update.
+	emptyTestCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	var catalogsUpdated int
+	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, emptyTestCatalog, emptyTestCatalog.Version, []string{"attributes"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	// Job run should have not been requested
+	jj, err := jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
+
+	// Updating name should not flag sets for sync
+	testCatalog.Name = "foobar"
+	testCatalog, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, testCatalog, testCatalog.Version, []string{"name"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	gotSet1, _, err := repo.LookupSet(ctx, set1.PublicId)
+	require.NoError(t, err)
+	require.False(t, gotSet1.NeedSync)
+	require.Equal(t, set1.LastSyncTime, gotSet1.LastSyncTime)
+	require.Equal(t, set1.Version, gotSet1.Version)
+
+	gotSet2, _, err := repo.LookupSet(ctx, set2.PublicId)
+	require.NoError(t, err)
+	require.False(t, gotSet2.NeedSync)
+	require.Equal(t, set2.LastSyncTime, gotSet2.LastSyncTime)
+	require.Equal(t, set2.Version, gotSet2.Version)
+
+	// Job run still should have not been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
+
+	// Updating attributes should trigger update
+	testCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, testCatalog, testCatalog.Version, []string{"attributes"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	gotSet1, _, err = repo.LookupSet(ctx, set1.PublicId)
+	require.NoError(t, err)
+	require.True(t, gotSet1.NeedSync)
+	require.Equal(t, set1.Version+1, gotSet1.Version)
+
+	gotSet2, _, err = repo.LookupSet(ctx, set2.PublicId)
+	require.NoError(t, err)
+	require.True(t, gotSet2.NeedSync)
+	require.Equal(t, set2.Version+1, gotSet2.Version)
+
+	// Job run should have been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.Less(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 }
 
 func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {
