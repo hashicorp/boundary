@@ -1,0 +1,14 @@
+begin;
+
+create or replace function default_create_time()
+  returns trigger
+as $$
+begin
+  if new.create_time is distinct from now() then
+    new.create_time = now();
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+commit;

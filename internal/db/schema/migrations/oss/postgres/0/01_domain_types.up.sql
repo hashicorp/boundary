@@ -63,6 +63,7 @@ comment on function
 is
   'function used in before update triggers to properly set update_time columns';
   
+-- Replaced in 21/01_default_time.up.sql
 create or replace function
   default_create_time()
   returns trigger
