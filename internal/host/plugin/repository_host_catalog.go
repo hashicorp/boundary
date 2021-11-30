@@ -287,7 +287,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	}
 
 	var needSetSync, runSyncJob bool
-	if updateAttributes && c.Attributes != nil {
+	if updateAttributes {
 		dbMask = append(dbMask, "attributes")
 		newCatalog.Attributes, err = patchstruct.PatchBytes(newCatalog.Attributes, c.Attributes)
 		if err != nil {

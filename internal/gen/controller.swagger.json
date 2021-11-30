@@ -4337,7 +4337,7 @@
         "sync_interval_seconds": {
           "type": "integer",
           "format": "int32",
-          "description": "An interger number of seconds indicating the amount of time that should\nelapse between syncs of the host set. The interval will be applied to the\nend of the previous sync operation, not the start. Setting to any\nnegative value will disable syncing for that host set; setting to zero\nwill cause the set to use Boundary's default. The default may change\nbetween releases. May not be valid for all plugin types."
+          "description": "An interger number of seconds indicating the amount of time that should\nelapse between syncs of the host set. The interval will be applied to the\nend of the previous sync operation, not the start. Setting to -1 will\ndisable syncing for that host set; setting to zero will cause the set to\nuse Boundary's default. The default may change between releases. May not\nbe valid for all plugin types."
         },
         "attributes": {
           "type": "object",

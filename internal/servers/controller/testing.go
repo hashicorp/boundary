@@ -343,9 +343,14 @@ type TestControllerOpts struct {
 	// created but examined after-the-fact
 	DisableDatabaseDestruction bool
 
-	// If set, instead of creating a dev database, it will connect to an
-	// existing database given the url
+	// DatabaseUrl will cause the test controller to connect to an existing
+	// database given the url instead of creating a new one
 	DatabaseUrl string
+
+	// DisableDatabaseTemplate forces using a fresh Postgres instance in Docker
+	// instead of using a local templated version. Useful for CI of external
+	// repos, like Terraform.
+	DisableDatabaseTemplate bool
 
 	// If true, the controller will not be started
 	DisableAutoStart bool
@@ -624,7 +629,9 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
-		createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		if !opts.DisableDatabaseTemplate {
+			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}

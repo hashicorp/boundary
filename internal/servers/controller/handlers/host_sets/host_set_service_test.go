@@ -1571,6 +1571,20 @@ func TestUpdate_Plugin(t *testing.T) {
 			},
 		},
 		{
+			name:  "Set attributes null",
+			masks: []string{"attributes"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateAttrs(func() *structpb.Struct {
+					ret, _ := structpb.NewStruct(nil)
+					return ret
+				}()),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, (*structpb.Struct)(nil), in.GetAttributes())
+			},
+		},
+		{
 			name:  "Update preferred endpoints",
 			masks: []string{"preferred_endpoints"},
 			changes: []updateFn{
