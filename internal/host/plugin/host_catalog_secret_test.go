@@ -153,10 +153,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	require.NoError(t, newSecretUpsert.encrypt(ctx, databaseWrapper))
 	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&db.OnConflict{
 		Target: db.Columns{"catalog_id"},
-		Action: db.SetColumnValues(map[string]interface{}{
-			"secret": newSecretUpsert.CtSecret,
-			"key_id": newSecretUpsert.KeyId,
-		}),
+		Action: db.SetColumns([]string{"secret", "key_id"}),
 	})))
 	found := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{

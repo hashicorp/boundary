@@ -423,10 +423,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 						updatedSecret,
 						db.WithOnConflict(&db.OnConflict{
 							Target: db.Columns{"catalog_id"},
-							Action: db.SetColumnValues(map[string]interface{}{
-								"secret": updatedSecret.CtSecret,
-								"key_id": updatedSecret.KeyId,
-							}),
+							Action: db.SetColumns([]string{"secret", "key_id"}),
 						}),
 						db.NewOplogMsg(&sOplogMsg),
 					); err != nil {
