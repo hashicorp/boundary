@@ -2,15 +2,10 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
-
 ### New and Improved
 
-* config: Add support for go-sockaddr templates to Worker and Controller
-  addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
-* host: Plugin-based host catalogs will now schedule updates for all
-  of its host sets when its attributes are updated.
-  ([PR](https://github.com/hashicorp/boundary/pull/1736))
+* controllers: Add client IP to inbound request information which is included in
+  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
 
 ## 0.7.1 (2021/11/18)
 
@@ -26,8 +21,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* controllers: Add client IP to inbound request information which is included in
-  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
 * tls: Boundary's support for TLS 1.0/1.1 on the API listener was broken. Rather
   than fix this, we are simply not supporting TLS 1.0/1.1 as they are insecure.
 
