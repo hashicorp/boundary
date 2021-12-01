@@ -34,6 +34,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
@@ -114,7 +115,8 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
-	HostPlugins map[string]plgpb.HostPluginServiceClient
+	EnabledPlugins []EnabledPlugin
+	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
 
@@ -196,7 +198,7 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
+	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig, event.WithAuditWrapper(opts.withEventWrapper))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
@@ -641,7 +643,13 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public cluster addr: %w", err)
 		}
+
+		conf.Controller.PublicClusterAddr, err = listenerutil.ParseSingleIPTemplate(conf.Controller.PublicClusterAddr)
+		if err != nil {
+			return fmt.Errorf("Error parsing IP template on controller public cluster addr: %w", err)
+		}
 	}
+
 	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
 	if err != nil {
 		if strings.Contains(err.Error(), "missing port") {
@@ -678,7 +686,13 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public addr: %w", err)
 		}
+
+		conf.Worker.PublicAddr, err = listenerutil.ParseSingleIPTemplate(conf.Worker.PublicAddr)
+		if err != nil {
+			return fmt.Errorf("Error parsing IP template on worker public addr: %w", err)
+		}
 	}
+
 	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)
 	if err != nil {
 		if strings.Contains(err.Error(), "missing port") {

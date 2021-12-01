@@ -16,17 +16,19 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId           string
-	withPluginId           string
-	withName               string
-	withDescription        string
-	withAttributes         *structpb.Struct
-	withSecrets            *structpb.Struct
-	withPreferredEndpoints []string
-	withIpAddresses        []string
-	withDnsNames           []string
-	withLimit              int
-	withSetIds             []string
+	withPublicId            string
+	withPluginId            string
+	withName                string
+	withDescription         string
+	withAttributes          *structpb.Struct
+	withSecrets             *structpb.Struct
+	withPreferredEndpoints  []string
+	withSyncIntervalSeconds int32
+	withIpAddresses         []string
+	withDnsNames            []string
+	withLimit               int
+	withSetIds              []string
+	withSecretsHmac         []byte
 }
 
 func getDefaultOptions() options {
@@ -84,6 +86,13 @@ func WithPreferredEndpoints(with []string) Option {
 	}
 }
 
+// WithSyncIntervalSeconds provides an optional sync interval, in seconds
+func WithSyncIntervalSeconds(with int32) Option {
+	return func(o *options) {
+		o.withSyncIntervalSeconds = with
+	}
+}
+
 // withIpAddresses provides an optional list of ip addresses.
 func withIpAddresses(with []string) Option {
 	return func(o *options) {
@@ -112,5 +121,12 @@ func WithLimit(l int) Option {
 func WithSetIds(with []string) Option {
 	return func(o *options) {
 		o.withSetIds = with
+	}
+}
+
+// WithSecretsHmac provides an optional HMAC of secrets. Used for testing.
+func WithSecretsHmac(secretsHmac []byte) Option {
+	return func(o *options) {
+		o.withSecretsHmac = secretsHmac
 	}
 }

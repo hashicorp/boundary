@@ -5,7 +5,7 @@ package migrations
 
 import (
 	"embed"
-	"path/filepath"
+	"fmt"
 	"strings"
 )
 
@@ -38,12 +38,12 @@ func stripBeginCommit(c []byte) string {
 }
 
 func newBase(root string, m embed.FS) base {
-	schemaVersion, err := m.ReadFile(filepath.Join(root, "01_boundary_schema_version.up.sql"))
+	schemaVersion, err := m.ReadFile(fmt.Sprintf("%s/%s", root, "01_boundary_schema_version.up.sql"))
 	if err != nil {
 		panic("missing base migration file 01_boundary_schema_version.up.sql")
 	}
 
-	logMigration, err := m.ReadFile(filepath.Join(root, "02_log_migration.up.sql"))
+	logMigration, err := m.ReadFile(fmt.Sprintf("%s/%s", root, "02_log_migration.up.sql"))
 	if err != nil {
 		panic("missing base migration file 02_log_migration.up.sql")
 	}

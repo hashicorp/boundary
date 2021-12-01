@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
@@ -141,18 +140,6 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
 	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
 		return err
-	}
-
-	if opts.withHostPlugin != nil {
-		pluginId, plg := opts.withHostPlugin()
-		b.DevLoopbackHostPluginId = pluginId
-		opts := []hostplugin.Option{
-			hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-			hostplugin.WithPublicId(b.DevLoopbackHostPluginId),
-		}
-		if _, err = b.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
-			return err
-		}
 	}
 
 	if opts.withSkipHostResourcesCreation {

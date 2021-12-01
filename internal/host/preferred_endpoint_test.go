@@ -61,7 +61,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 				want.HostSetId = set.PublicId
 				want.Condition = "cidr:1.2.3.4"
 				want.Priority = 1
-				return &want
+				return want
 			}(),
 		},
 		{
@@ -77,7 +77,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 				want.HostSetId = set.PublicId
 				want.Condition = "cidr:1.2.3.4"
 				want.Priority = 1
-				return &want
+				return want
 			}(),
 			wantCreateErr:   true,
 			wantCreateIsErr: errors.NotUnique,
@@ -141,8 +141,8 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := host.AllocPreferredEndpoint()
-				require.NoError(rw.LookupWhere(ctx, &found, "host_set_id = ? and priority = ?", tt.args.hostSetId, tt.args.priority))
-				assert.Equal(got, &found)
+				require.NoError(rw.LookupWhere(ctx, found, "host_set_id = ? and priority = ?", tt.args.hostSetId, tt.args.priority))
+				assert.Equal(got, found)
 			}
 		})
 	}

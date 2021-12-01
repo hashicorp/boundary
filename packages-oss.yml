@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.6.2
+    PRODUCT_VERSION: 0.7.1
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -51,8 +51,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-# golang:1.17.2-buster
-base-image: "docker.mirror.hashicorp.services/golang@sha256:c301ce41458847a02caea52b5c2fd2a18b34f33785ddd676d38defe286bb946b"
+# golang:1.17.3-bullseye
+base-image: "docker.mirror.hashicorp.services/golang@sha256:3b27ac95762ce1340a4824dc3cab2dc9d63f194f0899a0a9887402c1b1463f41"
 
 layers:
   - name: base
@@ -96,16 +96,18 @@ layers:
     source-include: "*.go *.up.sql"
 
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
+  BINARY_SUFFIX="";
+  if [ "${GOOS}x" == "windowsx" ]; then BINARY_SUFFIX=".exe"; fi;
   unset GOPATH;
   ORIG_PATH=$(pwd);
   for PLUGIN_TYPE in host; do
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
       cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
-      go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN} .;
+      go build -v -o $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}-${CURR_PLUGIN}${BINARY_SUFFIX} .;
       cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
-    for CURR_PLUGIN in $(ls); do
+    for CURR_PLUGIN in $(ls boundary-plugin*); do
       gzip -9 $CURR_PLUGIN;
     done;
     cd $ORIG_PATH;

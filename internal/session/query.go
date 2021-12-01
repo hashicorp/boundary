@@ -155,7 +155,7 @@ from
 select * 
 from
 	(select public_id from session %s) s,
-	session_with_state ss
+	session_list ss
 where 
 	s.public_id = ss.public_id 
 	%s

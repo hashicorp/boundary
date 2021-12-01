@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
@@ -27,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
@@ -74,6 +77,8 @@ type Controller struct {
 	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
+
+	enabledPlugins []base.EnabledPlugin
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -85,6 +90,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		schedulerWg:             new(sync.WaitGroup),
 		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
+		enabledPlugins:          conf.Server.EnabledPlugins,
 	}
 
 	c.started.Store(false)
@@ -118,32 +124,33 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	azureSvcClient, azureCleanup, err := external_host_plugins.CreateHostPlugin(
-		ctx,
-		"azure",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
-	if err != nil {
-		return nil, fmt.Errorf("error creating azure host plugin: %w", err)
-	}
-	conf.ShutdownFuncs = append(conf.ShutdownFuncs, azureCleanup)
-	if _, err := conf.RegisterHostPlugin(ctx, "azure", azureSvcClient, hostplugin.WithDescription("Built-in Azure host plugin")); err != nil {
-		return nil, fmt.Errorf("error registering azure host plugin: %w", err)
-	}
-
-	awsSvcClient, awsCleanup, err := external_host_plugins.CreateHostPlugin(
-		ctx,
-		"aws",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
-	if err != nil {
-		return nil, fmt.Errorf("error creating aws host plugin")
-	}
-	conf.ShutdownFuncs = append(conf.ShutdownFuncs, awsCleanup)
-	if _, err := conf.RegisterHostPlugin(ctx, "aws", awsSvcClient, hostplugin.WithDescription("Built-in AWS host plugin")); err != nil {
-		return nil, fmt.Errorf("error registering aws host plugin: %w", err)
+	for _, enabledPlugin := range c.enabledPlugins {
+		switch enabledPlugin {
+		case base.EnabledPluginHostLoopback:
+			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
+			opts := []hostplugin.Option{
+				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+			}
+			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+				return nil, err
+			}
+		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		}
 	}
 
 	if conf.HostPlugins == nil {
@@ -166,6 +173,20 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader); err != nil {
+		return nil, fmt.Errorf("error reconciling kms keys: %w", err)
+	}
+
+	// now that the kms is configured, we can get the audit wrapper and rotate
+	// the eventer audit wrapper, so the emitted events can include encrypt and
+	// hmac-sha256 data
+	auditWrapper, err := c.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeAudit)
+	if err != nil {
+		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
+	}
+	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)

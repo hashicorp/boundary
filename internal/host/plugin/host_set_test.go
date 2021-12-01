@@ -150,10 +150,10 @@ func TestHostSet_Create(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					CatalogId:          cat.GetPublicId(),
-					PreferredEndpoints: []string{"cidr:1.2.3.4"},
-					Attributes:         []byte{},
+					CatalogId:  cat.GetPublicId(),
+					Attributes: []byte{},
 				},
+				PreferredEndpoints: []string{"cidr:1.2.3.4"},
 			},
 		},
 	}

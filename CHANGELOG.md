@@ -4,6 +4,26 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* config: Add support for go-sockaddr templates to Worker and Controller
+  addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
+* host: Plugin-based host catalogs will now schedule updates for all
+  of its host sets when its attributes are updated.
+  ([PR](https://github.com/hashicorp/boundary/pull/1736))
+
+## 0.7.1 (2021/11/18)
+
+### Bug Fixes
+
+* db: Fix panic invoking the CLI on Windows. Some changes to how the binary is
+  initialized resulted in running some functions on every startup that looked
+  for some embedded files. However, Go's embed package does not use OS-specific
+  path separators, so a mismatch between path separators caused a failure in the
+  function. ([PR](https://github.com/hashicorp/boundary/pull/1733))
+
+## 0.7.0 (2021/11/17)
+
 ### Deprecations/Changes
 
 * tls: Boundary's support for TLS 1.0/1.1 on the API listener was broken. Rather
@@ -11,6 +31,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Boundary now supports dynamic discovery of host resources using our (currently
+  internal) new plugin system. See the
+  [documentation](https://www.boundaryproject.io/docs) for configuration
+  instructions. Currently, only Azure and AWS are supported, but more providers
+  will be following in future releases.
 * workers: The existing worker connection replay prevention logic has been
   enhanced to be more robust against attackers that have decryption access to
   the shared `worker-auth` KMS key

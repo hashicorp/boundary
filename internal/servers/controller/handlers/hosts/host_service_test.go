@@ -174,6 +174,7 @@ func TestGet_Plugin(t *testing.T) {
 			Description: plg.GetDescription(),
 		},
 		HostSetIds:        []string{hs.GetPublicId()},
+		ExternalId:        "test",
 		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 	}
 
@@ -280,6 +281,11 @@ func TestList_Static(t *testing.T) {
 			res:  &pbs.ListHostsResponse{Items: wantHs},
 		},
 		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hcst_doesntexist"},
+			err:  handlers.NotFoundError(),
+		},
+		{
 			name: "List No Hosts",
 			req:  &pbs.ListHostsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
 			res:  &pbs.ListHostsResponse{},
@@ -359,7 +365,8 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
-		h := plugin.TestHost(t, conn, hc.GetPublicId(), fmt.Sprintf("host %d", i))
+		extId := fmt.Sprintf("host %d", i)
+		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId)
 		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
@@ -374,6 +381,7 @@ func TestList_Plugin(t *testing.T) {
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			HostSetIds:        []string{hs.GetPublicId()},
 			Version:           1,
+			ExternalId:        extId,
 			Type:              plugin.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 		})
@@ -392,6 +400,11 @@ func TestList_Plugin(t *testing.T) {
 			name: "List Many Hosts",
 			req:  &pbs.ListHostsRequest{HostCatalogId: hc.GetPublicId()},
 			res:  &pbs.ListHostsResponse{Items: wantHs},
+		},
+		{
+			name: "List Non Existing Hosts",
+			req:  &pbs.ListHostsRequest{HostCatalogId: "hc_doesntexist"},
+			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "List No Hosts",
@@ -755,7 +768,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

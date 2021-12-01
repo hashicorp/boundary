@@ -42,9 +42,15 @@ message HostCatalog {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 
+  // secrets_hmac is a sha256-hmac of the unencrypted secrets that is returned
+  // from the API for read.  It is recalculated everytime the raw secrets are
+  // updated.
+  // @inject_tag: `gorm:"default:null"`
+  bytes secrets_hmac = 9;
+
   // attributes is a jsonb formatted field.
   // @inject_tag: `gorm:"not_null"`
-  bytes attributes = 9;
+  bytes attributes = 10;
 }
 
 message HostSet {
@@ -92,7 +98,11 @@ message HostSet {
 
   // preferred_endpoints stores string preference values
   // @inject_tag: `gorm:"-"`
-  repeated string preferred_endpoints = 11;
+  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {this:"PreferredEndpoints" that: "preferred_endpoints"}];
+
+  // Sync interval is a value representing a duration in seconds
+  // @inject_tag: `gorm:"default:null"`
+  int32 sync_interval_seconds = 12 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
 }
 
 message HostCatalogSecret {
@@ -156,7 +166,8 @@ message Host {
   // @inject_tag: `gorm:"not_null"`
   string catalog_id = 7;
 
-  // @inject_tag: `gorm:"-"`
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 
   // ip_addresses are the ip addresses associated with this host and will

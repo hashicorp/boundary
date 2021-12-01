@@ -290,7 +290,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		scope: Scope{Id: scopeId},
 	}
 	switch {
-	case scopeId == "global":
+	case scopeId == scope.Global.String():
 		grant.scope.Type = scope.Global
 	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
 		grant.scope.Type = scope.Org

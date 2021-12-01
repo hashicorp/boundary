@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
+	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -19,6 +21,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // CreateSet inserts s into the repository and returns a new HostSet
@@ -45,10 +48,22 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if scopeId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
+	if s.SyncIntervalSeconds < -1 {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sync interval")
+	}
 	if s.Attributes == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil attributes")
 	}
 	s = s.clone()
+
+	// Use PatchBytes' functionality that does not add keys where the values
+	// are nil to the resulting struct since we do not want to store nil valued
+	// attributes.
+	var err error
+	s.Attributes, err = patchstruct.PatchBytes([]byte{}, s.Attributes)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 
 	c, per, err := r.getCatalog(ctx, s.CatalogId)
 	if err != nil {
@@ -75,11 +90,6 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-		if status.Code(err) != codes.Unimplemented {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	var preferredEndpoints []interface{}
 	if s.PreferredEndpoints != nil {
@@ -97,6 +107,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var calledPluginSuccessfully bool
 
 	var returnedHostSet *HostSet
 	_, err = r.writer.DoTx(
@@ -126,6 +138,15 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 				msgs = append(msgs, peOplogMsgs...)
 			}
 
+			if !calledPluginSuccessfully {
+				if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+				calledPluginSuccessfully = true
+			}
+
 			metadata := s.oplog(oplog.OpType_OP_TYPE_CREATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
@@ -150,6 +171,367 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return returnedHostSet, plg, nil
+}
+
+// UpdateSet updates the repository for host set entry s with the
+// values populated, for the fields listed in fieldMask. It returns a
+// new HostSet containing the updated values, the hosts in the set,
+// and a count of the number of records updated. s is not changed.
+//
+// s must contain a valid PublicId and CatalogId. Name, Description,
+// Attributes, and PreferredEndpoints can be updated. Name must be
+// unique among all sets associated with a single catalog.
+//
+// An attribute of s will be set to NULL in the database if the
+// attribute in s is the zero value and it is included in fieldMask.
+// Note that this does not apply to s.Attributes - a null
+// s.Attributes is a no-op for modifications. Rather, if fields need
+// to be reset, its field in c.Attributes should individually set to
+// null.
+//
+// Updates are sent to OnUpdateSet with a full copy of both the
+// current set, the state of the new set should it be updated, along
+// with its parent host catalog and persisted state (can include
+// secrets). This is a stateless call and does not affect the final
+// record written, but some plugins may perform some actions on this
+// call. Update of the record in the database is aborted if this call
+// fails.
+func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
+	const op = "plugin.(Repository).UpdateSet"
+	if s == nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
+	}
+	if s.HostSet == nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostSet")
+	}
+	if s.PublicId == "" {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
+	}
+	if scopeId == "" {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	}
+	if len(fieldMask) == 0 {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+	}
+
+	// Get the old set first. We patch the record first before
+	// sending it to the DB for updating so that we can run on
+	// OnUpdateSet. Note that the field masks are still used for
+	// updating.
+	sets, plg, err := r.getSets(ctx, s.PublicId, "")
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	if len(sets) == 0 {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("host set id %q not found", s.PublicId))
+	}
+
+	if len(sets) != 1 {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected amount of sets found, want=1, got=%d", len(sets)))
+	}
+
+	currentSet := sets[0]
+
+	// Assert the version of the current set to make sure we're
+	// updating the correct one.
+	if currentSet.GetVersion() != version {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.VersionMismatch, op, fmt.Sprintf("set version mismatch, want=%d, got=%d", currentSet.GetVersion(), version))
+	}
+
+	// Clone the set so that we can set fields.
+	newSet := currentSet.clone()
+	var updateAttributes bool
+	var updateSyncInterval bool
+	var dbMask, nullFields []string
+	const (
+		endpointOpNoop   = "endpointOpNoop"
+		endpointOpDelete = "endpointOpDelete"
+		endpointOpUpdate = "endpointOpUpdate"
+	)
+	var endpointOp string = endpointOpNoop
+	for _, f := range fieldMask {
+		switch {
+		case strings.EqualFold("name", f) && s.Name == "":
+			nullFields = append(nullFields, "name")
+			newSet.Name = s.Name
+		case strings.EqualFold("name", f) && s.Name != "":
+			dbMask = append(dbMask, "name")
+			newSet.Name = s.Name
+		case strings.EqualFold("description", f) && s.Description == "":
+			nullFields = append(nullFields, "description")
+			newSet.Description = s.Description
+		case strings.EqualFold("description", f) && s.Description != "":
+			dbMask = append(dbMask, "description")
+			newSet.Description = s.Description
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds == 0:
+			nullFields = append(nullFields, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
+			updateSyncInterval = true
+		case strings.EqualFold("SyncIntervalSeconds", f) && s.SyncIntervalSeconds != 0:
+			dbMask = append(dbMask, "SyncIntervalSeconds")
+			newSet.SyncIntervalSeconds = s.SyncIntervalSeconds
+			updateSyncInterval = true
+		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) == 0:
+			endpointOp = endpointOpDelete
+			newSet.PreferredEndpoints = s.PreferredEndpoints
+		case strings.EqualFold("PreferredEndpoints", f) && len(s.PreferredEndpoints) != 0:
+			endpointOp = endpointOpUpdate
+			newSet.PreferredEndpoints = s.PreferredEndpoints
+		case strings.EqualFold("attributes", strings.Split(f, ".")[0]):
+			// Flag attributes for updating. While multiple masks may be
+			// sent, we only need to do this once.
+			updateAttributes = true
+
+		default:
+			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+		}
+	}
+
+	if updateAttributes {
+		dbMask = append(dbMask, "attributes")
+		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
+		if err != nil {
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
+		}
+
+		// Flag the record as needing a sync since we've updated
+		// attributes.
+		dbMask = append(dbMask, "NeedSync")
+		newSet.NeedSync = true
+	}
+
+	// Get the host catalog for the set and its persisted data.
+	catalog, persisted, err := r.getCatalog(ctx, newSet.CatalogId)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
+	}
+
+	// Assert that the catalog scope ID and supplied scope ID match.
+	if catalog.ScopeId != scopeId {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in scope id %q", newSet.CatalogId, scopeId))
+	}
+
+	// Get the plugin client.
+	plgClient, ok := r.plugins[catalog.GetPluginId()]
+	if !ok || plgClient == nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, fmt.Sprintf("plugin %q not available", catalog.GetPluginId()))
+	}
+
+	// Convert the catalog values to API protobuf values, which is what
+	// we use for the plugin hook calls.
+	plgHc, err := toPluginCatalog(ctx, catalog)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	currentPlgSet, err := toPluginSet(ctx, currentSet)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	newPlgSet, err := toPluginSet(ctx, newSet)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	// Get the preferred endpoints to write out.
+	var preferredEndpoints []interface{}
+	if endpointOp == endpointOpUpdate {
+		preferredEndpoints = make([]interface{}, 0, len(newSet.PreferredEndpoints))
+		for i, e := range newSet.PreferredEndpoints {
+			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
+			if err != nil {
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			preferredEndpoints = append(preferredEndpoints, obj)
+		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	// If the call to the plugin succeeded, we do not want to call it again if
+	// the transaction failed and is being retried.
+	var pluginCalledSuccessfully bool
+
+	var setUpdated, preferredEndpointsUpdated bool
+	var returnedSet *HostSet
+	var hosts []*Host
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			returnedSet = newSet.clone()
+			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+len(currentSet.PreferredEndpoints)+2)
+			ticket, err := w.GetTicket(s)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+
+			if len(dbMask) != 0 || len(nullFields) != 0 {
+				var hsOplogMsg oplog.Message
+				numUpdated, err := w.Update(
+					ctx,
+					returnedSet,
+					dbMask,
+					nullFields,
+					db.NewOplogMsg(&hsOplogMsg),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				if numUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+				}
+
+				setUpdated = true
+				msgs = append(msgs, &hsOplogMsg)
+			}
+
+			switch endpointOp {
+			case endpointOpDelete:
+				// Delete all old endpoint entries.
+				var peps []interface{}
+				for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
+					p := host.AllocPreferredEndpoint()
+					p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
+					peps = append(peps, p)
+				}
+				deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
+				_, err := w.DeleteItems(ctx, peps, db.NewOplogMsgs(&deleteOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				// Only append the oplog message if an operation was actually
+				// performed.
+				if len(deleteOplogMsgs) > 0 {
+					preferredEndpointsUpdated = true
+					msgs = append(msgs, deleteOplogMsgs...)
+				}
+
+			case endpointOpUpdate:
+				if len(currentSet.PreferredEndpoints) > 0 {
+					// Delete all old endpoint entries.
+					var peps []interface{}
+					for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
+						p := host.AllocPreferredEndpoint()
+						p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
+						peps = append(peps, p)
+					}
+					deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
+					_, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs))
+					if err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+
+					// Only append the oplog message if an operation was actually
+					// performed.
+					if len(deleteOplogMsgs) > 0 {
+						msgs = append(msgs, deleteOplogMsgs...)
+					}
+				}
+
+				// Create the new entries.
+				peCreateOplogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
+				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peCreateOplogMsgs)); err != nil {
+					return err
+				}
+
+				preferredEndpointsUpdated = true
+				msgs = append(msgs, peCreateOplogMsgs...)
+			}
+
+			if !setUpdated && preferredEndpointsUpdated {
+				returnedSet.Version = uint32(version) + 1
+				var hsOplogMsg oplog.Message
+				numUpdated, err := w.Update(
+					ctx,
+					returnedSet,
+					[]string{"version"},
+					[]string{},
+					db.NewOplogMsg(&hsOplogMsg),
+					db.WithVersion(&version),
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				if numUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 set to be updated, got %d", numUpdated))
+				}
+
+				msgs = append(msgs, &hsOplogMsg)
+			}
+
+			if len(msgs) != 0 {
+				metadata := s.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+				}
+			}
+
+			hsAgg := &hostSetAgg{PublicId: currentSet.GetPublicId()}
+			if err := reader.LookupByPublicId(ctx, hsAgg); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("looking up host after update"))
+			}
+			returnedSet, err = hsAgg.toHostSet(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("converting from host aggregate to host after update"))
+			}
+
+			if !pluginCalledSuccessfully {
+				_, err = plgClient.OnUpdateSet(ctx, &plgpb.OnUpdateSetRequest{
+					CurrentSet: currentPlgSet,
+					NewSet:     newPlgSet,
+					Catalog:    plgHc,
+					Persisted:  persisted,
+				})
+				if err != nil {
+					if status.Code(err) != codes.Unimplemented {
+						return errors.Wrap(ctx, err, op)
+					}
+				}
+			}
+
+			return nil
+		},
+	)
+
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", newSet.PublicId, newSet.Name)))
+		}
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in %s", newSet.PublicId)))
+	}
+
+	hosts, err = listHostBySetIds(ctx, r.reader, []string{returnedSet.PublicId}, opt...)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	var numUpdated int
+	if setUpdated || preferredEndpointsUpdated {
+		numUpdated = 1
+	}
+
+	switch {
+	case updateAttributes:
+		// Request a host sync since we have updated attributes.
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	case updateSyncInterval:
+		tilNextSync := time.Until(returnedSet.LastSyncTime.AsTime().Add(time.Duration(returnedSet.SyncIntervalSeconds) * time.Second))
+		if tilNextSync < 0 {
+			tilNextSync = 0
+		}
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync)
+	}
+
+	return returnedSet, hosts, plg, numUpdated, nil
 }
 
 // LookupSet will look up a host set in the repository and return the host set,
@@ -341,8 +723,20 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 	if in == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil storage plugin")
 	}
+
+	var name, description *wrapperspb.StringValue
+	if inName := in.GetName(); inName != "" {
+		name = wrapperspb.String(inName)
+	}
+	if inDescription := in.GetDescription(); inDescription != "" {
+		description = wrapperspb.String(inDescription)
+	}
+
 	hs := &pb.HostSet{
-		Id: in.GetPublicId(),
+		Id:                 in.GetPublicId(),
+		Name:               name,
+		Description:        description,
+		PreferredEndpoints: in.PreferredEndpoints,
 	}
 	if in.GetAttributes() != nil {
 		attrs := &structpb.Struct{}
@@ -410,7 +804,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		h := ha.toHost()
 		for _, sId := range hostIdToSetIds[h.GetPublicId()] {
 			s := setIdToSet[sId]
-			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.GetPreferredEndpoints()))
+			pref, err := endpoint.NewPreferencer(ctx, endpoint.WithPreferenceOrder(s.PreferredEndpoints))
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("getting preferencer for set %q", sId)))
 			}

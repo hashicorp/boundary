@@ -17,9 +17,10 @@ import (
 // A HostSet is a collection of hosts from the set's catalog.
 type HostSet struct {
 	*store.HostSet
-	PluginId  string   `gorm:"-"`
-	HostIds   []string `gorm:"-"`
-	tableName string   `gorm:"-"`
+	PluginId           string   `gorm:"-"`
+	HostIds            []string `gorm:"-"`
+	PreferredEndpoints []string `gorm:"-"`
+	tableName          string   `gorm:"-"`
 }
 
 // NewHostSet creates a new in memory HostSet assigned to catalogId. Attributes,
@@ -35,12 +36,13 @@ func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet,
 
 	set := &HostSet{
 		HostSet: &store.HostSet{
-			CatalogId:          catalogId,
-			Name:               opts.withName,
-			Description:        opts.withDescription,
-			Attributes:         attrs,
-			PreferredEndpoints: opts.withPreferredEndpoints,
+			CatalogId:           catalogId,
+			Name:                opts.withName,
+			Description:         opts.withDescription,
+			SyncIntervalSeconds: opts.withSyncIntervalSeconds,
+			Attributes:          attrs,
 		},
+		PreferredEndpoints: opts.withPreferredEndpoints,
 	}
 
 	return set, nil
@@ -69,7 +71,8 @@ func allocHostSet() *HostSet {
 func (s *HostSet) clone() *HostSet {
 	cp := proto.Clone(s.HostSet)
 	hs := &HostSet{
-		HostSet: cp.(*store.HostSet),
+		HostSet:            cp.(*store.HostSet),
+		PreferredEndpoints: s.PreferredEndpoints,
 	}
 	if s.Attributes != nil && len(s.Attributes) == 0 && hs.Attributes == nil {
 		hs.Attributes = []byte{}
@@ -92,19 +95,20 @@ func (s *HostSet) oplog(op oplog.OpType) oplog.Metadata {
 // hostSetAgg is a view that aggregates the host set's value objects in to
 // string fields delimited with the aggregateDelimiter of "|"
 type hostSetAgg struct {
-	PublicId           string `gorm:"primary_key"`
-	CatalogId          string
-	PluginId           string
-	Name               string
-	Description        string
-	CreateTime         *timestamp.Timestamp
-	UpdateTime         *timestamp.Timestamp
-	LastSyncTime       *timestamp.Timestamp
-	NeedSync           bool
-	Version            uint32
-	Attributes         []byte
-	PreferredEndpoints string
-	HostIds            string
+	PublicId            string `gorm:"primary_key"`
+	CatalogId           string
+	PluginId            string
+	Name                string
+	Description         string
+	CreateTime          *timestamp.Timestamp
+	UpdateTime          *timestamp.Timestamp
+	LastSyncTime        *timestamp.Timestamp
+	NeedSync            bool
+	SyncIntervalSeconds int32
+	Version             uint32
+	Attributes          []byte
+	PreferredEndpoints  string
+	HostIds             string
 }
 
 func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
@@ -121,6 +125,7 @@ func (agg *hostSetAgg) toHostSet(ctx context.Context) (*HostSet, error) {
 	hs.UpdateTime = agg.UpdateTime
 	hs.LastSyncTime = agg.LastSyncTime
 	hs.NeedSync = agg.NeedSync
+	hs.SyncIntervalSeconds = agg.SyncIntervalSeconds
 	hs.Version = agg.Version
 	hs.Attributes = agg.Attributes
 	if agg.HostIds != "" {

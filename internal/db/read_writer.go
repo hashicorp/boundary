@@ -88,16 +88,18 @@ type Writer interface {
 	// rows updated or an error. Supported options: WithOplog.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
-	// Create an object in the db with options: WithOplog, WithOnConflict.
-	// The caller is responsible for the transaction life cycle of the writer
-	// and if an error is returned the caller must decide what to do with
-	// the transaction, which almost always should be to rollback.
+	// Create an object in the db with options: WithDebug, WithOplog, NewOplogMsg,
+	// WithLookup, WithReturnRowsAffected, OnConflict, WithVersion, and
+	// WithWhere. The caller is responsible for the transaction life cycle of
+	// the writer and if an error is returned the caller must decide what to do
+	// with the transaction, which almost always should be to rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateItems will create multiple items of the same type.
-	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
-	// WithOplogMsgs may not be used together. WithLookup is not a
-	// supported option. The caller is responsible for the transaction life
+	// Supported options: WithDebug, WithOplog, WithOplogMsgs,
+	// WithReturnRowsAffected, OnConflict, WithVersion, and WithWhere.
+	/// WithOplog and WithOplogMsgs may not be used together. WithLookup is not
+	// a supported option. The caller is responsible for the transaction life
 	// cycle of the writer and if an error is returned the caller must decide
 	// what to do with the transaction, which almost always should be to
 	// rollback.
@@ -263,12 +265,21 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return nil
 }
 
-// Create an object in the db with options: WithOplog, NewOplogMsg, WithLookup
-// and OnConflict.  WithOplog will write an oplog entry for the create.
-// NewOplogMsg will return in-memory oplog message.  WithOplog and NewOplogMsg
-// cannot be used together.  WithLookup with to force a lookup after create.
+// Create an object in the db with options: WithDebug, WithOplog, NewOplogMsg,
+// WithLookup, WithReturnRowsAffected, OnConflict, WithVersion, and WithWhere.
+//
+// WithOplog will write an oplog entry for the create. NewOplogMsg will return
+// in-memory oplog message.  WithOplog and NewOplogMsg cannot be used together.
+// WithLookup with to force a lookup after create.
+//
 // OnConflict specifies alternative actions to take when an insert results in a
-// unique constraint or exclusion constraint error.
+// unique constraint or exclusion constraint error. If WithVersion is used, then
+// the update for on conflict will include the version number, which basically
+// makes the update use optimistic locking and the update will only succeed if
+// the existing rows version matches the WithVersion option.  Zero is not a
+// valid value for the WithVersion option and will return an error. WithWhere
+// allows specifying an additional constraint on the on conflict operation in
+// addition to the on conflict target policy (columns or constraint).
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
@@ -345,7 +356,18 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		default:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid conflict action: %v", reflect.TypeOf(opts.withOnConflict.Action)))
 		}
+		if opts.WithVersion != nil || opts.withWhereClause != "" {
+			where, args, err := rw.whereClausesFromOpts(ctx, i, opts)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			whereConditions := db.Statement.BuildCondition(where, args...)
+			c.Where = clause.Where{Exprs: whereConditions}
+		}
 		db = db.Clauses(c)
+	}
+	if opts.withDebug {
+		db = db.Debug()
 	}
 
 	var ticket *store.Ticket
@@ -389,8 +411,34 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	return nil
 }
 
+func (rw *Db) whereClausesFromOpts(ctx context.Context, i interface{}, opts Options) (string, []interface{}, error) {
+	const op = "db.whereClausesFromOpts"
+	var where []string
+	var args []interface{}
+	if opts.WithVersion != nil {
+		if *opts.WithVersion == 0 {
+			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "with version option is zero")
+		}
+		mDb := rw.underlying.Model(i)
+		err := mDb.Statement.Parse(i)
+		if err != nil && mDb.Statement.Schema == nil {
+			return "", nil, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
+		}
+		if !contains(mDb.Statement.Schema.DBNames, "version") {
+			return "", nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
+		}
+		where = append(where, fmt.Sprintf("%s.version = ?", mDb.Statement.Schema.Table)) // we need to include the table name because of "on conflict" use cases
+		args = append(args, opts.WithVersion)
+	}
+	if opts.withWhereClause != "" {
+		where, args = append(where, opts.withWhereClause), append(args, opts.withWhereClauseArgs...)
+	}
+	return strings.Join(where, " and "), args, nil
+}
+
 // CreateItems will create multiple items of the same type. Supported options:
-// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
+// WithDebug, WithOplog, WithOplogMsgs, WithReturnRowsAffected, OnConflict,
+// WithVersion, and WithWhere  WithOplog and WithOplogMsgs may not be used
 // together.  WithLookup is not a supported option.
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	const op = "db.CreateItems"
@@ -433,7 +481,13 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 	}
 	for _, item := range createItems {
-		if err := rw.Create(ctx, item); err != nil {
+		if err := rw.Create(ctx, item,
+			WithOnConflict(opts.withOnConflict),
+			WithReturnRowsAffected(opts.withRowsAffected),
+			WithDebug(opts.withDebug),
+			WithVersion(opts.WithVersion),
+			WithWhere(opts.withWhereClause, opts.withWhereClauseArgs...),
+		); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 	}
@@ -454,23 +508,24 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 
 // Update an object in the db, fieldMask is required and provides
 // field_mask.proto paths for fields that should be updated. The i interface
-// parameter is the type the caller wants to update in the db and its
-// fields are set to the update values. setToNullPaths is optional and
-// provides field_mask.proto paths for the fields that should be set to
-// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
-// is responsible for the transaction life cycle of the writer and if an
-// error is returned the caller must decide what to do with the transaction,
-// which almost always should be to rollback.  Update returns the number of
-// rows updated.
+// parameter is the type the caller wants to update in the db and its fields are
+// set to the update values. setToNullPaths is optional and provides
+// field_mask.proto paths for the fields that should be set to null.
+// fieldMaskPaths and setToNullPaths must not intersect. The caller is
+// responsible for the transaction life cycle of the writer and if an error is
+// returned the caller must decide what to do with the transaction, which almost
+// always should be to rollback.  Update returns the number of rows updated.
 //
-// Supported options: WithOplog, NewOplogMsg and WithVersion.
-// WithOplog will write an oplog entry for the update. NewOplogMsg
-// will return in-memory oplog message.  WithOplog and NewOplogMsg cannot be
-// used together.   If WithVersion is used, then the update will include the
-// version number in the update where clause, which basically makes the update
-// use optimistic locking and the update will only succeed if the existing rows
-// version matches the WithVersion option.  Zero is not a valid value for the
-// WithVersion option and will return an error.
+// Supported options: WithOplog, NewOplogMsg, WithWhere, WithDebug, and
+// WithVersion. WithOplog will write an oplog entry for the update. NewOplogMsg
+// will return in-memory oplog message. WithOplog and NewOplogMsg cannot be used
+// together. If WithVersion is used, then the update will include the version
+// number in the update where clause, which basically makes the update use
+// optimistic locking and the update will only succeed if the existing rows
+// version matches the WithVersion option. Zero is not a valid value for the
+// WithVersion option and will return an error. WithWhere allows specifying an
+// additional constraint on the operation in addition to the PKs. WithDebug will
+// turn on debugging for the update call.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
@@ -548,32 +603,19 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
-	var underlying *gorm.DB
+	underlying := rw.underlying.Model(i)
+	if opts.withDebug {
+		underlying = underlying.Debug()
+	}
 	switch {
 	case opts.WithVersion != nil || opts.withWhereClause != "":
-		var where []string
-		var args []interface{}
-		if opts.WithVersion != nil {
-			if *opts.WithVersion == 0 {
-				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "with version option is zero")
-			}
-			mDb := rw.underlying.Model(i)
-			err = mDb.Statement.Parse(i)
-			if err != nil && mDb.Statement.Schema == nil {
-				return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
-			}
-			if !contains(mDb.Statement.Schema.DBNames, "version") {
-				// if _, ok := stmt.Schema.FieldsByName["version"]; !ok {
-				return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", mDb.Statement.Schema.Table))
-			}
-			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
+		where, args, err := rw.whereClausesFromOpts(ctx, i, opts)
+		if err != nil {
+			return NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
-		if opts.withWhereClause != "" {
-			where, args = append(where, opts.withWhereClause), append(args, opts.withWhereClauseArgs...)
-		}
-		underlying = rw.underlying.Model(i).Where(strings.Join(where, " and "), args...).Updates(updateFields)
+		underlying = underlying.Where(where, args...).Updates(updateFields)
 	default:
-		underlying = rw.underlying.Model(i).Updates(updateFields)
+		underlying = underlying.Updates(updateFields)
 	}
 	if underlying.Error != nil {
 		if underlying.Error == gorm.ErrRecordNotFound {
@@ -620,8 +662,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // Delete an object in the db with options: WithOplog, NewOplogMsg, WithWhere.
 // WithOplog will write an oplog entry for the delete. NewOplogMsg will return
 // in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
-// WithWhere allows specifying a constraint. Delete returns the number of rows
-// deleted and any errors.
+// WithWhere allows specifying an additional constraint on the operation in
+// addition to the PKs. Delete returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
@@ -1137,7 +1179,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 //
 // Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
 // If WithLimit == 0, then default limits are used for results.
-// Supports the WithOrder option.
+// Supports the WithOrder and WithDebug options.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
@@ -1154,6 +1196,9 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	db := rw.underlying.WithContext(ctx)
 	if opts.withOrder != "" {
 		db = db.Order(opts.withOrder)
+	}
+	if opts.withDebug {
+		db = db.Debug()
 	}
 	// Perform limiting
 	switch {

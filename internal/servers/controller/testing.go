@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
-	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -48,6 +47,7 @@ const (
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
 	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
+	DefaultTestPluginId                      = "pl_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -343,9 +343,14 @@ type TestControllerOpts struct {
 	// created but examined after-the-fact
 	DisableDatabaseDestruction bool
 
-	// If set, instead of creating a dev database, it will connect to an
-	// existing database given the url
+	// DatabaseUrl will cause the test controller to connect to an existing
+	// database given the url instead of creating a new one
 	DatabaseUrl string
+
+	// DisableDatabaseTemplate forces using a fresh Postgres instance in Docker
+	// instead of using a local templated version. Useful for CI of external
+	// repos, like Terraform.
+	DisableDatabaseTemplate bool
 
 	// If true, the controller will not be started
 	DisableAutoStart bool
@@ -406,6 +411,34 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts:   opts,
 	}
 
+	conf := TestControllerConfig(t, ctx, tc, opts)
+	var err error
+	tc.c, err = New(ctx, conf)
+	if err != nil {
+		tc.Shutdown()
+		t.Fatal(err)
+	}
+
+	tc.buildClient()
+
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
+	}
+
+	return tc
+}
+
+// TestControllerConfig provides a way to create a config for a TestController.
+// The tc passed as a parameter will be modified by this func.
+func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
+	const op = "controller.TestControllerConfig"
+	if opts == nil {
+		opts = new(TestControllerOpts)
+	}
+
 	// Base server
 	tc.b = base.NewServer(&base.Command{
 		Context:    ctx,
@@ -463,6 +496,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
+	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
+
+	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginHostLoopback)
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
@@ -587,41 +623,25 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
-		createOpts = append(createOpts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
-		createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		if !opts.DisableDatabaseTemplate {
+			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	conf := &Config{
+	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
-
-	tc.c, err = New(ctx, conf)
-	if err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
-	}
-
-	tc.buildClient()
-
-	if !opts.DisableAutoStart {
-		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
-			t.Fatal(err)
-		}
-	}
-
-	return tc
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {

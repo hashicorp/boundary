@@ -166,6 +166,12 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			if len(creds) > 0 {
 				session.DynamicCredentials = creds
 			}
+
+			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.Connections = connections
 			return nil
 		},
 	)
@@ -249,6 +255,8 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	case db.AscendingOrderBy:
 		withOrder = "order by create_time asc"
 	case db.DescendingOrderBy:
+		fallthrough
+	default:
 		withOrder = "order by create_time"
 	}
 
@@ -265,15 +273,15 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	}
 	defer rows.Close()
 
-	var sessionsWithState []*sessionView
+	var sessionsList []*sessionListView
 	for rows.Next() {
-		var s sessionView
+		var s sessionListView
 		if err := r.reader.ScanRows(rows, &s); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		sessionsWithState = append(sessionsWithState, &s)
+		sessionsList = append(sessionsList, &s)
 	}
-	sessions, err := r.convertToSessions(ctx, sessionsWithState, withListingConvert(true))
+	sessions, err := r.convertToSessions(ctx, sessionsList, withListingConvert(true))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -789,4 +797,16 @@ func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.O
 		return nil, nil
 	}
 	return states, nil
+}
+
+func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*Connection, error) {
+	const op = "session.fetchConnections"
+	var connections []*Connection
+	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if len(connections) == 0 {
+		return nil, nil
+	}
+	return connections, nil
 }

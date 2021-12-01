@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blake2b"
@@ -65,11 +66,18 @@ func Test_HmacSha256(t *testing.T) {
 			wantHmac: testWithBlake2b(t, []byte("test"), testWrapper, nil, nil, WithPrefix("prefix:")),
 		},
 		{
-			name:     "blake2b-with-prefix-with-bas64",
+			name:     "blake2b-with-prefix-with-base64",
 			data:     []byte("test"),
 			wrapper:  testWrapper,
 			opts:     []Option{WithPrefix("prefix:"), WithBase64Encoding()},
 			wantHmac: testWithBlake2b(t, []byte("test"), testWrapper, nil, nil, WithPrefix("prefix:"), WithBase64Encoding()),
+		},
+		{
+			name:     "blake2b-with-prefix-with-base58",
+			data:     []byte("test"),
+			wrapper:  testWrapper,
+			opts:     []Option{WithPrefix("prefix:"), WithBase58Encoding()},
+			wantHmac: testWithBlake2b(t, []byte("test"), testWrapper, nil, nil, WithPrefix("prefix:"), WithBase58Encoding()),
 		},
 		{
 			name:     "with-prk",
@@ -155,10 +163,12 @@ func testHmac(t *testing.T, key, data []byte, opt ...Option) string {
 	var hmacString string
 	opts, err := getOpts(opt...)
 	require.NoError(err)
-	switch opts.withBase64Encoding {
-	case true:
+	switch {
+	case opts.withBase64Encoding:
 		hmacString = base64.RawURLEncoding.EncodeToString(hmac)
-	case false:
+	case opts.withBase58Encoding:
+		hmacString = base58.Encode(hmac)
+	default:
 		hmacString = string(hmac)
 	}
 	if opts.withPrefix != "" {

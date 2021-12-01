@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -17,6 +18,7 @@ import (
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,28 +38,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "test")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
 
-	// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
-	// test against the expected values sent to the plugin.
-	var gotPluginAttrs *structpb.Struct
-	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{
-			Server: &TestPluginServer{
-				OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
-					gotPluginAttrs = req.GetCatalog().GetAttributes()
-					return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
-				},
-			},
-		},
-		unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
-	}
-
 	tests := []struct {
-		name       string
-		in         *HostCatalog
-		opts       []Option
-		want       *HostCatalog
-		wantSecret *structpb.Struct
-		wantIsErr  errors.Code
+		name             string
+		in               *HostCatalog
+		opts             []Option
+		want             *HostCatalog
+		wantPluginCalled bool
+		wantSecret       *structpb.Struct
+		wantIsErr        errors.Code
 	}{
 		{
 			name:      "nil-catalog",
@@ -114,6 +102,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-unimplemented-plugin",
@@ -131,6 +120,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "not-found-plugin",
@@ -161,6 +151,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes: []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-description",
@@ -180,6 +171,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes:  []byte{},
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-attributes",
@@ -188,7 +180,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ScopeId:  prj.GetPublicId(),
 					PluginId: plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						st, err := structpb.NewStruct(map[string]interface{}{
+							"k1":     "foo",
+							"nilkey": nil,
+						})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
 						require.NoError(t, err)
@@ -209,6 +204,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					}(),
 				},
 			},
+			wantPluginCalled: true,
 		},
 		{
 			name: "valid-with-secret",
@@ -246,6 +242,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				require.NoError(t, err)
 				return st
 			}(),
+			wantPluginCalled: true,
 		},
 	}
 
@@ -254,10 +251,34 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
+
+			// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
+			// test against the expected values sent to the plugin.
+			var gotPluginAttrs *structpb.Struct
+			var pluginCalled bool
+			plgm := map[string]plgpb.HostPluginServiceClient{
+				plg.GetPublicId(): &WrappingPluginClient{
+					Server: &TestPluginServer{
+						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+							pluginCalled = true
+							gotPluginAttrs = req.GetCatalog().GetAttributes()
+							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+						},
+					},
+				},
+				unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{
+					OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						gotPluginAttrs = req.GetCatalog().GetAttributes()
+						return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateCatalog(ctx, req)
+					},
+				}},
+			}
 			repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, _, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
+			assert.Equal(tt.wantPluginCalled, pluginCalled)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -305,6 +326,17 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): &WrappingPluginClient{
+				Server: &TestPluginServer{
+					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+					},
+				},
+			},
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -321,13 +353,18 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, _, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
+		// Reset pluginCalled so we can see that the plugin wasn't called w/
+		// the duplicate name.
+		pluginCalled = false
 		got2, _, err := repo.CreateCatalog(context.Background(), in)
+		assert.False(pluginCalled)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
@@ -335,6 +372,17 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
+		var pluginCalled bool
+		plgm := map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): &WrappingPluginClient{
+				Server: &TestPluginServer{
+					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
+						pluginCalled = true
+						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+					},
+				},
+			},
+		}
 		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
@@ -352,6 +400,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		got, _, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
@@ -359,9 +408,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.ScopeId = org.GetPublicId()
+		pluginCalled = false // reset pluginCalled for this next call to Create
 		got2, _, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
 		assert.NotNil(got2)
+		assert.True(pluginCalled)
 		assertPluginBasedPublicId(t, HostCatalogPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
@@ -524,6 +575,18 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			t.Helper()
 			assert := assert.New(t)
 			assert.Equal(want, gotCatalog.Version)
+		}
+	}
+
+	checkSecretsHmac := func(notNil bool) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			if notNil {
+				assert.NotEmpty(gotCatalog.SecretsHmac)
+			} else {
+				assert.Empty(gotCatalog.SecretsHmac)
+			}
 		}
 	}
 
@@ -755,6 +818,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
@@ -772,6 +836,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // Version remains same even though row is updated
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
@@ -789,6 +854,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"name"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
 				checkName(testDuplicateCatalogNameAltScope),
@@ -806,6 +872,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"description"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
@@ -823,6 +890,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"description"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(2), // Version remains same even though row is updated
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescriptionNil(),
 				checkDescription(""),
@@ -842,6 +910,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -869,6 +938,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -894,6 +964,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -916,6 +987,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"attributes.a", "attributes.foo"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
 					"foo": "bar",
 				}),
@@ -938,19 +1010,23 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			name: "update secrets",
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
+				"five":  "six",
 			})},
 			version:   2,
-			fieldMask: []string{"secrets.three"},
+			fieldMask: []string{"secrets.three", "secrets.five"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
+					"five":  "six",
 				}),
 				checkSecrets(map[string]interface{}{
 					"three": "four",
+					"five":  "six",
 				}),
 				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
@@ -965,7 +1041,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			version:   2,
 			fieldMask: []string{"secrets.three"},
 			wantCheckFuncs: []checkFunc{
-				checkVersion(2), // no-op
+				checkVersion(3), // incremented due to secrets_hmac
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -975,7 +1052,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecrets(map[string]interface{}{
 					"one": "two",
 				}),
-				checkNumUpdated(db.NoRowsAffected),
+				checkNumUpdated(1),
 			},
 		},
 		{
@@ -985,6 +1062,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask:   []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(false),
 				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
 				}),
@@ -1006,6 +1084,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			fieldMask: []string{"name", "secrets.three"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
+				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
@@ -1029,26 +1108,27 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		require := require.New(t)
 
 		cat := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
-		// Set some (default) attributes on our test catalog
-		cat.Attributes = mustMarshal(map[string]interface{}{
-			"foo": "bar",
-		})
-
-		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes"}, []string{})
-		require.NoError(err)
-		require.Equal(1, numCatUpdated)
 
 		// Set up some secrets
-		cSecretProto := mustStruct(map[string]interface{}{
+		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		require.NoError(err)
+		cat.Secrets = mustStruct(map[string]interface{}{
 			"one": "two",
 		})
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cSecretProto)
-		require.NoError(err)
-		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
 		err = dbRW.Create(ctx, cSecret)
 		require.NoError(err)
+
+		// Set some (default) attributes on our test catalog and update SecretsHmac at the same time
+		cat.Attributes = mustMarshal(map[string]interface{}{
+			"foo": "bar",
+		})
+		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes", "SecretsHmac"}, []string{})
+		require.NoError(err)
+		require.Equal(1, numCatUpdated)
 
 		t.Cleanup(func() {
 			t.Helper()
@@ -1359,6 +1439,133 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Create a test scheduled job that we can use to catch when a run is executed.
+// We will use this to track whether or not an update was sent in
+// TestRepository_UpdateCatalog_SyncSets.
+type testSyncJob struct{}
+
+func (j *testSyncJob) Status() scheduler.JobStatus {
+	return scheduler.JobStatus{
+		Completed: 0,
+		Total:     1,
+	}
+}
+
+func (j *testSyncJob) Run(_ context.Context) error       { return nil }
+func (j *testSyncJob) NextRunIn() (time.Duration, error) { return setSyncJobRunInterval, nil }
+func (j *testSyncJob) Name() string                      { return setSyncJobName }
+func (j *testSyncJob) Description() string               { return setSyncJobName }
+
+func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
+	ctx := context.Background()
+	dbConn, _ := db.TestSetup(t, "postgres")
+	dbRW := db.New(dbConn)
+	dbWrapper := db.TestWrapper(t)
+	sched := scheduler.TestScheduler(t, dbConn, dbWrapper)
+	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
+	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
+
+	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
+		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+	}
+
+	// Set up a test catalog and the secrets for it
+	testCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+	// Set up another test catalog that will not have sets on it
+	emptyTestCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
+
+	// Create a couple of host sets.
+	set1 := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, dummyPluginMap)
+	set1.LastSyncTime = timestamp.New(time.Now())
+	set1.NeedSync = false
+
+	numSetsUpdated, err := dbRW.Update(ctx, set1, []string{"LastSyncTime", "NeedSync"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numSetsUpdated)
+
+	// Set 2
+	set2 := TestSet(t, dbConn, dbKmsCache, sched, testCatalog, dummyPluginMap)
+	set2.LastSyncTime = timestamp.New(time.Now())
+	set2.NeedSync = false
+
+	numSetsUpdated, err = dbRW.Update(ctx, set2, []string{"LastSyncTime", "NeedSync"}, []string{})
+	require.NoError(t, err)
+	require.Equal(t, 1, numSetsUpdated)
+
+	j := &testSyncJob{}
+	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval))
+	require.NoError(t, err)
+
+	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Load the job repository here so that we can validate run times.
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	// Updating an empty catalog should not trigger an update.
+	emptyTestCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	var catalogsUpdated int
+	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, emptyTestCatalog, emptyTestCatalog.Version, []string{"attributes"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	// Job run should have not been requested
+	jj, err := jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
+
+	// Updating name should not flag sets for sync
+	testCatalog.Name = "foobar"
+	testCatalog, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, testCatalog, testCatalog.Version, []string{"name"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	gotSet1, _, err := repo.LookupSet(ctx, set1.PublicId)
+	require.NoError(t, err)
+	require.False(t, gotSet1.NeedSync)
+	require.Equal(t, set1.LastSyncTime, gotSet1.LastSyncTime)
+	require.Equal(t, set1.Version, gotSet1.Version)
+
+	gotSet2, _, err := repo.LookupSet(ctx, set2.PublicId)
+	require.NoError(t, err)
+	require.False(t, gotSet2.NeedSync)
+	require.Equal(t, set2.LastSyncTime, gotSet2.LastSyncTime)
+	require.Equal(t, set2.Version, gotSet2.Version)
+
+	// Job run still should have not been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
+
+	// Updating attributes should trigger update
+	testCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, testCatalog, testCatalog.Version, []string{"attributes"})
+	require.NoError(t, err)
+	require.Equal(t, 1, catalogsUpdated)
+
+	gotSet1, _, err = repo.LookupSet(ctx, set1.PublicId)
+	require.NoError(t, err)
+	require.True(t, gotSet1.NeedSync)
+	require.Equal(t, set1.Version+1, gotSet1.Version)
+
+	gotSet2, _, err = repo.LookupSet(ctx, set2.PublicId)
+	require.NoError(t, err)
+	require.True(t, gotSet2.NeedSync)
+	require.Equal(t, set2.Version+1, gotSet2.Version)
+
+	// Job run should have been requested
+	jj, err = jobRepo.LookupJob(ctx, setSyncJobName)
+	require.NoError(t, err)
+	require.NotNil(t, jj)
+	require.Less(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 }
 
 func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {

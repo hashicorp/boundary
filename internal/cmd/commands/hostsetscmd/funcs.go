@@ -215,6 +215,11 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.SyncIntervalSeconds != 0 {
+			output = append(output,
+				fmt.Sprintf("    Sync Interval:       %d seconds", item.SyncIntervalSeconds),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -255,6 +260,9 @@ func printItemTable(result api.GenericResult) string {
 	}
 	if item.PreferredEndpoints != nil {
 		nonAttributeMap["Preferred Endpoints"] = item.PreferredEndpoints
+	}
+	if item.SyncIntervalSeconds != 0 {
+		nonAttributeMap["Sync Interval"] = fmt.Sprintf("%d seconds", item.SyncIntervalSeconds)
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)

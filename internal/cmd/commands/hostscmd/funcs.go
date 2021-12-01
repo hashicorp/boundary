@@ -77,6 +77,11 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
+		if item.ExternalId != "" {
+			output = append(output,
+				fmt.Sprintf("    External ID:         %s", item.ExternalId),
+			)
+		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
@@ -135,6 +140,9 @@ func printItemTable(result api.GenericResult) string {
 	if item.HostCatalogId != "" {
 		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
 	}
+	if item.ExternalId != "" {
+		nonAttributeMap["External ID"] = item.ExternalId
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
@@ -152,6 +160,14 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if item.Plugin != nil {
+		ret = append(ret,
+			"",
+			"  Plugin:",
+			base.PluginInfoForOutput(item.Plugin, maxLength),
+		)
+	}
+
 	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
@@ -165,6 +181,22 @@ func printItemTable(result api.GenericResult) string {
 			"",
 			"  Host Set IDs:",
 			base.WrapSlice(4, item.HostSetIds),
+		)
+	}
+
+	if len(item.IpAddresses) > 0 {
+		ret = append(ret,
+			"",
+			"  IP Addresses:",
+			base.WrapSlice(4, item.IpAddresses),
+		)
+	}
+
+	if len(item.DnsNames) > 0 {
+		ret = append(ret,
+			"",
+			"  DNS Names:",
+			base.WrapSlice(4, item.DnsNames),
 		)
 	}
 

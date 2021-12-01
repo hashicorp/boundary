@@ -222,11 +222,25 @@ func TestCrud(t *testing.T) {
 		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
 	require.NoError(err)
 
-	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"))
+	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"),
+		hostsets.WithAttributes(map[string]interface{}{"foo": "bar"}), hostsets.WithPreferredEndpoints([]string{"dns:test"}))
 	checkHost(t, "create", h.Item, err, "foo", 1)
 
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
 	checkHost(t, "read", h.Item, err, "foo", 1)
+
+	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
+		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}),
+		hostsets.WithPreferredEndpoints([]string{"dns:update"}))
+	checkHost(t, "update", h.Item, err, "bar", 2)
+
+	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})
+	assert.Equal(h.Item.PreferredEndpoints, []string{"dns:update"})
+
+	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
+	require.NoError(err)
+	require.NotNil(h)
+	assert.Equal(int32(42), h.Item.SyncIntervalSeconds)
 
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)
 	assert.NoError(err)

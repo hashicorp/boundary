@@ -119,6 +119,11 @@ module.exports = [
     destination: '/docs/concepts/domain-model/credential-libraries',
     permanent: false,
   },
+  {
+    source: '/help/admin-ui/managed-groups',
+    destination: '/docs/concepts/domain-model/managed-groups',
+    permanent: false,
+  },
 
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource

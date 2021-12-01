@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -49,38 +48,38 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                        string
-	flagLogFormat                       string
-	flagCombineLogs                     bool
-	flagLoginName                       string
-	flagPassword                        string
-	flagUnprivilegedLoginName           string
-	flagUnprivilegedPassword            string
-	flagIdSuffix                        string
-	flagHostAddress                     string
-	flagTargetDefaultPort               int
-	flagTargetSessionMaxSeconds         int
-	flagTargetSessionConnectionLimit    int
-	flagControllerAPIListenAddr         string
-	flagControllerClusterListenAddr     string
-	flagControllerPublicClusterAddr     string
-	flagControllerOnly                  bool
-	flagWorkerAuthKey                   string
-	flagWorkerProxyListenAddr           string
-	flagWorkerPublicAddr                string
-	flagUiPassthroughDir                string
-	flagRecoveryKey                     string
-	flagDatabaseUrl                     string
-	flagContainerImage                  string
-	flagDisableDatabaseDestruction      bool
-	flagEventFormat                     string
-	flagAudit                           string
-	flagObservations                    string
-	flagSysEvents                       string
-	flagEveryEventAllowFilters          []string
-	flagEveryEventDenyFilters           []string
-	flagCreateLoopbackHostCatalogPlugin bool
-	flagPluginExecutionDir              string
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagCombineLogs                  bool
+	flagLoginName                    string
+	flagPassword                     string
+	flagUnprivilegedLoginName        string
+	flagUnprivilegedPassword         string
+	flagIdSuffix                     string
+	flagHostAddress                  string
+	flagTargetDefaultPort            int
+	flagTargetSessionMaxSeconds      int
+	flagTargetSessionConnectionLimit int
+	flagControllerAPIListenAddr      string
+	flagControllerClusterListenAddr  string
+	flagControllerPublicClusterAddr  string
+	flagControllerOnly               bool
+	flagWorkerAuthKey                string
+	flagWorkerProxyListenAddr        string
+	flagWorkerPublicAddr             string
+	flagUiPassthroughDir             string
+	flagRecoveryKey                  string
+	flagDatabaseUrl                  string
+	flagContainerImage               string
+	flagDisableDatabaseDestruction   bool
+	flagEventFormat                  string
+	flagAudit                        string
+	flagObservations                 string
+	flagSysEvents                    string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
+	flagCreateLoopbackHostPlugin     bool
+	flagPluginExecutionDir           string
 }
 
 func (c *Command) Synopsis() string {
@@ -320,8 +319,8 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "create-loopback-hostcatalog-plugin",
-		Target: &c.flagCreateLoopbackHostCatalogPlugin,
+		Name:   "create-loopback-host-plugin",
+		Target: &c.flagCreateLoopbackHostPlugin,
 		Hidden: true,
 	})
 
@@ -503,10 +502,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
 
 	// Initialize status grace period (0 denotes using env or default
 	// here)
@@ -524,6 +519,15 @@ func (c *Command) Run(args []string) int {
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
+	}
+	if err := c.SetupEventing(
+		c.Logger,
+		c.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventFlags(eventFlags)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
@@ -555,8 +559,9 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
-	if c.flagCreateLoopbackHostCatalogPlugin {
-		opts = append(opts, base.WithHostPlugin("pl_1234567890", plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin())))
+	if c.flagCreateLoopbackHostPlugin {
+		c.DevLoopbackHostPluginId = "pl_1234567890"
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
 		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
 	}
 	switch c.flagDatabaseUrl {
@@ -591,6 +596,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	{
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,

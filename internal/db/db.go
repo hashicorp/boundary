@@ -3,11 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
@@ -42,6 +40,17 @@ func StringToDbType(dialect string) (DbType, error) {
 // DB is a wrapper around the ORM
 type DB struct {
 	*gorm.DB
+}
+
+// Debug will enable/disable debug info for the connection
+func (db *DB) Debug(on bool) {
+	if on {
+		// info level in the Gorm domain which maps to a debug level in the boundary domain
+		db.Logger = logger.Default.LogMode(logger.Info)
+	} else {
+		// the default level in the gorm domain is: error level
+		db.Logger = logger.Default.LogMode(logger.Error)
+	}
 }
 
 // SqlDB returns the underlying sql.DB
@@ -113,23 +122,6 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 		underlyingDB.SetMaxOpenConns(opts.withMaxOpenConnections)
 	}
 	return &DB{db}, nil
-}
-
-func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
-	const op = "db.GetGormLogFormatter"
-	ctx := context.TODO()
-	return func(values ...interface{}) (messages []interface{}) {
-		if len(values) > 2 && values[0].(string) == "log" {
-			switch values[2].(type) {
-			case *pgconn.PgError:
-				if log.IsTrace() {
-					event.WriteError(ctx, op, stderrors.New("error from database adapter"), event.WithInfo("error", values[2], "location", values[1]))
-				}
-			}
-			return nil
-		}
-		return nil
-	}
 }
 
 type gormLogger struct {

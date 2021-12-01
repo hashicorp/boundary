@@ -37,6 +37,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var testAuthorizedActions = map[subtypes.Subtype][]string{
@@ -168,7 +169,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints))
+	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -184,8 +185,9 @@ func TestGet_Plugin(t *testing.T) {
 			Name:        plg.GetName(),
 			Description: plg.GetDescription(),
 		},
-		PreferredEndpoints: prefEndpoints,
-		AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
+		PreferredEndpoints:  prefEndpoints,
+		SyncIntervalSeconds: &wrappers.Int32Value{Value: -1},
+		AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
 	}
 
 	cases := []struct {
@@ -373,7 +375,7 @@ func TestList_Plugin(t *testing.T) {
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints))
+		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints), plugin.WithSyncIntervalSeconds(5))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -383,12 +385,13 @@ func TestList_Plugin(t *testing.T) {
 				Name:        plg.GetName(),
 				Description: plg.GetDescription(),
 			},
-			CreatedTime:        h.GetCreateTime().GetTimestamp(),
-			UpdatedTime:        h.GetUpdateTime().GetTimestamp(),
-			Version:            h.GetVersion(),
-			Type:               plugin.Subtype.String(),
-			AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
-			PreferredEndpoints: preferredEndpoints,
+			CreatedTime:         h.GetCreateTime().GetTimestamp(),
+			UpdatedTime:         h.GetUpdateTime().GetTimestamp(),
+			Version:             h.GetVersion(),
+			Type:                plugin.Subtype.String(),
+			AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+			PreferredEndpoints:  preferredEndpoints,
+			SyncIntervalSeconds: &wrappers.Int32Value{Value: 5},
 		})
 	}
 
@@ -662,6 +665,7 @@ func TestCreate_Static(t *testing.T) {
 		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
@@ -690,6 +694,17 @@ func TestCreate_Static(t *testing.T) {
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
+		},
+		{
+			name: "With Preferred Endpoints",
+			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+				HostCatalogId:      hc.GetPublicId(),
+				Name:               &wrappers.StringValue{Value: "name"},
+				Description:        &wrappers.StringValue{Value: "desc"},
+				Type:               static.Subtype.String(),
+				PreferredEndpoints: prefEndpoints,
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Create with unknown type",
@@ -815,7 +830,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	testAttrs, err := structpb.NewStruct(map[string]interface{}{
+	attrs := map[string]interface{}{
 		"int":         1,
 		"zero int":    0,
 		"string":      "foo",
@@ -834,7 +849,13 @@ func TestCreate_Plugin(t *testing.T) {
 			"bool":        true,
 			"zero bool":   false,
 		},
-	})
+	}
+	testInputAttrs, err := structpb.NewStruct(attrs)
+	require.NoError(t, err)
+	// The result should clear out all keys with nil values...
+	delete(attrs, "zero bytes")
+	delete(attrs["nested"].(map[string]interface{}), "zero bytes")
+	testOutputAttrs, err := structpb.NewStruct(attrs)
 	require.NoError(t, err)
 
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
@@ -850,10 +871,11 @@ func TestCreate_Plugin(t *testing.T) {
 		{
 			name: "No Attributes",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "No Attributes"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          plugin.Subtype.String(),
+				HostCatalogId:       hc.GetPublicId(),
+				Name:                &wrappers.StringValue{Value: "No Attributes"},
+				Description:         &wrappers.StringValue{Value: "desc"},
+				Type:                plugin.Subtype.String(),
+				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -865,21 +887,23 @@ func TestCreate_Plugin(t *testing.T) {
 						Name:        plg.GetName(),
 						Description: plg.GetDescription(),
 					},
-					Name:              &wrappers.StringValue{Value: "No Attributes"},
-					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+					Name:                &wrappers.StringValue{Value: "No Attributes"},
+					Description:         &wrappers.StringValue{Value: "desc"},
+					Type:                plugin.Subtype.String(),
+					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 				},
 			},
 		},
 		{
 			name: "With Attributes",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-				HostCatalogId: hc.GetPublicId(),
-				Name:          &wrappers.StringValue{Value: "With Attributes"},
-				Description:   &wrappers.StringValue{Value: "desc"},
-				Type:          plugin.Subtype.String(),
-				Attributes:    testAttrs,
+				HostCatalogId:       hc.GetPublicId(),
+				Name:                &wrappers.StringValue{Value: "With Attributes"},
+				Description:         &wrappers.StringValue{Value: "desc"},
+				Type:                plugin.Subtype.String(),
+				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
+				Attributes:          testInputAttrs,
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -891,11 +915,12 @@ func TestCreate_Plugin(t *testing.T) {
 						Name:        plg.GetName(),
 						Description: plg.GetDescription(),
 					},
-					Name:              &wrappers.StringValue{Value: "With Attributes"},
-					Description:       &wrappers.StringValue{Value: "desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
-					Attributes:        testAttrs,
+					Name:                &wrappers.StringValue{Value: "With Attributes"},
+					Description:         &wrappers.StringValue{Value: "desc"},
+					Type:                plugin.Subtype.String(),
+					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
+					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					Attributes:          testOutputAttrs,
 				},
 			},
 		},
@@ -1037,7 +1062,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1414,6 +1439,341 @@ func TestUpdate(t *testing.T) {
 			}
 
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdate_Plugin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+
+	name := "test"
+	plg := hostplugin.TestPlugin(t, conn, name)
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+	}
+
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	pluginHostRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tested, err := host_sets.NewService(repoFn, pluginHostRepo)
+	require.NoError(t, err, "Failed to create a new host catalog service.")
+
+	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+
+	freshSet := func(t *testing.T) *pb.HostSet {
+		attr, err := structpb.NewStruct(map[string]interface{}{
+			"foo": "bar",
+		})
+		require.NoError(t, err)
+		resp, err := tested.CreateHostSet(ctx, &pbs.CreateHostSetRequest{Item: &pb.HostSet{
+			HostCatalogId:      hc.GetPublicId(),
+			Name:               wrapperspb.String("default"),
+			Description:        wrapperspb.String("default"),
+			Type:               plugin.Subtype.String(),
+			Attributes:         attr,
+			PreferredEndpoints: []string{"dns:default"},
+		}})
+		require.NoError(t, err)
+		id := resp.GetItem().GetId()
+		t.Cleanup(func() {
+			_, err := tested.DeleteHostSet(ctx, &pbs.DeleteHostSetRequest{Id: id})
+			require.NoError(t, err)
+		})
+		return resp.GetItem()
+	}
+
+	type updateFn func(catalog *pb.HostSet)
+	clearReadOnlyFields := func() updateFn {
+		return func(c *pb.HostSet) {
+			c.Id = ""
+			c.Plugin = nil
+			c.AuthorizedActions = nil
+			c.CreatedTime = nil
+			c.UpdatedTime = nil
+		}
+	}
+	updateName := func(i *wrappers.StringValue) updateFn {
+		return func(c *pb.HostSet) {
+			c.Name = i
+		}
+	}
+	updateDesc := func(i *wrappers.StringValue) updateFn {
+		return func(c *pb.HostSet) {
+			c.Description = i
+		}
+	}
+	updatePreferedEndpoints := func(i []string) updateFn {
+		return func(c *pb.HostSet) {
+			c.PreferredEndpoints = i
+		}
+	}
+	updateSyncInterval := func(i *wrapperspb.Int32Value) updateFn {
+		return func(c *pb.HostSet) {
+			c.SyncIntervalSeconds = i
+		}
+	}
+	updateAttrs := func(i *structpb.Struct) updateFn {
+		return func(c *pb.HostSet) {
+			c.Attributes = i
+		}
+	}
+
+	cases := []struct {
+		name    string
+		masks   []string
+		changes []updateFn
+		check   func(*testing.T, *pb.HostSet)
+		err     error
+	}{
+		{
+			name:  "Update an existing resource",
+			masks: []string{"name", "description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, "new", in.Name.GetValue())
+				assert.Equal(t, "desc", in.Description.GetValue())
+			},
+		},
+		{
+			name:  "Update arbitrary attribute",
+			masks: []string{"attributes.newkey", "attributes.foo"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateAttrs(func() *structpb.Struct {
+					attr, err := structpb.NewStruct(map[string]interface{}{
+						"newkey": "newvalue",
+						"foo":    nil,
+					})
+					require.NoError(t, err)
+					return attr
+				}()),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+			},
+		},
+		{
+			name:  "Set attributes null",
+			masks: []string{"attributes"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateAttrs(func() *structpb.Struct {
+					ret, _ := structpb.NewStruct(nil)
+					return ret
+				}()),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, (*structpb.Struct)(nil), in.GetAttributes())
+			},
+		},
+		{
+			name:  "Update preferred endpoints",
+			masks: []string{"preferred_endpoints"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updatePreferedEndpoints([]string{"dns:new"}),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, in.PreferredEndpoints, []string{"dns:new"})
+			},
+		},
+		{
+			name:  "Update sync interval",
+			masks: []string{"sync_interval_seconds"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateSyncInterval(wrapperspb.Int32(42)),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, in.SyncIntervalSeconds, wrapperspb.Int32(42))
+			},
+		},
+		{
+			name:  "Don't update preferred_endpoints",
+			masks: []string{"name"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updatePreferedEndpoints([]string{"dns:ignored"}),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, "new", in.Name.GetValue())
+				assert.Equal(t, in.PreferredEndpoints, []string{"dns:default"})
+			},
+		},
+		{
+			name:  "Multiple Paths in single string",
+			masks: []string{"name,description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, "new", in.Name.GetValue())
+				assert.Equal(t, "desc", in.Description.GetValue())
+			},
+		},
+		{
+			name: "No Update Mask",
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:  "Empty Path",
+			masks: []string{},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:  "Only non-existant paths in Mask",
+			masks: []string{"nonexistant_field"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("new")),
+				updateDesc(wrapperspb.String("desc")),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:  "Unset Name",
+			masks: []string{"name"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(nil),
+				updateDesc(wrapperspb.String("ignored")),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Nil(t, in.Name)
+				assert.Equal(t, "default", in.Description.GetValue())
+			},
+		},
+		{
+			name:  "Unset Description",
+			masks: []string{"description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("ignored")),
+				updateDesc(nil),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Nil(t, in.Description)
+				assert.Equal(t, "default", in.Name.GetValue())
+			},
+		},
+		{
+			name:  "Update Only Name",
+			masks: []string{"name"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("updated")),
+				updateDesc(wrapperspb.String("ignored")),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, "updated", in.Name.GetValue())
+				assert.Equal(t, "default", in.Description.GetValue())
+			},
+		},
+		{
+			name:  "Update Only Description",
+			masks: []string{"description"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				updateName(wrapperspb.String("ignored")),
+				updateDesc(wrapperspb.String("updated")),
+			},
+			check: func(t *testing.T, in *pb.HostSet) {
+				assert.Equal(t, "default", in.Name.GetValue())
+				assert.Equal(t, "updated", in.Description.GetValue())
+			},
+		},
+		{
+			name:  "Cant change type",
+			masks: []string{"type"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				func(c *pb.HostSet) {
+					c.Type = "static"
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:  "Cant specify Updated Time",
+			masks: []string{"updated_time"},
+			changes: []updateFn{
+				clearReadOnlyFields(),
+				func(c *pb.HostSet) {
+					c.UpdatedTime = timestamppb.Now()
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			hc := freshSet(t)
+
+			id := hc.GetId()
+			for _, f := range tc.changes {
+				f(hc)
+			}
+
+			req := &pbs.UpdateHostSetRequest{
+				Id:         id,
+				Item:       hc,
+				UpdateMask: &field_mask.FieldMask{Paths: tc.masks},
+			}
+
+			// Test some bad versions
+			req.Item.Version = 2
+			_, gErr := tested.UpdateHostSet(ctx, req)
+			require.Error(gErr)
+			req.Item.Version = 0
+			_, gErr = tested.UpdateHostSet(ctx, req)
+			require.Error(gErr)
+			req.Item.Version = 1
+
+			got, gErr := tested.UpdateHostSet(ctx, req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			require.NotNil(got)
+
+			item := got.GetItem()
+			assert.Equal(uint32(2), item.GetVersion())
+			assert.Greater(item.GetUpdatedTime().AsTime().UnixNano(), item.GetCreatedTime().AsTime().UnixNano())
+			tc.check(t, item)
 		})
 	}
 }

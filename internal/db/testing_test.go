@@ -23,6 +23,7 @@ func Test_Utils(t *testing.T) {
 func TestVerifyOplogEntry(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	assert := assert.New(t)
+	TestCreateTables(t, db)
 
 	t.Run("valid", func(t *testing.T) {
 		rw := Db{underlying: db}

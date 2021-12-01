@@ -229,3 +229,39 @@ func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappin
 	require.NoError(err)
 	return k
 }
+
+func TestAuditKey(t *testing.T, conn *db.DB, rootKeyId string) *AuditKey {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocAuditKey()).Error)
+	k, err := NewAuditKey(ctx, rootKeyId)
+	require.NoError(err)
+	id, err := newAuditKeyId(ctx)
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestAuditKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, auditKeyId string, key []byte) *AuditKeyVersion {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewAuditKeyVersion(ctx, auditKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newAuditKeyVersionId(ctx)
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}

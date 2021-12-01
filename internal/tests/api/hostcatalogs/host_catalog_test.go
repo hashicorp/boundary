@@ -149,6 +149,9 @@ func TestCrud(t *testing.T) {
 	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
 	checkCatalog("read", hc.Item, err, "foo", 1)
 
+	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("foo"))
+	checkCatalog("update", hc.Item, err, "foo", 1)
+
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
 	checkCatalog("update", hc.Item, err, "bar", 2)
 
@@ -168,6 +171,24 @@ func TestCrud(t *testing.T) {
 	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
 		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
 	require.NoError(err)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.WithName("bar"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"key": "val", "foo": nil}),
+		hostcatalogs.WithSecrets(map[string]interface{}{"secretkey": "secretval"}))
+	checkCatalog("update", c.Item, err, "bar", 2)
+	assert.Contains(c.Item.Attributes, "key")
+	assert.NotContains(c.Item.Attributes, "foo")
+	assert.Empty(c.Item.Secrets)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", c.Item, err, "", 3)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, 0, hostcatalogs.WithAutomaticVersioning(true),
+		hostcatalogs.WithSecrets(map[string]interface{}{
+			"key1": "val1",
+			"key2": "val2",
+		}))
+	checkCatalog("update", c.Item, err, "", 4)
 
 	c, err = hcClient.Read(tc.Context(), c.Item.Id)
 	assert.NoError(err)

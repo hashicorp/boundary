@@ -39,7 +39,7 @@ type fieldInfo struct {
 	ProtoName         string
 	FieldType         string
 	GenerateSdkOption bool
-	SubtypeName       string
+	SubtypeNames      []string
 	Query             bool
 	SkipDefault       bool
 }

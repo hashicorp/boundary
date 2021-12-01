@@ -9,6 +9,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
+	pluginstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -33,7 +35,8 @@ import (
 )
 
 var (
-	maskManager handlers.MaskManager
+	staticMaskManager handlers.MaskManager
+	pluginMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -67,7 +70,10 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
+	if staticMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
+		panic(err)
+	}
+	if pluginMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pluginstore.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
 }
@@ -326,7 +332,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, plg, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -338,6 +344,9 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 
 	outputOpts := make([]handlers.Option, 0, 3)
 	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if plg != nil {
+		outputOpts = append(outputOpts, handlers.WithPlugin(plg))
+	}
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -345,13 +354,21 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[static.Subtype], authResults.Scope.Id, hc.GetPublicId())
-		if err != nil {
-			return nil, err
+		var subtype subtypes.Subtype
+		switch hc.(type) {
+		case *static.HostCatalog:
+			subtype = static.Subtype
+		case *plugin.HostCatalog:
+			subtype = plugin.Subtype
 		}
-		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		if subtype != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
 	}
-
 	item, err := toProto(ctx, hc, outputOpts...)
 	if err != nil {
 		return nil, err
@@ -510,15 +527,15 @@ func (s Service) createInRepo(ctx context.Context, projId string, req *pbs.Creat
 	return hc, plg, err
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
-	const op = "host_catalogs.(Service).updateInRepo"
+func (s Service) updateStaticInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+	const op = "host_catalogs.(Service).updateStaticInRepo"
 	h, err := toStorageStaticCatalog(ctx, projId, item)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
 	}
 	version := item.GetVersion()
 	h.PublicId = id
-	dbMask := maskManager.Translate(mask)
+	dbMask := staticMaskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -534,6 +551,44 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
+}
+
+func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*plugin.HostCatalog, *plugins.PluginInfo, error) {
+	const op = "host_catalogs.(Service).updatePluginInRepo"
+	h, err := toStoragePluginCatalog(ctx, projId, "", item)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog for update"))
+	}
+	version := item.GetVersion()
+	h.PublicId = id
+	dbMask := pluginMaskManager.Translate(mask, "attributes", "secrets")
+	if len(dbMask) == 0 {
+		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+
+	repo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+	out, plg, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host catalog"))
+	}
+	if rowsUpdated == 0 {
+		return nil, nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, toPluginInfo(plg), nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.UpdateHostCatalogRequest) (hc host.Catalog, plg *plugins.PluginInfo, err error) {
+	const op = "host_catalogs.(Service).updateInRepo"
+	switch host.SubtypeFromId(req.GetId()) {
+	case static.Subtype:
+		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	case plugin.Subtype:
+		hc, plg, err = s.updatePluginInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	}
+	return
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -652,12 +707,6 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
 	}
-	if outputFields.Has(globals.PluginIdField) {
-		switch hc := in.(type) {
-		case *plugin.HostCatalog:
-			out.PluginId = hc.GetPluginId()
-		}
-	}
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.HostCatalog:
@@ -693,9 +742,15 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
-	if outputFields.Has(globals.AttributesField) {
-		switch h := in.(type) {
-		case *plugin.HostCatalog:
+	switch h := in.(type) {
+	case *plugin.HostCatalog:
+		if outputFields.Has(globals.PluginIdField) {
+			out.PluginId = h.GetPluginId()
+		}
+		if outputFields.Has(globals.SecretsHmacField) {
+			out.SecretsHmac = base58.Encode(h.GetSecretsHmac())
+		}
+		if outputFields.Has(globals.AttributesField) {
 			attrs := &structpb.Struct{}
 			err := proto.Unmarshal(h.Attributes, attrs)
 			if err != nil {
@@ -764,6 +819,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields[globals.ScopeIdField] = "This field must be a valid project scope id."
 		}
+		if req.GetItem().GetSecretsHmac() != "" {
+			badFields[globals.SecretsHmacField] = "This is a read only field."
+		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case static.Subtype:
 		case plugin.Subtype:
@@ -788,14 +846,27 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if req.GetItem().GetSecretsHmac() != "" {
+			badFields[globals.SecretsHmacField] = "This is a read only field."
+		}
 		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
+			if req.GetItem().GetPlugin() != nil {
+				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
+			}
+		case plugin.Subtype:
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != plugin.Subtype {
+				badFields[globals.TypeField] = "Cannot modify resource type."
+			}
+			if req.GetItem().GetPlugin() != nil {
+				badFields[globals.PluginField] = "This is a read only field."
+			}
 		}
 		return badFields
-	}, static.HostCatalogPrefix)
+	}, static.HostCatalogPrefix, plugin.HostCatalogPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {

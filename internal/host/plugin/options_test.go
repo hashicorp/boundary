@@ -20,6 +20,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withName = "test"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithSyncIntervalSeconds", func(t *testing.T) {
+		opts := getOpts(WithSyncIntervalSeconds(5))
+		testOpts := getDefaultOptions()
+		testOpts.withSyncIntervalSeconds = 5
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithPluginId", func(t *testing.T) {
 		opts := getOpts(withPluginId("test"))
 		testOpts := getDefaultOptions()
@@ -61,5 +67,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withSetIds = []string{"foo"}
 		assert.EqualValues(t, opts, testOpts)
+	})
+	t.Run("WithSecretsHmac", func(t *testing.T) {
+		opts := getOpts(WithSecretsHmac([]byte("secrets-hmac")))
+		testOpts := getDefaultOptions()
+		testOpts.withSecretsHmac = []byte("secrets-hmac")
+		assert.Equal(t, opts, testOpts)
 	})
 }

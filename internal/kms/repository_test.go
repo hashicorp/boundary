@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -109,6 +110,16 @@ func TestCreateKeysTx(t *testing.T) {
 				rootWrapper:  wrapper,
 				randomReader: rand.Reader,
 				scopeId:      org.PublicId,
+			},
+		},
+		{
+			name: "valid-at-global",
+			args: args{
+				dbReader:     rw,
+				dbWriter:     rw,
+				rootWrapper:  wrapper,
+				randomReader: rand.Reader,
+				scopeId:      scope.Global.String(),
 			},
 		},
 		{
@@ -257,6 +268,21 @@ func TestCreateKeysTx(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(oidcK.PrivateId, oidcKv.OidcKeyId)
 			assert.Equal(rkv.PrivateId, oidcKv.RootKeyVersionId)
+
+			if tt.args.scopeId == scope.Global.String() {
+				auditK := kms.AllocAuditKey()
+				auditK.PrivateId = keys[kms.KeyTypeAuditKey].GetPrivateId()
+				err = rw.LookupById(context.Background(), &auditK)
+				require.NoError(err)
+				assert.Equal(rk.PrivateId, auditK.RootKeyId)
+
+				auditKv := kms.AllocAuditKeyVersion()
+				auditKv.PrivateId = keys[kms.KeyTypeAuditKeyVersion].GetPrivateId()
+				err = rw.LookupById(context.Background(), &auditKv)
+				require.NoError(err)
+				assert.Equal(auditK.PrivateId, auditKv.AuditKeyId)
+				assert.Equal(rkv.PrivateId, auditKv.RootKeyVersionId)
+			}
 		})
 	}
 }

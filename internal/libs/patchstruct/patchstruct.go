@@ -7,15 +7,16 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// PatchStruct updates the struct found in dst with the values found in src.
-// The intent of this helper is to provide a fallback mechanism for subtype
+// PatchStruct updates the struct found in dst with the values found in src. The
+// intent of this helper is to provide a fallback mechanism for subtype
 // attributes when the actual schema of the subtype attributes are unknown. As
 // such, it's preferred to use other methods (such as mask mapping) when an
 // actual message for the subtype is known.
 //
 // The following rules apply:
 //
-// * The source (src) map is merged into the destination map (dst).
+// * The source (src) map is merged into the destination map (dst). If the
+// source map is nil, the destination will be a valid, but empty, map.
 //
 // * Values are overwritten by the source map if they exist in both.
 //
@@ -32,6 +33,10 @@ import (
 //
 // PatchStruct returns the updated map as a copy, dst and src are not altered.
 func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {
+	if src == nil {
+		ret, _ := structpb.NewStruct(nil)
+		return ret
+	}
 	result, err := structpb.NewStruct(patchM(dst.AsMap(), src.AsMap()))
 	if err != nil {
 		// Should never error as values are source from structpb values
@@ -41,21 +46,25 @@ func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {
 	return result
 }
 
-// PatchBytes follows the same rules as above with PatchStruct, but
-// instead of patching structpb.Structs, it patches the protobuf
-// encoding. An error is returned if there are issues working with
-// the data.
+// PatchBytes follows the same rules as above with PatchStruct, but instead of
+// patching structpb.Structs, it patches the protobuf encoding. An error is
+// returned if there are issues working with the data. If src is nil or empty,
+// the result is a marshaled, empty struct.
 func PatchBytes(dst, src []byte) ([]byte, error) {
 	srcpb, dstpb := new(structpb.Struct), new(structpb.Struct)
-	if err := proto.Unmarshal(dst, dstpb); err != nil {
-		return nil, fmt.Errorf("error reading destination data: %w", err)
+	if len(src) != 0 {
+		if err := proto.Unmarshal(dst, dstpb); err != nil {
+			return nil, fmt.Errorf("error reading destination data: %w", err)
+		}
+		if err := proto.Unmarshal(src, srcpb); err != nil {
+			return nil, fmt.Errorf("error reading source data: %w", err)
+		}
+		dstpb = PatchStruct(dstpb, srcpb)
+	} else {
+		dstpb, _ = structpb.NewStruct(nil)
 	}
 
-	if err := proto.Unmarshal(src, srcpb); err != nil {
-		return nil, fmt.Errorf("error reading source data: %w", err)
-	}
-
-	result, err := proto.Marshal(PatchStruct(dstpb, srcpb))
+	result, err := proto.Marshal(dstpb)
 	if err != nil {
 		return nil, fmt.Errorf("error writing result data: %w", err)
 	}
@@ -71,8 +80,9 @@ func patchM(dst, src map[string]interface{}) map[string]interface{} {
 				// If the value in dst a map, continue to patch
 				dst[k] = patchM(y, x)
 			} else {
-				// Overwrite
-				dst[k] = x
+				// Overwrite after stripping out keys to nil values
+				newX := patchM(make(map[string]interface{}), x)
+				dst[k] = newX
 			}
 
 		default:

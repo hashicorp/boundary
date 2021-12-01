@@ -96,7 +96,7 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 	// Fetch all sets that will reach their sync point within the syncWindow.
 	// This is done to avoid constantly scheduling the set sync job when there
 	// are multiple sets to sync in sequence.
-	err := r.reader.SearchWhere(ctx, &setAggs, `need_sync or last_sync_time <= wt_add_seconds_to_now(?)`, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -152,29 +152,41 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		type NextResync struct {
-			SyncNow  bool
-			ResyncIn time.Duration
-		}
-		var n NextResync
-		err = r.ScanRows(rows, &n)
-		if err != nil {
-			return 0, errors.WrapDeprecated(err, op)
-		}
-		if n.SyncNow || n.ResyncIn < 0 {
-			// If we are past the next renewal time, return 0 to schedule immediately
-			return 0, nil
-		}
-		return n.ResyncIn * time.Second, nil
+	if !rows.Next() {
+		return setSyncJobRunInterval, nil
 	}
-	return setSyncJobRunInterval, nil
+
+	type NextResync struct {
+		SyncNow             bool
+		SyncIntervalSeconds int32
+		ResyncIn            time.Duration
+	}
+	var n NextResync
+	err = r.ScanRows(rows, &n)
+	if err != nil {
+		return 0, errors.WrapDeprecated(err, op)
+	}
+	switch {
+	case n.SyncNow:
+		// Immediate
+		return 0, nil
+	case n.SyncIntervalSeconds < 0:
+		// In this case automatic syncing is disabled; we still sync if SyncNow
+		// but otherwise do not. We schedule the job at the default cadence but
+		// it will do nothing, just calculate a next run time to ensure it
+		// should stay disabled.
+		return setSyncJobRunInterval, nil
+	case n.ResyncIn < 0:
+		// Immediate
+		return 0, nil
+	}
+	return n.ResyncIn * time.Second, nil
 }
 
 // syncSets retrieves from their plugins all the host and membership information
 // for the provided host sets and updates their values in the database.
 func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
-	const op = "plugin.(Repository).Endpoints"
+	const op = "plugin.(SetSyncJob).syncSets"
 	if len(setIds) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
@@ -226,7 +238,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		if !ok {
 			si = &setInfo{}
 		}
-		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.GetPreferredEndpoints())
+		si.preferredEndpoint = endpoint.WithPreferenceOrder(s.PreferredEndpoints)
 		si.plgSet, err = toPluginSet(ctx, s)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("converting set %q to plugin set", s.GetPublicId())))
@@ -287,8 +299,8 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		if _, err := r.upsertHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
-			errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
+		if _, err := r.upsertAndCleanHosts(ctx, ci.storeCat, catSetIds, resp.GetHosts()); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("upserting hosts"))
 		}
 
 		updateSyncDataQuery := `
@@ -312,7 +324,7 @@ where public_id in (?)
 	return nil
 }
 
-// upsertHosts inserts phs into the repository or updates its current
+// upsertAndCleanHosts inserts phs into the repository or updates its current
 // attributes/set memberships and returns Hosts. h is not changed. hc must
 // contain a valid public ID and scope ID. Each ph in phs must not contain a
 // PublicId but must contain an external ID. The PublicId is generated and
@@ -321,16 +333,13 @@ where public_id in (?)
 // NOTE: If phs is empty, this assumes that there are simply no hosts that
 // matched the given sets! Which means it will remove all hosts from the given
 // sets.
-func (r *SetSyncJob) upsertHosts(
+func (r *SetSyncJob) upsertAndCleanHosts(
 	ctx context.Context,
 	hc *HostCatalog,
 	setIds []string,
 	phs []*plgpb.ListHostsResponseHost,
 	_ ...Option) ([]*Host, error) {
-	const op = "plugin.(SetSyncJob).upsertHosts"
-	if phs == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil plugin hosts")
-	}
+	const op = "plugin.(SetSyncJob).upsertAndCleanHosts"
 	for _, ph := range phs {
 		if ph.GetExternalId() == "" {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host external id")
@@ -400,22 +409,36 @@ func (r *SetSyncJob) upsertHosts(
 			db.ExpBackoff{},
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
-				ticket, err := w.GetTicket(hi.h)
+				ticket, err := w.GetTicket(ret)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
 
-				if hi.dirtyHost {
-					var hOplogMsg oplog.Message
-					onConflict := &db.OnConflict{
-						Target: db.Constraint("host_plugin_host_pkey"),
-						Action: db.SetColumns([]string{"name", "description"}),
-					}
-					if err := w.Create(ctx, ret, db.NewOplogMsg(&hOplogMsg), db.WithOnConflict(onConflict)); err != nil {
-						return errors.Wrap(ctx, err, op)
-					}
-					msgs = append(msgs, &hOplogMsg)
+				// We always write the host itself as we need to update version
+				// for optimistic locking for any value object update.
+				var hOplogMsg oplog.Message
+				onConflict := &db.OnConflict{
+					Target: db.Constraint("host_plugin_host_pkey"),
+					Action: db.SetColumns([]string{"name", "description", "version"}),
 				}
+				var rowsAffected int64
+				dbOpts := []db.Option{
+					db.NewOplogMsg(&hOplogMsg),
+					db.WithOnConflict(onConflict),
+					db.WithReturnRowsAffected(&rowsAffected),
+				}
+				version := ret.Version
+				if version > 0 {
+					dbOpts = append(dbOpts, db.WithVersion(&version))
+					ret.Version += 1
+				}
+				if err := w.Create(ctx, ret, dbOpts...); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if rowsAffected != 1 {
+					return errors.New(ctx, errors.UnexpectedRowsAffected, op, "no rows affected during upsert")
+				}
+				msgs = append(msgs, &hOplogMsg)
 
 				// IP handling
 				{
@@ -426,14 +449,18 @@ func (r *SetSyncJob) upsertHosts(
 							return err
 						}
 						if count != len(hi.ipsToRemove) {
-							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d ips from host %s, removed %d", len(hi.ipsToRemove), hi.h.PublicId, count))
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d ips from host %s, removed %d", len(hi.ipsToRemove), ret.PublicId, count))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
 					if len(hi.ipsToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToAdd))
-						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
-							return err
+						onConflict := &db.OnConflict{
+							Target: db.Constraint("host_ip_address_pkey"),
+							Action: db.DoNothing(true),
+						}
+						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), ret.GetPublicId())))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
@@ -448,20 +475,24 @@ func (r *SetSyncJob) upsertHosts(
 							return err
 						}
 						if count != len(hi.dnsNamesToRemove) {
-							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d dns names from host %s, removed %d", len(hi.dnsNamesToRemove), hi.h.PublicId, count))
+							return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to remove %d dns names from host %s, removed %d", len(hi.dnsNamesToRemove), ret.PublicId, count))
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
 					if len(hi.dnsNamesToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToAdd))
-						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs)); err != nil {
+						onConflict := &db.OnConflict{
+							Target: db.Constraint("host_dns_name_pkey"),
+							Action: db.DoNothing(true),
+						}
+						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return err
 						}
 						msgs = append(msgs, oplogMsgs...)
 					}
 				}
 
-				metadata := hi.h.oplog(oplog.OpType_OP_TYPE_UPDATE)
+				metadata := ret.oplog(oplog.OpType_OP_TYPE_UPDATE)
 				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 				}

@@ -37,7 +37,9 @@ func NewLoopbackPlugin() plgpb.HostPluginServiceServer {
 		hostMap:          make(map[string][]*loopbackPluginHostInfo),
 	}
 	ret.OnCreateCatalogFn = ret.onCreateCatalog
+	ret.OnUpdateCatalogFn = ret.onUpdateCatalog
 	ret.OnCreateSetFn = ret.onCreateSet
+	ret.OnUpdateSetFn = ret.onUpdateSet
 	ret.OnDeleteSetFn = ret.onDeleteSet
 	ret.ListHostsFn = ret.listHosts
 	return ret
@@ -57,7 +59,24 @@ func (l *loopbackPlugin) onCreateCatalog(ctx context.Context, req *plgpb.OnCreat
 			}, nil
 		}
 	}
-	return nil, nil
+	return &plgpb.OnCreateCatalogResponse{}, nil
+}
+
+func (l *loopbackPlugin) onUpdateCatalog(ctx context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
+	const op = "plugin.(loopbackPlugin).onUpdateCatalog"
+	if req == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "req is nil")
+	}
+	if cat := req.GetNewCatalog(); cat != nil {
+		if secrets := cat.GetSecrets(); secrets != nil {
+			return &plgpb.OnUpdateCatalogResponse{
+				Persisted: &plgpb.HostCatalogPersisted{
+					Secrets: secrets,
+				},
+			}, nil
+		}
+	}
+	return &plgpb.OnUpdateCatalogResponse{}, nil
 }
 
 func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
@@ -92,7 +111,46 @@ func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSet
 			}
 		}
 	}
-	return nil, nil
+	return &plgpb.OnCreateSetResponse{}, nil
+}
+
+func (l *loopbackPlugin) onUpdateSet(ctx context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+	const op = "plugin.(loopbackPlugin).onCreateSet"
+	if req == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "req is nil")
+	}
+	set := req.GetNewSet()
+	if set == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "set is nil")
+	}
+	var hosts []*loopbackPluginHostInfo
+	if attrs := set.GetAttributes(); attrs != nil {
+		attrsMap := attrs.AsMap()
+		if field := attrsMap[loopbackPluginHostInfoAttrField]; field != nil {
+			switch t := field.(type) {
+			case []interface{}:
+				for _, h := range t {
+					hostInfo := new(loopbackPluginHostInfo)
+					if err := mapstructure.Decode(h, hostInfo); err != nil {
+						return nil, errors.Wrap(ctx, err, op)
+					}
+					hosts = append(hosts, hostInfo)
+				}
+			case map[string]interface{}:
+				hostInfo := new(loopbackPluginHostInfo)
+				if err := mapstructure.Decode(t, hostInfo); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+				hosts = append(hosts, hostInfo)
+			default:
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown host info type %T", t))
+			}
+		}
+	}
+	if hosts != nil {
+		l.hostMap[set.GetId()] = hosts
+	}
+	return &plgpb.OnUpdateSetResponse{}, nil
 }
 
 func (l *loopbackPlugin) onDeleteSet(ctx context.Context, req *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error) {
