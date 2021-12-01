@@ -23,6 +23,7 @@ message SessionState {
   google.protobuf.Timestamp end_time = 30 [json_name = "end_time"];
 }
 
+// Connection contains information about a specific connection in a session
 message Connection {
     // public_id is used to access the connection via an API
     string public_id = 1;
