@@ -43,7 +43,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
-				userClientIp:       "127.0.0.1",
+				userClientIp:       "::1",
 			},
 			want: &Connection{
 				SessionId:          s.PublicId,
@@ -51,7 +51,7 @@ func TestConnection_Create(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    2222,
-				UserClientIp:       "127.0.0.1",
+				UserClientIp:       "::1",
 			},
 			create: true,
 		},
