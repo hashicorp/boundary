@@ -189,7 +189,6 @@ test-database-down:
 	make -C testing/dbtest/docker clean
 
 .PHONY: test-ci
-test-ci: install-go
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
@@ -202,6 +201,17 @@ test-sql:
 .PHONY: test
 test:
 	go test ./... -timeout 30m
+
+.PHONY: test-sdk
+test-sdk:
+	$(MAKE) -C sdk/ test
+
+.PHONY: test-api
+test-api:
+	$(MAKE) -C api/ test
+
+.PHONY: test-all
+test-all: test-sdk test-api test
 
 .PHONY: install-go
 install-go:

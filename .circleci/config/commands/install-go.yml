@@ -1,0 +1,14 @@
+---
+description: >
+  Ensure the right version of Go is installed and set PATH, GOPATH, GOROOT
+steps:
+  - run:
+      name: "Install go"
+      command: |
+        make install-go
+        source ~/.bashrc
+        echo 'export GOROOT=$GOROOT' >> "$BASH_ENV"
+        echo 'export GOPATH=$GOPATH' >> "$BASH_ENV"
+        echo 'export PATH=$PATH' >> "$BASH_ENV"
+        echo "$ go version"
+        go version

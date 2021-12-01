@@ -1,5 +1,7 @@
 jobs:
   - build
+  - test-api
+  - test-sdk
   - test-sql:
       matrix:
         parameters:
