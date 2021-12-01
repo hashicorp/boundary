@@ -4740,7 +4740,8 @@
           "type": "string",
           "title": "closed_reason of the conneciont"
         }
-      }
+      },
+      "title": "Connection contains information about a specific connection in a session"
     },
     "controller.api.resources.sessions.v1.Session": {
       "type": "object",

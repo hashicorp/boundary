@@ -136,6 +136,7 @@ func (x *SessionState) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// Connection contains information about a specific connection in a session
 type Connection struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
