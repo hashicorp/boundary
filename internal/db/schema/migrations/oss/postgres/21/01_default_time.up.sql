@@ -1,5 +1,6 @@
 begin;
 
+-- Replaces function from 0/01_domain_types.up.sql
 create or replace function default_create_time()
   returns trigger
 as $$
