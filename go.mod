@@ -72,7 +72,6 @@ require (
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
-	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881
 	golang.org/x/term v0.0.0-20210916214954-140adaaadfaf
 	golang.org/x/tools v0.1.6
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
@@ -85,7 +84,10 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-sockaddr v1.0.2
+require (
+	github.com/hashicorp/go-sockaddr v1.0.2
+	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6
+)
 
 require (
 	cloud.google.com/go v0.65.0 // indirect
