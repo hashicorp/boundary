@@ -1351,7 +1351,7 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
 	}
@@ -1374,7 +1374,7 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
 	}
@@ -1402,7 +1402,7 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, egressIds, nil)
+	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
 	}
