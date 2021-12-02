@@ -13,8 +13,10 @@ apply_migrations() {
     local major;
     local minor;
     local version;
+    local old_ifs;
     local d="$1";
 
+    old_ifs=$IFS
     for file in $(ls -v ${d}/postgres/**/*.up.sql); do
         echo "Applying migration: ${file}"
         psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --dbname boundary_template -f "$file"
@@ -28,7 +30,7 @@ apply_migrations() {
         read -ra MINOR_PARTS <<< "${PARTS[5]}"
         minor="10#${MINOR_PARTS[0]}"
         let version=${major}*1000+${minor}
-        IFS=' '
+        IFS=$old_ifs
     done
     echo "setting boundary_schema_version for ${edition} to ${version}";
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --dbname boundary_template -q <<EOSQL
