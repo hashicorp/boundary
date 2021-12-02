@@ -1,6 +1,7 @@
 executor: go-machine
 steps:
 - checkout
+- install-go
 - run:
     name: "Initialize Test Database"
     command: |
