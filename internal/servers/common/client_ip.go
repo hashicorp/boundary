@@ -5,18 +5,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 )
-
-const (
-	RealIpHeader        = "X-Real-Ip"
-	XForwardedForHeader = "X-Forwarded-For"
-)
-
-var privateNets atomic.Value
 
 // ClientIpFromRequest will determine the client IP of the http request
 func ClientIpFromRequest(ctx context.Context, listenerCfg *listenerutil.ListenerConfig, r *http.Request) (string, error) {
