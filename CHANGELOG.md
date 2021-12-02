@@ -2,8 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
 ### New and Improved
 
+* config: Add support for go-sockaddr templates to Worker and Controller
+  addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
+* host: Plugin-based host catalogs will now schedule updates for all
+  of its host sets when its attributes are updated.
+  ([PR](https://github.com/hashicorp/boundary/pull/1736))
 * controllers: Add client IP to inbound request information which is included in
   Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
 
