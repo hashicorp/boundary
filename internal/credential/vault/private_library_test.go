@@ -462,6 +462,195 @@ func TestBaseToUsrPass(t *testing.T) {
 			},
 			wantErr: errors.VaultInvalidCredentialMapping,
 		},
+		{
+			name: "invalid-kv2-no-metadata-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"data": map[string]interface{}{
+						"username": "my-username",
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-data-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-username-default-password-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-passsword-default-username-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username": "my-username",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": "hello",
+					"data": map[string]interface{}{
+						"username": "my-username",
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data":     "hello",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-additional-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"bad-field": "hello",
+					"metadata":  map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username": "my-username",
+						"password": "my-password",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-kv2-default-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UserPasswordType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username": "my-username",
+						"password": "my-password",
+					},
+				},
+			},
+			want: &usrPassCred{
+				username: "my-username",
+				password: credential.Password("my-password"),
+			},
+		},
+		{
+			name: "valid-kv2-override-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.UserPasswordType),
+					UsernameAttribute: "test-username",
+					PasswordAttribute: "test-password",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"password":      "default-password",
+						"test-username": "override-username",
+						"test-password": "override-password",
+					},
+				},
+			},
+			want: &usrPassCred{
+				username: "override-username",
+				password: credential.Password("override-password"),
+			},
+		},
+		{
+			name: "valid-kv2-default-username-override-password",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.UserPasswordType),
+					PasswordAttribute: "test-password",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"password":      "default-password",
+						"test-username": "override-username",
+						"test-password": "override-password",
+					},
+				},
+			},
+			want: &usrPassCred{
+				username: "default-username",
+				password: credential.Password("override-password"),
+			},
+		},
+		{
+			name: "valid-kv2-override-username-default-password",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.UserPasswordType),
+					UsernameAttribute: "test-username",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"password":      "default-password",
+						"test-username": "override-username",
+						"test-password": "override-password",
+					},
+				},
+			},
+			want: &usrPassCred{
+				username: "override-username",
+				password: credential.Password("default-password"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
