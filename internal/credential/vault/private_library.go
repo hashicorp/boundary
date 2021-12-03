@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/userpassword"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -69,19 +70,7 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 	if pAttr == "" {
 		pAttr = "password"
 	}
-
-	var username, password string
-	if u, ok := bc.secretData[uAttr]; ok {
-		if u, ok := u.(string); ok {
-			username = u
-		}
-	}
-	if p, ok := bc.secretData[pAttr]; ok {
-		if p, ok := p.(string); ok {
-			password = p
-		}
-	}
-
+	username, password := userpassword.Extract(bc.secretData, uAttr, pAttr)
 	if username == "" || password == "" {
 		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
 	}
