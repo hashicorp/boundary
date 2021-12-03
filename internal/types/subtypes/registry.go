@@ -70,6 +70,18 @@ func (r *Registry) SubtypeFromId(id string) Subtype {
 	return subtype
 }
 
+// Prefixes returns the list of all known Prefixes.
+func (r *Registry) Prefixes() []string {
+	r.RLock()
+	defer r.RUnlock()
+
+	ret := make([]string, 0, len(r.subtypesPrefixes))
+	for p := range r.subtypesPrefixes {
+		ret = append(ret, p)
+	}
+	return ret
+}
+
 // Register registers all the prefixes for a provided Subtype. Register returns
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.

@@ -26,12 +26,13 @@ func TestRepository_LookupTarget(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
 	proj.Name = "project-name"
-	_, _, err := iamRepo.UpdateScope(context.Background(), proj, 1, []string{"name"})
+	ctx := context.Background()
+	_, _, err := iamRepo.UpdateScope(ctx, proj, 1, []string{"name"})
 	require.NoError(t, err)
 	rw := db.New(conn)
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
-	tgt := tcp.TestTarget(t, conn, proj.PublicId, "target-name")
+	tgt := tcp.TestTarget(ctx, t, conn, proj.PublicId, "target-name")
 
 	tests := []struct {
 		testName  string
@@ -43,12 +44,12 @@ func TestRepository_LookupTarget(t *testing.T) {
 	}{
 		{
 			testName: "id",
-			id:       tgt.PublicId,
+			id:       tgt.GetPublicId(),
 			wantErr:  false,
 		},
 		{
 			testName: "name only",
-			name:     tgt.Name,
+			name:     tgt.GetName(),
 			wantErr:  true,
 		},
 		{
@@ -69,39 +70,39 @@ func TestRepository_LookupTarget(t *testing.T) {
 		},
 		{
 			testName:  "everything",
-			name:      tgt.Name,
+			name:      tgt.GetName(),
 			scopeId:   proj.PublicId,
 			scopeName: proj.Name,
 			wantErr:   true,
 		},
 		{
 			testName:  "name and scope name",
-			name:      tgt.Name,
+			name:      tgt.GetName(),
 			scopeName: proj.Name,
 			wantErr:   false,
 		},
 		{
 			testName: "name and scope id",
-			name:     tgt.Name,
+			name:     tgt.GetName(),
 			scopeId:  proj.PublicId,
 			wantErr:  false,
 		},
 		{
 			testName: "id and name",
-			id:       tgt.PublicId,
-			name:     tgt.Name,
+			id:       tgt.GetPublicId(),
+			name:     tgt.GetName(),
 			scopeId:  proj.PublicId,
 			wantErr:  true,
 		},
 		{
 			testName:  "id and scope name",
-			id:        tgt.PublicId,
+			id:        tgt.GetPublicId(),
 			scopeName: proj.Name,
 			wantErr:   true,
 		},
 		{
 			testName: "id and scope id",
-			id:       tgt.PublicId,
+			id:       tgt.GetPublicId(),
 			scopeId:  proj.PublicId,
 			wantErr:  true,
 		},
@@ -123,13 +124,13 @@ func TestRepository_LookupTarget(t *testing.T) {
 			if tt.scopeName != "" {
 				opts = append(opts, target.WithScopeName(tt.scopeName))
 			}
-			got, _, _, err := repo.LookupTarget(context.Background(), id, opts...)
+			got, _, _, err := repo.LookupTarget(ctx, id, opts...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tgt.PublicId, got.GetPublicId())
+			assert.Equal(tgt.GetPublicId(), got.GetPublicId())
 		})
 	}
 }
@@ -213,18 +214,19 @@ func TestRepository_ListTargets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
 			require.NoError(conn.Where("1=1").Delete(tcp.NewTestTarget("")).Error)
-			testGroups := []*tcp.Target{}
+			testGroups := []target.Target{}
 			for i := 0; i < tt.createCnt; i++ {
 				switch {
 				case tt.createScopeId2 != "" && i%2 == 0:
-					testGroups = append(testGroups, tcp.TestTarget(t, conn, tt.createScopeId2, strconv.Itoa(i)))
+					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createScopeId2, strconv.Itoa(i)))
 				default:
-					testGroups = append(testGroups, tcp.TestTarget(t, conn, tt.createScopeId, strconv.Itoa(i)))
+					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createScopeId, strconv.Itoa(i)))
 				}
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListTargets(context.Background(), tt.args.opt...)
+			got, err := repo.ListTargets(ctx, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -249,16 +251,17 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 
 	require.NoError(t, conn.Where("1=1").Delete(tcp.NewTestTarget("")).Error)
 
+	ctx := context.Background()
 	const numPerScope = 10
 	var total int
 	for i := 0; i < numPerScope; i++ {
-		tcp.TestTarget(t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
+		tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
 		total++
-		tcp.TestTarget(t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
+		tcp.TestTarget(ctx, t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
 		total++
 	}
 
-	got, err := repo.ListTargets(context.Background(), target.WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	got, err := repo.ListTargets(ctx, target.WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
@@ -274,6 +277,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	type args struct {
 		target target.Target
 		opt    []target.Option
@@ -288,7 +292,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				target: tcp.TestTarget(t, conn, proj.PublicId, "valid"),
+				target: tcp.TestTarget(ctx, t, conn, proj.PublicId, "valid"),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -297,7 +301,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				target: func() target.Target {
-					tar, _ := tcp.New(proj.PublicId)
+					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 					return tar
 				}(),
 			},
@@ -311,8 +315,8 @@ func TestRepository_DeleteTarget(t *testing.T) {
 				target: func() target.Target {
 					id, err := db.NewPublicId(tcp.TargetPrefix)
 					require.NoError(t, err)
-					tar, _ := tcp.New(proj.PublicId)
-					tar.PublicId = id
+					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
+					tar.SetPublicId(ctx, id)
 					return tar
 				}(),
 			},
@@ -324,7 +328,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteTarget(context.Background(), tt.args.target.GetPublicId(), tt.args.opt...)
+			deletedRows, err := repo.DeleteTarget(ctx, tt.args.target.GetPublicId(), tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -336,7 +340,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundGroup, _, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
+			foundGroup, _, _, err := repo.LookupTarget(ctx, tt.args.target.GetPublicId())
 			assert.NoError(err)
 			assert.Nil(foundGroup)
 

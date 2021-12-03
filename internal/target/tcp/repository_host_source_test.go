@@ -101,10 +101,11 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(allocTargetHostSet()).Error)
 			require.NoError(conn.Where("1=1").Delete(tcp.NewTestTarget("")).Error)
 
-			projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, "static-proj")
+			ctx := context.Background()
+			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "static-proj")
 
 			var hostSourceIds []string
-			origTarget, origHostSet, _, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			origTarget, origHostSet, _, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 			require.NoError(err)
 			require.Equal(0, len(origHostSet))
 
@@ -112,14 +113,14 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				hostSourceIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
 			}
 
-			gotTarget, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSourceIds, tt.args.opt...)
+			gotTarget, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), tt.args.targetVersion, hostSourceIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
 				// test to see of the target version update oplog was not created
-				err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, projTarget.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
@@ -147,10 +148,10 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			// appropriate granularity, we should add an appropriate assert.
 
 			// test to see of the target version update oplog was  created
-			err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, projTarget.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 
-			tar, ths, _, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			tar, ths, _, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 			require.NoError(err)
 			assert.Equal(tt.args.targetVersion+1, tar.GetVersion())
 			assert.Equal(origTarget.GetVersion(), tar.GetVersion()-1)
@@ -170,24 +171,25 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 		hs2 := hsets[1]
 		hs3 := hsets[2]
 
-		projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, "add-existing")
-		_, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 1, []string{hs1.PublicId})
+		ctx := context.Background()
+		projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "add-existing")
+		_, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 1, []string{hs1.PublicId})
 		require.NoError(err)
 		assert.Len(gotHostSources, 1)
 		assert.Equal(hs1.PublicId, gotHostSources[0].Id())
 
 		// Adding hs1 again should error
-		_, _, _, err = repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 2, []string{hs1.PublicId})
+		_, _, _, err = repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 2, []string{hs1.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Adding multiple with hs1 in set should error
-		_, _, _, err = repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 2, []string{hs3.PublicId, hs2.PublicId, hs1.PublicId})
+		_, _, _, err = repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 2, []string{hs3.PublicId, hs2.PublicId, hs1.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Previous transactions should have been rolled back and only hs1 should be associated
-		_, gotHostSources, _, err = repo.LookupTarget(context.Background(), projTarget.PublicId)
+		_, gotHostSources, _, err = repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
 		assert.Len(gotHostSources, 1)
 		assert.Equal(hs1.PublicId, gotHostSources[0].Id())
@@ -204,6 +206,8 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
+
+	ctx := context.Background()
 
 	type args struct {
 		target                target.Target
@@ -223,7 +227,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				target:    tcp.TestTarget(t, conn, proj.PublicId, "valid"),
+				target:    tcp.TestTarget(ctx, t, conn, proj.PublicId, "valid"),
 				createCnt: 5,
 				deleteCnt: 5,
 			},
@@ -233,7 +237,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "valid-keeping-some",
 			args: args{
-				target:    tcp.TestTarget(t, conn, proj.PublicId, "valid-keeping-some"),
+				target:    tcp.TestTarget(ctx, t, conn, proj.PublicId, "valid-keeping-some"),
 				createCnt: 5,
 				deleteCnt: 2,
 			},
@@ -243,7 +247,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "no-deletes",
 			args: args{
-				target:    tcp.TestTarget(t, conn, proj.PublicId, "no-deletes"),
+				target:    tcp.TestTarget(ctx, t, conn, proj.PublicId, "no-deletes"),
 				createCnt: 5,
 			},
 			wantRowsDeleted: 0,
@@ -253,7 +257,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "not-found",
 			args: args{
-				target:           tcp.TestTarget(t, conn, proj.PublicId, "not-found"),
+				target:           tcp.TestTarget(ctx, t, conn, proj.PublicId, "not-found"),
 				targetIdOverride: func() *string { id := tcp.TestId(t); return &id }(),
 				createCnt:        5,
 				deleteCnt:        5,
@@ -264,7 +268,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "missing-target-id",
 			args: args{
-				target:           tcp.TestTarget(t, conn, proj.PublicId, "missing-target-id"),
+				target:           tcp.TestTarget(ctx, t, conn, proj.PublicId, "missing-target-id"),
 				targetIdOverride: func() *string { id := ""; return &id }(),
 				createCnt:        5,
 				deleteCnt:        5,
@@ -276,7 +280,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "zero-version",
 			args: args{
-				target:                tcp.TestTarget(t, conn, proj.PublicId, "zero-version"),
+				target:                tcp.TestTarget(ctx, t, conn, proj.PublicId, "zero-version"),
 				targetVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
 				createCnt:             5,
 				deleteCnt:             5,
@@ -288,7 +292,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		{
 			name: "bad-version",
 			args: args{
-				target:                tcp.TestTarget(t, conn, proj.PublicId, "bad-version"),
+				target:                tcp.TestTarget(ctx, t, conn, proj.PublicId, "bad-version"),
 				targetVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
 				createCnt:             5,
 				deleteCnt:             5,
@@ -373,26 +377,27 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		hs2 := hsets[1]
 		hs3 := hsets[2]
 
-		projTarget := tcp.TestTarget(t, conn, proj.PublicId, "delete-unassociated")
-		_, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 1, []string{hs1.PublicId, hs2.PublicId})
+		ctx := context.Background()
+		projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "delete-unassociated")
+		_, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 1, []string{hs1.PublicId, hs2.PublicId})
 		require.NoError(err)
 		assert.Len(gotHostSources, 2)
 		assert.Equal(hs1.PublicId, gotHostSources[0].Id())
 
 		// Deleting an unassociated host set should return an error
-		delCount, err := repo.DeleteTargetHostSources(context.Background(), projTarget.PublicId, 2, []string{hs3.PublicId})
+		delCount, err := repo.DeleteTargetHostSources(ctx, projTarget.GetPublicId(), 2, []string{hs3.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Deleting host sets which includes an unassociated host set should return an error
-		delCount, err = repo.DeleteTargetHostSources(context.Background(), projTarget.PublicId, 2, []string{hs1.PublicId, hs2.PublicId, hs3.PublicId})
+		delCount, err = repo.DeleteTargetHostSources(ctx, projTarget.GetPublicId(), 2, []string{hs1.PublicId, hs2.PublicId, hs3.PublicId})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Previous transactions should have been rolled back
-		_, gotHostSources, _, err = repo.LookupTarget(context.Background(), projTarget.PublicId)
+		_, gotHostSources, _, err = repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
 		assert.Len(gotHostSources, 2)
 	})
@@ -427,6 +432,8 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 		return results
 	}
 
+	ctx := context.Background()
+
 	setupFn := func(target target.Target) []target.HostSource {
 		hs := createHostSetsFn()
 		_, created, _, err := repo.AddTargetHostSources(context.Background(), target.GetPublicId(), 1, hs)
@@ -452,7 +459,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "clear",
 			setup: setupFn,
 			args: args{
-				target:        tcp.TestTarget(t, conn, proj.PublicId, "clear"),
+				target:        tcp.TestTarget(ctx, t, conn, proj.PublicId, "clear"),
 				targetVersion: 2, // yep, since setupFn will increment it to 2
 				hostSourceIds: []string{},
 			},
@@ -463,7 +470,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "no-change",
 			setup: setupFn,
 			args: args{
-				target:               tcp.TestTarget(t, conn, proj.PublicId, "no-change"),
+				target:               tcp.TestTarget(ctx, t, conn, proj.PublicId, "no-change"),
 				targetVersion:        2, // yep, since setupFn will increment it to 2
 				hostSourceIds:        []string{},
 				addToOrigHostSources: true,
@@ -475,7 +482,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "add-sets",
 			setup: setupFn,
 			args: args{
-				target:               tcp.TestTarget(t, conn, proj.PublicId, "add-sets"),
+				target:               tcp.TestTarget(ctx, t, conn, proj.PublicId, "add-sets"),
 				targetVersion:        2, // yep, since setupFn will increment it to 2
 				hostSourceIds:        []string{testHostSetIds[0], testHostSetIds[1]},
 				addToOrigHostSources: true,
@@ -487,7 +494,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "add host sets with zero version",
 			setup: setupFn,
 			args: args{
-				target:               tcp.TestTarget(t, conn, proj.PublicId, "add host sets with zero version"),
+				target:               tcp.TestTarget(ctx, t, conn, proj.PublicId, "add host sets with zero version"),
 				targetVersion:        0,
 				hostSourceIds:        []string{testHostSetIds[0], testHostSetIds[1]},
 				addToOrigHostSources: true,
@@ -498,7 +505,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "remove existing and add users and grps",
 			setup: setupFn,
 			args: args{
-				target:               tcp.TestTarget(t, conn, proj.PublicId, "remove existing and add host sets"),
+				target:               tcp.TestTarget(ctx, t, conn, proj.PublicId, "remove existing and add host sets"),
 				targetVersion:        2, // yep, since setupFn will increment it to 2
 				hostSourceIds:        []string{testHostSetIds[0], testHostSetIds[1]},
 				addToOrigHostSources: false,

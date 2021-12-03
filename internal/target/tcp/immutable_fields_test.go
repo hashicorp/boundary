@@ -26,7 +26,8 @@ func TestTarget_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	new := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
+	ctx := context.Background()
+	new := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 
 	tests := []struct {
 		name      string
@@ -95,7 +96,8 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	new := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
+	ctx := context.Background()
+	new := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 
 	tests := []struct {
 		name      string
@@ -163,18 +165,19 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	projTarget := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
+	ctx := context.Background()
+	projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 2)
 	require.Equal(t, 2, len(hsets))
 
-	updateTarget := tcp.TestTarget(t, conn, proj.PublicId, tcp.TestId(t))
+	updateTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 	updateHset := hsets[1]
 
-	_, gotHostSources, _, err := repo.AddTargetHostSources(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
+	_, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), 1, []string{hsets[0].PublicId})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSources))
-	new, err := target.NewTargetHostSet(projTarget.PublicId, gotHostSources[0].Id())
+	new, err := target.NewTargetHostSet(projTarget.GetPublicId(), gotHostSources[0].Id())
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -186,7 +189,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			name: "target_id",
 			update: func() *target.TargetHostSet {
 				target := new.Clone().(*target.TargetHostSet)
-				target.TargetId = updateTarget.PublicId
+				target.TargetId = updateTarget.GetPublicId()
 				return target
 			}(),
 			fieldMask: []string{"TargetId"},
