@@ -1,5 +1,6 @@
 begin;
 
+-- Replaces view from 10/04_vault_credential.up.sql
      drop view credential_vault_library_private;
 
      create view credential_vault_library_private as
@@ -44,5 +45,24 @@ begin;
   comment on view credential_vault_library_private is
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_library_public as
+     select public_id,
+            store_id,
+            name,
+            description,
+            create_time,
+            update_time,
+            version,
+            vault_path,
+            http_method,
+            http_request_body,
+            credential_type,
+            username_attribute,
+            password_attribute
+       from credential_vault_library_private;
+  comment on view credential_vault_library_public is
+    'credential_vault_library_public is a view where each row contains a credential library and any of library''s credential mapping overrides. '
+    'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
 commit;
