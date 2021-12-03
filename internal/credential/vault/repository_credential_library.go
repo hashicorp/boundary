@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -214,7 +215,7 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	l := allocCredentialLibrary()
+	l := allocPublicLibrary()
 	l.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, l); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -222,8 +223,59 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
-	return l, nil
+	return l.toCredentialLibrary(), nil
 }
+
+type publicLibrary struct {
+	PublicId          string `gorm:"primary_key"`
+	StoreId           string
+	Name              string
+	Description       string
+	CreateTime        *timestamp.Timestamp
+	UpdateTime        *timestamp.Timestamp
+	Version           uint32
+	VaultPath         string
+	HttpMethod        string
+	HttpRequestBody   []byte
+	CredentialType    string
+	UsernameAttribute string
+	PasswordAttribute string
+}
+
+func allocPublicLibrary() *publicLibrary {
+	return &publicLibrary{}
+}
+
+func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
+	cl := allocCredentialLibrary()
+	cl.PublicId = pl.PublicId
+	cl.StoreId = pl.StoreId
+	cl.Name = pl.Name
+	cl.Description = pl.Description
+	cl.CreateTime = pl.CreateTime
+	cl.UpdateTime = pl.UpdateTime
+	cl.Version = pl.Version
+	cl.VaultPath = pl.VaultPath
+	cl.HttpMethod = pl.HttpMethod
+	cl.HttpRequestBody = pl.HttpRequestBody
+	cl.CredentialLibrary.CredentialType = pl.CredentialType
+
+	if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" {
+		up := allocUserPasswordOverride()
+		up.LibraryId = pl.PublicId
+		up.UsernameAttribute = pl.UsernameAttribute
+		up.PasswordAttribute = pl.PasswordAttribute
+		up.sanitize()
+		cl.MappingOverride = up
+	}
+	return cl
+}
+
+// TableName returns the table name for gorm.
+func (_ *publicLibrary) TableName() string { return "credential_vault_library_public" }
+
+// GetPublicId returns the public id.
+func (pl *publicLibrary) GetPublicId() string { return pl.PublicId }
 
 // DeleteCredentialLibrary deletes publicId from the repository and returns
 // the number of records deleted.
