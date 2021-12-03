@@ -232,7 +232,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		}
 
 		conf := proxyHandlers.Config{
-			UserClientIp:   userClientIp,
+			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
 			ClientConn:     conn,
 			RemoteEndpoint: endpoint,

@@ -16,7 +16,7 @@ import (
 // the connection in the connection repository.
 type Config struct {
 	// UserClientIp is the user's client IP
-	UserClientIp string
+	UserClientIp net.IP
 	// ClientAddress is the remote address (IP and port) of the client.  If
 	// there are any load balancers or proxies between the user and the worker,
 	// then it will be the address of the last one before the worker.
