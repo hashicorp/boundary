@@ -95,37 +95,43 @@ func (j *RefreshHostCatalogPersistedJob) Run(ctx context.Context) error {
 	}
 
 	// Get all host catalogs.
-	var hostCatalogs []*HostCatalog
-	if err := j.reader.SearchWhere(ctx, &hostCatalogs, "", nil); err != nil {
+	var aggs []*catalogAgg
+	if err := j.reader.SearchWhere(ctx, &aggs, "", nil, db.WithLimit(j.limit)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	// Set numProcessed and numHosts for status report
-	j.numProcessed, j.numCatalogs = 0, len(hostCatalogs)
-	if len(hostCatalogs) == 0 {
+	j.numProcessed, j.numCatalogs = 0, len(aggs)
+	if len(aggs) == 0 {
 		return nil
 	}
 
-	// TODO: Add refreshHostCatalogPersisted in after spinning off the
-	// database functionality that depends on the repository
+	for _, agg := range aggs {
+		if err := j.refreshHostCatalogPersisted(ctx, agg); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		j.numProcessed++
+	}
+
 	return nil
 }
 
-// TODO: remove repo dependencies and just use DB calls or
-// lower-level DB methods
-func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context.Context, repo *Repository, catalogId string) error {
+func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context.Context, agg *catalogAgg) error {
 	const op = "plugin.(RefreshHostCatalogPersistedJob).refreshHostCatalogPersisted"
-	if repo == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
-	}
-	if catalogId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+	if agg == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "catalog aggregate is nil")
 	}
 
-	// Look up the catalog and persisted data.
-	catalog, persisted, err := repo.getCatalog(ctx, catalogId)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", catalogId)))
+	// Split out the catalog and persisted data
+	catalog, secret := agg.toCatalogAndPersisted()
+	var persisted *plgpb.HostCatalogPersisted
+	if secret != nil {
+		var err error
+		persisted, err = toPluginPersistedData(ctx, j.kms, catalog.GetScopeId(), secret)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	}
 
 	// Look up the plugin for the catalog. If the plugin is not loaded,
@@ -187,11 +193,15 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			dbWrapper, err := j.kms.GetWrapper(ctx, catalog.ScopeId, kms.KeyPurposeDatabase)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
+			}
 			if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 
-			if err := w.Create(
+			if err := j.writer.Create(
 				ctx,
 				hcSecret,
 				db.WithOnConflict(&db.OnConflict{

@@ -233,13 +233,14 @@ var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)
 
 // TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
 type TestPluginServer struct {
-	OnCreateCatalogFn func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
-	OnUpdateCatalogFn func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
-	OnDeleteCatalogFn func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
-	OnCreateSetFn     func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
-	OnUpdateSetFn     func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
-	OnDeleteSetFn     func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
-	ListHostsFn       func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
+	OnCreateCatalogFn             func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
+	OnUpdateCatalogFn             func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
+	OnDeleteCatalogFn             func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
+	OnCreateSetFn                 func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
+	OnUpdateSetFn                 func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
+	OnDeleteSetFn                 func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
+	ListHostsFn                   func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
+	RefreshHostCatalogPersistedFn func(context.Context, *plgpb.RefreshHostCatalogPersistedRequest) (*plgpb.RefreshHostCatalogPersistedResponse, error)
 	plgpb.UnimplementedHostPluginServiceServer
 }
 
