@@ -39,7 +39,8 @@ worker {
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/docs/concepts/filtering) targets a worker can
   proxy via [worker tags](/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
-  tags set here will be re-parsed and new values used..
+  tags set here will be re-parsed and new values used. It can also be a string
+  referring to a file on disk (file://) or an env var (env://).
 
 ## KMS Configuration
 
