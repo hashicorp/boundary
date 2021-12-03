@@ -292,3 +292,10 @@ func (t TestPluginServer) ListHosts(ctx context.Context, req *plgpb.ListHostsReq
 	}
 	return t.ListHostsFn(ctx, req)
 }
+
+func (t TestPluginServer) RefreshHostCatalogPersisted(ctx context.Context, req *plgpb.RefreshHostCatalogPersistedRequest) (*plgpb.RefreshHostCatalogPersistedResponse, error) {
+	if t.RefreshHostCatalogPersistedFn == nil {
+		return t.UnimplementedHostPluginServiceServer.RefreshHostCatalogPersisted(ctx, req)
+	}
+	return t.RefreshHostCatalogPersistedFn(ctx, req)
+}
