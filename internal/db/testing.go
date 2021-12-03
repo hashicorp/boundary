@@ -55,7 +55,9 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db.Logger.LogMode(logger.Error)
+	gormDB, err := db.gormDB(ctx)
+	require.NoError(t, err)
+	gormDB.Logger.LogMode(logger.Error)
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
 		assert.NoError(t, err)

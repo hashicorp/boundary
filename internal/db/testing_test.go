@@ -21,12 +21,12 @@ func Test_Utils(t *testing.T) {
 }
 
 func TestVerifyOplogEntry(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
+	d, _ := TestSetup(t, "postgres")
 	assert := assert.New(t)
-	TestCreateTables(t, db)
+	TestCreateTables(t, d)
 
 	t.Run("valid", func(t *testing.T) {
-		rw := Db{underlying: db}
+		rw := New(d)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -51,14 +51,14 @@ func TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
-		err = TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
+		err = TestVerifyOplog(t, rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
-		rw := Db{underlying: db}
+		rw := New(d)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		err = TestVerifyOplog(t, &rw, id)
+		err = TestVerifyOplog(t, rw, id)
 		assert.Error(err)
 	})
 }

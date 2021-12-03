@@ -11,6 +11,11 @@ import (
 	"gorm.io/driver/postgres"
 )
 
+func init() {
+	dbw.InitNonCreatableFields([]string{"CreateTime", "UpdateTime"})
+	dbw.InitNonUpdatableFields([]string{"PublicId", "CreateTime", "UpdateTime"})
+}
+
 type DbType int
 
 const (
@@ -120,6 +125,6 @@ func (d *DB) gormDB(ctx context.Context) (*gorm.DB, error) {
 		}
 		return gormDB, nil
 	default:
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("%s: unable to open %s database type", typ))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("%s: unable to open %s database type", op, typ))
 	}
 }
