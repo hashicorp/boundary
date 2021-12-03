@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gorm.io/gorm/logger"
 )
 
 func TestSession_ImmutableFields(t *testing.T) {
@@ -252,8 +251,6 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 	var new ConnectionState
 	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
 	require.NoError(t, err)
-
-	conn.Logger = logger.Default.LogMode(logger.Info)
 
 	tests := []struct {
 		name            string

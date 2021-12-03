@@ -6,12 +6,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/go-hclog"
-	"github.com/jackc/pgconn"
+	"github.com/hashicorp/go-dbw"
 	_ "github.com/jackc/pgx/v4"
 	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 type DbType int
@@ -39,18 +36,12 @@ func StringToDbType(dialect string) (DbType, error) {
 
 // DB is a wrapper around the ORM
 type DB struct {
-	*gorm.DB
+	wrapped *dbw.DB
 }
 
 // Debug will enable/disable debug info for the connection
 func (db *DB) Debug(on bool) {
-	if on {
-		// info level in the Gorm domain which maps to a debug level in the boundary domain
-		db.Logger = logger.Default.LogMode(logger.Info)
-	} else {
-		// the default level in the gorm domain is: error level
-		db.Logger = logger.Default.LogMode(logger.Error)
-	}
+	db.wrapped.Debug(on)
 }
 
 // SqlDB returns the underlying sql.DB
@@ -60,23 +51,19 @@ func (db *DB) Debug(on bool) {
 // is also an export DB type
 func (d *DB) SqlDB(ctx context.Context) (*sql.DB, error) {
 	const op = "db.(DB).SqlDB"
-	if d.DB == nil {
+	if d.wrapped == nil {
 		return nil, errors.New(ctx, errors.Internal, op, "missing underlying database")
 	}
-	return d.DB.DB()
+	return d.wrapped.SqlDB(ctx)
 }
 
 // Close the underlying sql.DB
 func (d *DB) Close(ctx context.Context) error {
 	const op = "db.(DB).Close"
-	if d.DB == nil {
+	if d.wrapped == nil {
 		return errors.New(ctx, errors.Internal, op, "missing underlying database")
 	}
-	underlying, err := d.DB.DB()
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return underlying.Close()
+	return d.wrapped.Close(ctx)
 }
 
 // Open a database connection which is long-lived. The options of
@@ -86,7 +73,8 @@ func (d *DB) Close(ctx context.Context) error {
 // answer is no, but there are occasions when it's necessary.  See the sql.DB
 // docs for more information.
 func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
-	var dialect gorm.Dialector
+	const op = "db.Open"
+	var dialect dbw.Dialector
 	switch dbType {
 	case Postgres:
 		dialect = postgres.New(postgres.Config{
@@ -96,47 +84,42 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}
-	db, err := gorm.Open(dialect, &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("unable to open database: %w", err)
-	}
 	opts := GetOpts(opt...)
+	var wrappedOpts []dbw.Option
 	if opts.withGormFormatter != nil {
-		newLogger := logger.New(
-			getGormLogger(opts.withGormFormatter),
-			logger.Config{
-				LogLevel: logger.Error, // Log level
-				Colorful: false,        // Disable color
-			},
-		)
-		db = db.Session(&gorm.Session{Logger: newLogger})
+		wrappedOpts = append(wrappedOpts, dbw.WithLogger(opts.withGormFormatter))
 	}
 	if opts.withMaxOpenConnections > 0 {
-		if dialect.Name() == "postgres" && opts.withMaxOpenConnections == 1 {
-			return nil, fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
-		}
-		underlyingDB, err := db.DB()
+		wrappedOpts = append(wrappedOpts, dbw.WithMaxOpenConnections(opts.withMaxOpenConnections))
+	}
+
+	wrapped, err := dbw.OpenWith(dialect, wrappedOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &DB{wrapped: wrapped}, nil
+}
+
+func (d *DB) gormDB(ctx context.Context) (*gorm.DB, error) {
+	const op = "db.gormDB"
+	typ, _, err := d.wrapped.DbType()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	sqlDB, err := d.SqlDB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	switch typ {
+	case dbw.Postgres:
+		gormDB, err := gorm.Open(postgres.New(postgres.Config{
+			Conn: sqlDB,
+		}))
 		if err != nil {
-			return nil, fmt.Errorf("unable retreive db: %w", err)
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		underlyingDB.SetMaxOpenConns(opts.withMaxOpenConnections)
+		return gormDB, nil
+	default:
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("%s: unable to open %s database type", typ))
 	}
-	return &DB{db}, nil
-}
-
-type gormLogger struct {
-	logger hclog.Logger
-}
-
-func (g gormLogger) Printf(msg string, values ...interface{}) {
-	if len(values) > 1 {
-		switch values[1].(type) {
-		case *pgconn.PgError:
-			g.logger.Trace("error from database adapter", "location", values[0], "error", values[1])
-		}
-	}
-}
-
-func getGormLogger(log hclog.Logger) gormLogger {
-	return gormLogger{logger: log}
 }
