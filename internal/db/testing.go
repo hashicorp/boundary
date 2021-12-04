@@ -99,6 +99,17 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
+// TestDeleteWhere allows you to easily delete resources for testing purposes
+// including all the current resources.
+func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, sql string, args ...interface{}) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+	gormDb, err := conn.gormDB(ctx)
+	require.NoError(err)
+	require.NoError(gormDb.Where(sql, args...).Delete(i).Error)
+}
+
 // TestVerifyOplog will verify that there is an oplog entry that matches the provided resourceId.
 // By default it matches the provided resourceId against the `resource-public-id` tag.  If the
 // WithResourcePrivateId option is provided, the lookup will use the `resource-private-id` tag.

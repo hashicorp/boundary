@@ -21,7 +21,7 @@ func TestOidcKey_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -59,7 +59,7 @@ func TestOidcKey_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocOidcKey()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocOidcKey(), "1=1")
 			got, err := kms.NewOidcKey(tt.args.rootKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -90,9 +90,9 @@ func TestOidcKey_Delete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocOidcKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocOidcKey(), "1=1")
 
 	tests := []struct {
 		name            string
@@ -153,7 +153,7 @@ func TestOidcKey_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		k := kms.TestOidcKey(t, conn, rk.PrivateId)
 		cp := k.Clone()
@@ -163,7 +163,7 @@ func TestOidcKey_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		rk2 := kms.TestRootKey(t, conn, org2.PublicId)
 		k := kms.TestOidcKey(t, conn, rk.PrivateId)

@@ -104,6 +104,7 @@ func TestNewRepository(t *testing.T) {
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-scope", func(t *testing.T) {
@@ -125,11 +126,11 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
+		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", "resource-public-id", s.PublicId)
 		require.NoError(err)
 
 		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId)
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
@@ -159,7 +160,7 @@ func Test_Repository_delete(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		require.NoError(err)
 	})
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 

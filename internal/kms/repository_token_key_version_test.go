@@ -24,7 +24,7 @@ func TestRepository_CreateTokenKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
@@ -111,7 +111,7 @@ func TestRepository_DeleteTokenKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
@@ -200,7 +200,7 @@ func TestRepository_LatestTokenKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
@@ -245,7 +245,7 @@ func TestRepository_LatestTokenKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocTokenKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocTokenKeyVersion(), "1=1")
 			testKeys := []*kms.TokenKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestTokenKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("test key"))
@@ -275,7 +275,7 @@ func TestRepository_ListTokenKeyVersions(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
@@ -348,7 +348,7 @@ func TestRepository_ListTokenKeyVersions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocTokenKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocTokenKeyVersion(), "1=1")
 			keyVersions := []*kms.TokenKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestTokenKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("token key"))

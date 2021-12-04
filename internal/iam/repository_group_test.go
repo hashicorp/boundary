@@ -627,7 +627,7 @@ func TestRepository_ListGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroup()).Error)
+			db.TestDeleteWhere(t, conn, allocGroup(), "1=1")
 			testGroups := []*Group{}
 			for i := 0; i < tt.createCnt; i++ {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
@@ -651,7 +651,7 @@ func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	require.NoError(t, conn.Where("1=1").Delete(allocGroup()).Error)
+	db.TestDeleteWhere(t, conn, allocGroup(), "1=1")
 
 	const numPerScope = 10
 	var total int
@@ -733,7 +733,7 @@ func TestRepository_ListMembers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			db.TestDeleteWhere(t, conn, allocGroupMember(), "1=1")
 			gm := []*GroupMemberUser{}
 			for i := 0; i < tt.createCnt; i++ {
 				u := TestUser(t, repo, org.PublicId)
@@ -851,7 +851,8 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 				groupVersion += 1
 				version = groupVersion
 			}
-			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			db.TestDeleteWhere(t, conn, allocGroupMember(), "1=1")
+
 			got, err := repo.AddGroupMembers(context.Background(), tt.args.groupId, version, tt.args.userIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

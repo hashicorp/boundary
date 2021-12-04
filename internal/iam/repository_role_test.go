@@ -625,7 +625,7 @@ func TestRepository_ListRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
+			db.TestDeleteWhere(t, conn, allocRole(), "1=1")
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
 				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
@@ -649,7 +649,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	require.NoError(t, conn.Where("1=1").Delete(allocRole()).Error)
+	db.TestDeleteWhere(t, conn, allocRole(), "1=1")
 
 	const numPerScope = 10
 	var total int

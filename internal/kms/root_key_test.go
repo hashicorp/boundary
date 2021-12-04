@@ -68,7 +68,7 @@ func TestRootKey_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 			got, err := kms.NewRootKey(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -99,7 +99,7 @@ func TestRootKey_Delete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 
 	tests := []struct {
 		name            string
@@ -160,7 +160,7 @@ func TestRootKey_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 		k := kms.TestRootKey(t, conn, org.PublicId)
 		cp := k.Clone()
 		assert.True(proto.Equal(cp.(*kms.RootKey).RootKey, k.RootKey))
@@ -169,7 +169,7 @@ func TestRootKey_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 		k := kms.TestRootKey(t, conn, org.PublicId)
 		k2 := kms.TestRootKey(t, conn, org2.PublicId)
 

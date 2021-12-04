@@ -24,7 +24,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -110,7 +110,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -200,7 +200,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -243,7 +243,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocRootKeyVersion(), "1=1")
 			testKeys := []*kms.RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
@@ -273,7 +273,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -344,7 +344,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, kms.AllocRootKeyVersion(), "1=1")
 			testRootKeyVersions := []*kms.RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
