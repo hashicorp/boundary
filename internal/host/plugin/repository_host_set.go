@@ -290,13 +290,9 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if updateAttributes {
 		dbMask = append(dbMask, "attributes")
-		if s.Attributes != nil {
-			newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
-			if err != nil {
-				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
-			}
-		} else {
-			newSet.Attributes = make([]byte, 0)
+		newSet.Attributes, err = patchstruct.PatchBytes(newSet.Attributes, s.Attributes)
+		if err != nil {
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error in set attribute JSON"))
 		}
 
 		// Flag the record as needing a sync since we've updated

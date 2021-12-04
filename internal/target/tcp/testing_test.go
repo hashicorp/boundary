@@ -25,6 +25,7 @@ func Test_TestTcpTarget(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(err)
+	ctx := context.Background()
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
@@ -33,12 +34,12 @@ func Test_TestTcpTarget(t *testing.T) {
 		sets = append(sets, s.PublicId)
 	}
 	name := tcp.TestTargetName(t, proj.PublicId)
-	tar := tcp.TestTarget(t, conn, proj.PublicId, name, target.WithHostSources(sets))
+	tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, name, target.WithHostSources(sets))
 	require.NotNil(t)
-	require.NotEmpty(tar.PublicId)
-	require.Equal(name, tar.Name)
+	require.NotEmpty(tar.GetPublicId())
+	require.Equal(name, tar.GetName())
 
-	_, foundSources, _, err := repo.LookupTarget(context.Background(), tar.PublicId)
+	_, foundSources, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 	require.NoError(err)
 	foundIds := make([]string, 0, len(foundSources))
 	for _, s := range foundSources {
@@ -57,8 +58,9 @@ func Test_TestCredentialLibrary(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(err)
+	ctx := context.Background()
 
-	tar := tcp.TestTarget(t, conn, proj.PublicId, t.Name())
+	tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, t.Name())
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	vlibs := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 	var libIds []string
@@ -72,7 +74,7 @@ func Test_TestCredentialLibrary(t *testing.T) {
 
 	assert.Len(libs, 2)
 
-	_, _, foundSources, err := repo.LookupTarget(context.Background(), tar.PublicId)
+	_, _, foundSources, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 	require.NoError(err)
 	foundIds := make([]string, 0, len(foundSources))
 	for _, s := range foundSources {

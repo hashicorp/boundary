@@ -192,4 +192,20 @@ Note that if `max_connections` is set too low, it may result in sporadic test
 failures if a connection cannot be established. In this case, reduce the number
 of concurrent tests via `GOMAXPROCS` or selectively run tests.
 
+### SDK and API tests
+
+Tests for the SDK and API modules can also be run. These do not require a test
+database:
+
+```
+$ make test-api
+$ make test-sdk
+```
+
+Or all of the test can be run with a single target:
+
+```
+$ make test-all
+```
+
 ## [Adding additional field to an existing API (or new API)](internal/adding-a-new-field-readme.md)

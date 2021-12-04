@@ -12,24 +12,24 @@ import (
 )
 
 // TestTarget is used to create a Target that can be used by tests in other packages.
-func TestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...target.Option) *Target {
+func TestTarget(ctx context.Context, t *testing.T, conn *db.DB, scopeId, name string, opt ...target.Option) target.Target {
 	t.Helper()
 	opt = append(opt, target.WithName(name))
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := New(scopeId, opt...)
+	tar, err := target.New(ctx, Subtype, scopeId, opt...)
 	require.NoError(err)
 	id, err := db.NewPublicId(TargetPrefix)
 	require.NoError(err)
-	tar.PublicId = id
+	tar.SetPublicId(ctx, id)
 	err = rw.Create(context.Background(), tar)
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
 		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(tar.PublicId, s)
+			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}
@@ -39,7 +39,7 @@ func TestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...target.O
 	if len(opts.WithCredentialLibraries) > 0 {
 		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
-			cl.TargetId = tar.PublicId
+			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
@@ -57,5 +57,5 @@ func testId(t *testing.T) string {
 	t.Helper()
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	return id
+	return fmt.Sprintf("%s_%s", TargetPrefix, id)
 }

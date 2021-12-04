@@ -59,7 +59,7 @@ func TestGetSession(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -176,7 +176,7 @@ func TestList_Self(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	// By default a user can read/cancel their own sessions.
 	session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -260,13 +260,13 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := tcp.TestTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
+	tarOther := tcp.TestTarget(context.Background(), t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
@@ -280,6 +280,8 @@ func TestList(t *testing.T) {
 			ScopeId:     pWithSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		c := session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
 
 		status, states := convertStates(sess.States)
 
@@ -302,6 +304,16 @@ func TestList(t *testing.T) {
 			Certificate:       sess.Certificate,
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					PublicId:           c.PublicId,
+					SessionId:          sess.GetPublicId(),
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -315,6 +327,8 @@ func TestList(t *testing.T) {
 			ScopeId:     pWithOtherSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		c = session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
 
 		status, states = convertStates(sess.States)
 
@@ -337,6 +351,16 @@ func TestList(t *testing.T) {
 			Certificate:       sess.Certificate,
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					PublicId:           c.PublicId,
+					SessionId:          sess.GetPublicId(),
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 	}
 
@@ -403,7 +427,14 @@ func TestList(t *testing.T) {
 				require.Equal(len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.Equal(1, len(wantSess.GetConnections()))
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+					for _, c := range got.GetItems()[i].GetConnections() {
+						assert.Equal("127.0.0.1", c.ClientTcpAddress)
+						assert.Equal(uint32(22), c.ClientTcpPort)
+						assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+						assert.Equal(uint32(23), c.EndpointTcpPort)
+					}
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
@@ -471,7 +502,7 @@ func TestCancel(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,

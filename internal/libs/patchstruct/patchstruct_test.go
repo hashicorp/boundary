@@ -118,10 +118,8 @@ var testCases = []testCase{
 		dst: map[string]interface{}{
 			"foo": "bar",
 		},
-		src: nil,
-		expected: map[string]interface{}{
-			"foo": "bar",
-		},
+		src:      nil,
+		expected: nil,
 	},
 	{
 		name: "nil dst",
@@ -189,12 +187,6 @@ func TestPatchBytes(t *testing.T) {
 }
 
 func TestPatchBytesErr(t *testing.T) {
-	t.Run("dst", func(t *testing.T) {
-		require := require.New(t)
-		_, err := PatchBytes([]byte("foo"), nil)
-		require.ErrorIs(err, proto.Error)
-		require.True(strings.HasPrefix(err.Error(), "error reading destination data: "))
-	})
 	t.Run("src", func(t *testing.T) {
 		require := require.New(t)
 		_, err := PatchBytes(nil, []byte("foo"))

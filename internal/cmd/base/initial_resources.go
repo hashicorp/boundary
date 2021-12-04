@@ -514,7 +514,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 	}
-	t, err := tcp.New(b.DevProjectId, opts...)
+	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}

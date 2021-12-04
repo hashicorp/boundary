@@ -457,7 +457,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	if c.Config.Controller != nil {
-		c.EnabledPlugins = []base.EnabledPlugin{base.EnabledPluginHostAws, base.EnabledPluginHostAzure}
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		if err := c.StartController(ctx); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError

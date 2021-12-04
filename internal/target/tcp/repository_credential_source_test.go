@@ -167,13 +167,14 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, tt.name)
+			ctx := context.Background()
+			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, tt.name)
 
 			for _, cl := range tt.args.cls {
-				cl.TargetId = projTarget.PublicId
+				cl.TargetId = projTarget.GetPublicId()
 			}
 
-			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.cls)
+			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.GetPublicId(), tt.args.targetVersion, tt.args.cls)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err.Error())
@@ -190,10 +191,10 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			}
 
 			// test to see of the target version update oplog was created
-			err = db.TestVerifyOplog(t, rw, projTarget.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, projTarget.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 
-			tar, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			tar, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.GetPublicId())
 			require.NoError(err)
 			assert.Equal(tt.args.targetVersion+1, tar.GetVersion())
 			assert.Equal(projTarget.GetVersion(), tar.GetVersion()-1)
@@ -205,35 +206,36 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 				assert.True(ok, "got unexpected credentialsource %v", cs)
 				assert.Equal(w.Id(), cs.Id())
 				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
-				assert.Equal(projTarget.PublicId, cs.TargetId())
+				assert.Equal(projTarget.GetPublicId(), cs.TargetId())
 			}
 		})
 	}
 	t.Run("add-existing", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		projTarget := tcp.TestTarget(t, conn, staticProj.PublicId, "add-existing")
-		cl1 := target.TestNewCredentialLibrary(projTarget.PublicId, lib1.PublicId, credential.ApplicationPurpose)
-		cl2 := target.TestNewCredentialLibrary(projTarget.PublicId, lib2.PublicId, credential.ApplicationPurpose)
-		cl3 := target.TestNewCredentialLibrary(projTarget.PublicId, lib3.PublicId, credential.ApplicationPurpose)
+		ctx := context.Background()
+		projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "add-existing")
+		cl1 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib1.PublicId, credential.ApplicationPurpose)
+		cl2 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib2.PublicId, credential.ApplicationPurpose)
+		cl3 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib3.PublicId, credential.ApplicationPurpose)
 
-		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []*target.CredentialLibrary{cl1})
+		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, []*target.CredentialLibrary{cl1})
 		require.NoError(err)
 		assert.Len(gotCredSources, 1)
 		assert.Equal(lib1.PublicId, gotCredSources[0].Id())
 
 		// Adding lib1 again should error
-		_, _, _, err = repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []*target.CredentialLibrary{cl1})
+		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl1})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Adding multiple with lib1 in set should error
-		_, _, _, err = repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []*target.CredentialLibrary{cl3, cl2, cl1})
+		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl3, cl2, cl1})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		_, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+		_, _, lookupCredSources, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
 		assert.Len(lookupCredSources, 1)
 		assert.Equal(lib1.PublicId, lookupCredSources[0].Id())
@@ -351,7 +353,8 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			cs := css[i]
 
-			tar := tcp.TestTarget(t, conn, proj.PublicId, tt.name)
+			ctx := context.Background()
+			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.name)
 
 			cls := make([]*target.CredentialLibrary, 0, tt.args.createCnt)
 			if tt.args.createCnt > 0 {
@@ -360,7 +363,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 					cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
 				}
 			}
-			_, _, addedCredSources, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, cls)
+			_, _, addedCredSources, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, cls)
 			require.NoError(err)
 			assert.Equal(tt.args.createCnt, len(addedCredSources))
 
@@ -382,7 +385,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			default:
 				targetVersion = 2
 			}
-			deletedRows, err := repo.DeleteTargetCredentialSources(context.Background(), targetId, targetVersion, deleteCredSources)
+			deletedRows, err := repo.DeleteTargetCredentialSources(ctx, targetId, targetVersion, deleteCredSources)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -408,29 +411,30 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		lib2 := libs[1]
 		lib3 := libs[2]
 
-		projTarget := tcp.TestTarget(t, conn, proj.PublicId, "add-existing")
-		cl1 := target.TestNewCredentialLibrary(projTarget.PublicId, lib1.PublicId, credential.ApplicationPurpose)
-		cl2 := target.TestNewCredentialLibrary(projTarget.PublicId, lib2.PublicId, credential.ApplicationPurpose)
-		cl3 := target.TestNewCredentialLibrary(projTarget.PublicId, lib3.PublicId, credential.ApplicationPurpose)
+		ctx := context.Background()
+		projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "add-existing")
+		cl1 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib1.PublicId, credential.ApplicationPurpose)
+		cl2 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib2.PublicId, credential.ApplicationPurpose)
+		cl3 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib3.PublicId, credential.ApplicationPurpose)
 
-		_, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.PublicId, 1, []*target.CredentialLibrary{cl1, cl2})
+		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, []*target.CredentialLibrary{cl1, cl2})
 		require.NoError(err)
 		assert.Len(gotCredSources, 2)
 
 		// Deleting an unassociated source should return an error
-		delCount, err := repo.DeleteTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []*target.CredentialLibrary{cl3})
+		delCount, err := repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl3})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Deleting sources which includes an unassociated source should return an error
-		delCount, err = repo.DeleteTargetCredentialSources(context.Background(), projTarget.PublicId, 2, []*target.CredentialLibrary{cl1, cl2, cl3})
+		delCount, err = repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl1, cl2, cl3})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		_, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+		_, _, lookupCredSources, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
 		assert.Len(lookupCredSources, 2)
 	})
@@ -584,7 +588,8 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			tar := tcp.TestTarget(t, conn, proj.PublicId, tt.name)
+			ctx := context.Background()
+			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.name)
 
 			var origCredSources []target.CredentialSource
 			var origCredLibraries []*target.CredentialLibrary
@@ -608,11 +613,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				}
 			}
 
-			origTarget, _, lookupCredSources, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			origTarget, _, lookupCredSources, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			assert.Equal(origCredSources, lookupCredSources)
 
-			_, got, affectedRows, err := repo.SetTargetCredentialSources(context.Background(), tar.GetPublicId(), tt.args.targetVersion, tt.args.cls)
+			_, got, affectedRows, err := repo.SetTargetCredentialSources(ctx, tar.GetPublicId(), tt.args.targetVersion, tt.args.cls)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -632,7 +637,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
-			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			foundTarget, _, _, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

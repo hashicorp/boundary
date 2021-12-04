@@ -1,0 +1,9 @@
+executor: go-machine-medium
+steps:
+- checkout
+- install-go
+- run:
+    name: "Run SDK Tests"
+    no_output_timeout: 15m
+    command: |
+      make test-sdk

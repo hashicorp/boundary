@@ -53,8 +53,10 @@ func TestRepository_CreateTarget(t *testing.T) {
 		credLibIds = append(credLibIds, cl.PublicId)
 	}
 
+	ctx := context.Background()
+
 	type args struct {
-		target *tcp.Target
+		target target.Target
 		opt    []target.Option
 	}
 	tests := []struct {
@@ -68,8 +70,8 @@ func TestRepository_CreateTarget(t *testing.T) {
 		{
 			name: "valid-org",
 			args: args{
-				target: func() *tcp.Target {
-					target, err := tcp.New(proj.PublicId,
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("valid-org"),
 						target.WithDescription("valid-org"),
 						target.WithDefaultPort(uint32(22)))
@@ -103,8 +105,10 @@ func TestRepository_CreateTarget(t *testing.T) {
 		{
 			name: "public-id-not-empty",
 			args: args{
-				target: func() *tcp.Target {
-					tar, err := tcp.New(
+				target: func() target.Target {
+					tar, err := target.New(
+						ctx,
+						tcp.Subtype,
 						proj.PublicId,
 						target.WithName("valid-org"),
 						target.WithDescription("valid-org"),
@@ -113,7 +117,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 					require.NoError(t, err)
 					id, err := db.NewPublicId(tcp.TargetPrefix)
 					require.NoError(t, err)
-					tar.PublicId = id
+					tar.SetPublicId(ctx, id)
 					return tar
 				}(),
 			},
@@ -123,13 +127,15 @@ func TestRepository_CreateTarget(t *testing.T) {
 		{
 			name: "empty-scope-id",
 			args: args{
-				target: func() *tcp.Target {
-					tar, err := tcp.New(
+				target: func() target.Target {
+					tar, err := target.New(
+						ctx,
+						tcp.Subtype,
 						proj.PublicId,
 						target.WithName("empty-scope-id"),
 					)
 					require.NoError(t, err)
-					tar.ScopeId = ""
+					tar.SetScopeId("")
 					return tar
 				}(),
 			},
@@ -184,7 +190,6 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 func TestRepository_UpdateTcpTarget(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -388,8 +393,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cs := css[i]
 			require, assert := require.New(t), assert.New(t)
+			ctx := context.Background()
 			if tt.wantDup {
-				_ = tcp.TestTarget(t, conn, proj.PublicId, tt.args.name)
+				_ = tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.args.name)
 			}
 
 			testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
@@ -421,26 +427,27 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			if name == "" {
 				name = tcp.TestId(t)
 			}
-			tar := tcp.TestTarget(t, conn, tt.newScopeId, name, tt.newTargetOpts...)
+			tar := tcp.TestTarget(ctx, t, conn, tt.newScopeId, name, tt.newTargetOpts...)
 			updateTarget := tcp.NewTestTarget(
 				tt.args.ScopeId,
 				target.WithName(tt.args.name),
 				target.WithDescription(tt.args.description),
 				target.WithDefaultPort(tt.args.port),
 			)
-			updateTarget.PublicId = tar.PublicId
+			updateTarget.SetPublicId(ctx, tar.GetPublicId())
 			if tt.args.PublicId != nil {
-				updateTarget.PublicId = *tt.args.PublicId
+				ut := updateTarget.(*tcp.Target)
+				ut.PublicId = *tt.args.PublicId
 			}
 
-			targetAfterUpdate, hostSources, credSources, updatedRows, err := repo.UpdateTarget(context.Background(), updateTarget, tar.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			targetAfterUpdate, hostSources, credSources, updatedRows, err := repo.UpdateTarget(ctx, updateTarget, tar.GetVersion(), tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(targetAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				err = db.TestVerifyOplog(t, rw, tar.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, tar.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.IsNotFoundError(err))
 				return
@@ -462,11 +469,11 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 
 			switch tt.name {
 			case "valid-no-op":
-				assert.Equal(tar.UpdateTime, targetAfterUpdate.(*tcp.Target).UpdateTime)
+				assert.Equal(tar.GetUpdateTime(), targetAfterUpdate.GetUpdateTime())
 			default:
-				assert.NotEqual(tar.UpdateTime, targetAfterUpdate.(*tcp.Target).UpdateTime)
+				assert.NotEqual(tar.GetUpdateTime(), targetAfterUpdate.GetUpdateTime())
 			}
-			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.PublicId)
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*tcp.Target)), foundTarget.((*tcp.Target))))
 			underlyingDB, err := conn.SqlDB(ctx)
@@ -476,7 +483,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				assert.Equal(foundTarget.GetDescription(), "")
 				dbassert.IsNull(foundTarget, "description")
 			}
-			err = db.TestVerifyOplog(t, rw, tar.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, tar.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}

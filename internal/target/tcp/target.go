@@ -37,9 +37,9 @@ var (
 	_ oplog.ReplayableMessage = (*Target)(nil)
 )
 
-// New creates a new in memory tcp target.  WithName, WithDescription and
+// newTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func New(scopeId string, opt ...target.Option) (*Target, error) {
+func newTarget(scopeId string, opt ...target.Option) (target.Target, error) {
 	const op = "tcp.NewTarget"
 	opts := target.GetOpts(opt...)
 	if scopeId == "" {
