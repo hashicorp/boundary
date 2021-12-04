@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -86,12 +85,4 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.CtSecret = nil
 	return nil
-}
-
-func (c *HostCatalogSecret) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-catalog-id": []string{c.CatalogId},
-		"op-type":             []string{op.String()},
-	}
-	return metadata
 }
