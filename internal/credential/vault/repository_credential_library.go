@@ -114,8 +114,8 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 // number of records updated. l is not changed.
 //
 // l must contain a valid PublicId. Only Name, Description, VaultPath,
-// HttpMethod, and HttpRequestBody can be updated. If l.Name is set to a
-// non-empty string, it must be unique within l.StoreId.
+// HttpMethod, HttpRequestBody, and MappingOverride can be updated. If
+// l.Name is set to a non-empty string, it must be unique within l.StoreId.
 //
 // An attribute of l will be set to NULL in the database if the attribute
 // in l is the zero value and it is included in fieldMaskPaths except for
@@ -141,6 +141,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	}
 	l = l.clone()
 
+	var updateMappingOverride bool
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold(nameField, f):
@@ -148,6 +149,8 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		case strings.EqualFold(vaultPathField, f):
 		case strings.EqualFold(httpMethodField, f):
 		case strings.EqualFold(httpRequestBodyField, f):
+		case strings.EqualFold(mappingOverrideField, f):
+			updateMappingOverride = true
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -160,6 +163,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 			vaultPathField:       l.VaultPath,
 			httpMethodField:      l.HttpMethod,
 			httpRequestBodyField: l.HttpRequestBody,
+			mappingOverrideField: l.MappingOverride,
 		},
 		fieldMaskPaths,
 		nil,
@@ -181,6 +185,32 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
 	}
 
+	origLib, err := r.LookupCredentialLibrary(ctx, l.PublicId)
+	switch {
+	case err != nil:
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	case origLib == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("credential library %s", l.PublicId))
+	case updateMappingOverride && !validMappingOverride(l.MappingOverride, origLib.CredentialType()):
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.VaultInvalidMappingOverride, op, "invalid mapping override for credential type")
+	}
+
+	var filteredDbMask, filteredNullFields []string
+	for _, f := range dbMask {
+		switch {
+		case strings.EqualFold(mappingOverrideField, f):
+		default:
+			filteredDbMask = append(filteredDbMask, f)
+		}
+	}
+	for _, f := range nullFields {
+		switch {
+		case strings.EqualFold(mappingOverrideField, f):
+		default:
+			filteredNullFields = append(filteredNullFields, f)
+		}
+	}
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt),
@@ -190,16 +220,94 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	var rowsUpdated int
 	var returnedCredentialLibrary *CredentialLibrary
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			returnedCredentialLibrary = l.clone()
-			var err error
-			rowsUpdated, err = w.Update(ctx, returnedCredentialLibrary, dbMask, nullFields,
-				db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_UPDATE)),
-				db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+		func(rr db.Reader, w db.Writer) error {
+			var msgs []*oplog.Message
+			ticket, err := w.GetTicket(l)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			return err
+
+			l := l.clone()
+			var lOplogMsg oplog.Message
+
+			// Update the credential library table
+			switch {
+			case len(filteredDbMask) == 0 && len(filteredNullFields) == 0:
+				// the credential library's fields are not being updated,
+				// just one of it's child objects, so we just need to
+				// update the library's version.
+				l.Version = version + 1
+				rowsUpdated, err = w.Update(ctx, l, []string{"Version"}, nil, db.NewOplogMsg(&lOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library version"))
+				}
+				switch rowsUpdated {
+				case 1:
+				case 0:
+					return nil
+				default:
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated credential library version and %d rows updated", rowsUpdated))
+				}
+			default:
+				rowsUpdated, err = w.Update(ctx, l, filteredDbMask, filteredNullFields, db.NewOplogMsg(&lOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					if errors.IsUniqueError(err) {
+						return errors.New(ctx, errors.NotUnique, op,
+							fmt.Sprintf("name %s already exists: %s", l.Name, l.PublicId))
+					}
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
+				}
+				switch rowsUpdated {
+				case 1:
+				case 0:
+					return nil
+				default:
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated credential library and %d rows updated", rowsUpdated))
+				}
+			}
+			msgs = append(msgs, &lOplogMsg)
+
+			// Update a credential mapping override table if applicable
+			if updateMappingOverride {
+				// delete the current mapping override if it exists
+				if origLib.MappingOverride != nil {
+					var msg oplog.Message
+					rowsDeleted, err := w.Delete(ctx, origLib.MappingOverride, db.NewOplogMsg(&msg))
+					switch {
+					case err != nil:
+						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete mapping override"))
+					default:
+						switch rowsDeleted {
+						case 0, 1:
+						default:
+							return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("delete mapping override and %d rows deleted", rowsDeleted))
+						}
+					}
+					msgs = append(msgs, &msg)
+				}
+				// insert a new mapping override if specified
+				if l.MappingOverride != nil {
+					var msg oplog.Message
+					l.MappingOverride.setLibraryId(l.PublicId)
+					if err := w.Create(ctx, l.MappingOverride, db.NewOplogMsg(&msg)); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
+					msgs = append(msgs, &msg)
+				}
+			}
+
+			metadata := l.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+			}
+
+			pl := allocPublicLibrary()
+			pl.PublicId = l.PublicId
+			if err := rr.LookupByPublicId(ctx, pl); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve updated credential library"))
+			}
+			returnedCredentialLibrary = pl.toCredentialLibrary()
+			return nil
 		},
 	)
 
