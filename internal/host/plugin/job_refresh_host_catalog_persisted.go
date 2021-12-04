@@ -153,6 +153,12 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	// Get the ticket for the host catalog
+	ticket, err := j.writer.GetTicket(catalog)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+	}
+
 	// Invoke the plugin's RefreshHostCatalogPersisted RPC call.
 	plgResp, err := plgClient.RefreshHostCatalogPersisted(ctx, &plgpb.RefreshHostCatalogPersistedRequest{
 		Catalog:   catalogProto,
@@ -180,12 +186,25 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			secretsDeleted, err := j.writer.Delete(ctx, hcSecret, db.WithOplog(oplogWrapper, hcSecret.oplog(oplog.OpType_OP_TYPE_DELETE)))
+
+			var msg oplog.Message
+			secretsDeleted, err := j.writer.Delete(ctx, hcSecret, db.NewOplogMsg(&msg))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+
 			if secretsDeleted != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsDeleted))
+			}
+
+			if err := j.writer.WriteOplogEntryWith(
+				ctx,
+				oplogWrapper,
+				ticket,
+				hcSecret.oplog(oplog.OpType_OP_TYPE_DELETE),
+				[]*oplog.Message{&msg},
+			); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 		} else {
 			// Upsert the secret.
@@ -193,14 +212,17 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+
 			dbWrapper, err := j.kms.GetWrapper(ctx, catalog.ScopeId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 			}
+
 			if err := hcSecret.encrypt(ctx, dbWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 
+			var msg oplog.Message
 			if err := j.writer.Create(
 				ctx,
 				hcSecret,
@@ -208,9 +230,19 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 					Target: db.Columns{"catalog_id"},
 					Action: db.SetColumns([]string{"secret", "key_id"}),
 				}),
-				db.WithOplog(oplogWrapper, hcSecret.oplog(oplog.OpType_OP_TYPE_CREATE)),
+				db.NewOplogMsg(&msg),
 			); err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+
+			if err := j.writer.WriteOplogEntryWith(
+				ctx,
+				oplogWrapper,
+				ticket,
+				hcSecret.oplog(oplog.OpType_OP_TYPE_CREATE),
+				[]*oplog.Message{&msg},
+			); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 		}
 	}
