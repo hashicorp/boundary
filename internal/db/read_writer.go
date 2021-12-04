@@ -131,7 +131,7 @@ type Writer interface {
 
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
-	GetTicket(i interface{}) (*store.Ticket, error)
+	GetTicket(ctx context.Context, i interface{}) (*store.Ticket, error)
 
 	// WriteOplogEntryWith will write an oplog entry with the msgs provided for
 	// the ticket's aggregateName. No options are currently supported.
@@ -304,7 +304,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	var ticket *store.Ticket
 	beforeFn = func(interface{}) error {
 		var err error
-		ticket, err = rw.GetTicket(i)
+		ticket, err = rw.GetTicket(ctx, i)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
@@ -773,38 +773,41 @@ func validateOplogArgs(ctx context.Context, i interface{}, opts Options) (oplog.
 	return replayable, nil
 }
 
-func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
-	panic("todo")
-	// const op = "db.getTicketFor"
-	// if rw.underlying == nil {
-	// 	return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
-	// }
-	// ticketer, err := oplog.NewGormTicketer(rw.underlying.DB, oplog.WithAggregateNames(true))
-	// if err != nil {
-	// 	return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
-	// }
-	// ticket, err := ticketer.GetTicket(aggregateName)
-	// if err != nil {
-	// 	return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)), errors.WithoutEvent())
-	// }
-	// return ticket, nil
+func (rw *Db) getTicketFor(ctx context.Context, aggregateName string) (*store.Ticket, error) {
+	const op = "db.getTicketFor"
+	if rw.underlying == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
+	}
+	gormDB, err := rw.wrapped.gormDB(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	ticketer, err := oplog.NewGormTicketer(gormDB, oplog.WithAggregateNames(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
+	}
+	ticket, err := ticketer.GetTicket(aggregateName)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)), errors.WithoutEvent())
+	}
+	return ticket, nil
 }
 
 // GetTicket returns an oplog ticket for the aggregate root of "i" which can
 // be used to WriteOplogEntryWith for that aggregate root.
-func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
+func (rw *Db) GetTicket(ctx context.Context, i interface{}) (*store.Ticket, error) {
 	const op = "db.GetTicket"
 	if rw.underlying == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db", errors.WithoutEvent())
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db", errors.WithoutEvent())
 	}
 	if isNil(i) {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing interface", errors.WithoutEvent())
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing interface", errors.WithoutEvent())
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not a replayable message", errors.WithoutEvent())
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "not a replayable message", errors.WithoutEvent())
 	}
-	return rw.getTicketFor(replayable.TableName())
+	return rw.getTicketFor(ctx, replayable.TableName())
 }
 
 func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {

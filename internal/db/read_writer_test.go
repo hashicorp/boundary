@@ -46,6 +46,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 }
 
 func TestDb_Update(t *testing.T) {
+	testCtx := context.Background()
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
 	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
@@ -447,7 +448,7 @@ func TestDb_Update(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := New(conn)
 
-		ticket, err := w.GetTicket(&db_test.TestUser{})
+		ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 		require.NoError(err)
 
 		id, err := uuid.GenerateUUID()
@@ -698,10 +699,11 @@ func TestDb_Create(t *testing.T) {
 		assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
+		testCtx := context.Background()
 		assert, require := assert.New(t), require.New(t)
 		w := New(conn)
 
-		ticket, err := w.GetTicket(&db_test.TestUser{})
+		ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 		require.NoError(err)
 
 		id, err := uuid.GenerateUUID()
@@ -1455,10 +1457,11 @@ func TestDb_Delete(t *testing.T) {
 			assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
 		})
 		t.Run("valid-NewOplogMsg", func(t *testing.T) {
+			testCtx := context.Background()
 			assert, require := assert.New(t), require.New(t)
 			w := New(conn)
 
-			ticket, err := w.GetTicket(&db_test.TestUser{})
+			ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 			require.NoError(err)
 
 			id, err := uuid.GenerateUUID()
@@ -2207,6 +2210,7 @@ func TestDb_LookupById(t *testing.T) {
 }
 
 func TestDb_GetTicket(t *testing.T) {
+	testCtx := context.Background()
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
 	type notReplayable struct{}
@@ -2249,7 +2253,7 @@ func TestDb_GetTicket(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			rw := New(tt.underlying)
-			got, err := rw.GetTicket(tt.aggregateType)
+			got, err := rw.GetTicket(testCtx, tt.aggregateType)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
@@ -2268,8 +2272,9 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
 	w := New(conn)
+	testCtx := context.Background()
 
-	ticket, err := w.GetTicket(&db_test.TestUser{})
+	ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 	require.NoError(t, err)
 
 	id, err := uuid.GenerateUUID()

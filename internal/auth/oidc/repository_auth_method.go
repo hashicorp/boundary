@@ -238,7 +238,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	if operation == oplog.OpType_OP_TYPE_UPDATE && len(fieldMasks) == 0 && len(nullMasks) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "update operations must specify field masks and/or null masks")
 	}
-	ticket, err := w.GetTicket(acct)
+	ticket, err := w.GetTicket(ctx, acct)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}

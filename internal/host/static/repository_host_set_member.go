@@ -109,7 +109,7 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	msgs = append(msgs, setMsg)
 
 	// Write oplog
-	ticket, err := w.GetTicket(set)
+	ticket, err := w.GetTicket(ctx, set)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}

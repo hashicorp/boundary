@@ -240,7 +240,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			groupTicket, err := w.GetTicket(&group)
+			groupTicket, err := w.GetTicket(ctx, &group)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -333,7 +333,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			groupTicket, err := w.GetTicket(&group)
+			groupTicket, err := w.GetTicket(ctx, &group)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -438,7 +438,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			// we need a group, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
-			groupTicket, err := w.GetTicket(&group)
+			groupTicket, err := w.GetTicket(ctx, &group)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

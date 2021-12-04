@@ -77,7 +77,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -196,7 +196,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for role"))
 			}
@@ -376,7 +376,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

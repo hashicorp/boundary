@@ -380,7 +380,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			targetTicket, err := w.GetTicket(t)
+			targetTicket, err := w.GetTicket(ctx, t)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

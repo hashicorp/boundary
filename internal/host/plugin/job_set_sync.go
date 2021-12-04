@@ -409,7 +409,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 			db.ExpBackoff{},
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
-				ticket, err := w.GetTicket(ret)
+				ticket, err := w.GetTicket(ctx, ret)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
@@ -524,7 +524,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
 
-				ticket, err := w.GetTicket(hs)
+				ticket, err := w.GetTicket(ctx, hs)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
