@@ -166,6 +166,12 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	)
 
 	if strutil.StrListContains(nullFields, httpMethodField) {
+		// GET is the default value for the HttpMethod field in
+		// CredentialLibrary. The http_method column in the database does
+		// not allow NULL values but it also does not define a default
+		// value. Therefore, if the httpMethodField is in nullFields:
+		// remove it from nullFields then add it to dbMask and set the
+		// value to GET.
 		dbMask = append(dbMask, httpMethodField)
 		nullFields = strutil.StrListDelete(nullFields, httpMethodField)
 		l.HttpMethod = string(MethodGet)
