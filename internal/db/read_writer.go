@@ -361,7 +361,8 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 }
 
 func (rw *Db) generateWithOnConflict(ctx context.Context, opts Options) (*dbw.OnConflict, error) {
-	panic("todo")
+	// panic("todo")
+	return nil, nil
 }
 
 // Create an object in the db with options: WithDebug, WithOplog, NewOplogMsg,
@@ -1056,25 +1057,20 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 // LookupByPublicId will lookup resource by its public_id or private_id, which
 // must be unique. Options are ignored.
 func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ...Option) error {
-	panic("todo")
-	// const op = "db.LookupById"
-	// if rw.underlying == nil {
-	// 	return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
-	// }
-	// if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
-	// 	return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
-	// }
-	// where, keys, err := rw.primaryKeysWhere(ctx, resourceWithIder)
-	// if err != nil {
-	// 	return errors.Wrap(ctx, err, op)
-	// }
-	// if err := rw.underlying.Where(where, keys...).First(resourceWithIder).Error; err != nil {
-	// 	if err == gorm.ErrRecordNotFound {
-	// 		return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
-	// 	}
-	// 	return errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	// }
-	// return nil
+	const op = "db.LookupById"
+	if rw.underlying == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
+		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
+	}
+	if err := rw.underlying.LookupBy(ctx, resourceWithIder); err != nil {
+		if err == dbw.ErrRecordNotFound {
+			return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
+		}
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	return nil
 }
 
 // func (rw *Db) primaryKeysWhere(ctx context.Context, i interface{}) (string, []interface{}, error) {
