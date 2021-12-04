@@ -17,4 +17,7 @@ const (
 	tlsServerNameField  = "TlsServerName"
 	tlsSkipVerifyField  = "TlsSkipVerify"
 	tokenField          = "Token"
+
+	usernameAttributeField = "UsernameAttribute"
+	passwordAttributeField = "PasswordAttribute"
 )

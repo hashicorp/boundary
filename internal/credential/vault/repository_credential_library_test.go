@@ -464,6 +464,20 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		}
 	}
 
+	changeCredentialType := func(t credential.Type) func(*CredentialLibrary) *CredentialLibrary {
+		return func(l *CredentialLibrary) *CredentialLibrary {
+			l.CredentialLibrary.CredentialType = string(t)
+			return l
+		}
+	}
+
+	changeMappingOverride := func(m MappingOverride) func(*CredentialLibrary) *CredentialLibrary {
+		return func(l *CredentialLibrary) *CredentialLibrary {
+			l.MappingOverride = m
+			return l
+		}
+	}
+
 	makeNil := func() func(*CredentialLibrary) *CredentialLibrary {
 		return func(l *CredentialLibrary) *CredentialLibrary {
 			return nil
@@ -508,6 +522,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		wantCount int
 		wantErr   errors.Code
 	}{
+
 		{
 			name: "nil-credential-library",
 			orig: &CredentialLibrary{
@@ -746,17 +761,21 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "change-vault-path",
 			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("orig-username")),
 				CredentialLibrary: &store.CredentialLibrary{
-					HttpMethod: "GET",
-					VaultPath:  "/old/path",
+					HttpMethod:     "GET",
+					VaultPath:      "/old/path",
+					CredentialType: string(credential.UserPasswordType),
 				},
 			},
 			chgFn: changeVaultPath("/new/path"),
 			masks: []string{vaultPathField},
 			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("orig-username")),
 				CredentialLibrary: &store.CredentialLibrary{
-					HttpMethod: "GET",
-					VaultPath:  "/new/path",
+					HttpMethod:     "GET",
+					VaultPath:      "/new/path",
+					CredentialType: string(credential.UserPasswordType),
 				},
 			},
 			wantCount: 1,
@@ -899,6 +918,256 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			},
 			wantCount: 1,
 		},
+		{
+			name: "read-only-credential-type-in-field-mask",
+			orig: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn:   changeCredentialType(credential.UnspecifiedType),
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "StoreId", "CredentialType"},
+			wantErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "user-password-attributes-change-username-attribute",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+				),
+			),
+			masks: []string{"UsernameAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "user-password-attributes-change-password-attribute",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewUserPasswordOverride(
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks: []string{"PasswordAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "user-password-attributes-change-username-and-password-attributes",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks: []string{"UsernameAttribute", "PasswordAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "no-mapping-override-change-username-and-password-attributes",
+			orig: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks: []string{"UsernameAttribute", "PasswordAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "user-password-attributes-delete-mapping-override",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(nil),
+			masks: []string{"UsernameAttribute", "PasswordAttribute"},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "user-password-attributes-delete-username-override",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(nil),
+			masks: []string{"UsernameAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "user-password-attributes-delete-password-override",
+			orig: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePasswordAttribute("orig-password"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			chgFn: changeMappingOverride(nil),
+			masks: []string{"PasswordAttribute"},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-name-repo",
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "set-mapping-override-on-unspecified-credential-type",
+			orig: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod: "GET",
+					VaultPath:  "/some/path",
+					Name:       "test-name-repo",
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewUserPasswordOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePasswordAttribute("changed-password"),
+				),
+			),
+			masks:   []string{"UsernameAttribute", "PasswordAttribute"},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
 	}
 
 	for _, tt := range tests {
@@ -940,18 +1209,35 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
-			if tt.want.Name == "" {
+
+			switch tt.want.Name {
+			case "":
 				dbassert.IsNull(got, "name")
-				return
+			default:
+				assert.Equal(tt.want.Name, got.Name)
 			}
-			assert.Equal(tt.want.Name, got.Name)
-			if tt.want.Description == "" {
+
+			switch tt.want.Description {
+			case "":
 				dbassert.IsNull(got, "description")
-				return
+			default:
+				assert.Equal(tt.want.Description, got.Description)
 			}
-			assert.Equal(tt.want.Description, got.Description)
+
 			if tt.wantCount > 0 {
 				assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			}
+
+			switch w := tt.want.MappingOverride.(type) {
+			case nil:
+				assert.Nil(got.MappingOverride)
+			case *UserPasswordOverride:
+				g, ok := got.MappingOverride.(*UserPasswordOverride)
+				require.True(ok)
+				assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
+				assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+			default:
+				assert.Fail("Unknown mapping override")
 			}
 		})
 	}

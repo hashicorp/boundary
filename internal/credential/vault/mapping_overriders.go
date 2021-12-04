@@ -75,6 +75,24 @@ func (o *UserPasswordOverride) setLibraryId(i string) {
 	o.LibraryId = i
 }
 
+func (o *UserPasswordOverride) setUsernameAttribute(u string) {
+	o.UsernameAttribute = sanitize.String(u)
+}
+
+func (o *UserPasswordOverride) setPasswordAttribute(p string) {
+	o.PasswordAttribute = sanitize.String(p)
+}
+
+const noOverride = "\ufffeno override\uffff"
+
+func (o *UserPasswordOverride) deleteUsernameAttribute() {
+	o.UsernameAttribute = noOverride
+}
+
+func (o *UserPasswordOverride) deletePasswordAttribute() {
+	o.PasswordAttribute = noOverride
+}
+
 func (o *UserPasswordOverride) sanitize() {
 	if sentinel.Is(o.UsernameAttribute) {
 		o.UsernameAttribute = ""
