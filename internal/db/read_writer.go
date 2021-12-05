@@ -194,8 +194,7 @@ type VetForWriter interface {
 
 // Db uses a gorm DB connection for read/write
 type Db struct {
-	underlying *dbw.RW
-	wrapped    *DB
+	underlying *DB
 }
 
 // ensure that Db implements the interfaces of: Reader and Writer
@@ -205,8 +204,7 @@ var (
 )
 
 func New(underlying *DB) *Db {
-	rw := dbw.New(underlying.wrapped)
-	return &Db{underlying: rw, wrapped: underlying}
+	return &Db{underlying: underlying}
 }
 
 // Exec will execute the sql with the values as parameters. The int returned
@@ -217,7 +215,7 @@ func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, _ ...O
 	if sql == "" {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	return rw.underlying.Exec(ctx, sql, values)
+	return dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values)
 }
 
 // Query will run the raw query and return the *sql.Rows results. Query will
@@ -229,7 +227,7 @@ func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, _ ...
 	if sql == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	return rw.underlying.Query(ctx, sql, values)
+	return dbw.New(rw.underlying.wrapped).Query(ctx, sql, values)
 }
 
 // Scan rows will scan the rows into the interface
@@ -241,7 +239,7 @@ func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) 
 	if isNil(result) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing result")
 	}
-	return rw.underlying.ScanRows(rows, result)
+	return dbw.New(rw.underlying.wrapped).ScanRows(rows, result)
 }
 
 type BeforeWriteFn func(interface{}) error
@@ -398,7 +396,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	if err := rw.underlying.Create(ctx, i,
+	if err := dbw.New(rw.underlying.wrapped).Create(ctx, i,
 		dbw.WithSkipVetForWrite(opts.withSkipVetForWrite),
 		dbw.WithAfterWrite(withAfterWrite),
 		dbw.WithBeforeWrite(withBeforeWrite),
@@ -444,7 +442,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := rw.underlying.CreateItems(ctx, createItems,
+	if err := dbw.New(rw.underlying.wrapped).CreateItems(ctx, createItems,
 		dbw.WithBeforeWrite(withBeforeWrite),
 		dbw.WithAfterWrite(withAfterWrite),
 		dbw.WithOnConflict(withOnConflict),
@@ -779,7 +777,7 @@ func (rw *Db) getTicketFor(ctx context.Context, aggregateName string) (*store.Ti
 	if rw.underlying == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
 	}
-	gormDB, err := rw.wrapped.gormDB(ctx)
+	gormDB, err := rw.underlying.gormDB(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -863,7 +861,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"), errors.WithoutEvent())
 	}
-	gormDB, err := rw.wrapped.gormDB(ctx)
+	gormDB, err := rw.underlying.gormDB(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -901,7 +899,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	if ticket == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
-	gormDB, err := rw.wrapped.gormDB(ctx)
+	gormDB, err := rw.underlying.gormDB(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -953,7 +951,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	if len(metadata) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata")
 	}
-	gormDB, err := rw.wrapped.gormDB(ctx)
+	gormDB, err := rw.underlying.gormDB(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -1064,7 +1062,7 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ..
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
 		return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
-	if err := rw.underlying.LookupBy(ctx, resourceWithIder); err != nil {
+	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder); err != nil {
 		if err == dbw.ErrRecordNotFound {
 			return errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op), errors.WithoutEvent())
 		}
