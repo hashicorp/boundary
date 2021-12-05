@@ -483,7 +483,7 @@ select role_id as role_id, role_scope as scope_id, role_grant as grant from fina
 	defer rows.Close()
 	for rows.Next() {
 		var g perms.GrantTuple
-		if err := r.reader.ScanRows(rows, &g); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &g); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		grants = append(grants, g)

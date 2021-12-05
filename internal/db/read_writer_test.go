@@ -1532,7 +1532,7 @@ func TestDb_ScanRows(t *testing.T) {
 			require.NoError(err)
 
 			// scan the row into your Gorm struct
-			err = w.ScanRows(rows, &u)
+			err = w.ScanRows(context.Background(), rows, &u)
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
@@ -1562,7 +1562,7 @@ func TestDb_Query(t *testing.T) {
 			u, err := db_test.NewTestUser()
 			require.NoError(err)
 			// scan the row into your Gorm struct
-			err = rw.ScanRows(rows, &u)
+			err = rw.ScanRows(context.Background(), rows, &u)
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}

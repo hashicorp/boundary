@@ -356,7 +356,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	var changes []*change
 	for rows.Next() {
 		var chg change
-		if err := r.reader.ScanRows(rows, &chg); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &chg)

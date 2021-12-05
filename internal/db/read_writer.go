@@ -65,7 +65,7 @@ type Reader interface {
 	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
 
 	// ScanRows will scan sql rows into the interface provided
-	ScanRows(rows *sql.Rows, result interface{}) error
+	ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -145,7 +145,7 @@ type Writer interface {
 	) error
 
 	// ScanRows will scan sql rows into the interface provided
-	ScanRows(rows *sql.Rows, result interface{}) error
+	ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error
 }
 
 const (
@@ -233,13 +233,13 @@ func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, _ ...
 }
 
 // Scan rows will scan the rows into the interface
-func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
+func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error {
 	const op = "db.ScanRows"
 	if rw.underlying == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(result) {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing result")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing result")
 	}
 	return rw.underlying.ScanRows(rows, result)
 }

@@ -354,7 +354,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	defer rows.Close()
 	u := AllocUser()
 	if rows.Next() {
-		err = r.reader.ScanRows(rows, &u)
+		err = r.reader.ScanRows(ctx, rows, &u)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to scan rows for account %s", withAccountId)))
 		}
@@ -814,7 +814,7 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	var changes []*change
 	for rows.Next() {
 		var chg change
-		if err := reader.ScanRows(rows, &chg); err != nil {
+		if err := reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		changes = append(changes, &chg)

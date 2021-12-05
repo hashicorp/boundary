@@ -526,7 +526,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	var changes []*change
 	for rows.Next() {
 		var chg change
-		if err := reader.ScanRows(rows, &chg); err != nil {
+		if err := reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		changes = append(changes, &chg)

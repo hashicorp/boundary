@@ -582,7 +582,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				assert.Equal(1, count)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating tokens and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
@@ -1437,7 +1437,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, token, cred.s, cred.e)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))

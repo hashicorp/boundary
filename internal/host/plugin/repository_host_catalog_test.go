@@ -1453,10 +1453,12 @@ func (j *testSyncJob) Status() scheduler.JobStatus {
 	}
 }
 
-func (j *testSyncJob) Run(_ context.Context) error       { return nil }
-func (j *testSyncJob) NextRunIn() (time.Duration, error) { return setSyncJobRunInterval, nil }
-func (j *testSyncJob) Name() string                      { return setSyncJobName }
-func (j *testSyncJob) Description() string               { return setSyncJobName }
+func (j *testSyncJob) Run(_ context.Context) error { return nil }
+func (j *testSyncJob) NextRunIn(_ context.Context) (time.Duration, error) {
+	return setSyncJobRunInterval, nil
+}
+func (j *testSyncJob) Name() string        { return setSyncJobName }
+func (j *testSyncJob) Description() string { return setSyncJobName }
 
 func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	ctx := context.Background()

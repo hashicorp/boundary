@@ -525,7 +525,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 			_, err = rw.Update(ctx, hostSet, fieldMaskPaths, setToNullPaths)
 			require.NoError(err)
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to five seconds to account for lost time between updating set and determining next run
 			assert.Equal(tt.want.Round(5*time.Second), got.Round(5*time.Second))

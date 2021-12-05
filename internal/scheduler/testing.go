@@ -84,7 +84,7 @@ func (j testJob) Run(ctx context.Context) error {
 	return j.fn(ctx)
 }
 
-func (j testJob) NextRunIn() (time.Duration, error) {
+func (j testJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return j.nextRunIn, nil
 }
 

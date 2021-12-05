@@ -192,7 +192,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	var libs []*privateLibrary
 	for rows.Next() {
 		var lib privateLibrary
-		if err := r.reader.ScanRows(rows, &lib); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		purps := mapper.get(lib.GetPublicId())

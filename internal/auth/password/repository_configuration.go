@@ -151,7 +151,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 	defer rows.Close()
 	for rows.Next() {
 		var conf currentConfig
-		if err := r.reader.ScanRows(rows, &conf); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &conf); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		confs = append(confs, conf)

@@ -176,7 +176,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			var rowCnt int
 			for rows.Next() {
 				rowCnt += 1
-				err = r.reader.ScanRows(rows, &result)
+				err = r.reader.ScanRows(ctx, rows, &result)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for account"))
 				}
