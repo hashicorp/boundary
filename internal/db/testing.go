@@ -21,7 +21,9 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
+// setup the tests (initialize the database one-time and intialized
+// testDatabaseURL). Do not close the returned db. Supported options:
+// WithTestLogLevel, WithTestDatabaseUrl
 func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	var cleanup func() error
 	var url string
@@ -57,7 +59,12 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	}
 	gormDB, err := db.gormDB(ctx)
 	require.NoError(t, err)
-	gormDB.Logger.LogMode(logger.Error)
+	switch {
+	case opts.withLogLevel != 0:
+		gormDB.Logger.LogMode(logger.LogLevel(opts.withLogLevel))
+	default:
+		gormDB.Logger.LogMode(logger.Error)
+	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
 		assert.NoError(t, err)
@@ -194,6 +201,7 @@ type testOptions struct {
 	withTestDatabaseUrl   string
 	withResourcePrivateId bool
 	withTemplate          string
+	withLogLevel          TestLogLevel
 }
 
 func getDefaultTestOptions() testOptions {
@@ -239,6 +247,27 @@ func WithResourcePrivateId(enable bool) TestOption {
 func WithTemplate(template string) TestOption {
 	return func(o *testOptions) {
 		o.withTemplate = template
+	}
+}
+
+// TestLogLevel defines a test log level for the underlying db package (if applicable)
+type TestLogLevel int
+
+const (
+	// See WithTestLogLevel(...) test only option
+	DefaultTestLogLevel TestLogLevel = iota
+	SilentTestLogLevel
+	ErrorTestLogLevel
+	WarnTestLogLevel
+	InfoTestLogLevel
+)
+
+// WithTestLogLevel provides a way to specify a test log level for the
+// underlying database package (if applicable).  To be clear, this has no affect
+// on the events that may be emitted.
+func WithTestLogLevel(_ *testing.T, l TestLogLevel) TestOption {
+	return func(o *testOptions) {
+		o.withLogLevel = l
 	}
 }
 
