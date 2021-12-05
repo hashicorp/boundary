@@ -1,7 +1,11 @@
 package db
 
 import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
@@ -13,6 +17,70 @@ func GetOpts(opt ...Option) Options {
 		o(&opts)
 	}
 	return opts
+}
+
+func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, opt ...Option) ([]dbw.Option, error) {
+	const op = "db.getDbwOptions"
+	opts := GetOpts(opt...)
+	dbwOpts := make([]dbw.Option, 0, len(opt))
+	before, after, err := rw.generateOplogBeforeAfterOpts(ctx, i, opType, opts)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if before != nil {
+		dbwOpts = append(dbwOpts, dbw.WithBeforeWrite(before))
+	}
+	if after != nil {
+		dbwOpts = append(dbwOpts, dbw.WithAfterWrite(after))
+	}
+	if opts.withOnConflict != nil {
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(
+			&dbw.OnConflict{
+				Target: opts.withOnConflict.Target,
+				Action: opts.withOnConflict.Action,
+			},
+		))
+	}
+	if opts.withLookup {
+		dbwOpts = append(dbwOpts, dbw.WithLookup(opts.withLookup))
+	}
+	if opts.WithLimit != 0 {
+		dbwOpts = append(dbwOpts, dbw.WithLimit(0))
+	}
+	if len(opts.WithFieldMaskPaths) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithFieldMaskPaths(opts.WithFieldMaskPaths))
+	}
+	if len(opts.WithNullPaths) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithNullPaths(opts.WithNullPaths))
+	}
+	if opts.WithVersion != nil {
+		dbwOpts = append(dbwOpts, dbw.WithVersion(opts.WithVersion))
+	}
+	if opts.withSkipVetForWrite {
+		dbwOpts = append(dbwOpts, dbw.WithSkipVetForWrite(opts.withSkipVetForWrite))
+	}
+	if opts.withWhereClause != "" {
+		dbwOpts = append(dbwOpts, dbw.WithWhere(opts.withWhereClause, opts.withWhereClauseArgs...))
+	}
+	if opts.withOrder != "" {
+		dbwOpts = append(dbwOpts, dbw.WithOrder(opts.withOrder))
+	}
+	if len(opts.withPrngValues) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithPrngValues(opts.withPrngValues))
+	}
+	if opts.withGormFormatter != nil {
+		dbwOpts = append(dbwOpts, dbw.WithLogger(opts.withGormFormatter))
+	}
+	if opts.withMaxOpenConnections > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithMaxOpenConnections(opts.withMaxOpenConnections))
+	}
+	if opts.withDebug {
+		dbwOpts = append(dbwOpts, dbw.WithDebug(opts.withDebug))
+	}
+	if opts.withRowsAffected != nil {
+		dbwOpts = append(dbwOpts, dbw.WithReturnRowsAffected(opts.withRowsAffected))
+	}
+	return dbwOpts, nil
 }
 
 // Option - how Options are passed as arguments.

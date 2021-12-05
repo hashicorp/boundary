@@ -129,7 +129,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "with version option is zero: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: dbw.whereClausesFromOpts: with version option is zero",
 		},
 		{
 			name: "simple-with-version",
@@ -276,7 +276,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: not allowed on primary key field Id: parameter violation: error #103",
+			wantErrMsg: "parameter violation: error #103: dbw.Update: not allowed on primary key field Id: invalid field mask",
 		},
 		{
 			name: "both are missing",
@@ -293,7 +293,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: both fieldMaskPaths and setToNullPaths are missing: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: both fieldMaskPaths and setToNullPaths are missing",
 		},
 		{
 			name: "i is nil",
@@ -304,7 +304,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: missing interface: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: missing interface: invalid parameter",
 		},
 		{
 			name: "only read-only",
@@ -321,7 +321,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths",
 		},
 	}
 	for _, tt := range tests {
@@ -550,7 +550,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Contains(err.Error(), "db.Update: oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -567,7 +567,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Contains(err.Error(), "db.Update: oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
 	})
 	t.Run("multi-column", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -763,7 +763,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.Create: oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -782,7 +782,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.Create: oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
