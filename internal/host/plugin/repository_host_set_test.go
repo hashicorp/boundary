@@ -424,10 +424,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 	scopeWrapper, err := dbKmsCache.GetWrapper(ctx, testCatalog.GetScopeId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	require.NoError(t, testCatalogSecret.encrypt(ctx, scopeWrapper))
-	testCatalogSecretQ, testCatalogSecretV := testCatalogSecret.upsertQuery()
-	secretsUpdated, err := dbRW.Exec(ctx, testCatalogSecretQ, testCatalogSecretV)
+	err = dbRW.Create(ctx, testCatalogSecret)
 	require.NoError(t, err)
-	require.Equal(t, 1, secretsUpdated)
 
 	// Create a test duplicate set. We don't use this set, it just
 	// exists to ensure that we can test for conflicts when setting

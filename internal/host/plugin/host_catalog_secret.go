@@ -2,12 +2,9 @@ package plugin
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -88,43 +85,4 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.CtSecret = nil
 	return nil
-}
-
-// TODO(ICU-2835): this is necessary as update logic requires a static
-// public_id or private_id field. Once post-lookup updates can
-// support alternate primary key fields, we can port this to native
-// Update and upserts w/OnConflict.
-func (c *HostCatalogSecret) upsertQuery() (query string, queryValues []interface{}) {
-	query = upsertHostCatalogSecretQuery
-	queryValues = []interface{}{
-		sql.Named("catalog_id", c.CatalogId),
-		sql.Named("secret", c.CtSecret),
-		sql.Named("key_id", c.KeyId),
-	}
-	return
-}
-
-func (c *HostCatalogSecret) deleteQuery() (query string, queryValues []interface{}) {
-	query = deleteHostCatalogSecretQuery
-	queryValues = []interface{}{
-		sql.Named("catalog_id", c.CatalogId),
-	}
-	return
-}
-
-func (c *HostCatalogSecret) oplogMessage(opType db.OpType) *oplog.Message {
-	msg := oplog.Message{
-		Message:  c.clone(),
-		TypeName: c.TableName(),
-	}
-	switch opType {
-	case db.CreateOp:
-		msg.OpType = oplog.OpType_OP_TYPE_CREATE
-	case db.UpdateOp:
-		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
-		msg.FieldMaskPaths = []string{"secret", "key_id"}
-	case db.DeleteOp:
-		msg.OpType = oplog.OpType_OP_TYPE_DELETE
-	}
-	return &msg
 }

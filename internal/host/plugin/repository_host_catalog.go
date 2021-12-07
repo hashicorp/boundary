@@ -142,15 +142,11 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				}
 				if hcSecret != nil {
 					newSecret := hcSecret.clone()
-					q, v := newSecret.upsertQuery()
-					rows, err := w.Exec(ctx, q, v)
-					if err != nil {
+					var sOplogMsg oplog.Message
+					if err := w.Create(ctx, newSecret, db.NewOplogMsg(&sOplogMsg)); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if rows > 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, "more than 1 catalog secret would have been created")
-					}
-					msgs = append(msgs, newSecret.oplogMessage(db.CreateOp))
+					msgs = append(msgs, &sOplogMsg)
 				}
 			}
 
@@ -400,16 +396,16 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					// We didn't set/encrypt the persisted data because there was
 					// none returned. Just delete the entry.
 					deletedSecret := hcSecret.clone()
-					q, v := deletedSecret.deleteQuery()
-					secretsUpdated, err := w.Exec(ctx, q, v)
+					var sOplogMsg oplog.Message
+					secretsDeleted, err := w.Delete(ctx, deletedSecret, db.NewOplogMsg(&sOplogMsg))
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsUpdated))
+					if secretsDeleted != 1 {
+						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be deleted, got %d", secretsDeleted))
 					}
 					updatedPersisted = true
-					msgs = append(msgs, deletedSecret.oplogMessage(db.DeleteOp))
+					msgs = append(msgs, &sOplogMsg)
 				} else {
 					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
@@ -421,16 +417,20 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 					// Update the secrets.
 					updatedSecret := hcSecret.clone()
-					q, v := updatedSecret.upsertQuery()
-					secretsUpdated, err := w.Exec(ctx, q, v)
-					if err != nil {
+					var sOplogMsg oplog.Message
+					if err := w.Create(
+						ctx,
+						updatedSecret,
+						db.WithOnConflict(&db.OnConflict{
+							Target: db.Columns{"catalog_id"},
+							Action: db.SetColumns([]string{"secret", "key_id"}),
+						}),
+						db.NewOplogMsg(&sOplogMsg),
+					); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-					if secretsUpdated != 1 {
-						return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 catalog secret to be updated, got %d", secretsUpdated))
-					}
 					updatedPersisted = true
-					msgs = append(msgs, updatedSecret.oplogMessage(db.UpdateOp))
+					msgs = append(msgs, &sOplogMsg)
 				}
 			}
 

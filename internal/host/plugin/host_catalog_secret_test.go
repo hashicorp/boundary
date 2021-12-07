@@ -118,57 +118,82 @@ func TestHostCatalogSecret_New(t *testing.T) {
 	}
 }
 
-func TestHostCatalogSecret_Custom_Queries(t *testing.T) {
-	ctx := context.Background()
+func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+	ctx := context.Background()
+
+	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), mustStruct(map[string]interface{}{
+		"foo": "bar",
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+	require.Empty(t, secret.CtSecret)
+
 	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+	require.NoError(t, secret.encrypt(ctx, databaseWrapper))
 
-	hcs, err := newHostCatalogSecret(ctx, cat.GetPublicId(),
-		&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}})
-	require.NoError(t, err)
-	assert.NoError(t, hcs.encrypt(ctx, databaseWrapper))
-	q, v := hcs.upsertQuery()
-	_, err = rw.Exec(ctx, q, v)
-	assert.NoError(t, err)
+	// Create
+	w := db.New(conn)
+	require.NoError(t, w.Create(ctx, secret))
 
-	found, err := newHostCatalogSecret(ctx, cat.GetPublicId(), nil)
-	require.NoError(t, err)
-	assert.NoError(t, rw.LookupWhere(ctx, found, "catalog_id=?", found.GetCatalogId()))
+	// Upsert
+	newStructUpsert := mustMarshal(map[string]interface{}{
+		"baz": "qux",
+	})
+	newSecretUpsert := secret.clone()
+	newSecretUpsert.Secret = newStructUpsert
+	require.NoError(t, newSecretUpsert.encrypt(ctx, databaseWrapper))
+	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&db.OnConflict{
+		Target: db.Columns{"catalog_id"},
+		Action: db.SetColumns([]string{"secret", "key_id"}),
+	})))
+	found := &HostCatalogSecret{
+		HostCatalogSecret: &store.HostCatalogSecret{
+			CatalogId: cat.GetPublicId(),
+		},
+	}
+	require.NoError(t, w.LookupById(ctx, found))
+	assert.Empty(t, cmp.Diff(newSecretUpsert.HostCatalogSecret, found.HostCatalogSecret, protocmp.Transform()))
 	require.NoError(t, found.decrypt(ctx, databaseWrapper))
-	require.NoError(t, hcs.decrypt(ctx, databaseWrapper))
-	// update the created/updated time from the original
-	hcs.CreateTime, hcs.UpdateTime = found.CreateTime, found.UpdateTime
-	assert.Empty(t, cmp.Diff(hcs, found, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(newStructUpsert, found.Secret, protocmp.Transform()))
 
-	// Update the secret and see the value updated.
-	updated, err := newHostCatalogSecret(ctx, cat.GetPublicId(),
-		&structpb.Struct{Fields: map[string]*structpb.Value{"updated": structpb.NewStringValue("value")}})
+	// Update
+	newStructUpdate := mustMarshal(map[string]interface{}{
+		"one": "two",
+	})
+	newSecretUpdate := newSecretUpsert.clone()
+	newSecretUpdate.Secret = newStructUpdate
+	require.NoError(t, newSecretUpdate.encrypt(ctx, databaseWrapper))
+	rowsUpdated, err := w.Update(ctx, newSecretUpdate, []string{"CtSecret"}, []string{})
 	require.NoError(t, err)
-	assert.NoError(t, updated.encrypt(ctx, databaseWrapper))
-	q, v = updated.upsertQuery()
-	_, err = rw.Exec(ctx, q, v)
-	assert.NoError(t, err)
-
-	assert.NoError(t, rw.LookupWhere(ctx, found, "catalog_id=?", found.GetCatalogId()))
+	require.Equal(t, 1, rowsUpdated)
+	found = &HostCatalogSecret{
+		HostCatalogSecret: &store.HostCatalogSecret{
+			CatalogId: cat.GetPublicId(),
+		},
+	}
+	require.NoError(t, w.LookupById(ctx, found))
+	assert.Empty(t, cmp.Diff(newSecretUpdate.HostCatalogSecret, found.HostCatalogSecret, protocmp.Transform()))
 	require.NoError(t, found.decrypt(ctx, databaseWrapper))
-	require.NoError(t, updated.decrypt(ctx, databaseWrapper))
-	// set the created time to the first and update time from the newly found
-	updated.CreateTime, updated.UpdateTime = hcs.CreateTime, found.UpdateTime
-	assert.Empty(t, cmp.Diff(updated, found, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(newStructUpdate, found.Secret, protocmp.Transform()))
 
-	// Try to delete this secret.
-	q, v = updated.deleteQuery()
-	_, err = rw.Exec(ctx, q, v)
-	assert.NoError(t, err)
-	err = rw.LookupWhere(ctx, found, "catalog_id=?", found.GetCatalogId())
-	assert.Error(t, err)
-	assert.True(t, errors.IsNotFoundError(err))
+	// Delete
+	rowsDeleted, err := w.Delete(ctx, found)
+	require.NoError(t, err)
+	require.Equal(t, 1, rowsDeleted)
+	err = w.LookupById(ctx, &HostCatalogSecret{
+		HostCatalogSecret: &store.HostCatalogSecret{
+			CatalogId: cat.GetPublicId(),
+		},
+	})
+	require.Error(t, err)
+	require.True(t, errors.IsNotFoundError(err))
 }
