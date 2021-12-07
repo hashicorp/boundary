@@ -306,8 +306,6 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Connections: []*pb.Connection{
 				{
-					PublicId:           c.PublicId,
-					SessionId:          sess.GetPublicId(),
 					ClientTcpAddress:   c.ClientTcpAddress,
 					ClientTcpPort:      c.ClientTcpPort,
 					EndpointTcpAddress: c.EndpointTcpAddress,
@@ -353,8 +351,6 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Connections: []*pb.Connection{
 				{
-					PublicId:           c.PublicId,
-					SessionId:          sess.GetPublicId(),
 					ClientTcpAddress:   c.ClientTcpAddress,
 					ClientTcpPort:      c.ClientTcpPort,
 					EndpointTcpAddress: c.EndpointTcpAddress,

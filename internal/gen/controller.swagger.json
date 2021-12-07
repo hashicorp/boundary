@@ -4700,14 +4700,6 @@
     "controller.api.resources.sessions.v1.Connection": {
       "type": "object",
       "properties": {
-        "public_id": {
-          "type": "string",
-          "title": "public_id is used to access the connection via an API"
-        },
-        "session_id": {
-          "type": "string",
-          "title": "session_id of the connection"
-        },
         "client_tcp_address": {
           "type": "string",
           "title": "client_tcp_address of the connection"
