@@ -25,11 +25,6 @@ message SessionState {
 
 // Connection contains information about a specific connection in a session
 message Connection {
-    // public_id is used to access the connection via an API
-    string public_id = 1;
-
-    // session_id of the connection
-    string session_id = 2;
 
     // client_tcp_address of the connection
     string client_tcp_address = 3;
