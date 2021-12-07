@@ -690,6 +690,10 @@ var inputStructs = []*structInfo{
 		outFile: "sessions/workers.gen.go",
 	},
 	{
+		inProto: &sessions.Connection{},
+		outFile: "sessions/connection.gen.go",
+	},
+	{
 		inProto: &sessions.Session{},
 		outFile: "sessions/session.gen.go",
 		templates: []*template.Template{
