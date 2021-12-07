@@ -5,6 +5,7 @@ package plugin.v1;
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/duration.proto";
 
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
 import "controller/api/resources/hostsets/v1/host_set.proto";
@@ -205,4 +206,9 @@ message RefreshHostCatalogPersistedResponse {
 message HostCatalogPersisted {
 	// The persisted secrets.
 	google.protobuf.Struct secrets = 100;
+
+  // The cache TTL of the persisted secrets; once this TTL is
+  // epxired, the secrets are refreshed via
+  // RefreshHostCatalogPersisted.
+  google.protobuf.Duration ttl = 200;
 }
