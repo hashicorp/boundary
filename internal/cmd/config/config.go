@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"time"
 
@@ -151,10 +152,15 @@ func (c *Controller) InitNameIfEmpty() (string, error) {
 }
 
 type Worker struct {
-	Name        string   `hcl:"name"`
-	Description string   `hcl:"description"`
-	Controllers []string `hcl:"controllers"`
-	PublicAddr  string   `hcl:"public_addr"`
+	Name        string `hcl:"name"`
+	Description string `hcl:"description"`
+	PublicAddr  string `hcl:"public_addr"`
+
+	// We use a raw interface here so that we can take in a string
+	// value pointing to an env var or file. We then resolve that
+	// and get the actual controller addresses.
+	Controllers    []string    `hcl:"-"`
+	ControllersRaw interface{} `hcl:"controllers"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
@@ -448,6 +454,11 @@ func Parse(d string) (*Config, error) {
 				}
 			}
 		}
+
+		result.Worker.Controllers, err = parseWorkerControllers(result)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse worker controllers: %w", err)
+		}
 	}
 
 	sharedConfig, err := configutil.ParseConfig(d)
@@ -504,6 +515,42 @@ func Parse(d string) (*Config, error) {
 	}
 
 	return result, nil
+}
+
+func parseWorkerControllers(c *Config) ([]string, error) {
+	if c == nil || c.Worker == nil {
+		return nil, fmt.Errorf("config or worker field is nil")
+	}
+	if c.Worker.ControllersRaw == nil {
+		return nil, nil
+	}
+
+	switch t := c.Worker.ControllersRaw.(type) {
+	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
+		var controllers []string
+		err := mapstructure.WeakDecode(c.Worker.ControllersRaw, &controllers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode worker controllers block into config field: %w", err)
+		}
+		return controllers, nil
+
+	case string:
+		controllersStr, err := parseutil.ParsePath(t)
+		if err != nil {
+			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
+		}
+
+		var addrs []string
+		err = json.Unmarshal([]byte(controllersStr), &addrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
+		}
+		return addrs, nil
+
+	default:
+		typ := reflect.TypeOf(t)
+		return nil, fmt.Errorf("unexpected type %q", typ.String())
+	}
 }
 
 func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
