@@ -2,8 +2,6 @@
 package sessions
 
 type Connection struct {
-	PublicId           string `json:"public_id,omitempty"`
-	SessionId          string `json:"session_id,omitempty"`
 	ClientTcpAddress   string `json:"client_tcp_address,omitempty"`
 	ClientTcpPort      uint32 `json:"client_tcp_port,omitempty"`
 	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty"`
