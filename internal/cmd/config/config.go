@@ -308,6 +308,13 @@ func Parse(d string) (*Config, error) {
 		if !strutil.Printable(result.Controller.Name) {
 			return nil, errors.New("Controller name contains non-printable characters")
 		}
+		result.Controller.Description, err = parseutil.ParsePath(result.Controller.Description)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing controller description: %w", err)
+		}
+		if !strutil.Printable(result.Controller.Description) {
+			return nil, errors.New("Controller description contains non-printable characters")
+		}
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {

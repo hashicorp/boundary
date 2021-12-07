@@ -5,7 +5,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### New and Improved
-
+* config: The `description` field for controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1766))
 * config: Add support for go-sockaddr templates to Worker and Controller
   addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
 * host: Plugin-based host catalogs will now schedule updates for all

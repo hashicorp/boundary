@@ -524,3 +524,57 @@ func TestController_EventingConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestControllerDescription(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envDescription string
+		expDescription string
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid controller description from env var",
+			in: `
+			controller {
+				description = "env://CONTROLLER_DESCRIPTION"
+			}`,
+			envDescription: "Test controller description",
+			expDescription: "Test controller description",
+			expErr:         false,
+		}, {
+			name: "Invalid controller description from env var",
+			in: `
+			controller {
+				description = "\uTest controller description"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:22: illegal char escape",
+		},{
+			name: "Not a URL, non-printable description",
+			in: `
+			controller {
+				description = "\x00" 
+			}`,
+			expErr: true,
+			expErrStr: "Controller description contains non-printable characters",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("CONTROLLER_DESCRIPTION", tt.envDescription)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expDescription, c.Controller.Description)
+		})
+	}
+}
