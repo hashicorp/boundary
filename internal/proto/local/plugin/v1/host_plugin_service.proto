@@ -207,8 +207,8 @@ message HostCatalogPersisted {
 	// The persisted secrets.
 	google.protobuf.Struct secrets = 100;
 
-  // The cache TTL of the persisted secrets; once this TTL is
-  // epxired, the secrets are refreshed via
+  // The cache TTL of the persisted secrets, in seconds; once this
+  // TTL is expired, the secrets are refreshed via
   // RefreshHostCatalogPersisted.
-  google.protobuf.Duration ttl = 200;
+  int32 ttl_seconds = 200;
 }
