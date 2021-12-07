@@ -8,21 +8,27 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
-// Version of oplog entries (among other things, it's used to manage upgrade compatibility when replicating)
-const Version = "v1"
+// Version of oplog entries (among other things, it's used to manage upgrade
+// compatibility when replicating)
+//	v1: initial version
+//	v2: adds the new Message.Opts
+const Version = "v2"
 
-// Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
+// Message wraps a proto.Message and adds a operation type (Create, Update,
+// Delete, etc)
 type Message struct {
 	proto.Message
 	TypeName       string
 	OpType         OpType
 	FieldMaskPaths []string
 	SetToNullPaths []string
+	Opts           []dbw.Option
 }
 
 // Entry represents an oplog entry
@@ -36,7 +42,7 @@ type Entry struct {
 type Metadata map[string][]string
 
 // NewEntry creates a new Entry
-func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
+func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
 	const op = "oplog.NewEntry"
 	entry := Entry{
 		Entry: &store.Entry{
@@ -60,34 +66,34 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 		}
 		entry.Metadata = storeMD
 	}
-	if err := entry.validate(); err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+	if err := entry.validate(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &entry, nil
 }
 
-func (e *Entry) validate() error {
+func (e *Entry) validate(ctx context.Context) error {
 	const op = "oplog.(Entry).validate"
 	if e.Cipherer == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil cipherer")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil cipherer")
 	}
 	if e.Ticketer == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticketer")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticketer")
 	}
 	if e.Entry == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil entry")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil entry")
 	}
 	if e.Entry.Version == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry version")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing entry version")
 	}
 	if e.Entry.AggregateName == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry aggregate name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing entry aggregate name")
 	}
 	return nil
 }
 
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
-func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
+func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Message, error) {
 	const op = "oplog.(Entry).UnmarshalData"
 	if types == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil type catalog")
@@ -101,30 +107,77 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		Catalog: types,
 	}
 	for {
-		m, typ, fieldMaskPaths, nullPaths, err := queue.Remove()
+		item, err := queue.remove(ctx)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error removing item from queue"))
 		}
-		name, err := types.GetTypeName(m)
+		name, err := types.GetTypeName(item.msg)
 		if err != nil {
 			return nil, errors.WrapDeprecated(err, op)
 		}
-		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths, SetToNullPaths: nullPaths})
+		dbwOpts, err := convertToDbwOpts(ctx, item.operationOptions)
+		if err != nil {
+
+		}
+		msgs = append(msgs, Message{
+			Message:        item.msg,
+			TypeName:       name,
+			OpType:         item.opType,
+			FieldMaskPaths: item.fieldMask,
+			SetToNullPaths: item.setToNullPaths,
+			Opts:           dbwOpts,
+		})
 	}
 	return msgs, nil
 }
 
+func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option, error) {
+	if opts == nil {
+		return []dbw.Option{}, nil
+	}
+	dbwOpts := []dbw.Option{
+		dbw.WithLookup(opts.GetWithLookup()),
+		dbw.WithLimit(int(opts.GetWithLimit())),
+		dbw.WithSkipVetForWrite(opts.GetWithSkipVetForWrite()),
+		dbw.WithWhere(opts.GetWithWhereClause(), opts.GetWithWhereClauseArgs()),
+		dbw.WithOrder(opts.GetWithOrder()),
+		dbw.WithPrngValues(opts.GetWithPrngValues()),
+	}
+	if opts.GetWithVersionSet() {
+		v := opts.GetWithVersionValue()
+		dbwOpts = append(dbwOpts, dbw.WithVersion(&v))
+	}
+	if opts.GetWithOnConflictSet() {
+		c := opts.GetWithOnConflictValue()
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(
+			&dbw.OnConflict{
+				Target: c.GetTarget(),
+				Action: c.GetAction(),
+			},
+		))
+	}
+	return dbwOpts, nil
+}
+
+// ConvertFromDbwOpts converts dbw options to an OperationalOptions for an Entry
+func ConvertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOptions, error) {
+	pbOpts := &OperationOptions{
+		WithLookup: opts.WithLookup,
+	}
+	return pbOpts, nil
+}
+
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if Cipherer != nil then the data is authentication encrypted
-func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
+func (e *Entry) WriteEntryWith(ctx context.Context, tx *OplogWriter, ticket *store.Ticket, msgs ...*Message) error {
 	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
-	if err := e.validate(); err != nil {
+	if err := e.validate(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if ticket == nil {
@@ -138,7 +191,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 		if m == nil {
 			return errors.New(ctx, errors.InvalidParameter, op, "nil message")
 		}
-		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
+		if err := queue.add(ctx, m.Message, m.TypeName, m.OpType, WithOperationOptions(m.Opts...), WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("error adding message to queue"))
 		}
 	}
@@ -149,10 +202,11 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 			return errors.Wrap(ctx, err, op)
 		}
 	}
-	if err := tx.Create(e); err != nil {
+	rw := dbw.New(tx.DB)
+	if err := rw.Create(ctx, e); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
-	if err := e.Ticketer.Redeem(ticket); err != nil {
+	if err := e.Ticketer.Redeem(ctx, ticket); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
@@ -160,9 +214,9 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
 //  Cipherer != nil then the data is authentication encrypted
-func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
+func (e *Entry) Write(ctx context.Context, tx *OplogWriter, ticket *store.Ticket) error {
 	const op = "oplog.(Entry).Write"
-	if err := e.validate(); err != nil {
+	if err := e.validate(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if ticket == nil {
@@ -176,10 +230,11 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 			return errors.Wrap(ctx, err, op)
 		}
 	}
-	if err := tx.Create(e); err != nil {
+	rw := dbw.New(tx.DB)
+	if err := rw.Create(ctx, e); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error writing data to storage"))
 	}
-	if err := e.Ticketer.Redeem(ticket); err != nil {
+	if err := e.Ticketer.Redeem(ctx, ticket); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
@@ -207,9 +262,9 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 
 // Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
 // calling Replay, otherwise you'll get "a table doesn't exist" error.
-func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, tableSuffix string) error {
+func (e *Entry) Replay(ctx context.Context, tx *OplogWriter, types *TypeCatalog, tableSuffix string) error {
 	const op = "oplog.(Entry).Replay"
-	msgs, err := e.UnmarshalData(types)
+	msgs, err := e.UnmarshalData(ctx, types)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -233,24 +288,37 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 			and the separate schemas wouldn't have the fk reference issues mentioned above.
 		*/
 		replayTable := origTableName + tableSuffix
-		if !tx.hasTable(replayTable) {
-			if err := tx.createTableLike(origTableName, replayTable); err != nil {
+		hasTable, err := tx.hasTable(ctx, replayTable)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if !hasTable {
+			if err := tx.createTableLike(ctx, origTableName, replayTable); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
+		rw := dbw.New(tx.DB)
 
-		em.SetTableName(replayTable)
+		m.Opts = append(m.Opts, dbw.WithTable(replayTable))
 		switch m.OpType {
 		case OpType_OP_TYPE_CREATE:
-			if err := tx.Create(m.Message); err != nil {
+			if err := rw.Create(ctx, m.Message, m.Opts...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		case OpType_OP_TYPE_CREATE_ITEMS:
+			if err := rw.CreateItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_UPDATE:
-			if err := tx.Update(m.Message, m.FieldMaskPaths, m.SetToNullPaths); err != nil {
+			if _, err := rw.Update(ctx, m.Message, m.FieldMaskPaths, m.SetToNullPaths, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_DELETE:
-			if err := tx.Delete(m.Message); err != nil {
+			if _, err := rw.Delete(ctx, m.Message, m.Opts...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		case OpType_OP_TYPE_DELETE_ITEMS:
+			if _, err := rw.DeleteItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		default:

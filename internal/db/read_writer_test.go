@@ -390,6 +390,7 @@ func TestDb_Update(t *testing.T) {
 		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
+		conn.Debug(true)
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			// write oplogs for this update
 			WithOplog(
@@ -402,6 +403,8 @@ func TestDb_Update(t *testing.T) {
 					"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 				}),
 		)
+		conn.Debug(false)
+
 		require.NoError(err)
 		assert.Equal(1, rowsUpdated)
 

@@ -407,7 +407,7 @@ func Test_Callback(t *testing.T) {
 				e.Cipherer = oplogWrapper
 				err := e.DecryptData(ctx)
 				require.NoError(err)
-				msgs, err := e.UnmarshalData(types)
+				msgs, err := e.UnmarshalData(ctx, types)
 				require.NoError(err)
 				for _, m := range msgs {
 					switch m.TypeName {

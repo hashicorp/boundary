@@ -1,10 +1,12 @@
 package oplog
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	dbassert "github.com/hashicorp/dbassert/gorm"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	_ "gorm.io/driver/postgres"
@@ -15,36 +17,38 @@ import (
 func Test_GormWriterCreate(t *testing.T) {
 	cleanup, db := setup(t)
 	defer testCleanup(t, cleanup, db)
+	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		tx := db.Begin()
-		defer tx.Rollback()
-		w := GormWriter{tx}
+		tx, err := dbw.New(db).Begin(testCtx)
+		require.NoError(err)
+		defer tx.Rollback(testCtx)
+		w := OplogWriter{tx.DB()}
 		user := oplog_test.TestUser{
 			Name: "foo-" + testId(t),
 		}
-		require.NoError(w.Create(&user))
+		require.NoError(dbw.New(w.DB).Create(testCtx, &user))
 
-		foundUser := testFindUser(t, tx, user.Id)
+		foundUser := testFindUser(t, tx.DB(), user.Id)
 		assert.Equal(user.Name, foundUser.Name)
 	})
 	t.Run("nil tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{nil}
+		w := OplogWriter{}
 
-		err := w.Create(&oplog_test.TestUser{})
+		err := dbw.New(w.DB).Create(testCtx, &oplog_test.TestUser{})
 		require.Error(err)
-
-		assert.Equal("oplog.(GormWriter).Create: nil tx: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), " missing underlying db: invalid parameter")
 	})
 	t.Run("nil model", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		tx := db.Begin()
-		defer tx.Rollback()
-		w := GormWriter{tx}
-		err := w.Create(nil)
+		tx, err := dbw.New(db).Begin(testCtx)
+		require.NoError(err)
+		defer tx.Rollback(testCtx)
+		w := OplogWriter{tx.DB()}
+		err = dbw.New(w.DB).Create(testCtx, nil)
 		require.Error(err)
-		assert.Equal("oplog.(GormWriter).Create: nil interface: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing interface")
 	})
 }
 
@@ -52,137 +56,144 @@ func Test_GormWriterCreate(t *testing.T) {
 func Test_GormWriterDelete(t *testing.T) {
 	cleanup, db := setup(t)
 	defer testCleanup(t, cleanup, db)
+	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		tx := db.Begin()
-		defer tx.Rollback()
-		w := GormWriter{tx}
+		tx, err := dbw.New(db).Begin(testCtx)
+		require.NoError(err)
+		defer tx.Rollback(testCtx)
+		w := OplogWriter{tx.DB()}
 
 		id := testId(t)
 		user := testUser(t, db, "foo-"+id, "", "")
 		foundUser := testFindUser(t, db, user.Id)
 
-		require.NoError(w.Delete(&user))
-		err := tx.Where("id = ?", user.Id).First(&foundUser).Error
+		_, err = dbw.New(w.DB).Delete(testCtx, &user)
+		require.NoError(err)
+		err = dbw.New(w.DB).LookupWhere(testCtx, &foundUser, "id = ?", []interface{}{user.Id})
 		require.Error(err)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 	})
 	t.Run("nil tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{nil}
-		err := w.Delete(&oplog_test.TestUser{})
+		w := OplogWriter{}
+		_, err := dbw.New(w.DB).Delete(testCtx, &oplog_test.TestUser{})
 		require.Error(err)
-		assert.Equal("oplog.(GormWriter).Delete: nil tx: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing underlying db")
 	})
 	t.Run("nil model", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		tx := db.Begin()
-		defer tx.Rollback()
-		w := GormWriter{tx}
-		err := w.Delete(nil)
+		tx, err := dbw.New(db).Begin(testCtx)
+		require.NoError(err)
+		defer tx.Rollback(testCtx)
+		w := OplogWriter{tx.DB()}
+		_, err = dbw.New(w.DB).Delete(testCtx, nil)
 		require.Error(err)
-		assert.Equal("oplog.(GormWriter).Delete: nil interface: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing interface")
 	})
 }
 
 // Test_GormWriterHasTable provides unit tests for GormWriter HasTable
-func Test_GormWriterHasTable(t *testing.T) {
+func TestOplogWriter_hasTable(t *testing.T) {
 	cleanup, db := setup(t)
+	testCtx := context.Background()
 	defer testCleanup(t, cleanup, db)
-	w := GormWriter{Tx: db}
+	w := OplogWriter{db}
 
 	t.Run("success", func(t *testing.T) {
 		assert := require.New(t)
-		ok := w.hasTable("oplog_test_user")
-		assert.Equal(ok, true)
+		ok, _ := w.hasTable(testCtx, "oplog_test_user")
+		assert.Equal(true, ok)
 	})
 	t.Run("no table", func(t *testing.T) {
 		assert := assert.New(t)
 		badTableName := testId(t)
-		ok := w.hasTable(badTableName)
+		ok, _ := w.hasTable(testCtx, badTableName)
 		assert.Equal(ok, false)
 	})
 	t.Run("blank table name", func(t *testing.T) {
 		assert := assert.New(t)
-		ok := w.hasTable("")
+		ok, _ := w.hasTable(testCtx, "")
 		assert.Equal(ok, false)
 	})
 }
 
 // Test_GormWriterCreateTable provides unit tests for GormWriter CreateTable
-func Test_GormWriterCreateTable(t *testing.T) {
+func TestOplogWriter_createTableLike(t *testing.T) {
 	cleanup, db := setup(t)
+	testCtx := context.Background()
 	defer testCleanup(t, cleanup, db)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
-		w := GormWriter{Tx: db}
+		w := OplogWriter{db}
 		suffix := testId(t)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NoError(w.dropTableIfExists(newTableName)) }()
-		err := w.createTableLike(u.TableName(), newTableName)
+		defer func() { assert.NoError(w.dropTableIfExists(testCtx, newTableName)) }()
+		err := w.createTableLike(testCtx, u.TableName(), newTableName)
 		assert.NoError(err)
 	})
 	t.Run("call twice", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{Tx: db}
+		w := OplogWriter{db}
 		suffix := testId(t)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NoError(w.dropTableIfExists(newTableName)) }()
-		err := w.createTableLike(u.TableName(), newTableName)
+		defer func() { assert.NoError(w.dropTableIfExists(testCtx, newTableName)) }()
+		err := w.createTableLike(testCtx, u.TableName(), newTableName)
 		require.NoError(err)
 
 		// should be an error to create the same table twice
-		err = w.createTableLike(u.TableName(), newTableName)
+		err = w.createTableLike(testCtx, u.TableName(), newTableName)
 		require.Error(err)
 		assert.Error(err, err.Error(), nil)
 	})
 	t.Run("empty existing", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{Tx: db}
+		w := OplogWriter{db}
 		suffix := testId(t)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NoError(w.dropTableIfExists(newTableName)) }()
-		err := w.createTableLike("", newTableName)
+		defer func() { assert.NoError(w.dropTableIfExists(testCtx, newTableName)) }()
+		err := w.createTableLike(testCtx, "", newTableName)
 		require.Error(err)
 		assert.Error(err, err.Error(), nil)
-		assert.Equal("oplog.(GormWriter).createTableLike: missing existing table name: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing existing table name")
 	})
 	t.Run("blank name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{Tx: db}
+		w := OplogWriter{db}
 		u := &oplog_test.TestUser{}
-		err := w.createTableLike(u.TableName(), "")
+		err := w.createTableLike(testCtx, u.TableName(), "")
 		require.Error(err)
 		assert.Error(err, err.Error(), nil)
-		assert.Equal("oplog.(GormWriter).createTableLike: missing new table name: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing new table name")
 	})
 }
 
 // Test_GormWriterDropTableIfExists provides unit tests for GormWriter DropTableIfExists
 func Test_GormWriterDropTableIfExists(t *testing.T) {
+	testCtx := context.Background()
 	cleanup, db := setup(t)
 	defer testCleanup(t, cleanup, db)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
-		w := GormWriter{Tx: db}
+		w := OplogWriter{db}
 		suffix := testId(t)
 
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
 
-		assert.NoError(w.createTableLike(u.TableName(), newTableName))
-		defer func() { assert.NoError(w.dropTableIfExists(newTableName)) }()
+		assert.NoError(w.createTableLike(testCtx, u.TableName(), newTableName))
+		defer func() { assert.NoError(w.dropTableIfExists(testCtx, newTableName)) }()
 	})
 
 	t.Run("success with blank", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := GormWriter{Tx: db}
-		err := w.dropTableIfExists("")
+		w := OplogWriter{db}
+		err := w.dropTableIfExists(testCtx, "")
 		require.Error(err)
-		assert.Equal("oplog.(GormWriter).dropTableIfExists: missing table name: parameter violation: error #100", err.Error())
+		assert.Contains(err.Error(), "missing table name")
 	})
 }
 
@@ -200,7 +211,7 @@ func TestGormWriter_Update(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		Tx       *gorm.DB
+		Tx       *dbw.DB
 		args     args
 		wantUser *oplog_test.TestUser
 		wantErr  bool
@@ -292,26 +303,28 @@ func TestGormWriter_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			underlyingDB, err := db.DB()
+			underlyingDB, err := db.SqlDB(context.Background())
 			require.NoError(err)
-			dbassert := dbassert.New(t, underlyingDB, db.Dialector.Name())
+			_, name, err := db.DbType()
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB, name)
 
-			w := &GormWriter{
-				Tx: tt.Tx,
+			w := &OplogWriter{
+				tt.Tx,
 			}
 			u := testUser(t, db, id, id, id) // intentionally, not relying on tt.Tx
 			u.Name = tt.args.user.Name
 			u.Email = tt.args.user.Email
 			u.PhoneNumber = tt.args.user.PhoneNumber
-			err = w.Update(u, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
+			_, err = dbw.New(w.DB).Update(context.Background(), u, tt.args.fieldMaskPaths, tt.args.setToNullPaths)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			var foundUser oplog_test.TestUser
-			err = db.Where("id = ?", u.Id).First(&foundUser).Error
-			require.NoError(err)
+			foundUser.Id = u.Id
+			require.NoError(dbw.New(db).LookupBy(context.Background(), &foundUser))
 			tt.wantUser.Id = u.Id
 			assert.Equal(tt.wantUser, &foundUser)
 			for _, f := range tt.args.setToNullPaths {
@@ -321,8 +334,8 @@ func TestGormWriter_Update(t *testing.T) {
 	}
 	t.Run("nil model", func(t *testing.T) {
 		assert := assert.New(t)
-		w := GormWriter{db}
-		err := w.Create(nil)
+		w := OplogWriter{db}
+		err := dbw.New(w.DB).Create(context.Background(), nil)
 		assert.Error(err)
 	})
 }

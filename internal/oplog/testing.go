@@ -3,55 +3,82 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func testCleanup(t *testing.T, cleanupFunc func() error, db *gorm.DB) {
+// setup the tests (initialize the database one-time and intialized testDatabaseURL)
+func setup(t *testing.T) (func() error, *dbw.DB) {
+	t.Helper()
+	require := require.New(t)
+	cleanup, url, err := testInitDbInDocker(t)
+	require.NoError(err)
+	db, err := testOpen("postgres", url)
+	require.NoError(err)
+	oplog_test.Init(t, db)
+	t.Cleanup(func() {
+		require.NoError(db.Close(context.Background()))
+	})
+	return cleanup, db
+}
+
+func testOpen(dbType string, connectionUrl string) (*dbw.DB, error) {
+	var dialect gorm.Dialector
+	switch dbType {
+	case "postgres":
+		dialect = postgres.New(postgres.Config{
+			DSN: connectionUrl,
+		},
+		)
+	default:
+		return nil, fmt.Errorf("unable to open %s database type", dbType)
+	}
+	db, err := dbw.OpenWith(dialect)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open database: %w", err)
+	}
+	return db, nil
+}
+func testCleanup(t *testing.T, cleanupFunc func() error, db *dbw.DB) {
 	t.Helper()
 	err := cleanupFunc()
 	assert.NoError(t, err)
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	err = sqlDB.Close()
-	assert.NoError(t, err)
+	assert.NoError(t, db.Close(context.Background()))
 }
 
-func testUser(t *testing.T, db *gorm.DB, name, phoneNumber, email string) *oplog_test.TestUser {
+func testUser(t *testing.T, db *dbw.DB, name, phoneNumber, email string) *oplog_test.TestUser {
 	t.Helper()
 	u := &oplog_test.TestUser{
 		Name:        name,
 		PhoneNumber: phoneNumber,
 		Email:       email,
 	}
-	w := GormWriter{db}
-
-	err := w.Create(&u)
-	require.NoError(t, err)
+	require.NoError(t, dbw.New(db).Create(context.Background(), u))
 	return u
 }
 
-func testFindUser(t *testing.T, db *gorm.DB, userId uint32) *oplog_test.TestUser {
+func testFindUser(t *testing.T, db *dbw.DB, userId uint32) *oplog_test.TestUser {
 	t.Helper()
 	var foundUser oplog_test.TestUser
-	err := db.Where("id = ?", userId).First(&foundUser).Error
-	require.NoError(t, err)
+	require.NoError(t, dbw.New(db).LookupWhere(context.Background(), &foundUser, "id = ?", []interface{}{userId}))
 	return &foundUser
 }
 
 func testId(t *testing.T) string {
 	t.Helper()
-	id, err := uuid.GenerateUUID()
+	id, err := dbw.NewId("i")
 	require.NoError(t, err)
 	return id
 }

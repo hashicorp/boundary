@@ -1,133 +1,41 @@
 package oplog
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/go-dbw"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
 
-// Writer interface for Entries
-type Writer interface {
-	// Create the entry
-	Create(interface{}) error
-
-	// Update the entry using the fieldMaskPaths and setNullPaths, which are
-	// Paths from field_mask.proto.  fieldMaskPaths is required.  setToNullPaths
-	// is optional.  fieldMaskPaths and setNullPaths cannot instersect and both
-	// cannot be zero len.
-	Update(entry interface{}, fieldMaskPaths, setToNullPaths []string) error
-
-	// Delete the entry
-	Delete(interface{}) error
-
-	// HasTable checks if tableName exists
-	hasTable(tableName string) bool
-
-	// CreateTableLike will create a newTableName using the existing table as a
-	// starting point
-	createTableLike(existingTableName string, newTableName string) error
-
-	// DropTableIfExists will drop the table if it exists
-	dropTableIfExists(tableName string) error
-}
-
 // GormWriter uses a gorm DB connection for writing
-type GormWriter struct {
-	Tx *gorm.DB
-}
-
-// Create an object in storage
-func (w *GormWriter) Create(i interface{}) error {
-	const op = "oplog.(GormWriter).Create"
-	if w.Tx == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
-	}
-	if i == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
-	}
-
-	if tabler, ok := i.(schema.Tabler); ok {
-		if err := w.Tx.Table(tabler.TableName()).Create(i).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	} else {
-		if err := w.Tx.Create(i).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	}
-	return nil
-}
-
-// Update the entry using the fieldMaskPaths and setNullPaths, which are
-// Paths from field_mask.proto.  fieldMaskPaths and setNullPaths cannot
-// intersect and both cannot be zero len.
-func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []string) error {
-	const op = "oplog.(GormWriter).Update"
-	if w.Tx == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
-	}
-	if i == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
-	}
-	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing field mask paths and set to null paths")
-	}
-	// common.UpdateFields will also check to ensure that fieldMaskPaths and
-	// setToNullPaths do not intersect.
-	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
-	if err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to build update fields"))
-	}
-
-	if tabler, ok := i.(schema.Tabler); ok {
-		if err := w.Tx.Table(tabler.TableName()).Model(i).Updates(updateFields).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	} else {
-		if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	}
-	return nil
-}
-
-// Deleting an object in storage
-func (w *GormWriter) Delete(i interface{}) error {
-	const op = "oplog.(GormWriter).Delete"
-	if w.Tx == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
-	}
-	if i == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
-	}
-	if tabler, ok := i.(schema.Tabler); ok {
-		if err := w.Tx.Table(tabler.TableName()).Delete(i).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	} else {
-		if err := w.Tx.Delete(i).Error; err != nil {
-			return errors.WrapDeprecated(err, op)
-		}
-	}
-	return nil
+type OplogWriter struct {
+	*dbw.DB
 }
 
 // HasTable checks if tableName exists
-func (w *GormWriter) hasTable(tableName string) bool {
+func (w *OplogWriter) hasTable(ctx context.Context, tableName string) (bool, error) {
+	const op = "oplog.(OplogWriter).hasTable"
 	if tableName == "" {
-		return false
+		return false, errors.New(ctx, errors.InvalidParameter, op, "missing table name")
 	}
-	return w.Tx.Migrator().HasTable(tableName)
+	var count int64
+	rw := dbw.New(w.DB)
+	rows, err := rw.Query(context.Background(), "select count(*) from information_schema.tables where table_name = ? and table_type = ?", []interface{}{tableName, "BASE TABLE"})
+	if err != nil {
+		return false, errors.Wrap(ctx, err, op)
+	}
+	if ok := rows.Next(); ok {
+		rw.ScanRows(rows, &count)
+	}
+	return count > 0, nil
 }
 
 // CreateTableLike will create a newTableName like the model's table
 // the new table should have all things like the existing model's table (defaults, constraints, indexes, etc)
-func (w *GormWriter) createTableLike(existingTableName string, newTableName string) error {
-	const op = "oplog.(GormWriter).createTableLike"
+func (w *OplogWriter) createTableLike(ctx context.Context, existingTableName string, newTableName string) error {
+	const op = "oplog.(OplogWriter).createTableLike"
 	if existingTableName == "" {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing existing table name")
 	}
@@ -135,41 +43,28 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing new table name")
 	}
 
-	existingTableName = w.Tx.Statement.Quote(existingTableName)
-	newTableName = w.Tx.Statement.Quote(newTableName)
-	var sql string
-	switch w.Tx.Dialector.Name() {
-	case "postgres":
-		sql = fmt.Sprintf(
-			`CREATE TABLE %s ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
-			newTableName,
-			existingTableName,
-		)
-	case "mysql":
-		sql = fmt.Sprintf("CREATE TABLE %s LIKE %s",
-			newTableName,
-			existingTableName,
-		)
-	default:
-		return errors.NewDeprecated(errors.InvalidParameter, op, "unsupported RDBMS")
-	}
-	err := w.Tx.Exec(sql).Error
+	sql := fmt.Sprintf(
+		`CREATE TABLE "%s" ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
+		newTableName,
+		existingTableName,
+	)
+	_, err := dbw.New(w.DB).Exec(ctx, sql, nil)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
 
 // DropTableIfExists will drop the table if it exists
-func (w *GormWriter) dropTableIfExists(tableName string) error {
-	const op = "oplog.(GormWriter).dropTableIfExists"
+func (w *OplogWriter) dropTableIfExists(ctx context.Context, tableName string) error {
+	const op = "oplog.(OplogWriter).dropTableIfExists"
 	if tableName == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing table name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing table name")
 	}
-	// Migrator.DropTable uses an "if exists" clause
-	err := w.Tx.Migrator().DropTable(tableName)
+	sql := fmt.Sprintf("drop table if exists %s ", tableName)
+	_, err := dbw.New(w.DB).Exec(ctx, sql, nil)
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

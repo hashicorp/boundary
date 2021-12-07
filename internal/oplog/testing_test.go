@@ -1,9 +1,11 @@
 package oplog
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,8 +15,8 @@ func Test_testCleanup(t *testing.T) {
 	cleanup, db := setup(t)
 	testCleanup(t, cleanup, db)
 
-	err := db.Begin().Error
-	assert.Equal("sql: database is closed", err.Error())
+	_, err := dbw.New(db).Begin(context.Background())
+	assert.Contains(err.Error(), "sql: database is closed")
 }
 
 func Test_testUser(t *testing.T) {

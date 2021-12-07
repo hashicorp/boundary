@@ -71,16 +71,23 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 
 	var ticket *store.Ticket
 	beforeFn = func(interface{}) error {
+		const op = "db.beforeFn"
 		var err error
-		ticket, err = rw.GetTicket(ctx, i)
+		switch isSlice {
+		case true:
+			ticket, err = rw.GetTicket(ctx, items[0])
+		default:
+			ticket, err = rw.GetTicket(ctx, i)
+		}
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 		}
 		return nil
 	}
 	switch {
-	case withOplog && opType == CreateOp:
+	case withOplog && (opType == CreateOp || opType == UpdateOp || opType == DeleteOp):
 		afterFn = func(i interface{}, rowsAffected int) error {
+			const op = "db.afterFnSingleItem"
 			switch {
 			case onConflictDoNothing && rowsAffected == 0:
 			default:
@@ -90,13 +97,13 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 			}
 			return nil
 		}
-	case withOplog && opType == CreateItemsOp:
+	case withOplog && (opType == CreateItemsOp || opType == DeleteItemsOp):
 		afterFn = func(i interface{}, rowsAffected int) error {
-			msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, i.([]interface{}))
+			const op = "db.afterFnMultiItem"
+			err := rw.addOplogForItems(ctx, opType, opts, ticket, i.([]interface{}))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
 			}
-			*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 			return nil
 		}
 	case opts.newOplogMsg != nil:
@@ -104,6 +111,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 		}
 		afterFn = func(i interface{}, rowsAffected int) error {
+			const op = "db.afterFnNewOplogMsg"
 			switch {
 			case onConflictDoNothing && rowsAffected == 0:
 			default:
@@ -118,6 +126,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 
 	case opts.newOplogMsgs != nil:
 		afterFn = func(i interface{}, rowsAffected int) error {
+			const op = "db.afterFnNewOplogMsgs"
 			if rowsAffected > 0 {
 				msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, items)
 				if err != nil {
@@ -152,15 +161,11 @@ func (rw *Db) getTicketFor(ctx context.Context, aggregateName string) (*store.Ti
 	if rw.underlying == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
 	}
-	gormDB, err := rw.underlying.gormDB(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	ticketer, err := oplog.NewGormTicketer(gormDB, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
 	}
-	ticket, err := ticketer.GetTicket(aggregateName)
+	ticket, err := ticketer.GetTicket(ctx, aggregateName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)), errors.WithoutEvent())
 	}
@@ -236,15 +241,12 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"), errors.WithoutEvent())
 	}
-	gormDB, err := rw.underlying.gormDB(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	ticketer, err := oplog.NewGormTicketer(gormDB, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
 	entry, err := oplog.NewEntry(
+		ctx,
 		replayable.TableName(),
 		oplogArgs.metadata,
 		oplogArgs.wrapper,
@@ -255,7 +257,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: gormDB},
+		&oplog.OplogWriter{DB: rw.underlying.wrapped},
 		ticket,
 		oplogMsgs...,
 	); err != nil {
@@ -274,15 +276,12 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	if ticket == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
-	gormDB, err := rw.underlying.gormDB(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	ticketer, err := oplog.NewGormTicketer(gormDB, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
 	entry, err := oplog.NewEntry(
+		ctx,
 		replayable.TableName(),
 		oplogArgs.metadata,
 		oplogArgs.wrapper,
@@ -297,7 +296,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: gormDB},
+		&oplog.OplogWriter{DB: rw.underlying.wrapped},
 		ticket,
 		msg,
 	)
@@ -326,16 +325,13 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	if len(metadata) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata")
 	}
-	gormDB, err := rw.underlying.gormDB(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	ticketer, err := oplog.NewGormTicketer(gormDB, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"))
 	}
 
 	entry, err := oplog.NewEntry(
+		ctx,
 		ticket.Name,
 		metadata,
 		wrapper,
@@ -346,7 +342,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.GormWriter{Tx: gormDB},
+		&oplog.OplogWriter{DB: rw.underlying.wrapped},
 		ticket,
 		msgs...,
 	)
@@ -376,6 +372,10 @@ func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{},
 		msg.SetToNullPaths = opts.WithNullPaths
 	case DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	case CreateItemsOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE_ITEMS
+	case DeleteItemsOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE_ITEMS
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("operation type %v is not supported", opType), errors.WithoutEvent())
 	}

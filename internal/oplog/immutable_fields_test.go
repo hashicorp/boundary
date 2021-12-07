@@ -9,17 +9,19 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
 func Test_ImmutableFields(t *testing.T) {
+	testCtx := context.Background()
 	cleanup, db := setup(t)
 	defer testCleanup(t, cleanup, db)
 	cipherer := testWrapper(t)
 
-	writer := &GormWriter{db}
+	writer := &OplogWriter{db}
 	id := testId(t)
 	u := oplog_test.TestUser{
 		Name: "foo-" + id,
@@ -32,13 +34,14 @@ func Test_ImmutableFields(t *testing.T) {
 	}
 	t.Log(&u2)
 
-	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
+	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(t, err)
 
-	ticket, err := ticketer.GetTicket("default")
+	ticket, err := ticketer.GetTicket(testCtx, "default")
 	require.NoError(t, err)
 
 	new, err := NewEntry(
+		testCtx,
 		"test-users",
 		Metadata{
 			"key-only":   nil,
@@ -49,7 +52,7 @@ func Test_ImmutableFields(t *testing.T) {
 		ticketer,
 	)
 	require.NoError(t, err)
-	err = new.WriteEntryWith(context.Background(), writer, ticket,
+	err = new.WriteEntryWith(testCtx, writer, ticket,
 		&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 		&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 	require.NoError(t, err)
@@ -119,16 +122,13 @@ func Test_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := testCloneEntry(new)
-			err = db.First(orig).Error
-			require.NoError(err)
+			require.NoError(dbw.New(db).LookupBy(testCtx, orig))
 
-			err := writer.Update(tt.update, tt.fieldMask, nil)
+			_, err := dbw.New(writer.DB).Update(testCtx, tt.update, tt.fieldMask, nil)
 			require.Error(err)
 
 			after := testCloneEntry(new)
-			err = db.First(&after).Error
-			require.NoError(err)
-
+			require.NoError(dbw.New(db).LookupBy(testCtx, after))
 			assert.True(proto.Equal(orig, after))
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	stderrors "errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -477,45 +478,52 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 // you should ensure that any objects written to the db in your TxHandler are retryable, which
 // means that the object may be sent to the db several times (retried), so things like the primary key must
 // be reset before retry
-func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
-	// const op = "db.DoTx"
-	// if w.underlying == nil {
-	// 	return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
-	// }
-	// info := RetryInfo{}
-	// for attempts := uint(1); ; attempts++ {
-	// 	if attempts > retries+1 {
-	// 		return info, errors.New(ctx, errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1), errors.WithoutEvent())
-	// 	}
+func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler TxHandler) (RetryInfo, error) {
+	const op = "db.DoTx"
+	if w.underlying == nil {
+		return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	if backOff == nil {
+		return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing backoff")
+	}
+	if handler == nil {
+		return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing handler")
+	}
+	info := RetryInfo{}
+	for attempts := uint(1); ; attempts++ {
+		if attempts > retries+1 {
+			return info, errors.New(ctx, errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1), errors.WithoutEvent())
+		}
 
-	// 	// step one of this, start a transaction...
-	// 	newTx := w.underlying.WithContext(ctx)
-	// 	newTx = newTx.Begin()
+		// step one of this, start a transaction...
+		beginTx, err := dbw.New(w.underlying.wrapped).Begin(ctx)
+		if err != nil {
+			return info, wrapError(ctx, err, op)
+		}
+		newRW := New(&DB{wrapped: beginTx.DB()})
 
-	// 	rw := &Db{underlying: &DB{newTx}}
-	// 	if err := Handler(rw, rw); err != nil {
-	// 		if err := newTx.Rollback().Error; err != nil {
-	// 			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	// 		}
-	// 		if errors.Match(errors.T(errors.TicketAlreadyRedeemed), err) {
-	// 			d := backOff.Duration(attempts)
-	// 			info.Retries++
-	// 			info.Backoff = info.Backoff + d
-	// 			time.Sleep(d)
-	// 			continue
-	// 		}
-	// 		return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	// 	}
+		if err := handler(newRW, newRW); err != nil {
+			if err := beginTx.Rollback(ctx); err != nil {
+				return info, wrapError(ctx, err, op)
+			}
+			if errors.Match(errors.T(errors.TicketAlreadyRedeemed), err) {
+				d := backOff.Duration(attempts)
+				info.Retries++
+				info.Backoff = info.Backoff + d
+				time.Sleep(d)
+				continue
+			}
+			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+		}
 
-	// 	if err := newTx.Commit().Error; err != nil {
-	// 		if err := newTx.Rollback().Error; err != nil {
-	// 			return info, errors.Wrap(ctx, err, op)
-	// 		}
-	// 		return info, errors.Wrap(ctx, err, op)
-	// 	}
-	// 	return info, nil // it all worked!!!
-	// }
-	panic("todo")
+		if err := beginTx.Commit(ctx); err != nil {
+			if err := beginTx.Rollback(ctx); err != nil {
+				return info, errors.Wrap(ctx, err, op)
+			}
+			return info, errors.Wrap(ctx, err, op)
+		}
+		return info, nil // it all worked!!!
+	}
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
