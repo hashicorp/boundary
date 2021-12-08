@@ -496,6 +496,13 @@ func Parse(d string) (*Config, error) {
 		return nil, fmt.Errorf(`too many "events" nodes (max 1, got %d)`, len(eventList.Items))
 	}
 
+	if result.Plugins.ExecutionDir != "" {
+		result.Plugins.ExecutionDir, err = parseutil.ParsePath(result.Plugins.ExecutionDir)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing plugins execution dir: %w", err)
+		}
+	}
+
 	return result, nil
 }
 

@@ -837,13 +837,13 @@ func TestControllerDescription(t *testing.T) {
 			}`,
 			expErr:    true,
 			expErrStr: "At 3:22: illegal char escape",
-		},{
+		}, {
 			name: "Not a URL, non-printable description",
 			in: `
 			controller {
 				description = "\x00" 
 			}`,
-			expErr: true,
+			expErr:    true,
 			expErrStr: "Controller description contains non-printable characters",
 		},
 	}
@@ -861,6 +861,52 @@ func TestControllerDescription(t *testing.T) {
 			require.NotNil(t, c)
 			require.NotNil(t, c.Controller)
 			require.Equal(t, tt.expDescription, c.Controller.Description)
+		})
+	}
+}
+
+func TestPluginExecutionDir(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envPluginExecutionDir string
+		expPluginExecutionDir string
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid plugin execution dir from env var",
+			in: `
+			plugins {
+  				execution_dir = "env://PLUGIN_EXEC_DIR"
+			}`,
+			envPluginExecutionDir: `/var/run/boundary/plugin-exec`,
+			expPluginExecutionDir: `/var/run/boundary/plugin-exec`,
+			expErr:                false,
+		}, {
+			name: "Invalid plugin execution dir  from env var",
+			in: `
+			plugins {
+  				execution_dir ="\ubad plugin directory"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:28: illegal char escape",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLUGIN_EXEC_DIR", tt.envPluginExecutionDir)
+			p, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, p)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, p)
+			require.NotNil(t, p.Plugins)
+			require.Equal(t, tt.expPluginExecutionDir, p.Plugins.ExecutionDir)
 		})
 	}
 }

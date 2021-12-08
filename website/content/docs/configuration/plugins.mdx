@@ -21,6 +21,8 @@ plugins {
 ```
 
 - `execution_dir` - Specifies a directory that Boundary can use to write and
-  execute its built-in plugins. This directory must be writeable by the Boundary
-  user. If not set, Boundary will attempt to create a suitable directory in the
-  system temporary folder.
+  execute its built-in plugins. This value can be a direct directory string,
+  can refer to a file on disk (file://) from which a directory location will be
+  read; or an env var (env://) from which the directory location will be read.
+  This directory must be writeable by the Boundary user. If not set, Boundary will
+  attempt to create a suitable directory in the system temporary folder.
