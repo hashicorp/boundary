@@ -53,6 +53,53 @@ worker {
 
 In this format, it is not possible to have an equal sign be a part of the key.
 
+It is also possible to set the entire `tags` block or the keys' values within
+to point to an environment variable or filepath in the system, through the
+`env://` and `file://` URLs:
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags = "env://BOUNDARY_ALL_WORKER_TAGS"
+}
+```
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    type   = "env://BOUNDARY_WORKER_TYPE_TAGS"
+    region = "file://config/worker/region_tags"
+    usage  = ["admin"]
+  }
+}
+```
+
+Note that the syntax within the environment variable / file changes
+slightly depending on how the configuration file is set:
+
+For setting the entire `tags` block, both the keys and values need
+to be specified, in JSON or HCL format:
+
+```json
+{
+  "region": ["us-east-1"],
+  "type": ["prod", "webservers"]
+}
+```
+
+```hcl
+region = ["us-east-1"]
+type   = ["prod", "webservers"]
+```
+
+For setting the keys' values within the `tags` block, only a JSON
+array with the tags intended for the particular key is required:
+
+```json
+["prod", "webservers"]
+```
+
 # Target Worker Filtering
 
 Once workers have tags, it is possible to use these tags to control which
