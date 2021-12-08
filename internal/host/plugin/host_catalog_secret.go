@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -20,11 +21,12 @@ type HostCatalogSecret struct {
 
 // newHostCatalogSecret creates an in memory host catalog secret.
 // All options are ignored.
-func newHostCatalogSecret(ctx context.Context, catalogId string, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
+func newHostCatalogSecret(ctx context.Context, catalogId string, ttl int32, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
 	const op = "plugin.newHostCatlogSecret"
 	hcs := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
-			CatalogId: catalogId,
+			CatalogId:  catalogId,
+			TtlSeconds: ttl,
 		},
 	}
 
@@ -85,4 +87,12 @@ func (c *HostCatalogSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.CtSecret = nil
 	return nil
+}
+
+func (c *HostCatalogSecret) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-catalog-id": []string{c.CatalogId},
+		"op-type":             []string{op.String()},
+	}
+	return metadata
 }

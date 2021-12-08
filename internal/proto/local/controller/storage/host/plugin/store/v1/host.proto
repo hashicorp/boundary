@@ -134,7 +134,7 @@ message HostCatalogSecret {
   
   // The cache TTL of the persisted secrets, in seconds.
   // @inject_tag: `gorm:"not_null"`
-  string ttl_seconds = 7;
+  int32 ttl_seconds = 7;
 }
 
 // TODO: Add a field which tracks if the host in cache should be considered

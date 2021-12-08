@@ -29,6 +29,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 
 	type args struct {
 		catalogId string
+		ttl       int32
 		attrs     *structpb.Struct
 	}
 
@@ -65,6 +66,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			name: "valid",
 			args: args{
 				catalogId: cat.GetPublicId(),
+				ttl:       42,
 				attrs: func() *structpb.Struct {
 					st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
 					require.NoError(t, err)
@@ -73,7 +75,8 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			},
 			want: &HostCatalogSecret{
 				HostCatalogSecret: &store.HostCatalogSecret{
-					CatalogId: cat.GetPublicId(),
+					CatalogId:  cat.GetPublicId(),
+					TtlSeconds: 42,
 					Secret: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
 						require.NoError(t, err)
@@ -95,7 +98,7 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, databaseWrapper)
 
-			got, err := newHostCatalogSecret(context.Background(), tt.args.catalogId, tt.args.attrs)
+			got, err := newHostCatalogSecret(context.Background(), tt.args.catalogId, tt.args.ttl, tt.args.attrs)
 			if tt.wantErr {
 				assert.Error(t, err)
 				require.Nil(t, got)
@@ -128,7 +131,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	ctx := context.Background()
 
-	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), mustStruct(map[string]interface{}{
+	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), 0, mustStruct(map[string]interface{}{
 		"foo": "bar",
 	}))
 	require.NoError(t, err)
@@ -196,4 +199,27 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.True(t, errors.IsNotFoundError(err))
+}
+
+func TestHostCatalogSecret_TtlError(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kkms := kms.TestKms(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	plg := host.TestPlugin(t, conn, "test")
+	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
+
+	ctx := context.Background()
+	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
+	secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), -1, mustStruct(map[string]interface{}{
+		"foo": "bar",
+	}))
+	require.NoError(t, err)
+
+	w := db.New(conn)
+	require.Error(t, w.Create(ctx, secret))
 }

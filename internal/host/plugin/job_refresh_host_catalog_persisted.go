@@ -182,7 +182,7 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
 		if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
 			// Delete the secret.
-			hcSecret, err := newHostCatalogSecret(ctx, catalog.PublicId, plgResp.GetPersisted().GetSecrets())
+			hcSecret, err := newHostCatalogSecret(ctx, catalog.PublicId, 0, plgResp.GetPersisted().GetSecrets())
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -208,7 +208,7 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 			}
 		} else {
 			// Upsert the secret.
-			hcSecret, err := newHostCatalogSecret(ctx, catalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+			hcSecret, err := newHostCatalogSecret(ctx, catalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

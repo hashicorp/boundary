@@ -169,13 +169,11 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 		require.NoError(err)
 		cat.Secrets = mustStruct(secrets)
 		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), 0, cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
-		cSecretQ, cSecretV := cSecret.upsertQuery()
-		secretsUpdated, err := rw.Exec(ctx, cSecretQ, cSecretV)
+		err = rw.Create(ctx, cSecret)
 		require.NoError(err)
-		require.Equal(1, secretsUpdated)
 
 		t.Cleanup(func() {
 			t.Helper()

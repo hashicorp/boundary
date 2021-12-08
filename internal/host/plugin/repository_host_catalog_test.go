@@ -1116,7 +1116,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			"one": "two",
 		})
 		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), 0, cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
 		err = dbRW.Create(ctx, cSecret)

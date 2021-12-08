@@ -129,7 +129,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			}
 
 			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
-				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetSecrets())
+				hcSecret, err := newHostCatalogSecret(ctx, id, 0, plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
@@ -389,7 +389,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
 				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
 					// Flag the secret to be deleted.
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -407,7 +407,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					updatedPersisted = true
 					msgs = append(msgs, &sOplogMsg)
 				} else {
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}

@@ -417,7 +417,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	// Set up a test catalog and the secrets for it
 	testCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
-	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), mustStruct(map[string]interface{}{
+	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), 0, mustStruct(map[string]interface{}{
 		"one": "two",
 	}))
 	require.NoError(t, err)
