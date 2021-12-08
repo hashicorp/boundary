@@ -28,6 +28,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true), vault.WithTestVaultTLS(vault.TestClientTLS))
 	v.MountDatabase(t)
 	v.MountPKI(t)
+	v.AddKVPolicy(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -42,7 +43,10 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	err = vault.RegisterJobs(ctx, sche, rw, rw, kms)
 	require.NoError(t, err)
 
-	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki"}))
+	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
+
+	// Create valid user password KV secret
+	v.CreateKVSecret(t, "my-secret", []byte(`{"data":{"username":"user","password":"pass"}}`))
 
 	var opts []vault.Option
 	opts = append(opts, vault.WithCACert(v.CaCert))
@@ -64,6 +68,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		libErrUsrPassDB
 		libPKI
 		libErrPKI
+		libUsrPassKV
 	)
 
 	libs := make(map[libT]string)
@@ -127,6 +132,19 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
 		libs[libErrUsrPassDB] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("secret", "data", "my-secret")
+		opts := []vault.Option{
+			vault.WithCredentialType(credential.UserPasswordType),
+		}
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
+		libs[libUsrPassKV] = lib.GetPublicId()
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -209,7 +227,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			wantErr: errors.InvalidDynamicCredential,
 		},
 		{
-			name:      "one-valid-username-password-library",
+			name:      "one-db-valid-username-password-library",
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
@@ -219,7 +237,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:      "one-valid-username-password-library",
+			name:      "invalid-username-password-library",
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
@@ -228,6 +246,16 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				},
 			},
 			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name:      "valid-kv-username-password-library",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libUsrPassKV],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
