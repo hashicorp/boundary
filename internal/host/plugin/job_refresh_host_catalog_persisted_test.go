@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
@@ -152,8 +153,7 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	err = job.Run(context.Background())
-	require.NoError(t, err)
+	require.NoError(t, job.Run(context.Background()))
 	// No sets should have been synced.
 	require.Equal(t, 0, job.numProcessed)
 
@@ -194,20 +194,28 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 		}
 	}
 
+	// We set this up here, but we don't use it just yet (this is for the final tests where we validate things were updated)
+	ttlStep := int32(5)
 	var gotReq1 *plgpb.RefreshHostCatalogPersistedRequest
 	wantReq1 := map[string]interface{}{"foo": "bar"}
+	reqTtl1 := ttlStep
+	respTtl1 := reqTtl1 + ttlStep
 	wantSecrets1 := map[string]interface{}{"baz": "qux"}
 	wantResponse1 := &plgpb.RefreshHostCatalogPersistedResponse{
 		Persisted: &plgpb.HostCatalogPersisted{
-			Secrets: mustStruct(wantSecrets1),
+			Secrets:    mustStruct(wantSecrets1),
+			TtlSeconds: respTtl1,
 		},
 	}
 	var gotReq2 *plgpb.RefreshHostCatalogPersistedRequest
 	wantReq2 := map[string]interface{}{"one": "two"}
+	reqTtl2 := respTtl1
+	respTtl2 := reqTtl2 + ttlStep
 	wantSecrets2 := map[string]interface{}{"three": "four"}
 	wantResponse2 := &plgpb.RefreshHostCatalogPersistedResponse{
 		Persisted: &plgpb.HostCatalogPersisted{
-			Secrets: mustStruct(wantSecrets2),
+			Secrets:    mustStruct(wantSecrets2),
+			TtlSeconds: respTtl2,
 		},
 	}
 	plgServer1.RefreshHostCatalogPersistedFn = makeRefreshPersistedFn(&gotReq1, wantResponse1)
@@ -216,25 +224,21 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 	cat1 := setupHostCatalog(t, ctx, plg1.GetPublicId(), wantReq1)
 	cat2 := setupHostCatalog(t, ctx, plg2.GetPublicId(), wantReq2)
 
-	err = job.Run(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, 2, job.numProcessed)
+	// Run the job again. Note that we have not set a TTL, so no jobs should have run again.
+	require.NoError(t, job.Run(context.Background()))
+	require.Equal(t, 0, job.numProcessed)
 
-	// Assert received secrets
-	require.Empty(t, cmp.Diff(mustStruct(wantReq1), gotReq1.Persisted.Secrets, protocmp.Transform()))
-	require.Empty(t, cmp.Diff(mustStruct(wantReq2), gotReq2.Persisted.Secrets, protocmp.Transform()))
-
-	// Now check to make sure that the host catalogs have had their
-	// secrets updated.
-	checkSecrets := func(t *testing.T, ctx context.Context, cat *HostCatalog, want map[string]interface{}) {
+	// We define a check function here and use it to validate that the secrets
+	// remain unchanged. Also check that request was never sent.
+	checkSecrets := func(t *testing.T, ctx context.Context, cat *HostCatalog, wantTtl int32, want map[string]interface{}) {
 		t.Helper()
 		require := require.New(t)
 
 		cSecret := allocHostCatalogSecret()
-		err := rw.LookupWhere(ctx, &cSecret, "catalog_id=?", cat.GetPublicId())
-		require.NoError(err)
+		require.NoError(rw.LookupWhere(ctx, &cSecret, "catalog_id=?", cat.GetPublicId()))
 		require.Empty(cSecret.Secret)
 		require.NotEmpty(cSecret.CtSecret)
+		require.Equal(wantTtl, cSecret.TtlSeconds)
 
 		dbWrapper, err := kmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
 		require.NoError(err)
@@ -245,6 +249,59 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 		require.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
 	}
 
-	checkSecrets(t, ctx, cat1, wantSecrets1)
-	checkSecrets(t, ctx, cat2, wantSecrets2)
+	require.Nil(t, gotReq1)
+	require.Nil(t, gotReq2)
+	checkSecrets(t, ctx, cat1, 0, wantReq1)
+	checkSecrets(t, ctx, cat2, 0, wantReq2)
+
+	// Now let's set our TTLs.
+	updateTtl := func(t *testing.T, ctx context.Context, cat *HostCatalog, ttl int32) {
+		t.Helper()
+		require := require.New(t)
+
+		cSecret := allocHostCatalogSecret()
+		require.NoError(rw.LookupWhere(ctx, &cSecret, "catalog_id=?", cat.GetPublicId()))
+
+		cSecret.TtlSeconds = ttl
+		n, err := rw.Update(ctx, cSecret, []string{"TtlSeconds"}, []string{})
+		require.NoError(err)
+		require.Equal(n, 1)
+	}
+
+	updateTtl(t, ctx, cat1, reqTtl1)
+	updateTtl(t, ctx, cat2, reqTtl2)
+	// This check is just to assert that the ttl was set. These will get updated,
+	// so we want to assert them here to their proper values.
+	checkSecrets(t, ctx, cat1, reqTtl1, wantReq1)
+	checkSecrets(t, ctx, cat2, reqTtl2, wantReq2)
+
+	// Wait the step length and then run the job. Only one job should have run.
+	time.Sleep(time.Second * time.Duration(ttlStep))
+	require.NoError(t, job.Run(context.Background()))
+	require.Equal(t, 1, job.numProcessed)
+
+	// Assert received secret on the first job, ensure second is still nil.
+	require.Empty(t, cmp.Diff(mustStruct(wantReq1), gotReq1.Persisted.Secrets, protocmp.Transform()))
+	require.Equal(t, reqTtl1, gotReq1.Persisted.TtlSeconds, protocmp.Transform())
+	require.Nil(t, gotReq2)
+
+	// Check state - updated secrets and TTL on 1st catalog, no change on second.
+	checkSecrets(t, ctx, cat1, respTtl1, wantSecrets1)
+	checkSecrets(t, ctx, cat2, reqTtl2, wantReq2)
+
+	// Repeat sleep/run cycle. Again, only one job should have been run. Before we do this, reset the state of the received requests.
+	gotReq1 = nil
+	gotReq2 = nil
+	time.Sleep(time.Second * time.Duration(ttlStep))
+	require.NoError(t, job.Run(context.Background()))
+	require.Equal(t, 1, job.numProcessed)
+
+	// Assert requests the other way around now.
+	require.Nil(t, gotReq1)
+	require.Empty(t, cmp.Diff(mustStruct(wantReq2), gotReq2.Persisted.Secrets, protocmp.Transform()))
+	require.Equal(t, reqTtl2, gotReq2.Persisted.TtlSeconds, protocmp.Transform())
+
+	// Assert secrets again, this time
+	checkSecrets(t, ctx, cat1, respTtl1, wantSecrets1)
+	checkSecrets(t, ctx, cat2, respTtl2, wantSecrets2)
 }

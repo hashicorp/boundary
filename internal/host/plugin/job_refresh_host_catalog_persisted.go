@@ -94,9 +94,17 @@ func (j *RefreshHostCatalogPersistedJob) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	// Get all host catalogs.
+	// Get all host catalogs where the secrets have specified a
+	// greater-than-zero refresh TTL, and that TTL has expired
+	// according to the late time the record has been updated.
 	var aggs []*catalogAgg
-	if err := j.reader.SearchWhere(ctx, &aggs, "", nil, db.WithLimit(j.limit)); err != nil {
+	if err := j.reader.SearchWhere(
+		ctx,
+		&aggs,
+		"persisted_ttl_seconds > 0 and persisted_update_time + interval '1 second' * persisted_ttl_seconds < now()",
+		nil,
+		db.WithLimit(j.limit),
+	); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
@@ -179,10 +187,10 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 	// * Otherwise it's an upsert operation where we either
 	// create/update depending on if there were secrets already
 	// present.
-	if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+	if plgResp != nil && plgResp.GetPersisted() != nil && plgResp.GetPersisted().GetSecrets() != nil {
 		if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
 			// Delete the secret.
-			hcSecret, err := newHostCatalogSecret(ctx, catalog.PublicId, 0, plgResp.GetPersisted().GetSecrets())
+			hcSecret, err := newHostCatalogSecret(ctx, catalog.PublicId, plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -208,7 +216,7 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 			}
 		} else {
 			// Upsert the secret.
-			hcSecret, err := newHostCatalogSecret(ctx, catalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
+			hcSecret, err := newHostCatalogSecret(ctx, catalog.GetPublicId(), plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -228,7 +236,7 @@ func (j *RefreshHostCatalogPersistedJob) refreshHostCatalogPersisted(ctx context
 				hcSecret,
 				db.WithOnConflict(&db.OnConflict{
 					Target: db.Columns{"catalog_id"},
-					Action: db.SetColumns([]string{"secret", "key_id"}),
+					Action: db.SetColumns([]string{"secret", "key_id", "ttl_seconds"}),
 				}),
 				db.NewOplogMsg(&msg),
 			); err != nil {
