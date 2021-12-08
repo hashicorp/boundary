@@ -6,6 +6,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* config: The `max_open_connections` field for the database field in controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1776))
 * config: The `execution_dir` field for plugins now supports being set from environment variables
   or a file on disk.([PR](https://github.com/hashicorp/boundary/pull/1772))
 * config: Add support for reading worker controllers off of environment

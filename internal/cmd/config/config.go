@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -198,9 +199,10 @@ func initNameIfEmpty(name *string) error {
 }
 
 type Database struct {
-	Url                string `hcl:"url"`
-	MigrationUrl       string `hcl:"migration_url"`
-	MaxOpenConnections int    `hcl:"max_open_connections"`
+	Url                   string      `hcl:"url"`
+	MigrationUrl          string      `hcl:"migration_url"`
+	MaxOpenConnections    int         `hcl:"-"`
+	MaxOpenConnectionsRaw interface{} `hcl:"max_open_connections"`
 }
 
 type Plugins struct {
@@ -337,6 +339,27 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.AuthTokenTimeToStaleDuration = t
+		}
+
+		if result.Controller.Database != nil {
+			if result.Controller.Database.MaxOpenConnectionsRaw != nil {
+				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
+				case string:
+					maxOpenConnectionsString, err := parseutil.ParsePath(t)
+					if err != nil {
+						return nil, fmt.Errorf("Error parsing database max open connections: %w", err)
+					}
+					result.Controller.Database.MaxOpenConnections, err = strconv.Atoi(maxOpenConnectionsString)
+					if err != nil {
+						return nil, fmt.Errorf("Database max open connections value is not an int: %w", err)
+					}
+				case int:
+					result.Controller.Database.MaxOpenConnections = t
+				default:
+					return nil, fmt.Errorf("Database max open connections: unsupported type %q",
+						reflect.TypeOf(t).String())
+				}
+			}
 		}
 	}
 
