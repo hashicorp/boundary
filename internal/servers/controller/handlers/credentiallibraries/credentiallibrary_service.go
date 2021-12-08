@@ -21,14 +21,16 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
-	vaultPathField       = "attributes.path"
-	httpMethodField      = "attributes.http_method"
-	httpRequestBodyField = "attributes.http_request_body"
+	vaultPathField             = "attributes.path"
+	httpMethodField            = "attributes.http_method"
+	httpRequestBodyField       = "attributes.http_request_body"
+	credentialMappingPathField = "credential_mapping_overrides"
 )
 
 // Credential mapping override attributes
@@ -227,14 +229,24 @@ func (s Service) CreateCredentialLibrary(ctx context.Context, req *pbs.CreateCre
 func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCredentialLibraryRequest) (*pbs.UpdateCredentialLibraryResponse, error) {
 	const op = "credentiallibraries.(Service).UpdateCredentialLibrary"
 
-	if err := validateUpdateRequest(req); err != nil {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	cur, err := repo.LookupCredentialLibrary(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	currentCredentialType := credential.Type(cur.GetCredentialType())
+
+	if err := validateUpdateRequest(req, currentCredentialType); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	cl, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	cl, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem(), currentCredentialType, cur.MappingOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -326,23 +338,46 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialLibrary) (credential.Library, error) {
+func (s Service) updateInRepo(
+	ctx context.Context,
+	projId, id string,
+	masks []string,
+	in *pb.CredentialLibrary,
+	currentCredentialType credential.Type,
+	currentMapping vault.MappingOverride) (credential.Library, error) {
+
 	const op = "credentiallibraries.(Service).updateInRepo"
+
+	var dbMasks []string
+	item := proto.Clone(in).(*pb.CredentialLibrary)
+	item.CredentialType = string(currentCredentialType)
+
+	mapping, update := getMappingUpdates(currentCredentialType, currentMapping, item.GetCredentialMappingOverrides().AsMap(), masks)
+	if update {
+		// got mapping update, append mapping override db field mask
+		dbMasks = append(dbMasks, vault.MappingOverrideField)
+		mappingStruct, err := structpb.NewStruct(mapping)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		item.CredentialMappingOverrides = mappingStruct
+	}
+
 	cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	cl.PublicId = id
 
-	dbMask := maskManager.Translate(mask)
-	if len(dbMask) == 0 {
+	dbMasks = append(dbMasks, maskManager.Translate(masks)...)
+	if len(dbMasks) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	out, rowsUpdated, err := repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMask)
+	out, rowsUpdated, err := repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
 	}
@@ -596,7 +631,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
 				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
-			validateMapping(badFields, req.GetItem().GetCredentialType(), req.GetItem().CredentialMappingOverrides.AsMap())
+			validateMapping(badFields, credential.Type(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
 		default:
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
@@ -604,13 +639,16 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
+func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType credential.Type) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch credential.SubtypeFromId(req.GetId()) {
 		case vault.Subtype:
 			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
+			}
+			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
+				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
@@ -626,6 +664,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) == "GET" {
 				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
+			validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
 		}
 		return badFields
 	}, vault.CredentialLibraryPrefix)
@@ -649,10 +688,10 @@ func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 	return nil
 }
 
-func validateMapping(badFields map[string]string, credentialType string, overrides map[string]interface{}) {
+func validateMapping(badFields map[string]string, credentialType credential.Type, overrides map[string]interface{}) {
 	validFields := make(map[string]bool)
-	switch credential.Type(credentialType) {
-	case "":
+	switch credentialType {
+	case "", credential.UnspecifiedType:
 		if len(overrides) > 0 {
 			badFields[globals.CredentialMappingOverridesField] = fmt.Sprintf("This field can only be set if %q is set", globals.CredentialTypeField)
 		}
@@ -674,4 +713,50 @@ func validateMapping(badFields map[string]string, credentialType string, overrid
 			badFields[globals.CredentialMappingOverridesField+"."+k] = fmt.Sprintf("Mapping value must be a string or a null to clear, got %T", v)
 		}
 	}
+}
+
+func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]interface{}, apiMasks []string) (map[string]interface{}, bool) {
+	ret := make(map[string]interface{})
+	masks := make(map[string]bool)
+	for _, m := range apiMasks {
+		if m == credentialMappingPathField {
+			// got top level credential mapping change request, this mask
+			// can only be provided when clearing the entire override.
+			return nil, true
+		}
+
+		credMappingPrefix := fmt.Sprintf("%v.", credentialMappingPathField)
+		if s := strings.SplitN(m, credMappingPrefix, 2); len(s) == 2 {
+			masks[s[1]] = true
+		}
+	}
+	if len(masks) == 0 {
+		// no mapping updates
+		return nil, false
+	}
+
+	switch credentialType {
+	case credential.UserPasswordType:
+		var currentUser, currentPass interface{}
+		if overrides, ok := current.(*vault.UserPasswordOverride); ok {
+			currentUser = overrides.UsernameAttribute
+			currentPass = overrides.PasswordAttribute
+		}
+
+		switch {
+		case masks[usernameAttribute]:
+			ret[usernameAttribute] = new[usernameAttribute]
+		default:
+			ret[usernameAttribute] = currentUser
+		}
+
+		switch {
+		case masks[passwordAttribute]:
+			ret[passwordAttribute] = new[passwordAttribute]
+		default:
+			ret[passwordAttribute] = currentPass
+		}
+	}
+
+	return ret, true
 }
