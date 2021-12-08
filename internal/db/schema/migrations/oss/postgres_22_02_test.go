@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -218,6 +219,6 @@ values
 			require.NoError(t, rw.ScanRows(rows, &addr))
 			results = append(results, addr)
 		}
-		require.ElementsMatch(t, results, addresses)
+		assert.ElementsMatch(t, results, addresses)
 	}
 }

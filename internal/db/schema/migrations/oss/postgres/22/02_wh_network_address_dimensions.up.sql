@@ -1,7 +1,7 @@
 begin;
 
-  -- try_cast_inet returns either the provided text cast into inet or a null.
-  create function try_cast_inet(text)
+  -- wh_try_cast_inet returns either the provided text cast into inet or a null.
+  create function wh_try_cast_inet(text)
     returns inet
   as $$
   begin
@@ -27,6 +27,8 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Get all the previously used warehouse specific labels for addresses which
+  -- could not be captured by the warehousing system at some point in time.
   insert into wh_network_address_dimension(
     address, address_type, ip_address_family, private_ip_address_status,
     dns_name, ip4_address, ip6_address
@@ -35,11 +37,12 @@ begin;
     ('Unsupported', 'Unknown', 'Not Applicable', 'Not Applicable', 'None', 'None', 'None'),
     ('Unknown', 'Unknown', 'Not Applicable', 'Not Applicable', 'None', 'None', 'None');
 
+  -- Migrate all the ip addresses and ignore any addresses which aren't ip.
   with
   ip_addresses(address, inet_address) as (
-    select hd.host_address as address, try_cast_inet(hd.host_address) as inet_address
+    select hd.host_address as address, wh_try_cast_inet(hd.host_address) as inet_address
     from wh_host_dimension as hd
-    where try_cast_inet(hd.host_address) is not null
+    where wh_try_cast_inet(hd.host_address) is not null
   )
   insert into wh_network_address_dimension(
     address, address_type, ip_address_family, private_ip_address_status,
@@ -65,6 +68,7 @@ begin;
     end
   from ip_addresses;
 
+  -- Everything else left to migrate is a dns name.
   insert into wh_network_address_dimension(
     address, address_type, ip_address_family, private_ip_address_status,
     dns_name, ip4_address, ip6_address
