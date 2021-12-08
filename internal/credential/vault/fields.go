@@ -17,4 +17,6 @@ const (
 	tlsServerNameField  = "TlsServerName"
 	tlsSkipVerifyField  = "TlsSkipVerify"
 	tokenField          = "Token"
+
+	mappingOverrideField = "MappingOverride"
 )
