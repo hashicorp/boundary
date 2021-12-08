@@ -1119,10 +1119,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
-		cSecretQ, cSecretV := cSecret.upsertQuery()
-		secretsUpdated, err := dbRW.Exec(ctx, cSecretQ, cSecretV)
+		err = dbRW.Create(ctx, cSecret)
 		require.NoError(err)
-		require.Equal(1, secretsUpdated)
 
 		// Set some (default) attributes on our test catalog and update SecretsHmac at the same time
 		cat.Attributes = mustMarshal(map[string]interface{}{
