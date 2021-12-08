@@ -447,8 +447,6 @@ func toProto(ctx context.Context, in *session.Session, opt ...handlers.Option) (
 			connections := make([]*pb.Connection, 0, len(in.Connections))
 			for _, c := range in.Connections {
 				connections = append(connections, &pb.Connection{
-					PublicId:           c.PublicId,
-					SessionId:          in.PublicId,
 					ClientTcpAddress:   c.ClientTcpAddress,
 					ClientTcpPort:      c.ClientTcpPort,
 					EndpointTcpAddress: c.EndpointTcpAddress,

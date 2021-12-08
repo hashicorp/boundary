@@ -5,7 +5,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### New and Improved
-
+* config: The `execution_dir` field for plugins now supports being set from environment variables
+  or a file on disk.([PR](https://github.com/hashicorp/boundary/pull/1772))
+* config: The `description` field for controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1766))
+* config: Add support for reading worker tags off of environment variables
+as well as files. ([PR](https://github.com/hashicorp/boundary/pull/1758))
 * config: Add support for go-sockaddr templates to Worker and Controller
   addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
 * host: Plugin-based host catalogs will now schedule updates for all
