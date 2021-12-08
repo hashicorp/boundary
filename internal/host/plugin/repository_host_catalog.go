@@ -128,8 +128,8 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				pluginCalledSuccessfully = true
 			}
 
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
-				hcSecret, err := newHostCatalogSecret(ctx, id, 0, plgResp.GetPersisted().GetSecrets())
+			if plgResp != nil && plgResp.GetPersisted() != nil && plgResp.GetPersisted().GetSecrets() != nil {
+				hcSecret, err := newHostCatalogSecret(ctx, id, plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
@@ -386,10 +386,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				pluginCalledSuccessfully = true
 			}
 			var updatedPersisted bool
-			if plgResp != nil && plgResp.GetPersisted().GetSecrets() != nil {
+			if plgResp != nil && plgResp.GetPersisted() != nil && plgResp.GetPersisted().GetSecrets() != nil {
 				if len(plgResp.GetPersisted().GetSecrets().GetFields()) == 0 {
 					// Flag the secret to be deleted.
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -407,7 +407,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					updatedPersisted = true
 					msgs = append(msgs, &sOplogMsg)
 				} else {
-					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), 0, plgResp.GetPersisted().GetSecrets())
+					hcSecret, err := newHostCatalogSecret(ctx, currentCatalog.GetPublicId(), plgResp.GetPersisted().GetTtlSeconds(), plgResp.GetPersisted().GetSecrets())
 					if err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
@@ -423,7 +423,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 						updatedSecret,
 						db.WithOnConflict(&db.OnConflict{
 							Target: db.Columns{"catalog_id"},
-							Action: db.SetColumns([]string{"secret", "key_id"}),
+							Action: db.SetColumns([]string{"secret", "key_id", "ttl_seconds"}),
 						}),
 						db.NewOplogMsg(&sOplogMsg),
 					); err != nil {
@@ -743,5 +743,5 @@ func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId strin
 	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
-	return &plgpb.HostCatalogPersisted{Secrets: secrets}, nil
+	return &plgpb.HostCatalogPersisted{Secrets: secrets, TtlSeconds: cSecret.TtlSeconds}, nil
 }

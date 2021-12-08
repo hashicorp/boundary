@@ -146,6 +146,7 @@ type catalogAgg struct {
 	KeyId               string
 	PersistedCreateTime *timestamp.Timestamp
 	PersistedUpdateTime *timestamp.Timestamp
+	PersistedTtlSeconds int32
 }
 
 func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret) {
@@ -172,6 +173,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 		s.KeyId = agg.KeyId
 		s.CreateTime = agg.PersistedCreateTime
 		s.UpdateTime = agg.PersistedUpdateTime
+		s.TtlSeconds = agg.PersistedTtlSeconds
 	}
 	return c, s
 }

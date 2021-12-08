@@ -209,6 +209,7 @@ message HostCatalogPersisted {
 
   // The cache TTL of the persisted secrets, in seconds; once this
   // TTL is expired, the secrets are refreshed via
-  // RefreshHostCatalogPersisted.
+  // RefreshHostCatalogPersisted. Persisted secrets must be non-nil
+  // in order for this parameter to be processed.
   int32 ttl_seconds = 200;
 }

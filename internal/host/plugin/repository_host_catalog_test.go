@@ -45,6 +45,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		want             *HostCatalog
 		wantPluginCalled bool
 		wantSecret       *structpb.Struct
+		wantSecretTtl    int32
 		wantIsErr        errors.Code
 	}{
 		{
@@ -244,6 +245,45 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}(),
 			wantPluginCalled: true,
 		},
+		{
+			name: "valid-with-secret-ttl",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo-ttltest",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+				Secrets: func() *structpb.Struct {
+					st, err := structpb.NewStruct(map[string]interface{}{
+						"k1": "v1",
+						"k2": 2,
+						"k3": nil,
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo-ttltest",
+					ScopeId:     prj.GetPublicId(),
+					PluginId:    plg.GetPublicId(),
+					Attributes:  []byte{},
+				},
+			},
+			wantSecret: func() *structpb.Struct {
+				st, err := structpb.NewStruct(map[string]interface{}{
+					"k1": "v1",
+					"k2": 2,
+					"k3": nil,
+				})
+				require.NoError(t, err)
+				return st
+			}(),
+			wantSecretTtl:    42,
+			wantPluginCalled: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -262,7 +302,11 @@ func TestRepository_CreateCatalog(t *testing.T) {
 						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 							pluginCalled = true
 							gotPluginAttrs = req.GetCatalog().GetAttributes()
-							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
+							var ttl int32
+							if req.GetCatalog().GetDescription().GetValue() == "test-description-repo-ttltest" {
+								ttl = 42
+							}
+							return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets(), TtlSeconds: ttl}}, nil
 						},
 					},
 				},
@@ -312,6 +356,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, cSecret.Secret)
 			require.NotEmpty(t, cSecret.CtSecret)
+			if tt.wantSecretTtl != 0 {
+				assert.Equal(tt.wantSecretTtl, cSecret.TtlSeconds)
+			}
 
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
 			require.NoError(t, err)
@@ -438,6 +485,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// in parallel, but there could be other factors affecting that as
 	// well.
 	var setRespSecretsNil bool
+	var setRespSecretsTtl int32
 	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
 	var pluginError error
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
@@ -452,7 +500,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 						setRespSecretsNil = false
 					}
 
-					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets}}, pluginError
+					var ttl int32
+					if setRespSecretsTtl != 0 {
+						ttl = setRespSecretsTtl
+						setRespSecretsTtl = 0
+					}
+
+					return &plgpb.OnUpdateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: respSecrets, TtlSeconds: ttl}}, pluginError
 				},
 			},
 		},
@@ -601,7 +655,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkSecrets := func(want map[string]interface{}) checkFunc {
+	checkSecrets := func(wantTtl int32, wantSecret map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -619,7 +673,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 			st := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(cSecret.Secret, st))
-			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
+			assert.Equal(wantTtl, cSecret.TtlSeconds)
+			assert.Empty(cmp.Diff(mustStruct(wantSecret), st, protocmp.Transform()))
 		}
 	}
 
@@ -707,6 +762,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	checkUpdateCatalogRequestPersistedTtlSeconds := func(want int32) checkFunc {
+		return func(t *testing.T, ctx context.Context) {
+			t.Helper()
+			assert := assert.New(t)
+			assert.Equal(want, gotOnUpdateCatalogRequest.Persisted.TtlSeconds)
+		}
+	}
+
 	checkUpdateCatalogRequestSecrets := func(want map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -745,6 +808,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		name               string
 		withEmptyPluginMap bool
 		withRespSecretsNil bool
+		withSecretsTtl     int32
+		withRespSecretsTtl int32
 		withPluginError    error
 		changeFuncs        []changeHostCatalogFunc
 		version            uint32
@@ -822,7 +887,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -840,7 +905,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -858,7 +923,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
 				checkName(testDuplicateCatalogNameAltScope),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -876,7 +941,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -894,7 +959,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescriptionNil(),
 				checkDescription(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -922,7 +987,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -948,7 +1013,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkAttributes(map[string]interface{}{
 					"foo": "baz",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -970,7 +1035,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				}),
 				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{}),
 				checkAttributes(map[string]interface{}{}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -999,7 +1064,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1007,7 +1072,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 		},
 		{
-			name: "update secrets",
+			name:               "update secrets",
+			withSecretsTtl:     30,
+			withRespSecretsTtl: 60,
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
 				"five":  "six",
@@ -1024,7 +1091,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"three": "four",
 					"five":  "six",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedTtlSeconds(30),
+				checkSecrets(60, map[string]interface{}{
 					"three": "four",
 					"five":  "six",
 				}),
@@ -1035,6 +1103,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		{
 			name:               "update secrets, return nil secrets from plugin",
 			withRespSecretsNil: true,
+			withSecretsTtl:     30,
+			withRespSecretsTtl: 60,
 			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
 				"three": "four",
 			})},
@@ -1049,7 +1119,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestSecrets(map[string]interface{}{
 					"three": "four",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedTtlSeconds(30),
+				checkSecrets(30, map[string]interface{}{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1091,7 +1162,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"three": "four",
 				}),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(0, map[string]interface{}{
 					"three": "four",
 				}),
 				checkNumUpdated(1),
@@ -1103,7 +1174,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	// Finally define a function for bringing the test subject catalog.
 	// This function also returns a function to clean up the catalog
 	// afterwards.
-	setupHostCatalog := func(t *testing.T, ctx context.Context) *HostCatalog {
+	setupHostCatalog := func(t *testing.T, ctx context.Context, secretsTtl int32) *HostCatalog {
 		t.Helper()
 		require := require.New(t)
 
@@ -1116,7 +1187,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			"one": "two",
 		})
 		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
-		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), 0, cat.Secrets)
+		cSecret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), secretsTtl, cat.Secrets)
 		require.NoError(err)
 		require.NoError(cSecret.encrypt(ctx, scopeWrapper))
 		err = dbRW.Create(ctx, cSecret)
@@ -1146,7 +1217,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			origCat := setupHostCatalog(t, ctx)
+			origCat := setupHostCatalog(t, ctx, tt.withSecretsTtl)
 
 			pluginMap := testPluginMap
 			if tt.withEmptyPluginMap {
@@ -1164,6 +1235,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 
 			setRespSecretsNil = tt.withRespSecretsNil
+			setRespSecretsTtl = tt.withRespSecretsTtl
 			var gotPlugin *hostplugin.Plugin
 			gotCatalog, gotPlugin, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {

@@ -1018,7 +1018,8 @@ type HostCatalogPersisted struct {
 	Secrets *structpb.Struct `protobuf:"bytes,100,opt,name=secrets,proto3" json:"secrets,omitempty"`
 	// The cache TTL of the persisted secrets, in seconds; once this
 	// TTL is expired, the secrets are refreshed via
-	// RefreshHostCatalogPersisted.
+	// RefreshHostCatalogPersisted. Persisted secrets must be non-nil
+	// in order for this parameter to be processed.
 	TtlSeconds int32 `protobuf:"varint,200,opt,name=ttl_seconds,json=ttlSeconds,proto3" json:"ttl_seconds,omitempty"`
 }
 

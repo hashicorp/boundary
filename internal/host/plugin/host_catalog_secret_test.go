@@ -152,11 +152,12 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 		"baz": "qux",
 	})
 	newSecretUpsert := secret.clone()
+	newSecretUpsert.TtlSeconds = 30
 	newSecretUpsert.Secret = newStructUpsert
 	require.NoError(t, newSecretUpsert.encrypt(ctx, databaseWrapper))
 	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&db.OnConflict{
 		Target: db.Columns{"catalog_id"},
-		Action: db.SetColumns([]string{"secret", "key_id"}),
+		Action: db.SetColumns([]string{"secret", "key_id", "ttl_seconds"}),
 	})))
 	found := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
@@ -173,6 +174,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 		"one": "two",
 	})
 	newSecretUpdate := newSecretUpsert.clone()
+	newSecretUpdate.TtlSeconds = 60
 	newSecretUpdate.Secret = newStructUpdate
 	require.NoError(t, newSecretUpdate.encrypt(ctx, databaseWrapper))
 	rowsUpdated, err := w.Update(ctx, newSecretUpdate, []string{"CtSecret"}, []string{})
