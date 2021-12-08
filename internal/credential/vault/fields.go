@@ -18,5 +18,7 @@ const (
 	tlsSkipVerifyField  = "TlsSkipVerify"
 	tokenField          = "Token"
 
-	mappingOverrideField = "MappingOverride"
+	// MappingOverrideField represents the field mask indicating a mapping override
+	// update has been requested.
+	MappingOverrideField = "MappingOverride"
 )

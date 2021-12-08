@@ -799,8 +799,14 @@ func TestUpdate(t *testing.T) {
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
 
-	freshLibrary := func() (*vault.CredentialLibrary, func()) {
-		vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	freshLibrary := func(opt ...vault.Option) (*vault.CredentialLibrary, func()) {
+		repo, err := repoFn()
+		require.NoError(t, err)
+		lib, err := vault.NewCredentialLibrary(store.GetPublicId(), "vault/path", opt...)
+		require.NoError(t, err)
+
+		vl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), lib)
+		require.NoError(t, err)
 		clean := func() {
 			_, err := s.DeleteCredentialLibrary(ctx, &pbs.DeleteCredentialLibraryRequest{Id: vl.GetPublicId()})
 			require.NoError(t, err)
@@ -816,8 +822,12 @@ func TestUpdate(t *testing.T) {
 	_, token := v.CreateToken(t)
 	_ = token
 
+	usernameAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, usernameAttribute)
+	passwordAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, passwordAttribute)
+
 	successCases := []struct {
 		name string
+		opts []vault.Option
 		req  *pbs.UpdateCredentialLibraryRequest
 		res  func(*pb.CredentialLibrary) *pb.CredentialLibrary
 	}{
@@ -853,7 +863,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path")
 				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
 				return out
 			},
@@ -875,7 +885,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path")
 				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
 				out.Attributes.Fields["http_request_body"] = structpb.NewStringValue("body")
 				return out
@@ -901,12 +911,226 @@ func TestUpdate(t *testing.T) {
 				return out
 			},
 		},
+		{
+			name: "user-password-attributes-change-username-attribute",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+				vault.WithMappingOverride(
+					vault.NewUserPasswordOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute: "changed-user",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
+				return out
+			},
+		},
+		{
+			name: "user-password-attributes-change-password-attribute",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+				vault.WithMappingOverride(
+					vault.NewUserPasswordOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							passwordAttribute: "changed-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[passwordAttribute] = structpb.NewStringValue("changed-pass")
+				return out
+			},
+		},
+		{
+			name: "user-password-attributes-change-username-and-password-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+				vault.WithMappingOverride(
+					vault.NewUserPasswordOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute: "changed-user",
+							passwordAttribute: "changed-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
+				out.CredentialMappingOverrides.Fields[passwordAttribute] = structpb.NewStringValue("changed-pass")
+				return out
+			},
+		},
+		{
+			name: "no-mapping-override-change-username-and-password-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute: "new-user",
+							passwordAttribute: "new-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				v := map[string]interface{}{
+					usernameAttribute: "new-user",
+					passwordAttribute: "new-pass",
+				}
+				var err error
+				out.CredentialMappingOverrides, err = structpb.NewStruct(v)
+				require.NoError(t, err)
+				return out
+			},
+		},
+		{
+			name: "user-password-attributes-delete-mapping-override",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+				vault.WithMappingOverride(
+					vault.NewUserPasswordOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(credentialMappingPathField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: nil,
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
+			name: "no-mapping-override-delete-mapping-override",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(credentialMappingPathField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: nil,
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
+			name: "user-password-attributes-delete-mapping-override-field-specific",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+				vault.WithMappingOverride(
+					vault.NewUserPasswordOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePasswordAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute: nil,
+							passwordAttribute: nil,
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
+		{
+			name: "no-mapping-override-delete-mapping-override-field-specific",
+			opts: []vault.Option{
+				vault.WithCredentialType("user_password"),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute: nil,
+							passwordAttribute: nil,
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides = nil
+				return out
+			},
+		},
 	}
 
 	for _, tc := range successCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			st, cleanup := freshLibrary()
+			st, cleanup := freshLibrary(tc.opts...)
 			defer cleanup()
 
 			if tc.req.Item.GetVersion() == 0 {
@@ -968,6 +1192,11 @@ func TestUpdate(t *testing.T) {
 			name: "read only authorized actions",
 			path: "authorized actions",
 			item: &pb.CredentialLibrary{AuthorizedActions: append(testAuthorizedActions, "another")},
+		},
+		{
+			name: "read only credential type",
+			path: "credential_type",
+			item: &pb.CredentialLibrary{CredentialType: string(credential.UserPasswordType)},
 		},
 	}
 	for _, tc := range errCases {

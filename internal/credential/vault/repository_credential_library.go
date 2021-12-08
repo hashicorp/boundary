@@ -149,7 +149,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		case strings.EqualFold(vaultPathField, f):
 		case strings.EqualFold(httpMethodField, f):
 		case strings.EqualFold(httpRequestBodyField, f):
-		case strings.EqualFold(mappingOverrideField, f):
+		case strings.EqualFold(MappingOverrideField, f):
 			updateMappingOverride = true
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
@@ -163,7 +163,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 			vaultPathField:       l.VaultPath,
 			httpMethodField:      l.HttpMethod,
 			httpRequestBodyField: l.HttpRequestBody,
-			mappingOverrideField: l.MappingOverride,
+			MappingOverrideField: l.MappingOverride,
 		},
 		fieldMaskPaths,
 		nil,
@@ -198,14 +198,14 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch {
-		case strings.EqualFold(mappingOverrideField, f):
+		case strings.EqualFold(MappingOverrideField, f):
 		default:
 			filteredDbMask = append(filteredDbMask, f)
 		}
 	}
 	for _, f := range nullFields {
 		switch {
-		case strings.EqualFold(mappingOverrideField, f):
+		case strings.EqualFold(MappingOverrideField, f):
 		default:
 			filteredNullFields = append(filteredNullFields, f)
 		}
