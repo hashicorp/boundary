@@ -258,7 +258,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "target.(Repository).UpdateTarget: failed for 1: db.DoTx: target.(Repository).UpdateTarget: target.(Repository).update: db.DoTx: target.(Repository).update: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg:     "record not found, search issue: error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{

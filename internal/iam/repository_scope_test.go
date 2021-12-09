@@ -520,7 +520,7 @@ func Test_Repository_ListScopes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, AllocScope(), "type = 'org'")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocScope(); ; return &i }(), "type = 'org'")
 
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
@@ -544,7 +544,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 
-	db.TestDeleteWhere(t, conn, AllocScope(), "public_id != 'global'")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocScope(); return &i }(), "public_id != 'global'")
 
 	const numPerScope = 10
 	var total int

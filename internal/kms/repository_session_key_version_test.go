@@ -24,7 +24,7 @@ func TestRepository_CreateSessionKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	sk := kms.TestSessionKey(t, conn, rk.PrivateId)
@@ -111,7 +111,7 @@ func TestRepository_DeleteSessionKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	sk := kms.TestSessionKey(t, conn, rk.PrivateId)
@@ -200,7 +200,7 @@ func TestRepository_LatestSessionKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	sk := kms.TestSessionKey(t, conn, rk.PrivateId)
@@ -245,7 +245,7 @@ func TestRepository_LatestSessionKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, kms.AllocSessionKeyVersion(), "1=1")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocSessionKeyVersion(); return &i }(), "1=1")
 			testKeys := []*kms.SessionKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestSessionKeyVersion(t, conn, rkvWrapper, sk.PrivateId, []byte("test key"))
@@ -275,7 +275,7 @@ func TestRepository_ListSessionKeyVersions(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	sk := kms.TestSessionKey(t, conn, rk.PrivateId)
@@ -348,7 +348,7 @@ func TestRepository_ListSessionKeyVersions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, kms.AllocSessionKeyVersion(), "1=1")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocSessionKeyVersion(); return &i }(), "1=1")
 			keyVersions := []*kms.SessionKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestSessionKeyVersion(t, conn, rkvWrapper, sk.PrivateId, []byte("session key"))

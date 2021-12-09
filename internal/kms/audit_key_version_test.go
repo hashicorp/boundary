@@ -22,7 +22,7 @@ func TestAuditKeyVersion_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	rkv, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
@@ -90,7 +90,7 @@ func TestAuditKeyVersion_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, kms.AllocAuditKeyVersion(), "1=1")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKeyVersion(); return &i }(), "1=1")
 			got, err := kms.NewAuditKeyVersion(testCtx, tt.args.AuditKeyId, tt.args.key, tt.args.rootKeyVersionId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -123,12 +123,12 @@ func TestAuditKeyVersion_Delete(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
 
-	db.TestDeleteWhere(t, conn, kms.AllocAuditKeyVersion(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKeyVersion(); return &i }(), "1=1")
 
 	tests := []struct {
 		name            string
@@ -188,7 +188,7 @@ func TestAuditKeyVersion_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+		db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
@@ -202,7 +202,7 @@ func TestAuditKeyVersion_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+		db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 		rk := kms.TestRootKey(t, conn, org.PublicId)
 		rk2 := kms.TestRootKey(t, conn, org2.PublicId)
 		_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)

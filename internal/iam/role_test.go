@@ -169,7 +169,7 @@ func Test_RoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(Role).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
+			wantErrMsg: "iam.validateScopeForWrite: scope is not found: search issue: error #1100",
 		},
 	}
 
@@ -189,7 +189,7 @@ func Test_RoleCreate(t *testing.T) {
 			err := w.Create(context.Background(), r)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			assert.NoError(err)
@@ -251,7 +251,7 @@ func Test_RoleUpdate(t *testing.T) {
 				scopeIdOverride: org.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Update: iam.(Role).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
+			wantErrMsg: "iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -423,7 +423,7 @@ func Test_RoleUpdate(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
 				assert.Contains(err.Error(), "record not found")
@@ -474,7 +474,7 @@ func Test_RoleUpdate(t *testing.T) {
 		updatedRows, err := rw.Update(context.Background(), &updateRole, []string{"ScopeId"}, nil, db.WithSkipVetForWrite(true))
 		require.Error(err)
 		assert.Equal(0, updatedRows)
-		assert.Equal("db.Update: immutable column: iam_role.scope_id: integrity violation: error #1003", err.Error())
+		assert.Contains(err.Error(), "immutable column: iam_role.scope_id: integrity violation: error #1003")
 	})
 }
 

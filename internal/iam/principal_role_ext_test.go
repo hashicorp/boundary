@@ -159,7 +159,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_managed_group_role\" violates foreign key constraint \"iam_managed_group_role_role_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "bad-principal-id",
@@ -173,7 +173,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_managed_group_role\" violates foreign key constraint \"iam_managed_group_role_principal_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "missing-role-id",
@@ -188,7 +188,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(ManagedGroupRole).VetForWrite: missing role id: parameter violation: error #100",
+			wantErrMsg: "iam.(ManagedGroupRole).VetForWrite: missing role id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -205,7 +205,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(ManagedGroupRole).VetForWrite: missing managed group id: parameter violation: error #100",
+			wantErrMsg: "iam.(ManagedGroupRole).VetForWrite: missing managed group id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -220,7 +220,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint`,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_managed_group_role_pkey": unique constraint violation`,
 		},
 	}
 

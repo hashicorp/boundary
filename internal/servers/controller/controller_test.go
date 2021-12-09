@@ -27,7 +27,7 @@ func TestController_New(t *testing.T) {
 		require.NoError(err)
 
 		// this tests a scenario where there is NOT an audit DEK
-		db.TestDeleteWhere(t, c.conf.Server.Database, kms.AllocAuditKey(), "1=1")
+		db.TestDeleteWhere(t, c.conf.Server.Database, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
 		_, err = New(testCtx, conf)
 		require.NoError(err)
 	})

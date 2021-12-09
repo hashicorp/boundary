@@ -703,7 +703,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-ManagedGroup-test-update-name-repo")),
 			masks:      []string{NameField},
 			wantIsErr:  errors.RecordNotFound,
-			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateManagedGroup: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateManagedGroup: db.Update: record not found, search issue: error #1100: dbw.Update: dbw.lookupAfterWrite: dbw.LookupById: record not found",
 		},
 		{
 			name:    "empty-field-mask",

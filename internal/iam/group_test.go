@@ -169,7 +169,7 @@ func Test_GroupCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(Group).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100",
+			wantErrMsg: "iam.validateScopeForWrite: scope is not found: search issue: error #1100",
 		},
 	}
 
@@ -189,7 +189,7 @@ func Test_GroupCreate(t *testing.T) {
 			err := w.Create(context.Background(), g)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			assert.NoError(err)
@@ -246,7 +246,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Update: iam.(Group).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
+			wantErrMsg: "db.Update: dbw.Update: error before write: iam.(Group).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",

@@ -170,7 +170,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			kms:    kms.TestKms(t, conn, wrapper),
 			reader: rand.Reader,
 			setup: func() {
-				db.TestDeleteWhere(t, conn, kms.AllocAuditKey(), "1=1")
+				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
 			},
 			wantErr: false,
 		},
@@ -179,7 +179,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			// start with no keys...
-			db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 			_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
 			require.NoError(err)
 

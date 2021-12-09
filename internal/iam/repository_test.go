@@ -160,7 +160,8 @@ func Test_Repository_delete(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		require.NoError(err)
 	})
-	db.TestDeleteWhere(t, conn, kms.AllocRootKey(), "1=1")
+	rk := kms.AllocRootKey()
+	db.TestDeleteWhere(t, conn, &rk, "1=1")
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
@@ -244,7 +245,7 @@ func TestRepository_update(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: getting update fields failed: common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
+			wantErrMsg:      "fieldMashPaths and setToNullPaths cannot intersect: invalid parameter",
 		},
 		{
 			name: "only-field-masks",
@@ -300,7 +301,7 @@ func TestRepository_update(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)

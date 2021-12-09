@@ -390,7 +390,6 @@ func TestDb_Update(t *testing.T) {
 		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
-		conn.Debug(true)
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			// write oplogs for this update
 			WithOplog(

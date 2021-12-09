@@ -82,7 +82,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, AllocConnection(), "1=1")
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocConnection(); return &i }(), "1=1")
 			testConnections := []*Connection{}
 			for i := 0; i < tt.createCnt; i++ {
 				c := TestConnection(t, conn,
@@ -107,7 +107,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, AllocConnection(), "1=1")
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocConnection(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestConnection(t, conn,
