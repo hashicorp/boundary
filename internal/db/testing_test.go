@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Utils(t *testing.T) {
@@ -120,4 +121,22 @@ func TestWithCreateNotBefore(t *testing.T) {
 			assert.Equal(opts, testOpts)
 		})
 	}
+}
+
+func Test_TestDeleteWhere(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	d, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, d)
+	user, err := db_test.NewTestUser()
+	assert.NoError(err)
+	id, err := uuid.GenerateUUID()
+	assert.NoError(err)
+	user.Name = "foo-" + id
+	rw := New(d)
+	err = rw.Create(
+		context.Background(),
+		user,
+	)
+	require.NoError(err)
+	TestDeleteWhere(t, d, user, "1 = ?", 1)
 }
