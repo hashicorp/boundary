@@ -1052,3 +1052,96 @@ func TestPluginExecutionDir(t *testing.T) {
 		})
 	}
 }
+
+func TestDatabaseMaxConnections(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envMaxOpenConnections string
+		expMaxOpenConnections int
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = 5
+			  	}
+			}`,
+			expMaxOpenConnections: 5,
+			expErr:                false,
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "string bad"
+				}
+			}`,
+			expErr: true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = false
+				}
+			}`,
+			expErr:    true,
+			expErrStr: "Database max open connections: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			expMaxOpenConnections: 8,
+			envMaxOpenConnections: "8",
+			expErr:                false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			envMaxOpenConnections: "bogus value",
+			expErr:                true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_CONN", tt.envMaxOpenConnections)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expMaxOpenConnections, c.Controller.Database.MaxOpenConnections)
+		})
+	}
+}
