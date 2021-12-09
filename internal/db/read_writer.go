@@ -217,7 +217,11 @@ func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, _ ...O
 	if sql == "" {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	return dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values)
+	rowsAffected, err := dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values)
+	if err != nil {
+		return NoRowsAffected, wrapError(ctx, err, op)
+	}
+	return rowsAffected, nil
 }
 
 // Query will run the raw query and return the *sql.Rows results. Query will
@@ -229,7 +233,11 @@ func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, _ ...
 	if sql == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	return dbw.New(rw.underlying.wrapped).Query(ctx, sql, values)
+	rows, err := dbw.New(rw.underlying.wrapped).Query(ctx, sql, values)
+	if err != nil {
+		return nil, wrapError(ctx, err, op)
+	}
+	return rows, nil
 }
 
 // Scan rows will scan the rows into the interface
@@ -241,7 +249,10 @@ func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) 
 	if isNil(result) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing result")
 	}
-	return dbw.New(rw.underlying.wrapped).ScanRows(rows, result)
+	if err := dbw.New(rw.underlying.wrapped).ScanRows(rows, result); err != nil {
+		return wrapError(ctx, err, op)
+	}
+	return nil
 }
 
 // Create an object in the db with options: WithDebug, WithOplog, NewOplogMsg,
