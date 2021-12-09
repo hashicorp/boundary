@@ -460,46 +460,18 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 // If WithLimit == 0, then default limits are used for results.
 // Supports the WithOrder and WithDebug options.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
-	panic("todo")
-	// const op = "db.SearchWhere"
-	// opts := GetOpts(opt...)
-	// if rw.underlying == nil {
-	// 	return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
-	// }
-	// if where == "" && len(args) > 0 {
-	// 	return errors.New(ctx, errors.InvalidParameter, op, "args provided with empty where")
-	// }
-	// if reflect.ValueOf(resources).Kind() != reflect.Ptr {
-	// 	return errors.New(ctx, errors.InvalidParameter, op, "interface parameter must to be a pointer")
-	// }
-	// var err error
-	// db := rw.underlying.WithContext(ctx)
-	// if opts.withOrder != "" {
-	// 	db = db.Order(opts.withOrder)
-	// }
-	// if opts.withDebug {
-	// 	db = db.Debug()
-	// }
-	// // Perform limiting
-	// switch {
-	// case opts.WithLimit < 0: // any negative number signals unlimited results
-	// case opts.WithLimit == 0: // zero signals the default value and default limits
-	// 	db = db.Limit(DefaultLimit)
-	// default:
-	// 	db = db.Limit(opts.WithLimit)
-	// }
-
-	// if where != "" {
-	// 	db = db.Where(where, args...)
-	// }
-
-	// // Perform the query
-	// err = db.Find(resources).Error
-	// if err != nil {
-	// 	// searching with a slice parameter does not return a gorm.ErrRecordNotFound
-	// 	return errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	// }
-	// return nil
+	const op = "db.SearchWhere"
+	if rw.underlying == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	dbwOpts, err := getDbwOptions(ctx, rw, resources, SearchOp, opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := dbw.New(rw.underlying.wrapped).SearchWhere(ctx, resources, where, args, dbwOpts...); err != nil {
+		return wrapError(ctx, err, op)
+	}
+	return nil
 }
 
 func isNil(i interface{}) bool {
