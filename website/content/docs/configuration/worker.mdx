@@ -34,7 +34,11 @@ worker {
   or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
 
 - `controllers` - A list of hosts/IP addresses and optionally ports for reaching
-  controllers. The port will default to :9201 if not specified.
+  controllers. The port will default to :9201 if not specified. This value can be
+  a direct access string array with the addresses, or it can refer to a file on
+  disk (file://) from which the addresses will be read, or an env var (env://) from
+  which the addresses will be read. When using env or file, their contents
+  must formatted as a JSON array: `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/docs/concepts/filtering) targets a worker can

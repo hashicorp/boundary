@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -173,9 +174,10 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:        "dev-worker",
-			Description: "A default worker created in dev mode",
-			Controllers: []string{"127.0.0.1"},
+			Name:           "dev-worker",
+			Description:    "A default worker created in dev mode",
+			Controllers:    []string{"127.0.0.1"},
+			ControllersRaw: []interface{}{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -811,6 +813,146 @@ func TestController_EventingConfig(t *testing.T) {
 	}
 }
 
+func TestWorkerControllers(t *testing.T) {
+	tests := []struct {
+		name                 string
+		in                   string
+		stateFn              func(t *testing.T)
+		expWorkerControllers []string
+		expErr               bool
+		expErrIs             error
+		expErrStr            string
+	}{
+		{
+			name: "No Controllers",
+			in: `
+			worker {
+				name = "test"
+			}
+			`,
+			expWorkerControllers: nil,
+			expErr:               false,
+		},
+		{
+			name: "One Controller",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1"]
+			}
+			`,
+			expWorkerControllers: []string{"127.0.0.1"},
+			expErr:               false,
+		},
+		{
+			name: "Multiple controllers",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
+			}
+			`,
+			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:               false,
+		},
+		{
+			name: "Using env var",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
+			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:               false,
+		},
+		{
+			name: "Using env var - invalid input 1",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn: func(t *testing.T) {
+				controllers := `
+				worker {
+					controllers = ["127.0.0.1"]
+				}
+				`
+				t.Setenv("BOUNDARY_WORKER_CONTROLLERS", controllers)
+			},
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'w' looking for beginning of value",
+		},
+		{
+			name: "Using env var - invalid input 2",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `controllers = ["127.0.0.1"]`) },
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'c' looking for beginning of value",
+		},
+		{
+			name: "Unsupported object",
+			in: `
+			worker {
+				name = "test"
+				controllers = {
+					ip = "127.0.0.1"
+					ip = "127.0.0.2"
+				}
+			}
+			`,
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: unexpected type \"[]map[string]interface {}\"",
+		},
+		{
+			name: "worker controllers set to invalid url",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://\x00"
+			}`,
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrIs:             parseutil.ErrNotAUrl,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t)
+			}
+
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				if tt.expErrIs != nil {
+					require.ErrorIs(t, err, tt.expErrIs)
+				} else {
+					require.EqualError(t, err, tt.expErrStr)
+				}
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Worker)
+			require.EqualValues(t, tt.expWorkerControllers, c.Worker.Controllers)
+		})
+	}
+}
+
 func TestControllerDescription(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -907,6 +1049,99 @@ func TestPluginExecutionDir(t *testing.T) {
 			require.NotNil(t, p)
 			require.NotNil(t, p.Plugins)
 			require.Equal(t, tt.expPluginExecutionDir, p.Plugins.ExecutionDir)
+		})
+	}
+}
+
+func TestDatabaseMaxConnections(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envMaxOpenConnections string
+		expMaxOpenConnections int
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = 5
+			  	}
+			}`,
+			expMaxOpenConnections: 5,
+			expErr:                false,
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "string bad"
+				}
+			}`,
+			expErr: true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = false
+				}
+			}`,
+			expErr:    true,
+			expErrStr: "Database max open connections: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			expMaxOpenConnections: 8,
+			envMaxOpenConnections: "8",
+			expErr:                false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			envMaxOpenConnections: "bogus value",
+			expErr:                true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_CONN", tt.envMaxOpenConnections)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expMaxOpenConnections, c.Controller.Database.MaxOpenConnections)
 		})
 	}
 }
