@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/proto"
 )
@@ -61,7 +62,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	var onConflictDoNothing bool
 	if opts.withOnConflict != nil {
 		switch opts.withOnConflict.Action.(type) {
-		case DoNothing:
+		case dbw.DoNothing:
 			onConflictDoNothing = true
 		}
 	}
@@ -70,19 +71,21 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	var afterFn AfterWriteFn
 
 	var ticket *store.Ticket
-	beforeFn = func(interface{}) error {
-		const op = "db.beforeFn"
-		var err error
-		switch isSlice {
-		case true:
-			ticket, err = rw.GetTicket(ctx, items[0])
-		default:
-			ticket, err = rw.GetTicket(ctx, i)
+	if opts.withOplog {
+		beforeFn = func(interface{}) error {
+			const op = "db.beforeFn"
+			var err error
+			switch isSlice {
+			case true:
+				ticket, err = rw.GetTicket(ctx, items[0])
+			default:
+				ticket, err = rw.GetTicket(ctx, i)
+			}
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+			return nil
 		}
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
-		}
-		return nil
 	}
 	switch {
 	case withOplog && (opType == CreateOp || opType == UpdateOp || opType == DeleteOp):

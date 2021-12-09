@@ -34,18 +34,13 @@ func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, op
 		dbwOpts = append(dbwOpts, dbw.WithAfterWrite(after))
 	}
 	if opts.withOnConflict != nil {
-		dbwOpts = append(dbwOpts, dbw.WithOnConflict(
-			&dbw.OnConflict{
-				Target: opts.withOnConflict.Target,
-				Action: opts.withOnConflict.Action,
-			},
-		))
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(opts.withOnConflict))
 	}
 	if opts.withLookup {
 		dbwOpts = append(dbwOpts, dbw.WithLookup(opts.withLookup))
 	}
 	if opts.WithLimit != 0 {
-		dbwOpts = append(dbwOpts, dbw.WithLimit(0))
+		dbwOpts = append(dbwOpts, dbw.WithLimit(opts.WithLimit))
 	}
 	if len(opts.WithFieldMaskPaths) > 0 {
 		dbwOpts = append(dbwOpts, dbw.WithFieldMaskPaths(opts.WithFieldMaskPaths))
@@ -120,7 +115,7 @@ type Options struct {
 	// mode
 	withDebug bool
 
-	withOnConflict   *OnConflict
+	withOnConflict   *dbw.OnConflict
 	withRowsAffected *int64
 }
 
@@ -271,7 +266,7 @@ func WithDebug(with bool) Option {
 // WithOnConflict specifies an optional on conflict criteria which specify
 // alternative actions to take when an insert results in a unique constraint or
 // exclusion constraint error
-func WithOnConflict(onConflict *OnConflict) Option {
+func WithOnConflict(onConflict *dbw.OnConflict) Option {
 	return func(o *Options) {
 		o.withOnConflict = onConflict
 	}

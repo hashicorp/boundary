@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -38,7 +39,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 	}
 	tests := []struct {
 		name           string
-		onConflict     db.OnConflict
+		onConflict     dbw.OnConflict
 		additionalOpts []db.Option
 		wantUpdate     bool
 		wantEmail      string
@@ -46,21 +47,21 @@ func TestDb_Create_OnConflict(t *testing.T) {
 	}{
 		{
 			name: "set-columns",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			wantUpdate: true,
 			wantOplog:  true,
 		},
 		{
 			name: "set-column-values",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumnValues(map[string]interface{}{
-					"name":         db.Expr("md5(?)", "alice eve smith"),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumnValues(map[string]interface{}{
+					"name":         dbw.Expr("md5(?)", "alice eve smith"),
 					"email":        "alice@gmail.com",
-					"phone_number": db.Expr("NULL"),
+					"phone_number": dbw.Expr("NULL"),
 				}),
 			},
 			wantUpdate: true,
@@ -69,15 +70,15 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		},
 		{
 			name: "both-set-columns-and-set-column-values",
-			onConflict: func() db.OnConflict {
-				onConflict := db.OnConflict{
-					Target: db.Columns{"public_id"},
+			onConflict: func() dbw.OnConflict {
+				onConflict := dbw.OnConflict{
+					Target: dbw.Columns{"public_id"},
 				}
-				cv := db.SetColumns([]string{"name"})
+				cv := dbw.SetColumns([]string{"name"})
 				cv = append(cv,
-					db.SetColumnValues(map[string]interface{}{
+					dbw.SetColumnValues(map[string]interface{}{
 						"email":        "alice@gmail.com",
-						"phone_number": db.Expr("NULL"),
+						"phone_number": dbw.Expr("NULL"),
 					})...)
 				onConflict.Action = cv
 				return onConflict
@@ -88,35 +89,35 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		},
 		{
 			name: "update-all",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.UpdateAll(true),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.UpdateAll(true),
 			},
 			wantUpdate: true,
 			wantOplog:  true,
 		},
 		{
 			name: "do-nothing",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.DoNothing(true),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.DoNothing(true),
 			},
 			wantOplog: false,
 		},
 		{
 			name: "on-constraint",
-			onConflict: db.OnConflict{
-				Target: db.Constraint("db_test_user_public_id_key"),
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Constraint("db_test_user_public_id_key"),
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			wantUpdate: true,
 			wantOplog:  true,
 		},
 		{
 			name: "set-columns-with-where-success",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 1)},
 			wantUpdate:     true,
@@ -124,9 +125,9 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		},
 		{
 			name: "set-columns-with-where-fail",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 100000000000)},
 			wantUpdate:     false,
@@ -134,9 +135,9 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		},
 		{
 			name: "set-columns-with-version-success",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			additionalOpts: []db.Option{db.WithVersion(func() *uint32 { i := uint32(1); return &i }())},
 			wantUpdate:     true,
@@ -144,9 +145,9 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		},
 		{
 			name: "set-columns-with-version-fail",
-			onConflict: db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: db.SetColumns([]string{"name"}),
+			onConflict: dbw.OnConflict{
+				Target: dbw.Columns{"public_id"},
+				Action: dbw.SetColumns([]string{"name"}),
 			},
 			additionalOpts: []db.Option{db.WithWhere("db_test_user.version = ?", 100000000000)},
 			wantUpdate:     false,
@@ -212,9 +213,9 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			"resource-public-id": []string{conflictUser.PublicId},
 			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 		}
-		onConflict := db.OnConflict{
-			Target: db.Constraint("db_test_user_public_id_key"),
-			Action: db.SetColumns([]string{"name"}),
+		onConflict := dbw.OnConflict{
+			Target: dbw.Constraint("db_test_user_public_id_key"),
+			Action: dbw.SetColumns([]string{"name"}),
 		}
 		users := []interface{}{}
 		users = append(users, conflictUser)

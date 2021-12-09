@@ -14,6 +14,7 @@ import (
 	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-dbw"
 	ua "go.uber.org/atomic"
 )
 
@@ -417,9 +418,9 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				// We always write the host itself as we need to update version
 				// for optimistic locking for any value object update.
 				var hOplogMsg oplog.Message
-				onConflict := &db.OnConflict{
-					Target: db.Constraint("host_plugin_host_pkey"),
-					Action: db.SetColumns([]string{"name", "description", "version"}),
+				onConflict := &dbw.OnConflict{
+					Target: dbw.Constraint("host_plugin_host_pkey"),
+					Action: dbw.SetColumns([]string{"name", "description", "version"}),
 				}
 				var rowsAffected int64
 				dbOpts := []db.Option{
@@ -455,9 +456,9 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 					}
 					if len(hi.ipsToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.ipsToAdd))
-						onConflict := &db.OnConflict{
-							Target: db.Constraint("host_ip_address_pkey"),
-							Action: db.DoNothing(true),
+						onConflict := &dbw.OnConflict{
+							Target: dbw.Constraint("host_ip_address_pkey"),
+							Action: dbw.DoNothing(true),
 						}
 						if err := w.CreateItems(ctx, hi.ipsToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("adding ips %v for host %q", hi.ipsToAdd.toArray(), ret.GetPublicId())))
@@ -481,9 +482,9 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 					}
 					if len(hi.dnsNamesToAdd) > 0 {
 						oplogMsgs := make([]*oplog.Message, 0, len(hi.dnsNamesToAdd))
-						onConflict := &db.OnConflict{
-							Target: db.Constraint("host_dns_name_pkey"),
-							Action: db.DoNothing(true),
+						onConflict := &dbw.OnConflict{
+							Target: dbw.Constraint("host_dns_name_pkey"),
+							Action: dbw.DoNothing(true),
 						}
 						if err := w.CreateItems(ctx, hi.dnsNamesToAdd.toArray(), db.NewOplogMsgs(&oplogMsgs), db.WithOnConflict(onConflict)); err != nil {
 							return err

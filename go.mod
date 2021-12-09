@@ -84,7 +84,7 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.0.0-20211209115633-ac36b51ca7d8
+require github.com/hashicorp/go-dbw v0.0.0-20211209181459-5a9bf72b85a5 // this is a branch and should be updated before merging
 
 require (
 	github.com/hashicorp/go-sockaddr v1.0.2
