@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,11 +15,11 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm/logger"
 )
 
 // setup the tests (initialize the database one-time and intialized
@@ -57,13 +58,11 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gormDB, err := db.gormDB(ctx)
-	require.NoError(t, err)
 	switch {
 	case opts.withLogLevel != 0:
-		gormDB.Logger.LogMode(logger.LogLevel(opts.withLogLevel))
+		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
 	default:
-		gormDB.Logger.LogMode(logger.Error)
+		db.wrapped.LogLevel(dbw.LogLevel(dbw.Error))
 	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
@@ -108,13 +107,16 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 
 // TestDeleteWhere allows you to easily delete resources for testing purposes
 // including all the current resources.
-func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, sql string, args ...interface{}) {
+func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, whereClause string, args ...interface{}) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
-	gormDb, err := conn.gormDB(ctx)
+	tabler, ok := i.(interface {
+		TableName() string
+	})
+	require.True(ok)
+	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
 	require.NoError(err)
-	require.NoError(gormDb.Where(sql, args...).Delete(i).Error)
 }
 
 // TestVerifyOplog will verify that there is an oplog entry that matches the provided resourceId.

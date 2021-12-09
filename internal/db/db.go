@@ -104,27 +104,3 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 	}
 	return &DB{wrapped: wrapped}, nil
 }
-
-func (d *DB) gormDB(ctx context.Context) (*gorm.DB, error) {
-	const op = "db.gormDB"
-	typ, _, err := d.wrapped.DbType()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	sqlDB, err := d.SqlDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	switch typ {
-	case dbw.Postgres:
-		gormDB, err := gorm.Open(postgres.New(postgres.Config{
-			Conn: sqlDB,
-		}))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		return gormDB, nil
-	default:
-		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("%s: unable to open %s database type", op, typ))
-	}
-}
