@@ -1400,7 +1400,7 @@ func TestDb_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			rw := New(conn)
+			rw := New(tt.underlying)
 			if tt.wantOplog {
 				metadata := tt.args.metadata(tt.args.i.PublicId)
 				opLog := WithOplog(tt.wrapper, metadata)

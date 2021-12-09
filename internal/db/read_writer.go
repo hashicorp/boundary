@@ -335,143 +335,38 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // WithWhere allows specifying an additional constraint on the operation in
 // addition to the PKs. Delete returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
-	// const op = "db.Delete"
-	// if rw.underlying == nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
-	// }
-	// if isNil(i) {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing interface")
-	// }
-	// opts := GetOpts(opt...)
-	// withOplog := opts.withOplog
-	// if withOplog && opts.newOplogMsg != nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
-	// }
-
-	// mDb := rw.underlying.Model(i)
-	// err := mDb.Statement.Parse(i)
-	// if err == nil && mDb.Statement.Schema == nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.Unknown, op, "internal error: unable to parse stmt", errors.WithWrap(err))
-	// }
-	// reflectValue := reflect.Indirect(reflect.ValueOf(i))
-	// for _, pf := range mDb.Statement.Schema.PrimaryFields {
-	// 	if _, isZero := pf.ValueOf(reflectValue); isZero {
-	// 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("primary key %s is not set", pf.Name))
-	// 	}
-	// }
-
-	// if withOplog {
-	// 	_, err := validateOplogArgs(ctx, i, opts)
-	// 	if err != nil {
-	// 		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
-	// 	}
-	// }
-	// var ticket *store.Ticket
-	// if withOplog {
-	// 	var err error
-	// 	ticket, err = rw.GetTicket(i)
-	// 	if err != nil {
-	// 		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
-	// 	}
-	// }
-	// db := rw.underlying.DB
-	// if opts.withWhereClause != "" {
-	// 	db = db.Where(opts.withWhereClause, opts.withWhereClauseArgs...)
-	// }
-	// if opts.withDebug {
-	// 	db = db.Debug()
-	// }
-	// db = db.Delete(i)
-	// if db.Error != nil {
-	// 	return NoRowsAffected, errors.Wrap(ctx, db.Error, op, errors.WithoutEvent())
-	// }
-	// rowsDeleted := int(db.RowsAffected)
-	// if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
-	// 	if withOplog {
-	// 		if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
-	// 			return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("add oplog failed"))
-	// 		}
-	// 	}
-	// 	if opts.newOplogMsg != nil {
-	// 		msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
-	// 		if err != nil {
-	// 			return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog failed"))
-	// 		}
-	// 		*opts.newOplogMsg = *msg
-	// 	}
-	// }
-	// return rowsDeleted, nil
-	panic("todo")
+	const op = "db.Delete"
+	if rw.underlying == nil {
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	dbwOpts, err := getDbwOptions(ctx, rw, i, DeleteOp, opt...)
+	if err != nil {
+		return NoRowsAffected, wrapError(ctx, err, op)
+	}
+	rowsUpdated, err := dbw.New(rw.underlying.wrapped).Delete(ctx, i, dbwOpts...)
+	if err != nil {
+		return NoRowsAffected, wrapError(ctx, err, op)
+	}
+	return rowsUpdated, nil
 }
 
 // DeleteItems will delete multiple items of the same type. Supported options:
 // WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
 // together.
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
-	// const op = "db.DeleteItems"
-	// if rw.underlying == nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
-	// }
-	// if len(deleteItems) == 0 {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no interfaces to delete")
-	// }
-	// opts := GetOpts(opt...)
-	// if opts.newOplogMsg != nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
-	// }
-	// if opts.withOplog && opts.newOplogMsgs != nil {
-	// 	return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
-	// }
-	// // verify that createItems are all the same type.
-	// var foundType reflect.Type
-	// for i, v := range deleteItems {
-	// 	if i == 0 {
-	// 		foundType = reflect.TypeOf(v)
-	// 	}
-	// 	currentType := reflect.TypeOf(v)
-	// 	if foundType != currentType {
-	// 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("items contain disparate types.  item %d is not a %s", i, foundType.Name()))
-	// 	}
-	// }
-
-	// var ticket *store.Ticket
-	// if opts.withOplog {
-	// 	_, err := validateOplogArgs(ctx, deleteItems[0], opts)
-	// 	if err != nil {
-	// 		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"))
-	// 	}
-	// 	ticket, err = rw.GetTicket(deleteItems[0])
-	// 	if err != nil {
-	// 		return NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
-	// 	}
-	// }
-	// rowsDeleted := 0
-	// for _, item := range deleteItems {
-	// 	// calling delete directly on the underlying db, since the writer.Delete
-	// 	// doesn't provide capabilities needed here (which is different from the
-	// 	// relationship between Create and CreateItems).
-	// 	underlying := rw.underlying.Delete(item)
-	// 	if underlying.Error != nil {
-	// 		return rowsDeleted, errors.Wrap(ctx, underlying.Error, op, errors.WithoutEvent())
-	// 	}
-	// 	rowsDeleted += int(underlying.RowsAffected)
-	// }
-	// if rowsDeleted > 0 && (opts.withOplog || opts.newOplogMsgs != nil) {
-	// 	if opts.withOplog {
-	// 		if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
-	// 			return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("unable to add oplog"))
-	// 		}
-	// 	}
-	// 	if opts.newOplogMsgs != nil {
-	// 		msgs, err := rw.oplogMsgsForItems(ctx, DeleteOp, opts, deleteItems)
-	// 		if err != nil {
-	// 			return rowsDeleted, errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
-	// 		}
-	// 		*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
-	// 	}
-	// }
-	// return rowsDeleted, nil
-	panic("todo")
+	const op = "db.DeleteItems"
+	if rw.underlying == nil {
+		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
+	}
+	dbwOpts, err := getDbwOptions(ctx, rw, deleteItems, DeleteItemsOp, opt...)
+	if err != nil {
+		return NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	rowsDeleted, err := dbw.New(rw.underlying.wrapped).DeleteItems(ctx, deleteItems, dbwOpts...)
+	if err != nil {
+		return NoRowsAffected, wrapError(ctx, err, op)
+	}
+	return rowsDeleted, nil
 }
 
 // DoTx will wrap the Handler func passed within a transaction with retries
@@ -607,49 +502,6 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	// return nil
 }
 
-// func (rw *Db) primaryFieldsAreZero(ctx context.Context, i interface{}) ([]string, bool, error) {
-// 	const op = "db.primaryFieldsAreZero"
-// 	var fieldNames []string
-// 	tx := rw.underlying.Model(i)
-// 	if err := tx.Statement.Parse(i); err != nil {
-// 		return nil, false, errors.Wrap(ctx, err, op, errors.WithoutEvent())
-// 	}
-// 	for _, f := range tx.Statement.Schema.PrimaryFields {
-// 		if f.PrimaryKey {
-// 			if _, isZero := f.ValueOf(reflect.ValueOf(i)); isZero {
-// 				fieldNames = append(fieldNames, f.Name)
-// 			}
-// 		}
-// 	}
-// 	return fieldNames, len(fieldNames) > 0, nil
-// }
-
-// // filterPaths will filter out non-updatable fields
-// func filterPaths(paths []string) []string {
-// 	if len(paths) == 0 {
-// 		return nil
-// 	}
-// 	var filtered []string
-// 	for _, p := range paths {
-// 		switch {
-// 		case strings.EqualFold(p, "CreateTime"):
-// 			continue
-// 		case strings.EqualFold(p, "UpdateTime"):
-// 			continue
-// 		case strings.EqualFold(p, "PublicId"):
-// 			continue
-// 		default:
-// 			filtered = append(filtered, p)
-// 		}
-// 	}
-// 	return filtered
-// }
-
-// func setFieldsToNil(i interface{}, fieldNames []string) {
-// 	// Note: error cases are not handled
-// 	_ = Clear(i, fieldNames, 2)
-// }
-
 func isNil(i interface{}) bool {
 	if i == nil {
 		return true
@@ -660,69 +512,6 @@ func isNil(i interface{}) bool {
 	}
 	return false
 }
-
-// func contains(ss []string, t string) bool {
-// 	for _, s := range ss {
-// 		if strings.EqualFold(s, t) {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
-// // Clear sets fields in the value pointed to by i to their zero value.
-// // Clear descends i to depth clearing fields at each level. i must be a
-// // pointer to a struct. Cycles in i are not detected.
-// //
-// // A depth of 2 will change i and i's children. A depth of 1 will change i
-// // but no children of i. A depth of 0 will return with no changes to i.
-// func Clear(i interface{}, fields []string, depth int) error {
-// 	const op = "db.Clear"
-// 	if len(fields) == 0 || depth == 0 {
-// 		return nil
-// 	}
-// 	fm := make(map[string]bool)
-// 	for _, f := range fields {
-// 		fm[f] = true
-// 	}
-
-// 	v := reflect.ValueOf(i)
-
-// 	switch v.Kind() {
-// 	case reflect.Ptr:
-// 		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
-// 			return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
-// 		}
-// 		clear(v, fm, depth)
-// 	default:
-// 		return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op), errors.WithoutEvent())
-// 	}
-// 	return nil
-// }
-
-// func clear(v reflect.Value, fields map[string]bool, depth int) {
-// 	if depth == 0 {
-// 		return
-// 	}
-// 	depth--
-
-// 	switch v.Kind() {
-// 	case reflect.Ptr:
-// 		clear(v.Elem(), fields, depth+1)
-// 	case reflect.Struct:
-// 		typeOfT := v.Type()
-// 		for i := 0; i < v.NumField(); i++ {
-// 			f := v.Field(i)
-// 			if ok := fields[typeOfT.Field(i).Name]; ok {
-// 				if f.IsValid() && f.CanSet() {
-// 					f.Set(reflect.Zero(f.Type()))
-// 				}
-// 				continue
-// 			}
-// 			clear(f, fields, depth)
-// 		}
-// 	}
-// }
 
 func wrapError(ctx context.Context, err error, op string, errOpts ...errors.Option) error {
 	// See github.com/hashicorp/go-dbw/error.go for appropriate errors to test
