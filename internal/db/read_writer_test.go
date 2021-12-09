@@ -841,7 +841,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.LookupById: db.primaryKeysWhere: missing primary key: parameter violation: error #100")
+		assert.Contains(err.Error(), "missing primary key: invalid parameter")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -1161,7 +1161,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := New(conn)
+		w := Db{}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		require.Error(err)

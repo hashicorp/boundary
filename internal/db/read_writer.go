@@ -551,7 +551,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
-	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil

@@ -474,6 +474,8 @@ github.com/hashicorp/go-dbw v0.0.0-20211207130220-27f010ce621e h1:hVTLHOe2Z1n+5j
 github.com/hashicorp/go-dbw v0.0.0-20211207130220-27f010ce621e/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
 github.com/hashicorp/go-dbw v0.0.0-20211208231945-0953b8e4cdf8 h1:dhVabUS0l57198NpmnPpo0J1zFasbyrW21gTas1mjrU=
 github.com/hashicorp/go-dbw v0.0.0-20211208231945-0953b8e4cdf8/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
+github.com/hashicorp/go-dbw v0.0.0-20211209115633-ac36b51ca7d8 h1:m1RqjgA8bVMV9aXnkIJ7uoaX6f7eVveNvRJJNP+TkYw=
+github.com/hashicorp/go-dbw v0.0.0-20211209115633-ac36b51ca7d8/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
 github.com/hashicorp/go-hclog v0.0.0-20180709165350-ff2cf002a8dd/go.mod h1:9bjs9uLqI8l75knNv3lV1kA55veR+WUPSiKIWcQHudI=
 github.com/hashicorp/go-hclog v0.8.0/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
 github.com/hashicorp/go-hclog v0.9.2/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
