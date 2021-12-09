@@ -37,8 +37,13 @@ func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
 			credentialTypeFlagName,
 			credentialMappingFlagName,
 		},
+		"update": {
+			pathFlagName,
+			httpMethodFlagName,
+			httpRequestBodyFlagName,
+			credentialMappingFlagName,
+		},
 	}
-	flags["update"] = flags["create"]
 	return flags
 }
 
@@ -122,7 +127,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 		mappings := make(map[string]interface{}, len(c.flagCredentialMapping))
 		for _, mapping := range c.flagCredentialMapping {
 			switch {
-			case len(mapping.Keys) != 1 || mapping.Keys[0] == "":
+			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == "":
 				// mapping override does not support key segments (e.g. 'x.y=z')
 				c.UI.Error("Credential mapping override must be in the format 'key=value', 'key=null' to clear field or 'null' to clear all.")
 				return false
