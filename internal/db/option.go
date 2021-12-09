@@ -23,9 +23,25 @@ func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, op
 	const op = "db.getDbwOptions"
 	opts := GetOpts(opt...)
 	dbwOpts := make([]dbw.Option, 0, len(opt))
-	before, after, err := rw.generateOplogBeforeAfterOpts(ctx, i, opType, opts)
+	oplogBefore, after, err := rw.generateOplogBeforeAfterOpts(ctx, i, opType, opts)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	before := oplogBefore
+	if !opts.withSkipVetForWrite && (opType != DeleteOp && opType != DeleteItemsOp) {
+		if vetter, ok := i.(VetForWriter); ok {
+			before = func(i interface{}) error {
+				if err := vetter.VetForWrite(ctx, rw, opType, opt...); err != nil {
+					return err
+				}
+				if oplogBefore != nil {
+					if err := oplogBefore(i); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		}
 	}
 	if before != nil {
 		dbwOpts = append(dbwOpts, dbw.WithBeforeWrite(before))

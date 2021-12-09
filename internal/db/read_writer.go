@@ -329,7 +329,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
-	dbwOpts, err := getDbwOptions(ctx, rw, i, UpdateOp, opt...)
+	optCp := make([]Option, 0, len(opt)+2)
+	optCp = append(optCp, opt...)
+	optCp = append(optCp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths))
+	dbwOpts, err := getDbwOptions(ctx, rw, i, UpdateOp, optCp...)
 	if err != nil {
 		return NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
