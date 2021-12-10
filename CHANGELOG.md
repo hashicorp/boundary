@@ -6,6 +6,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* config: The `description` field for workers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1783))
 * config: The `max_open_connections` field for the database field in controllers now supports being set
   from environment variables or a file on disk
   ([PR](https://github.com/hashicorp/boundary/pull/1776))
