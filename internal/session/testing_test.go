@@ -42,7 +42,7 @@ func Test_TestConnection(t *testing.T) {
 	require.NotNil(s)
 	assert.NotEmpty(s.PublicId)
 
-	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 6500, "127.0.0.1", 22)
+	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 6500, "127.0.0.1", 22, "127.0.0.1")
 	require.NotNil(c)
 }
 
@@ -55,7 +55,7 @@ func Test_TestConnectionState(t *testing.T) {
 	require.NotNil(s)
 	assert.NotEmpty(s.PublicId)
 
-	c := TestConnection(t, conn, s.PublicId, "0.0.0.0", 22, "0.0.0.0", 2222)
+	c := TestConnection(t, conn, s.PublicId, "0.0.0.0", 22, "0.0.0.0", 2222, "127.0.0.1")
 	require.NotNil(c)
 	assert.NotEmpty(c.PublicId)
 

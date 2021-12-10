@@ -531,11 +531,13 @@ func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Con
 			connection.ClientTcpPort = c.ClientTcpPort
 			connection.EndpointTcpAddress = c.EndpointTcpAddress
 			connection.EndpointTcpPort = c.EndpointTcpPort
+			connection.UserClientIp = c.UserClientIp
 			fieldMask := []string{
 				"ClientTcpAddress",
 				"ClientTcpPort",
 				"EndpointTcpAddress",
 				"EndpointTcpPort",
+				"UserClientIp",
 			}
 			rowsUpdated, err := w.Update(ctx, &connection, fieldMask, nil)
 			if err != nil {

@@ -281,7 +281,7 @@ func TestList(t *testing.T) {
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
-		c := session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
+		c := session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
 		status, states := convertStates(sess.States)
 
@@ -326,7 +326,7 @@ func TestList(t *testing.T) {
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
-		c = session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
+		c = session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
 		status, states = convertStates(sess.States)
 

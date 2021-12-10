@@ -125,6 +125,7 @@ func requestCtxInterceptor(
 			PublicId: requestInfo.PublicId,
 			Method:   requestInfo.Method,
 			Path:     requestInfo.Path,
+			ClientIp: requestInfo.ClientIp,
 		}
 		interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
 		if err != nil {

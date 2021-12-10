@@ -24,6 +24,7 @@ func TestConnection_Create(t *testing.T) {
 		clientTcpPort      uint32
 		endpointTcpAddress string
 		endpointTcpPort    uint32
+		userClientIp       string
 	}
 	tests := []struct {
 		name          string
@@ -42,6 +43,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
+				userClientIp:       "::1",
 			},
 			want: &Connection{
 				SessionId:          s.PublicId,
@@ -49,6 +51,7 @@ func TestConnection_Create(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    2222,
+				UserClientIp:       "::1",
 			},
 			create: true,
 		},
@@ -59,6 +62,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
+				userClientIp:       "127.0.0.1",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -70,6 +74,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
+				userClientIp:       "127.0.0.1",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -81,6 +86,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpAddress:   "localhost",
 				endpointTcpAddress: "127.0.0.1",
 				endpointTcpPort:    2222,
+				userClientIp:       "127.0.0.1",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -92,6 +98,7 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpAddress: "localhost",
 				clientTcpPort:    22,
 				endpointTcpPort:  2222,
+				userClientIp:     "127.0.0.1",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -103,6 +110,19 @@ func TestConnection_Create(t *testing.T) {
 				clientTcpAddress:   "localhost",
 				clientTcpPort:      22,
 				endpointTcpAddress: "127.0.0.1",
+				userClientIp:       "127.0.0.1",
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "empty-user-client-ip",
+			args: args{
+				sessionId:          s.PublicId,
+				clientTcpAddress:   "localhost",
+				clientTcpPort:      22,
+				endpointTcpAddress: "127.0.0.1",
+				endpointTcpPort:    2222,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -117,6 +137,7 @@ func TestConnection_Create(t *testing.T) {
 				tt.args.clientTcpPort,
 				tt.args.endpointTcpAddress,
 				tt.args.endpointTcpPort,
+				tt.args.userClientIp,
 			)
 			if tt.wantErr {
 				require.Error(err)
@@ -158,7 +179,7 @@ func TestConnection_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			connection:      TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222),
+			connection:      TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -208,15 +229,15 @@ func TestConnection_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		cp := c.Clone()
 		assert.Equal(cp.(*Connection), c)
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
-		c2 := TestConnection(t, conn, s.PublicId, "127.0.0.1", 80, "127.0.0.1", 8080)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+		c2 := TestConnection(t, conn, s.PublicId, "127.0.0.1", 80, "127.0.0.1", 8080, "127.0.0.1")
 
 		cp := c.Clone()
 		assert.NotEqual(cp.(*Connection), c2)

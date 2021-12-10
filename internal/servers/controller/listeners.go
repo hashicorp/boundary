@@ -40,22 +40,6 @@ func (c *Controller) startListeners(ctx context.Context) error {
 			return err
 		}
 
-		/*
-			// TODO: As I write this Vault's having this code audited, make sure to
-			// port over any recommendations
-			//
-			// We perform validation on the config earlier, we can just cast here
-			if _, ok := ln.config["x_forwarded_for_authorized_addrs"]; ok {
-				hopSkips := ln.config["x_forwarded_for_hop_skips"].(int)
-				authzdAddrs := ln.config["x_forwarded_for_authorized_addrs"].([]*sockaddr.SockAddrMarshaler)
-				rejectNotPresent := ln.config["x_forwarded_for_reject_not_present"].(bool)
-				rejectNonAuthz := ln.config["x_forwarded_for_reject_not_authorized"].(bool)
-				if len(authzdAddrs) > 0 {
-					handler = vaulthttp.WrapForwardedForHandler(handler, authzdAddrs, rejectNotPresent, rejectNonAuthz, hopSkips)
-				}
-			}
-		*/
-
 		// Resolve it here to avoid race conditions if the base context is
 		// replaced
 		cancelCtx := c.baseContext

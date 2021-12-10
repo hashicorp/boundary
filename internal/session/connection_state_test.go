@@ -17,7 +17,7 @@ func TestConnectionState_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 443, "127.0.0.1", 4443)
+	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 443, "127.0.0.1", 4443, "127.0.0.1")
 
 	type args struct {
 		connectionId string
@@ -92,8 +92,8 @@ func TestConnectionState_Delete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	s := TestDefaultSession(t, conn, wrapper, iamRepo)
-	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
-	c2 := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+	c2 := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 
 	tests := []struct {
 		name                    string
@@ -163,7 +163,7 @@ func TestConnectionState_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		state := TestConnectionState(t, conn, c.PublicId, StatusConnected)
 		cp := state.Clone()
 		assert.Equal(cp.(*ConnectionState), state)
@@ -171,7 +171,7 @@ func TestConnectionState_Clone(t *testing.T) {
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		state := TestConnectionState(t, conn, c.PublicId, StatusConnected)
 		state2 := TestConnectionState(t, conn, c.PublicId, StatusConnected)
 

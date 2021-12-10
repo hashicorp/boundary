@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
+	"github.com/hashicorp/boundary/internal/servers/common"
 	proxyHandlers "github.com/hashicorp/boundary/internal/servers/worker/proxy"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -26,19 +28,27 @@ type HandlerProperties struct {
 
 // Handler returns a http.Handler for the API. This can be used on
 // its own to mount the Worker API within another web server.
-func (w *Worker) handler(props HandlerProperties) http.Handler {
+func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
+	const op = "worker.(Worker).handler"
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/proxy", w.handleProxy())
+	h, err := w.handleProxy(props.ListenerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	mux.Handle("/v1/proxy", h)
 
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)
 
-	return genericWrappedHandler
+	return genericWrappedHandler, nil
 }
 
-func (w *Worker) handleProxy() http.HandlerFunc {
+func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.HandlerFunc, error) {
 	const op = "worker.(Worker).handleProxy"
+	if listenerCfg == nil {
+		return nil, fmt.Errorf("%s: missing listener config", op)
+	}
 	return func(wr http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.TLS == nil {
@@ -63,6 +73,12 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		clientAddr := &net.TCPAddr{
 			IP:   net.ParseIP(clientIp),
 			Port: numPort,
+		}
+
+		userClientIp, err := common.ClientIpFromRequest(ctx, listenerCfg, r)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to determine user IP"))
+			wr.WriteHeader(http.StatusInternalServerError)
 		}
 
 		siRaw, valid := w.sessionInfoMap.Load(sessionId)
@@ -216,6 +232,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 		}
 
 		conf := proxyHandlers.Config{
+			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
 			ClientConn:     conn,
 			RemoteEndpoint: endpoint,
@@ -238,7 +255,7 @@ func (w *Worker) handleProxy() http.HandlerFunc {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 		}
-	}
+	}, nil
 }
 
 func (w *Worker) wrapGenericHandler(h http.Handler, _ HandlerProperties) http.Handler {

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -164,6 +165,8 @@ func Test_WrapWithOptionals(t *testing.T) {
 }
 
 func Test_WrapWithEventsHandler(t *testing.T) {
+	// This cannot run in parallel because it relies on a pkg var common.privateNets
+
 	// this cannot run in parallel because it relies on envvar
 	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
 	event.TestEnableEventing(t, true)
@@ -175,6 +178,11 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		w.WriteHeader(http.StatusTeapot)
 		fmt.Fprintln(w, "I'm a little teapot short and stout")
 	})
+
+	goodAddr, err := sockaddr.NewIPAddr("127.0.0.1")
+	require.NoError(t, err)
+	testListenerCfg := cfgListener(goodAddr)
+	testListenerCfg.XForwardedForRejectNotPresent = false
 
 	c := event.TestEventerConfig(t, "Test_WrapWithEventsHandler", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
@@ -257,7 +265,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms)
+			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms, testListenerCfg)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)

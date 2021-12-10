@@ -23,6 +23,8 @@ type Connection struct {
 	ClientTcpAddress string `json:"client_tcp_address,omitempty" gorm:"default:null"`
 	// ClientTcpPort of the connection
 	ClientTcpPort uint32 `json:"client_tcp_port,omitempty" gorm:"default:null"`
+	// UserClientIp is the user's client IP
+	UserClientIp string `json:"user_client_ip,omitempty" gorm:"default:null"`
 	// EndpointTcpAddress of the connection
 	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty" gorm:"default:null"`
 	// EndpointTcpPort of the connection
@@ -54,7 +56,7 @@ var (
 
 // NewConnection creates a new in memory connection.  No options
 // are currently supported.
-func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, _ ...Option) (*Connection, error) {
+func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string, _ ...Option) (*Connection, error) {
 	const op = "session.NewConnection"
 	c := Connection{
 		SessionId:          sessionID,
@@ -62,6 +64,7 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 		ClientTcpPort:      clientTcpPort,
 		EndpointTcpAddress: endpointTcpAddr,
 		EndpointTcpPort:    endpointTcpPort,
+		UserClientIp:       userClientIp,
 	}
 	if err := c.validateNewConnection(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -81,6 +84,7 @@ func (c *Connection) Clone() interface{} {
 		SessionId:          c.SessionId,
 		ClientTcpAddress:   c.ClientTcpAddress,
 		ClientTcpPort:      c.ClientTcpPort,
+		UserClientIp:       c.UserClientIp,
 		EndpointTcpAddress: c.EndpointTcpAddress,
 		EndpointTcpPort:    c.EndpointTcpPort,
 		BytesUp:            c.BytesUp,
@@ -171,6 +175,9 @@ func (c *Connection) validateNewConnection() error {
 	}
 	if c.EndpointTcpPort == 0 {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint port")
+	}
+	if c.UserClientIp == "" {
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user client ip")
 	}
 	return nil
 }
