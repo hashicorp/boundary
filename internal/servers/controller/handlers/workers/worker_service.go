@@ -409,6 +409,7 @@ func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.C
 		ClientTcpPort:      req.GetClientTcpPort(),
 		EndpointTcpAddress: req.GetEndpointTcpAddress(),
 		EndpointTcpPort:    req.GetEndpointTcpPort(),
+		UserClientIp:       req.GetUserClientIp(),
 	})
 	if err != nil {
 		return nil, err

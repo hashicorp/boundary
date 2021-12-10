@@ -16,6 +16,7 @@ func TestConnectWith_validate(t *testing.T) {
 		ClientTcpPort      uint32
 		EndpointTcpAddress string
 		EndpointTcpPort    uint32
+		UserClientIp       string
 	}
 	tests := []struct {
 		name    string
@@ -30,6 +31,7 @@ func TestConnectWith_validate(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "0.0.0.1",
 				EndpointTcpPort:    2222,
+				UserClientIp:       "127.0.0.1",
 			},
 		},
 		{
@@ -82,6 +84,17 @@ func TestConnectWith_validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "missing-UserClientIp",
+			fields: fields{
+				SessionId:          id,
+				ClientTcpAddress:   "0.0.0.1",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "0.0.0.1",
+				EndpointTcpPort:    2222,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,6 +104,7 @@ func TestConnectWith_validate(t *testing.T) {
 				ClientTcpPort:      tt.fields.ClientTcpPort,
 				EndpointTcpAddress: tt.fields.EndpointTcpAddress,
 				EndpointTcpPort:    tt.fields.EndpointTcpPort,
+				UserClientIp:       tt.fields.UserClientIp,
 			}
 			if err := c.validate(); (err != nil) != tt.wantErr {
 				t.Errorf("ConnectWith.validate() error = %v, wantErr %v", err, tt.wantErr)

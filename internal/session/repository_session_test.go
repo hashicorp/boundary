@@ -117,7 +117,7 @@ func TestRepository_ListSession(t *testing.T) {
 				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
 				for i := 0; i < tt.withConnections; i++ {
-					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23)
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 				}
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
@@ -598,7 +598,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			name: "exceeded-connection-limit",
 			session: func() *Session {
 				session := setupFn(nil)
-				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 				return session
 			}(),
 			wantErr: true,
@@ -654,13 +654,14 @@ func TestRepository_ConnectConnection(t *testing.T) {
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return ConnectWith{
 			ConnectionId:       c.PublicId,
 			ClientTcpAddress:   "127.0.0.1",
 			ClientTcpPort:      22,
 			EndpointTcpAddress: "127.0.0.1",
 			EndpointTcpPort:    2222,
+			UserClientIp:       "127.0.0.1",
 		}
 	}
 	tests := []struct {
@@ -723,6 +724,16 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 		},
+		{
+			name: "empty-UserClientIp",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.UserClientIp = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -738,6 +749,14 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			require.NotNil(c)
 			require.NotNil(cs)
 			assert.Equal(StatusConnected, cs[0].Status)
+			gotConn, _, err := repo.LookupConnection(context.Background(), c.PublicId)
+			require.NoError(err)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.ClientTcpPort, gotConn.ClientTcpPort)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpAddress, gotConn.EndpointTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpPort, gotConn.EndpointTcpPort)
+			assert.Equal(tt.connectWith.UserClientIp, gotConn.UserClientIp)
 		})
 	}
 }
@@ -803,7 +822,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			name: "open-connection",
 			session: func() *Session {
 				s := setupFn()
-				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 				return s
 			}(),
 			reason:  ClosedByUser,
@@ -848,7 +867,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		tofu := TestTofu(t)
 		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 		if !leaveOpen {
 			cw := CloseWith{
 				ConnectionId: c.PublicId,
@@ -902,7 +921,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				for i := 0; i < cnt; i++ {
 					// make one with closed connections
 					s := setupFn(2, time.Hour+1, false)
-					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 					sessions = append(sessions, s)
 					wantTermed[s.PublicId] = ConnectionLimit
 				}
@@ -1082,7 +1101,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 		require.NoError(t, err)
 		cw := make([]CloseWith, 0, cnt)
 		for i := 0; i < cnt; i++ {
-			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 			require.NoError(t, err)
 			cw = append(cw, CloseWith{
 				ConnectionId: c.PublicId,
@@ -1155,7 +1174,7 @@ func TestRepository_CancelSession(t *testing.T) {
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
-		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return session
 	}
 	tests := []struct {
@@ -1176,7 +1195,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			name: "already-terminated",
 			session: func() *Session {
 				session := TestDefaultSession(t, conn, wrapper, iamRepo)
-				c := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				c := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 				cw := CloseWith{
 					ConnectionId: c.PublicId,
 					BytesUp:      1,
@@ -1289,7 +1308,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
-		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return session
 	}
 	type cancelFk struct {

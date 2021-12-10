@@ -12,6 +12,7 @@ type ConnectWith struct {
 	ClientTcpPort      uint32
 	EndpointTcpAddress string
 	EndpointTcpPort    uint32
+	UserClientIp       string
 }
 
 func (c ConnectWith) validate() error {
@@ -30,6 +31,9 @@ func (c ConnectWith) validate() error {
 	}
 	if c.EndpointTcpPort == 0 {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint ctp port")
+	}
+	if c.UserClientIp == "" {
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user client ip")
 	}
 	return nil
 }
