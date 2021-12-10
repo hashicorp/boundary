@@ -25,8 +25,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/1736))
 * controllers/workers: Add client IP to inbound request information which is included in
   Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
-* plugins/aws: AWS host sets will now return DNS hosts in addition to IP
-  addresses.
+* plugins/aws: AWS plugin based hosts now include DNS names in addition to the
+  IP addresses they already provide.
 
 ## 0.7.1 (2021/11/18)
 
