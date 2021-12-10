@@ -1453,56 +1453,95 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+	{
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
 
-	badId, err := newCredentialLibraryId()
-	require.NoError(t, err)
-	require.NotNil(t, badId)
+		badId, err := newCredentialLibraryId()
+		require.NoError(t, err)
+		require.NotNil(t, badId)
 
-	tests := []struct {
-		name    string
-		in      string
-		want    int
-		wantErr errors.Code
-	}{
-		{
-			name: "found",
-			in:   l.GetPublicId(),
-			want: 1,
-		},
-		{
-			name: "not-found",
-			in:   badId,
-		},
-		{
-			name:    "empty-public-id",
-			in:      "",
-			wantErr: errors.InvalidParameter,
-		},
+		tests := []struct {
+			name    string
+			in      string
+			want    int
+			wantErr errors.Code
+		}{
+			{
+				name: "found",
+				in:   l.GetPublicId(),
+				want: 1,
+			},
+			{
+				name: "not-found",
+				in:   badId,
+			},
+			{
+				name:    "empty-public-id",
+				in:      "",
+				wantErr: errors.InvalidParameter,
+			},
+		}
+
+		for _, tt := range tests {
+			tt := tt
+			t.Run(tt.name, func(t *testing.T) {
+				assert, require := assert.New(t), require.New(t)
+				ctx := context.Background()
+				kms := kms.TestKms(t, conn, wrapper)
+				sche := scheduler.TestScheduler(t, conn, wrapper)
+				repo, err := NewRepository(rw, rw, kms, sche)
+				assert.NoError(err)
+				require.NotNil(repo)
+
+				got, err := repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
+				if tt.wantErr != 0 {
+					assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+					return
+				}
+				assert.NoError(err)
+				assert.Equal(tt.want, got, "row count")
+			})
+		}
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
-			assert.NoError(err)
-			require.NotNil(repo)
+	t.Run("library-with-mapping-overrides", func(t *testing.T) {
+		// setup
+		assert, require := assert.New(t), require.New(t)
 
-			got, err := repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
-			if tt.wantErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
-				return
-			}
-			assert.NoError(err)
-			assert.Equal(tt.want, got, "row count")
-		})
-	}
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		lib := &CredentialLibrary{
+			MappingOverride: NewUserPasswordOverride(
+				WithOverrideUsernameAttribute("orig-username"),
+				WithOverridePasswordAttribute("orig-password"),
+			),
+			CredentialLibrary: &store.CredentialLibrary{
+				StoreId:        cs.GetPublicId(),
+				HttpMethod:     "GET",
+				VaultPath:      "/some/path",
+				Name:           "test-name-repo",
+				CredentialType: string(credential.UserPasswordType),
+			},
+		}
+
+		orig, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), lib)
+		assert.NoError(err)
+		require.NotNil(orig)
+
+		// test
+		got, err := repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), orig.GetPublicId())
+		assert.NoError(err)
+		assert.Equal(1, got)
+	})
 }
 
 func TestRepository_ListCredentialLibraries(t *testing.T) {
