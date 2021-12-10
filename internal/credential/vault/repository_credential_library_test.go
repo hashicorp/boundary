@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -18,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateCredentialLibrary(t *testing.T) {
@@ -1514,59 +1511,83 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
-	csA, csB := css[0], css[1]
+	t.Run("CredentialStore-with-a-library", func(t *testing.T) {
+		// setup
+		assert, require := assert.New(t), require.New(t)
 
-	libs := TestCredentialLibraries(t, conn, wrapper, csA.GetPublicId(), 3)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
 
-	tests := []struct {
-		name    string
-		in      string
-		opts    []Option
-		want    []*CredentialLibrary
-		wantErr errors.Code
-	}{
-		{
-			name:    "with-no-credential-store-id",
-			wantErr: errors.InvalidParameter,
-		},
-		{
-			name: "CredentialStore-with-no-libraries",
-			in:   csB.GetPublicId(),
-			want: []*CredentialLibrary{},
-		},
-		{
-			name: "CredentialStore-with-libraries",
-			in:   csA.GetPublicId(),
-			want: libs,
-		},
-	}
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
+		lib := &CredentialLibrary{
+			MappingOverride: NewUserPasswordOverride(
+				WithOverrideUsernameAttribute("orig-username"),
+				WithOverridePasswordAttribute("orig-password"),
+			),
+			CredentialLibrary: &store.CredentialLibrary{
+				StoreId:        cs.GetPublicId(),
+				HttpMethod:     "GET",
+				VaultPath:      "/some/path",
+				Name:           "test-name-repo",
+				CredentialType: string(credential.UserPasswordType),
+			},
+		}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListCredentialLibraries(ctx, tt.in, tt.opts...)
-			if tt.wantErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
-				assert.Nil(got)
-				return
-			}
-			require.NoError(err)
-			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *CredentialLibrary) bool { return x.PublicId < y.PublicId }),
-				protocmp.Transform(),
-			}
-			assert.Empty(cmp.Diff(tt.want, got, opts...))
-		})
-	}
+		orig, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), lib)
+		assert.NoError(err)
+		require.NotNil(orig)
+
+		// test
+		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		assert.NoError(err)
+		require.Len(got, 1)
+		got1 := got[0]
+		assert.Equal(orig.GetPublicId(), got1.GetPublicId())
+		assert.Equal(orig.GetStoreId(), got1.GetStoreId())
+		assert.Equal(orig.GetHttpMethod(), got1.GetHttpMethod())
+		assert.Equal(orig.GetVaultPath(), got1.GetVaultPath())
+		assert.Equal(orig.GetName(), got1.GetName())
+		assert.Equal(orig.GetCredentialType(), got1.GetCredentialType())
+		assert.Empty(got1.MappingOverride)
+	})
+
+	t.Run("with-no-credential-store-id", func(t *testing.T) {
+		// setup
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+		// test
+		got, err := repo.ListCredentialLibraries(ctx, "")
+		wantErr := errors.InvalidParameter
+		assert.Truef(errors.Match(errors.T(wantErr), err), "want err: %q got: %q", wantErr, err)
+		assert.Nil(got)
+	})
+
+	t.Run("CredentialStore-with-no-libraries", func(t *testing.T) {
+		// setup
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		// test
+		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		assert.NoError(err)
+		assert.Empty(got)
+	})
 }
 
 func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
