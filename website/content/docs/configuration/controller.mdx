@@ -25,7 +25,9 @@ controller {
   (file://) from which an name will be read; or an env var (env://) from which
   the name will be read.
 
-- `description` - Specifies a friendly description of this controller.
+- `description` - Specifies a friendly description of this controller. This value can be a direct description string,
+can refer to a file on disk (file://) from which a description will be read; or an env var (env://) from which the
+description will be read.
 
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
 
@@ -39,7 +41,9 @@ controller {
     connections that can be opened by the controller.
     The minimum number of connections required is 5.
     Setting this value to 0 will allow the controller to open as many
-    connections as needed.
+    connections as needed. This value can be a string representing the max number of connections, can refer to a file
+    on disk (file://) from which the number of connections will be read; or an env var (env://) from which the
+    number of connections will be read.
 
   Either URL can refer to a file on disk (file://) from which a URL will be read; an env
   var (env://) from which the URL will be read; or a direct database URL (postgres://).

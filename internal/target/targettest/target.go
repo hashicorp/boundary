@@ -209,7 +209,7 @@ func VetCredentialLibraries(_ context.Context, _ []*target.CredentialLibrary) er
 }
 
 // New creates a targettest.Target.
-func New(scopeId string, opt ...target.Option) (*Target, error) {
+func New(scopeId string, opt ...target.Option) (target.Target, error) {
 	const op = "target_test.New"
 	opts := target.GetOpts(opt...)
 	if scopeId == "" {
@@ -230,7 +230,7 @@ func New(scopeId string, opt ...target.Option) (*Target, error) {
 }
 
 // TestNewTestTarget is a test helper for creating a targettest.Target.
-func TestNewTestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...target.Option) *Target {
+func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, scopeId, name string, opt ...target.Option) target.Target {
 	t.Helper()
 	opt = append(opt, target.WithName(name))
 	opts := target.GetOpts(opt...)
@@ -240,14 +240,14 @@ func TestNewTestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...t
 	require.NoError(err)
 	id, err := db.NewPublicId(TargetPrefix)
 	require.NoError(err)
-	tar.PublicId = id
+	tar.SetPublicId(ctx, id)
 	err = rw.Create(context.Background(), tar)
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
 		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(tar.PublicId, s)
+			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}
@@ -257,7 +257,7 @@ func TestNewTestTarget(t *testing.T, conn *db.DB, scopeId, name string, opt ...t
 	if len(opts.WithCredentialLibraries) > 0 {
 		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
-			cl.TargetId = tar.PublicId
+			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)

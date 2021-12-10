@@ -20,6 +20,8 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
 )
 
 const shutdownReloadApiAddr = "http://127.0.0.1:9203"

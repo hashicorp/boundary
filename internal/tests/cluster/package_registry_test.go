@@ -1,4 +1,4 @@
-package main
+package cluster
 
 import (
 	// Enable tcp target support.

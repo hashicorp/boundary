@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	target.Register(Subtype, allocTarget, vet, vetCredentialLibraries, TargetPrefix)
+	target.Register(Subtype, newTarget, allocTarget, vet, vetCredentialLibraries, TargetPrefix)
 }
 
 const (

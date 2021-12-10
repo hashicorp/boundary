@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -150,16 +153,22 @@ func (c *Controller) InitNameIfEmpty() (string, error) {
 }
 
 type Worker struct {
-	Name        string   `hcl:"name"`
-	Description string   `hcl:"description"`
-	Controllers []string `hcl:"controllers"`
-	PublicAddr  string   `hcl:"public_addr"`
+	Name        string `hcl:"name"`
+	Description string `hcl:"description"`
+	PublicAddr  string `hcl:"public_addr"`
+
+	// We use a raw interface here so that we can take in a string
+	// value pointing to an env var or file. We then resolve that
+	// and get the actual controller addresses.
+	Controllers    []string    `hcl:"-"`
+	ControllersRaw interface{} `hcl:"controllers"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
-	// key=value syntax. This is trued up in the Parse function below.
-	TagsRaw interface{}         `hcl:"tags"`
+	// key=value syntax, as well as accepting a string denoting an env or file
+	// pointer. This is trued up in the Parse function below.
 	Tags    map[string][]string `hcl:"-"`
+	TagsRaw interface{}         `hcl:"tags"`
 
 	// StatusGracePeriod represents the period of time (as a duration) that the
 	// worker will wait before disconnecting connections if it cannot make a
@@ -190,9 +199,10 @@ func initNameIfEmpty(name *string) error {
 }
 
 type Database struct {
-	Url                string `hcl:"url"`
-	MigrationUrl       string `hcl:"migration_url"`
-	MaxOpenConnections int    `hcl:"max_open_connections"`
+	Url                   string      `hcl:"url"`
+	MigrationUrl          string      `hcl:"migration_url"`
+	MaxOpenConnections    int         `hcl:"-"`
+	MaxOpenConnectionsRaw interface{} `hcl:"max_open_connections"`
 }
 
 type Plugins struct {
@@ -308,6 +318,13 @@ func Parse(d string) (*Config, error) {
 		if !strutil.Printable(result.Controller.Name) {
 			return nil, errors.New("Controller name contains non-printable characters")
 		}
+		result.Controller.Description, err = parseutil.ParsePath(result.Controller.Description)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing controller description: %w", err)
+		}
+		if !strutil.Printable(result.Controller.Description) {
+			return nil, errors.New("Controller description contains non-printable characters")
+		}
 		if result.Controller.AuthTokenTimeToLive != "" {
 			t, err := parseutil.ParseDurationSecond(result.Controller.AuthTokenTimeToLive)
 			if err != nil {
@@ -323,6 +340,27 @@ func Parse(d string) (*Config, error) {
 			}
 			result.Controller.AuthTokenTimeToStaleDuration = t
 		}
+
+		if result.Controller.Database != nil {
+			if result.Controller.Database.MaxOpenConnectionsRaw != nil {
+				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
+				case string:
+					maxOpenConnectionsString, err := parseutil.ParsePath(t)
+					if err != nil {
+						return nil, fmt.Errorf("Error parsing database max open connections: %w", err)
+					}
+					result.Controller.Database.MaxOpenConnections, err = strconv.Atoi(maxOpenConnectionsString)
+					if err != nil {
+						return nil, fmt.Errorf("Database max open connections value is not an int: %w", err)
+					}
+				case int:
+					result.Controller.Database.MaxOpenConnections = t
+				default:
+					return nil, fmt.Errorf("Database max open connections: unsupported type %q",
+						reflect.TypeOf(t).String())
+				}
+			}
+		}
 	}
 
 	// Parse worker tags
@@ -337,12 +375,60 @@ func Parse(d string) (*Config, error) {
 		if !strutil.Printable(result.Worker.Name) {
 			return nil, errors.New("Worker name contains non-printable characters")
 		}
+
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
+			// We allow `tags` to be a simple string containing a URL with schema.
+			// See: https://github.com/hashicorp/go-secure-stdlib/blob/main/parseutil/parsepath.go
+			case string:
+				rawTags, err := parseutil.ParsePath(t)
+				if err != nil {
+					return nil, fmt.Errorf("Error parsing worker tags: %w", err)
+				}
+
+				var temp []map[string]interface{}
+				err = hcl.Decode(&temp, rawTags)
+				if err != nil {
+					return nil, fmt.Errorf("Error decoding raw worker tags: %w", err)
+				}
+
+				if err := mapstructure.WeakDecode(temp, &result.Worker.Tags); err != nil {
+					return nil, fmt.Errorf("Error decoding the worker's tags: %w", err)
+				}
+
 			// HCL allows multiple labeled blocks with the same name, turning it
 			// into a slice of maps, hence the slice here. This format is the
 			// one that ends up matching the JSON that we use in the expression.
 			case []map[string]interface{}:
+				for _, m := range t {
+					for k, v := range m {
+						// We allow the user to pass in only the keys in HCL, and
+						// then set the values to point to a URL with schema.
+						valStr, ok := v.(string)
+						if !ok {
+							continue
+						}
+
+						parsed, err := parseutil.ParsePath(valStr)
+						if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+							return nil, fmt.Errorf("Error parsing worker tag values: %w", err)
+						}
+						if valStr == parsed {
+							// Nothing was found, ignore.
+							// WeakDecode will still parse it though as we
+							// don't know if this could be a valid tag.
+							continue
+						}
+
+						var tags []string
+						err = json.Unmarshal([]byte(parsed), &tags)
+						if err != nil {
+							return nil, fmt.Errorf("Error unmarshalling env var/file contents: %w", err)
+						}
+						m[k] = tags
+					}
+				}
+
 				if err := mapstructure.WeakDecode(t, &result.Worker.Tags); err != nil {
 					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
 				}
@@ -374,6 +460,7 @@ func Parse(d string) (*Config, error) {
 				}
 			}
 		}
+
 		for k, v := range result.Worker.Tags {
 			if k != strings.ToLower(k) {
 				return nil, fmt.Errorf("Tag key %q is not all lower-case letters", k)
@@ -389,6 +476,11 @@ func Parse(d string) (*Config, error) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
 				}
 			}
+		}
+
+		result.Worker.Controllers, err = parseWorkerControllers(result)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse worker controllers: %w", err)
 		}
 	}
 
@@ -438,7 +530,50 @@ func Parse(d string) (*Config, error) {
 		return nil, fmt.Errorf(`too many "events" nodes (max 1, got %d)`, len(eventList.Items))
 	}
 
+	if result.Plugins.ExecutionDir != "" {
+		result.Plugins.ExecutionDir, err = parseutil.ParsePath(result.Plugins.ExecutionDir)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing plugins execution dir: %w", err)
+		}
+	}
+
 	return result, nil
+}
+
+func parseWorkerControllers(c *Config) ([]string, error) {
+	if c == nil || c.Worker == nil {
+		return nil, fmt.Errorf("config or worker field is nil")
+	}
+	if c.Worker.ControllersRaw == nil {
+		return nil, nil
+	}
+
+	switch t := c.Worker.ControllersRaw.(type) {
+	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
+		var controllers []string
+		err := mapstructure.WeakDecode(c.Worker.ControllersRaw, &controllers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode worker controllers block into config field: %w", err)
+		}
+		return controllers, nil
+
+	case string:
+		controllersStr, err := parseutil.ParsePath(t)
+		if err != nil {
+			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
+		}
+
+		var addrs []string
+		err = json.Unmarshal([]byte(controllersStr), &addrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
+		}
+		return addrs, nil
+
+	default:
+		typ := reflect.TypeOf(t)
+		return nil, fmt.Errorf("unexpected type %q", typ.String())
+	}
 }
 
 func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {

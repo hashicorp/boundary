@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
+
+// NewFunc is a function that creates a Target with the provided scope and options.
+type NewFunc func(scopeId string, opt ...Option) (Target, error)
 
 // AllocFunc is a function that creates an in-memory Target.
 type AllocFunc func() Target
@@ -20,6 +24,7 @@ type VetFunc func(context.Context, Target) error
 type VetCredentialLibrariesFunc func(context.Context, []*CredentialLibrary) error
 
 type registryEntry struct {
+	newFunc                NewFunc
 	alloc                  AllocFunc
 	vet                    VetFunc
 	vetCredentialLibraries VetCredentialLibrariesFunc
@@ -58,6 +63,14 @@ func (r *registry) get(s subtypes.Subtype) (*registryEntry, bool) {
 		return entry, ok
 	}
 	return nil, ok
+}
+
+func (r *registry) newFunc(s subtypes.Subtype) (NewFunc, bool) {
+	entry, ok := r.get(s)
+	if !ok {
+		return nil, ok
+	}
+	return entry.newFunc, ok
 }
 
 func (r *registry) allocFunc(s subtypes.Subtype) (AllocFunc, bool) {
@@ -113,11 +126,27 @@ func SubtypeFromId(id string) subtypes.Subtype {
 	return subtypeRegistry.subtypes.SubtypeFromId(id)
 }
 
+// Prefixes returns the list of all known target Prefixes.
+func Prefixes() []string {
+	return subtypeRegistry.subtypes.Prefixes()
+}
+
+// New creates a Target of the given subtype and scopeId.
+func New(ctx context.Context, subtype subtypes.Subtype, scopeId string, opt ...Option) (Target, error) {
+	const op = "target.New"
+	nf, ok := subtypeRegistry.newFunc(subtype)
+	if !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unsupported subtype")
+	}
+	return nf(scopeId, opt...)
+}
+
 // Register registers repository hooks and the prefixes for a provided Subtype. Register
 // panics if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(s subtypes.Subtype, af AllocFunc, vf VetFunc, vclf VetCredentialLibrariesFunc, prefix string) {
+func Register(s subtypes.Subtype, nf NewFunc, af AllocFunc, vf VetFunc, vclf VetCredentialLibrariesFunc, prefix string) {
 	subtypeRegistry.set(s, &registryEntry{
+		newFunc:                nf,
 		alloc:                  af,
 		vet:                    vf,
 		vetCredentialLibraries: vclf,

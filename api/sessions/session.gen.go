@@ -32,6 +32,7 @@ type Session struct {
 	Certificate       []byte            `json:"certificate,omitempty"`
 	TerminationReason string            `json:"termination_reason,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
+	Connections       []*Connection     `json:"connections,omitempty"`
 
 	response *api.Response
 }

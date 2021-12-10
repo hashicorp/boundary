@@ -69,4 +69,5 @@ const (
 	ExternalIdField                      = "external_id"
 	EgressCredentialSourceIdsField       = "egress_credential_source_ids"
 	EgressCredentialSourcesField         = "egress_credential_sources"
+	ConnectionsField                     = "connections"
 )

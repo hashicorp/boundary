@@ -179,6 +179,28 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-api:
+    machine:
+      image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
+    steps:
+    - checkout
+    - run:
+        command: |
+          make install-go
+          source ~/.bashrc
+          echo 'export GOROOT=$GOROOT' >> "$BASH_ENV"
+          echo 'export GOPATH=$GOPATH' >> "$BASH_ENV"
+          echo 'export PATH=$PATH' >> "$BASH_ENV"
+          echo "$ go version"
+          go version
+        name: Install go
+    - run:
+        command: |
+          make test-api
+        name: Run API Tests
+        no_output_timeout: 15m
   darwin_arm64_package:
     docker:
     - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
@@ -591,6 +613,28 @@ jobs:
         name: Save package cache
         paths:
         - .buildcache/packages/store
+  test-sdk:
+    machine:
+      image: ubuntu-2004:202107-02
+    resource_class: medium
+    working_directory: ~/boundary
+    steps:
+    - checkout
+    - run:
+        command: |
+          make install-go
+          source ~/.bashrc
+          echo 'export GOROOT=$GOROOT' >> "$BASH_ENV"
+          echo 'export GOPATH=$GOPATH' >> "$BASH_ENV"
+          echo 'export PATH=$PATH' >> "$BASH_ENV"
+          echo "$ go version"
+          go version
+        name: Install go
+    - run:
+        command: |
+          make test-sdk
+        name: Run SDK Tests
+        no_output_timeout: 15m
   algolia-index:
     docker:
     - image: docker.mirror.hashicorp.services/node:12
@@ -1052,6 +1096,16 @@ jobs:
     working_directory: ~/boundary
     steps:
     - checkout
+    - run:
+        command: |
+          make install-go
+          source ~/.bashrc
+          echo 'export GOROOT=$GOROOT' >> "$BASH_ENV"
+          echo 'export GOPATH=$GOPATH' >> "$BASH_ENV"
+          echo 'export PATH=$PATH' >> "$BASH_ENV"
+          echo "$ go version"
+          go version
+        name: Install go
     - run:
         command: |
           which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -1650,6 +1704,8 @@ workflows:
   ci:
     jobs:
     - build
+    - test-api
+    - test-sdk
     - test-sql-latest
     - test-sql-11-alpine
     - test-sql-12-alpine

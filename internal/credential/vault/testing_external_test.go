@@ -1,6 +1,7 @@
 package vault_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -35,7 +36,7 @@ func Test_TestCredentials(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
-	tar := tcp.TestTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())

@@ -270,14 +270,12 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 
-		if c.Config.Worker != nil {
-			if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
-				c.UI.Error(err.Error())
-				return base.CommandUserError
-			}
-			c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
-			c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
+		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
 		}
+		c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
