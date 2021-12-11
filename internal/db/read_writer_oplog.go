@@ -13,10 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type BeforeWriteFn func(interface{}) error
-type AfterWriteFn func(interface{}, int) error
+type beforeWriteFn func(interface{}) error
+type afterWriteFn func(interface{}, int) error
 
-func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, opType OpType, opts Options) (BeforeWriteFn, AfterWriteFn, error) {
+func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, opType OpType, opts Options) (beforeWriteFn, afterWriteFn, error) {
 	const op = "db.generateOplogBeforeAfterOpts"
 	withOplog := opts.withOplog
 	if !withOplog && opts.newOplogMsg == nil && opts.newOplogMsgs == nil {
@@ -67,8 +67,8 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 		}
 	}
 
-	var beforeFn BeforeWriteFn
-	var afterFn AfterWriteFn
+	var beforeFn beforeWriteFn
+	var afterFn afterWriteFn
 
 	var ticket *store.Ticket
 	if opts.withOplog {
