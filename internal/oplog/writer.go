@@ -9,14 +9,14 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// GormWriter uses a gorm DB connection for writing
-type OplogWriter struct {
+// Writer uses a gorm DB connection for writing
+type Writer struct {
 	*dbw.DB
 }
 
 // HasTable checks if tableName exists
-func (w *OplogWriter) hasTable(ctx context.Context, tableName string) (bool, error) {
-	const op = "oplog.(OplogWriter).hasTable"
+func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
+	const op = "oplog.(Writer).hasTable"
 	if tableName == "" {
 		return false, errors.New(ctx, errors.InvalidParameter, op, "missing table name")
 	}
@@ -34,8 +34,8 @@ func (w *OplogWriter) hasTable(ctx context.Context, tableName string) (bool, err
 
 // CreateTableLike will create a newTableName like the model's table
 // the new table should have all things like the existing model's table (defaults, constraints, indexes, etc)
-func (w *OplogWriter) createTableLike(ctx context.Context, existingTableName string, newTableName string) error {
-	const op = "oplog.(OplogWriter).createTableLike"
+func (w *Writer) createTableLike(ctx context.Context, existingTableName string, newTableName string) error {
+	const op = "oplog.(Writer).createTableLike"
 	if existingTableName == "" {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing existing table name")
 	}
@@ -56,8 +56,8 @@ func (w *OplogWriter) createTableLike(ctx context.Context, existingTableName str
 }
 
 // DropTableIfExists will drop the table if it exists
-func (w *OplogWriter) dropTableIfExists(ctx context.Context, tableName string) error {
-	const op = "oplog.(OplogWriter).dropTableIfExists"
+func (w *Writer) dropTableIfExists(ctx context.Context, tableName string) error {
+	const op = "oplog.(Writer).dropTableIfExists"
 	if tableName == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing table name")
 	}

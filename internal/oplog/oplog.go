@@ -20,8 +20,8 @@ import (
 //	v2: adds the new Message.Opts
 const Version = "v2"
 
-// Message wraps a proto.Message and adds a operation type (Create, Update,
-// Delete, etc)
+// Message wraps a proto.Message with some other bits like operation type,
+// paths and options.
 type Message struct {
 	proto.Message
 	TypeName       string
@@ -162,8 +162,8 @@ func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option
 	return dbwOpts, nil
 }
 
-// ConvertFromDbwOpts converts dbw options to an OperationalOptions for an Entry
-func ConvertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOptions, error) {
+// convertFromDbwOpts converts dbw options to an OperationalOptions for an Entry
+func convertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOptions, error) {
 	pbOpts := &OperationOptions{
 		WithLookup: opts.WithLookup,
 	}
@@ -172,7 +172,7 @@ func ConvertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOption
 
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if Cipherer != nil then the data is authentication encrypted
-func (e *Entry) WriteEntryWith(ctx context.Context, tx *OplogWriter, ticket *store.Ticket, msgs ...*Message) error {
+func (e *Entry) WriteEntryWith(ctx context.Context, tx *Writer, ticket *store.Ticket, msgs ...*Message) error {
 	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "nil writer")
@@ -198,7 +198,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx *OplogWriter, ticket *sto
 	e.Data = append(e.Data, queue.Bytes()...)
 
 	if e.Cipherer != nil {
-		if err := e.EncryptData(ctx); err != nil {
+		if err := e.encryptData(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
@@ -214,7 +214,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx *OplogWriter, ticket *sto
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
 //  Cipherer != nil then the data is authentication encrypted
-func (e *Entry) Write(ctx context.Context, tx *OplogWriter, ticket *store.Ticket) error {
+func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) error {
 	const op = "oplog.(Entry).Write"
 	if err := e.validate(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -226,7 +226,7 @@ func (e *Entry) Write(ctx context.Context, tx *OplogWriter, ticket *store.Ticket
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
 	if e.Cipherer != nil {
-		if err := e.EncryptData(ctx); err != nil {
+		if err := e.encryptData(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
@@ -240,8 +240,8 @@ func (e *Entry) Write(ctx context.Context, tx *OplogWriter, ticket *store.Ticket
 	return nil
 }
 
-// EncryptData the entry's data using its Cipherer (wrapping.Wrapper)
-func (e *Entry) EncryptData(ctx context.Context) error {
+// encryptData the entry's data using its Cipherer (wrapping.Wrapper)
+func (e *Entry) encryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).EncryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
@@ -262,7 +262,7 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 
 // Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
 // calling Replay, otherwise you'll get "a table doesn't exist" error.
-func (e *Entry) Replay(ctx context.Context, tx *OplogWriter, types *TypeCatalog, tableSuffix string) error {
+func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tableSuffix string) error {
 	const op = "oplog.(Entry).Replay"
 	msgs, err := e.UnmarshalData(ctx, types)
 	if err != nil {

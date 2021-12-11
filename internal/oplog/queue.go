@@ -70,7 +70,7 @@ func (q *Queue) add(ctx context.Context, m proto.Message, typeName string, t OpT
 	var operationOpts *OperationOptions
 	if len(withOperationOptions) > 0 {
 		dbwOptions := dbw.GetOpts(withOperationOptions...)
-		operationOpts, err = ConvertFromDbwOpts(ctx, dbwOptions)
+		operationOpts, err = convertFromDbwOpts(ctx, dbwOptions)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

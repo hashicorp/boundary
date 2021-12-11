@@ -21,7 +21,7 @@ func Test_ImmutableFields(t *testing.T) {
 	defer testCleanup(t, cleanup, db)
 	cipherer := testWrapper(t)
 
-	writer := &OplogWriter{db}
+	writer := &Writer{db}
 	id := testId(t)
 	u := oplog_test.TestUser{
 		Name: "foo-" + id,

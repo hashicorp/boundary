@@ -25,6 +25,7 @@ type Ticketer interface {
 	Redeem(ctx context.Context, ticket *store.Ticket) error
 }
 
+// DbwTicketer defines a ticketer that uses the dbw pkg for database operations.
 type DbwTicketer struct {
 	tx                 *dbw.DB
 	withAggregateNames bool

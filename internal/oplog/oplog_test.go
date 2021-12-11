@@ -53,7 +53,7 @@ func Test_BasicOplog(t *testing.T) {
 		require.NoError(err)
 		l.Data = queue.Bytes()
 
-		err = l.EncryptData(context.Background())
+		err = l.encryptData(context.Background())
 		require.NoError(err)
 
 		err = dbw.New(db).Create(testCtx, &l)
@@ -111,7 +111,7 @@ func Test_BasicOplog(t *testing.T) {
 		)
 		require.NoError(err)
 		newLogEntry.Data = queue.Bytes()
-		err = newLogEntry.Write(context.Background(), &OplogWriter{db}, ticket)
+		err = newLogEntry.Write(context.Background(), &Writer{db}, ticket)
 		require.NoError(err)
 		assert.NotEmpty(newLogEntry.Id)
 	})
@@ -350,7 +350,7 @@ func Test_Replay(t *testing.T) {
 
 	// setup new tables for replay
 	tableSuffix := "_" + id
-	writer := OplogWriter{db}
+	writer := Writer{db}
 
 	userModel := &oplog_test.TestUser{}
 	replayUserTable := fmt.Sprintf("%s%s", userModel.TableName(), tableSuffix)
@@ -408,7 +408,7 @@ func Test_Replay(t *testing.T) {
 		require.Equal(foundCreateUser.Name, "")
 		require.Equal(foundCreateUser.PhoneNumber, userUpdate.PhoneNumber)
 
-		err = newLogEntry.WriteEntryWith(context.Background(), &OplogWriter{tx.DB()}, ticket,
+		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{tx.DB()}, ticket,
 			&Message{Message: userCreate, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"Name", "Email"}},
 			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"Name", "Email"}, SetToNullPaths: nil},
@@ -427,7 +427,7 @@ func Test_Replay(t *testing.T) {
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
 
-		err = foundEntry.Replay(context.Background(), &OplogWriter{tx.DB()}, types, tableSuffix)
+		err = foundEntry.Replay(context.Background(), &Writer{tx.DB()}, types, tableSuffix)
 		require.NoError(err)
 		foundUser := testFindUser(t, tx.DB(), userCreate.Id)
 
@@ -481,7 +481,7 @@ func Test_Replay(t *testing.T) {
 			ticketer,
 		)
 		require.NoError(err)
-		err = newLogEntry2.WriteEntryWith(context.Background(), &OplogWriter{tx2.DB()}, ticket2,
+		err = newLogEntry2.WriteEntryWith(context.Background(), &Writer{tx2.DB()}, ticket2,
 			&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_OP_TYPE_DELETE},
 		)
@@ -497,7 +497,7 @@ func Test_Replay(t *testing.T) {
 		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 
-		err = foundEntry2.Replay(context.Background(), &OplogWriter{tx2.DB()}, types, tableSuffix)
+		err = foundEntry2.Replay(context.Background(), &Writer{tx2.DB()}, types, tableSuffix)
 		require.NoError(err)
 
 		var foundUser2 oplog_test.TestUser
@@ -549,7 +549,7 @@ func Test_WriteEntryWith(t *testing.T) {
 			ticketer,
 		)
 		require.NoError(err)
-		err = newLogEntry.WriteEntryWith(context.Background(), &OplogWriter{db}, ticket,
+		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{db}, ticket,
 			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		require.NoError(err)
@@ -600,7 +600,7 @@ func Test_WriteEntryWith(t *testing.T) {
 			ticketer,
 		)
 		require.NoError(err)
-		err = newLogEntry.WriteEntryWith(context.Background(), &OplogWriter{db}, nil,
+		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{db}, nil,
 			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		require.Error(err)
@@ -620,7 +620,7 @@ func Test_WriteEntryWith(t *testing.T) {
 			ticketer,
 		)
 		require.NoError(err)
-		err = newLogEntry.WriteEntryWith(context.Background(), &OplogWriter{db}, ticket, nil)
+		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{db}, ticket, nil)
 		require.Error(err)
 		assert.Equal("oplog.(Entry).WriteEntryWith: nil message: parameter violation: error #100", err.Error())
 	})
@@ -696,7 +696,7 @@ func Test_TicketSerialization(t *testing.T) {
 	require.NoError(err)
 	secondLogEntry.Data = secondQueue.Bytes()
 
-	err = secondLogEntry.Write(context.Background(), &OplogWriter{secondTx.DB()}, secondTicket)
+	err = secondLogEntry.Write(context.Background(), &Writer{secondTx.DB()}, secondTicket)
 	require.NoError(err)
 	assert.NotEmpty(secondLogEntry.Id, 0)
 	assert.NotNil(secondLogEntry.CreateTime)
@@ -705,7 +705,7 @@ func Test_TicketSerialization(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(secondLogEntry.Id)
 
-	err = firstLogEntry.Write(context.Background(), &OplogWriter{firstTx.DB()}, firstTicket)
+	err = firstLogEntry.Write(context.Background(), &Writer{firstTx.DB()}, firstTicket)
 	if err != nil {
 		firstTx.Rollback(testCtx)
 	} else {

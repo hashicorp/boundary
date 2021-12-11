@@ -260,7 +260,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
-		&oplog.OplogWriter{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.underlying.wrapped},
 		ticket,
 		oplogMsgs...,
 	); err != nil {
@@ -299,7 +299,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.OplogWriter{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.underlying.wrapped},
 		ticket,
 		msg,
 	)
@@ -345,7 +345,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.OplogWriter{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.underlying.wrapped},
 		ticket,
 		msgs...,
 	)
