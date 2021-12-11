@@ -566,8 +566,8 @@ type ConnectConnectionRequest struct {
 	EndpointTcpAddress string `protobuf:"bytes,40,opt,name=endpoint_tcp_address,json=endpointTcpAddress,proto3" json:"endpoint_tcp_address,omitempty" class:"public"` // @gotags: `class:"public"`
 	EndpointTcpPort    uint32 `protobuf:"varint,50,opt,name=endpoint_tcp_port,json=endpointTcpPort,proto3" json:"endpoint_tcp_port,omitempty" class:"public"`         // @gotags: `class:"public"`
 	Type               string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty" class:"public"`                                                         // @gotags: `class:"public"`
-	// user_client_ip is the user's client ip for the connection as determined
-	// the inbound http request
+	// user_client_ip is the user's client ip for the connection as determined by
+	// the inbound http request handler
 	UserClientIp string `protobuf:"bytes,70,opt,name=user_client_ip,json=userClientIp,proto3" json:"user_client_ip,omitempty" class:"public"` // @gotags: `class:"public"
 }
 
