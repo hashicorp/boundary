@@ -464,22 +464,8 @@ github.com/hashicorp/go-cleanhttp v0.5.0/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtng
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
 github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
-github.com/hashicorp/go-dbw v0.0.0-20211130200607-b6f3c44357ae h1:foOK/eyYgshGKVXfwDXAMrWP3w1cQOkJogRdq27ox2o=
-github.com/hashicorp/go-dbw v0.0.0-20211130200607-b6f3c44357ae/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211206142458-7afd98cf078b h1:cBtn9cdFt7ncmybivyci2wFiIFk6v9RWMP4X71XBBn4=
-github.com/hashicorp/go-dbw v0.0.0-20211206142458-7afd98cf078b/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211206194110-fca93c2e8953 h1:FA8CBDbTZcJ6dEDUpbmJP7U1I4+h4Vlmw9NEvSCEzSU=
-github.com/hashicorp/go-dbw v0.0.0-20211206194110-fca93c2e8953/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211207130220-27f010ce621e h1:hVTLHOe2Z1n+5jKXrkJkDExPTIwSiGcgWtWrMIK6n+o=
-github.com/hashicorp/go-dbw v0.0.0-20211207130220-27f010ce621e/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211208231945-0953b8e4cdf8 h1:dhVabUS0l57198NpmnPpo0J1zFasbyrW21gTas1mjrU=
-github.com/hashicorp/go-dbw v0.0.0-20211208231945-0953b8e4cdf8/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211209115633-ac36b51ca7d8 h1:m1RqjgA8bVMV9aXnkIJ7uoaX6f7eVveNvRJJNP+TkYw=
-github.com/hashicorp/go-dbw v0.0.0-20211209115633-ac36b51ca7d8/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211209181459-5a9bf72b85a5 h1:iFFHPDBnVNqSQo/mWnCjY0W3/uKSIb5qXdvoJYObLRw=
-github.com/hashicorp/go-dbw v0.0.0-20211209181459-5a9bf72b85a5/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
-github.com/hashicorp/go-dbw v0.0.0-20211209181542-d69ca3faca86 h1:t26rMUyewoAkADXbNdGdQSQG5mLRCNKS/MVUGicgvTk=
-github.com/hashicorp/go-dbw v0.0.0-20211209181542-d69ca3faca86/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
+github.com/hashicorp/go-dbw v0.0.0-20211210175753-62b2c7533970 h1:0R80SUWUpI3F8hiks6Cag6skaKpW5VdXRhOrvsGPig4=
+github.com/hashicorp/go-dbw v0.0.0-20211210175753-62b2c7533970/go.mod h1:oh0okaxgqjJMPBSav3mSYPmyEbW7bVWQvRvkwJaQiIg=
 github.com/hashicorp/go-hclog v0.0.0-20180709165350-ff2cf002a8dd/go.mod h1:9bjs9uLqI8l75knNv3lV1kA55veR+WUPSiKIWcQHudI=
 github.com/hashicorp/go-hclog v0.8.0/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
 github.com/hashicorp/go-hclog v0.9.2/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
@@ -1255,18 +1241,11 @@ golang.org/x/sys v0.0.0-20210510120138-977fb7262007/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20210514084401-e8d321eab015/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-<<<<<<< HEAD
-golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 h1:foEbQz/B0Oz6YIqu/69kfXPYeFQAuuMYFkjaqXzl5Wo=
-golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-=======
 golang.org/x/sys v0.0.0-20210908143011-c212e7322662/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211019181941-9d821ace8654/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20211102192858-4dd72447c267 h1:7zYaz3tjChtpayGDzu6H0hDAUM5zIGA2XW7kRNgQ0jc=
 golang.org/x/sys v0.0.0-20211102192858-4dd72447c267/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1 h1:kwrAHlwJ0DUBZwQ238v+Uod/3eZ8B2K5rYsUHBQvzmI=
-golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
->>>>>>> cf476b535 (chore: Add new dbw dependency)
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
