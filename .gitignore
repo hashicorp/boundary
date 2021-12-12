@@ -126,3 +126,8 @@ update-ui-assets*
 test*.hcl
 
 # vim: set filetype=conf :
+
+# CRT (Common Release Tooling)
+!.release/ci.hcl
+dist
+out

@@ -226,14 +226,14 @@ IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --shor
 DOCKER_DIR=./docker
 
 .PHONY: docker
-docker: docker-build docker-publish
+docker: docker-build
 
 .PHONY: docker-build
 # builds from releases.hashicorp.com official binary
 docker-build:
 	docker build -t $(IMAGE_TAG) \
 	--build-arg VERSION=$(VERSION) \
-	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
+	-f Dockerfile docker/ 
 	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
 
 .PHONY: docker-multiarch-build
@@ -245,7 +245,7 @@ docker-multiarch-build:
 	--tag hashicorp/boundary:latest \
 	--build-arg VERSION=$(VERSION) \
 	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile docker/
+	--file Dockerfile docker/
 
 .PHONY: docker-build-dev
 # builds from locally generated binary in bin/
@@ -254,12 +254,6 @@ docker-build-dev: dev
 	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \
 	-f $(DOCKER_DIR)/Dev.dockerfile docker/
-
-.PHONY: docker-publish
-# requires appropriate permissions in dockerhub
-docker-publish:
-	docker push $(IMAGE_TAG)
-	docker push hashicorp/boundary:latest
 
 .NOTPARALLEL:
 
@@ -271,7 +265,7 @@ ci-config:
 ci-verify:
 	@$(MAKE) -C .circleci ci-verify
 
-PACKAGESPEC_CIRCLECI_CONFIG := .circleci/config/@build-release.yml
-PACKAGESPEC_HOOK_POST_CI_CONFIG := $(MAKE) ci-config
-
--include packagespec.mk
+.PHONY: version
+# This is used for release builds by .github/workflows/build.yml
+version:
+	@$(CURDIR)/scripts/version.sh version/version_base.go

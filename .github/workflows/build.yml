@@ -1,0 +1,222 @@
+name: build
+
+on:
+  push:
+    # Sequence of patterns matched against refs/heads
+    branches:    
+      # Push events on main branch
+      - 'main'
+      # Push events on a test branch (this needs to be removed before merging)
+      - 'crt-onboarding'
+
+env:
+  PKG_NAME: "boundary"
+
+jobs:
+  get-product-version:
+    runs-on: [linux, medium]
+    outputs:
+      product-version: ${{ steps.get-product-version.outputs.product-version }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: get product version
+        id: get-product-version
+        run: |
+          make version
+          echo "::set-output name=product-version::$(make version)"
+
+  generate-metadata-file:
+    needs: get-product-version
+    runs-on: [linux, medium]
+    outputs:
+      filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
+    steps:
+      - name: 'Checkout directory'
+        uses: actions/checkout@v2
+      - name: Generate metadata file
+        id: generate-metadata-file
+        uses: hashicorp/actions-generate-metadata@main
+        with:
+          version: ${{ needs.get-product-version.outputs.product-version }}
+          product: ${{ env.PKG_NAME }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: metadata.json
+          path: ${{ steps.generate-metadata-file.outputs.filepath }}
+
+  build-other:
+    needs: get-product-version
+    runs-on: [linux, medium]
+    strategy:
+      matrix:
+        goos: [ freebsd, windows, netbsd, openbsd, solaris ]
+        goarch: [ "386", "amd64", "arm" ]
+        go: [ "1.17.2" ]
+        exclude:
+          - goos: solaris
+            goarch: 386
+          - goos: solaris
+            goarch: arm
+          - goos: windows
+            goarch: arm
+      fail-fast: true
+
+    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
+    env:
+      GOPRIVATE: "github.com/hashicorp"
+      GO111MODULE: on
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Setup Git
+        run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Setup node and yarn
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache-dependency-path: 'ui/yarn.lock'
+      - name: Install Yarn
+        run: |
+          npm install -g yarn
+      - name: UI Build
+        run: |
+          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+          DIR=internal/ui/.tmp/boundary-ui
+          mkdir -p "$(dirname "$DIR")"
+          git clone https://github.com/hashicorp/boundary-ui "$DIR"
+          cd "$DIR"
+          git fetch origin "$SHA"
+          git checkout "$SHA"
+          yarn install
+          yarn build:ui:admin
+      - name: Go Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir dist out
+          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+
+  build-linux:
+    needs: get-product-version
+    runs-on: [linux, medium]
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: ["arm", "arm64", "386", "amd64"]
+        go: ["1.17.2"]
+      fail-fast: true
+
+    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
+
+    env:
+      GOPRIVATE: "github.com/hashicorp"
+      GO111MODULE: on
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Git
+        run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Setup node and yarn
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache-dependency-path: 'ui/yarn.lock'
+      - name: Install Yarn
+        run: |
+          npm install -g yarn
+      - name: UI Build
+        run: |
+          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+          DIR=internal/ui/.tmp/boundary-ui
+          mkdir -p "$(dirname "$DIR")"
+          git clone https://github.com/hashicorp/boundary-ui "$DIR"
+          cd "$DIR"
+          git fetch origin "$SHA"
+          git checkout "$SHA"
+          yarn install
+          yarn build:ui:admin
+      - name: Go Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir dist out
+          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+
+  build-darwin:
+    needs: get-product-version
+    runs-on: macos
+    strategy:
+      matrix:
+        goos: [ darwin ]
+        goarch: [ "amd64", "arm64" ]
+        go: [ "1.17.2" ]
+      fail-fast: true
+    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
+
+    env:
+      GOPRIVATE: "github.com/hashicorp"
+      GO111MODULE: on
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Setup node and yarn
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache-dependency-path: 'ui/yarn.lock'
+      - name: Install Yarn
+        run: |
+          npm install -g yarn          
+      - name: UI Build
+        run: |
+          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+          DIR=internal/ui/.tmp/boundary-ui
+          mkdir -p "$(dirname "$DIR")"
+          git clone https://github.com/hashicorp/boundary-ui "$DIR"
+          cd "$DIR"
+          git fetch origin "$SHA"
+          git checkout "$SHA"
+          yarn install
+          yarn build:ui:admin
+      - name: Go Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist out
+          unset GOPATH;
+          # Build plugins
+          sh ./scripts/plugins.sh
+          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
