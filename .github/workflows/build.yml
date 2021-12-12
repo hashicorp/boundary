@@ -14,7 +14,7 @@ env:
 
 jobs:
   get-product-version:
-    runs-on: [linux, medium]
+    runs-on: ubuntu-latest
     outputs:
       product-version: ${{ steps.get-product-version.outputs.product-version }}
     steps:
@@ -27,7 +27,7 @@ jobs:
 
   generate-metadata-file:
     needs: get-product-version
-    runs-on: [linux, medium]
+    runs-on: ubuntu-latest
     outputs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
     steps:
@@ -47,7 +47,7 @@ jobs:
 
   build-other:
     needs: get-product-version
-    runs-on: [linux, medium]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
@@ -109,7 +109,7 @@ jobs:
 
   build-linux:
     needs: get-product-version
-    runs-on: [linux, medium]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [linux]
@@ -166,7 +166,7 @@ jobs:
 
   build-darwin:
     needs: get-product-version
-    runs-on: macos
+    runs-on: macos-latest
     strategy:
       matrix:
         goos: [ darwin ]
