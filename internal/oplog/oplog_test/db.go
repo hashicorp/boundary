@@ -26,15 +26,38 @@ func Init(t *testing.T, db *dbw.DB) {
 	-- not part of the boundary domain model... they are simply used for testing
 	-- the oplog package 
 	create table if not exists oplog_test_user (
-	  -- id bigint generated always as identity primary key,
 	  id bigserial primary key,
-	  name text,
+	  name text
+	  	constraint oplog_test_user_name_uq unique,
 	  phone_number text,
-	  email text
+	  email text,
+	  version wt_version 
 	);
 	
+	create or replace function
+	oplog_test_version_column()
+	returns trigger
+	as $$
+	begin
+	if pg_trigger_depth() = 1 then
+		if row(new.*) is distinct from row(old.*) then
+		if tg_nargs = 0 then
+			execute format('update %I set version = $1 where id = $2', tg_relid::regclass) using old.version+1, new.id;
+			new.version = old.version + 1;
+			return new;
+		end if;
+		end if;
+	end if;
+	return new;
+	end;
+	$$ language plpgsql;
+
+	create trigger 
+  	update_version_column
+	after update on oplog_test_user
+  		for each row execute procedure oplog_test_version_column();
+
 	create table if not exists oplog_test_car (
-	--   id bigint generated always as identity primary key,
 	  id bigserial primary key,
 	  name text unique,
 	  model text,

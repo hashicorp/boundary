@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/go-dbw"
 )
 
 const (
@@ -146,9 +145,9 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			onConflict := &dbw.OnConflict{
-				Target: dbw.Constraint("server_pkey"),
-				Action: append(dbw.SetColumns([]string{"type", "description", "address"}), dbw.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			onConflict := &db.OnConflict{
+				Target: db.Constraint("server_pkey"),
+				Action: append(db.SetColumns([]string{"type", "description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
 			}
 			err = w.Create(ctx, server, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {

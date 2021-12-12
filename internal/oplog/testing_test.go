@@ -1,28 +1,16 @@
 package oplog
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
-	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_testCleanup(t *testing.T) {
-	assert := assert.New(t)
-	cleanup, db := setup(t)
-	testCleanup(t, cleanup, db)
-
-	_, err := dbw.New(db).Begin(context.Background())
-	assert.Contains(err.Error(), "sql: database is closed")
-}
-
 func Test_testUser(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 
 	id := testId(t)
 
@@ -35,8 +23,7 @@ func Test_testUser(t *testing.T) {
 
 func Test_testFindUser(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	id := testId(t)
 	u := testUser(t, db, id, id, id)
 	require.NotNil(u)
@@ -86,4 +73,11 @@ select count(*) from information_schema."tables" t where table_name = 'boundary_
 	err = db.QueryRow(query).Scan(&cnt)
 	require.NoError(err)
 	assert.Equal(1, cnt)
+}
+
+func Test_testListConstraints(t *testing.T) {
+	assert := assert.New(t)
+	db := setup(t)
+	constraints := testListConstraints(t, db, "oplog_test_user")
+	assert.NotEmpty(constraints)
 }

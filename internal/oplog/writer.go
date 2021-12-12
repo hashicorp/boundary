@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// Writer uses a gorm DB connection for writing
+// Writer provides a database writer for oplog operations
 type Writer struct {
 	*dbw.DB
 }
@@ -44,7 +44,7 @@ func (w *Writer) createTableLike(ctx context.Context, existingTableName string, 
 	}
 
 	sql := fmt.Sprintf(
-		`CREATE TABLE "%s" ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
+		`CREATE TABLE "%s" ( LIKE %s INCLUDING ALL );`,
 		newTableName,
 		existingTableName,
 	)

@@ -15,8 +15,7 @@ import (
 
 // Test_WriterCreate provides unit tests for Writer Create
 func Test_WriterCreate(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -54,8 +53,7 @@ func Test_WriterCreate(t *testing.T) {
 
 // Test_WriterDelete provides unit tests for Writer Delete
 func Test_WriterDelete(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -95,9 +93,8 @@ func Test_WriterDelete(t *testing.T) {
 
 // TestWriter_hasTable provides unit tests for Writer HasTable
 func TestWriter_hasTable(t *testing.T) {
-	cleanup, db := setup(t)
+	db := setup(t)
 	testCtx := context.Background()
-	defer testCleanup(t, cleanup, db)
 	w := Writer{db}
 
 	t.Run("success", func(t *testing.T) {
@@ -120,9 +117,8 @@ func TestWriter_hasTable(t *testing.T) {
 
 // TestWriter_createTableLike provides unit tests for Writer createTable
 func TestWriter_createTableLike(t *testing.T) {
-	cleanup, db := setup(t)
+	db := setup(t)
 	testCtx := context.Background()
-	defer testCleanup(t, cleanup, db)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Writer{db}
@@ -174,8 +170,7 @@ func TestWriter_createTableLike(t *testing.T) {
 // Test_WriterDropTableIfExists provides unit tests for Writer dropTableIfExists
 func Test_WriterDropTableIfExists(t *testing.T) {
 	testCtx := context.Background()
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Writer{db}
@@ -198,8 +193,7 @@ func Test_WriterDropTableIfExists(t *testing.T) {
 }
 
 func TestWriter_Update(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	id := testId(t)
 	type fields struct {
 		Tx *gorm.DB
@@ -229,6 +223,7 @@ func TestWriter_Update(t *testing.T) {
 				Name:        "valid-fieldmask",
 				Email:       id,
 				PhoneNumber: id,
+				Version:     2,
 			},
 			wantErr: false,
 		},
@@ -246,6 +241,7 @@ func TestWriter_Update(t *testing.T) {
 				Name:        "",
 				Email:       id,
 				PhoneNumber: id,
+				Version:     2,
 			},
 			wantErr: false,
 		},
@@ -263,6 +259,7 @@ func TestWriter_Update(t *testing.T) {
 				Name:        "",
 				Email:       "valid-setToNull-and-fieldMask",
 				PhoneNumber: id,
+				Version:     2,
 			},
 			wantErr: false,
 		},
@@ -312,7 +309,7 @@ func TestWriter_Update(t *testing.T) {
 			w := &Writer{
 				tt.Tx,
 			}
-			u := testUser(t, db, id, id, id) // intentionally, not relying on tt.Tx
+			u := testUser(t, db, tt.name+id, id, id) // intentionally, not relying on tt.Tx
 			u.Name = tt.args.user.Name
 			u.Email = tt.args.user.Email
 			u.PhoneNumber = tt.args.user.PhoneNumber

@@ -18,8 +18,7 @@ import (
 
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	t.Run("EncryptData/DecryptData/UnmarshalData", func(t *testing.T) {
@@ -30,7 +29,7 @@ func Test_BasicOplog(t *testing.T) {
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 		queue := Queue{Catalog: types}
 
@@ -85,7 +84,7 @@ func Test_BasicOplog(t *testing.T) {
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 
 		queue := Queue{Catalog: types}
@@ -119,8 +118,7 @@ func Test_BasicOplog(t *testing.T) {
 
 // Test_NewEntry provides some basic unit tests for NewEntry
 func Test_NewEntry(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	t.Run("valid", func(t *testing.T) {
@@ -216,8 +214,7 @@ func Test_NewEntry(t *testing.T) {
 }
 
 func Test_UnmarshalData(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 
 	cipherer := testWrapper(t)
 	testCtx := context.Background()
@@ -226,7 +223,7 @@ func Test_UnmarshalData(t *testing.T) {
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(t, err)
 
-	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+	types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 	require.NoError(t, err)
 
 	id := testId(t)
@@ -331,7 +328,7 @@ func Test_UnmarshalData(t *testing.T) {
 		)
 		require.NoError(err)
 		entry.Data = queue.Bytes()
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "not-valid-name"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "not-valid-name"})
 		require.NoError(err)
 		_, err = entry.UnmarshalData(testCtx, types)
 		require.Error(err)
@@ -341,8 +338,7 @@ func Test_UnmarshalData(t *testing.T) {
 
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	cipherer := testWrapper(t)
@@ -359,7 +355,7 @@ func Test_Replay(t *testing.T) {
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(t, err)
 
-	t.Run("replay:create/update", func(t *testing.T) {
+	t.Run("replay:create/update/createitems", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ticket, err := ticketer.GetTicket(testCtx, "default")
 		require.NoError(err)
@@ -385,7 +381,8 @@ func Test_Replay(t *testing.T) {
 			Name:  userCreate.Name,
 			Email: loginName + "@hashicorp.com",
 		}
-		rowsUpdated, err := tx.Update(testCtx, &userSave, []string{"Email"}, nil)
+		version := uint32(1)
+		rowsUpdated, err := tx.Update(testCtx, &userSave, []string{"Email"}, nil, dbw.WithVersion(&version), dbw.WithWhere("name = ?", loginName))
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 
@@ -408,17 +405,23 @@ func Test_Replay(t *testing.T) {
 		require.Equal(foundCreateUser.Name, "")
 		require.Equal(foundCreateUser.PhoneNumber, userUpdate.PhoneNumber)
 
+		userCreateItems := &oplog_test.TestUser{
+			Name: "foo-" + testId(t),
+		}
+		require.NoError(dbw.New(db).CreateItems(context.Background(), []interface{}{userCreateItems}))
+
 		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{tx.DB()}, ticket,
 			&Message{Message: userCreate, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
-			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"Name", "Email"}},
+			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"Email"}, SetToNullPaths: nil, Opts: []dbw.Option{dbw.WithVersion(&version), dbw.WithWhere("name = ?", loginName)}},
 			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"Name", "Email"}, SetToNullPaths: nil},
 			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, SetToNullPaths: []string{"Name"}},
 			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: nil, SetToNullPaths: []string{"Name"}},
 			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"PhoneNumber"}, SetToNullPaths: []string{"Name"}},
+			&Message{Message: userCreateItems, TypeName: "user", OpType: OpType_OP_TYPE_CREATE_ITEMS},
 		)
 		require.NoError(err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 
 		var foundEntry Entry
@@ -442,6 +445,10 @@ func Test_Replay(t *testing.T) {
 		assert.Equal(foundReplayedUser.PhoneNumber, "867-5309")
 		assert.Equal(foundUser.Email, foundReplayedUser.Email)
 		assert.Equal(foundReplayedUser.Email, loginName+"@hashicorp.com")
+
+		foundReplayedUser.Id = 0
+		require.NoError(tx.LookupWhere(testCtx, &foundReplayedUser, "id = ?", []interface{}{userCreateItems.Id}, dbw.WithDebug(true)))
+		require.NoError(err)
 	})
 
 	t.Run("replay:delete", func(t *testing.T) {
@@ -494,7 +501,71 @@ func Test_Replay(t *testing.T) {
 		err = foundEntry2.DecryptData(context.Background())
 		require.NoError(err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
+		require.NoError(err)
+
+		err = foundEntry2.Replay(context.Background(), &Writer{tx2.DB()}, types, tableSuffix)
+		require.NoError(err)
+
+		var foundUser2 oplog_test.TestUser
+		err = tx2.LookupWhere(testCtx, &foundUser2, "id = ?", []interface{}{userCreate2.Id})
+		assert.ErrorIs(err, dbw.ErrRecordNotFound)
+
+		var foundReplayedUser2 oplog_test.TestUser
+		err = tx2.LookupWhere(testCtx, &foundReplayedUser2, "id = ?", []interface{}{userCreate2.Id})
+		assert.ErrorIs(err, dbw.ErrRecordNotFound)
+	})
+	t.Run("replay:deleteitems", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		// we need to test delete replays now...
+		tx2, err := dbw.New(db).Begin(testCtx)
+		require.NoError(err)
+		defer tx2.Commit(testCtx)
+
+		ticket2, err := ticketer.GetTicket(testCtx, "default")
+		require.NoError(err)
+
+		id4 := testId(t)
+		loginName2 := "foo-" + id4
+		// create a user that's replayable
+		userCreate2 := oplog_test.TestUser{
+			Name: loginName2,
+		}
+		err = tx2.Create(testCtx, &userCreate2)
+		require.NoError(err)
+
+		deleteUser2 := oplog_test.TestUser{
+			Id: userCreate2.Id,
+		}
+		_, err = tx2.DeleteItems(testCtx, []interface{}{&deleteUser2})
+		require.NoError(err)
+
+		newLogEntry2, err := NewEntry(
+			testCtx,
+			"test-users",
+			Metadata{
+				"key-only":   nil,
+				"deployment": []string{"amex"},
+				"project":    []string{"central-info-systems", "local-info-systems"},
+			},
+			cipherer,
+			ticketer,
+		)
+		require.NoError(err)
+		err = newLogEntry2.WriteEntryWith(context.Background(), &Writer{tx2.DB()}, ticket2,
+			&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_OP_TYPE_DELETE_ITEMS},
+		)
+		require.NoError(err)
+
+		var foundEntry2 Entry
+		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
+		require.NoError(err)
+		foundEntry2.Cipherer = cipherer
+		err = foundEntry2.DecryptData(context.Background())
+		require.NoError(err)
+
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 
 		err = foundEntry2.Replay(context.Background(), &Writer{tx2.DB()}, types, tableSuffix)
@@ -512,8 +583,7 @@ func Test_Replay(t *testing.T) {
 
 // Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 	cipherer := testWrapper(t)
 
@@ -558,7 +628,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
 		require.NoError(err)
 		foundEntry.Cipherer = cipherer
-		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
+		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
@@ -626,10 +696,219 @@ func Test_WriteEntryWith(t *testing.T) {
 	})
 }
 
+func TestEntry_WriteEntryWith(t *testing.T) {
+	testCtx := context.Background()
+	db := setup(t)
+	cipherer := testWrapper(t)
+	db.Debug(true)
+
+	// setup new tables for replay
+	id := testId(t)
+	tableSuffix := "_" + id
+
+	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
+	require.NoError(t, err)
+
+	newEntryFn := func() *Entry {
+		testEntry, err := NewEntry(
+			testCtx,
+			"test-users",
+			Metadata{
+				"key-only":   nil,
+				"deployment": []string{"amex"},
+				"project":    []string{"central-info-systems", "local-info-systems"},
+			},
+			cipherer,
+			ticketer,
+		)
+		require.NoError(t, err)
+		return testEntry
+	}
+
+	tests := []struct {
+		name            string
+		e               *Entry
+		w               *Writer
+		msg             *Message
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name: "on-conflict-columns-do-nothing",
+			e:    newEntryFn(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+				Opts: []dbw.Option{
+					dbw.WithOnConflict(&dbw.OnConflict{
+						Target: dbw.Columns{"name"},
+						Action: dbw.DoNothing(true),
+					})},
+			},
+		},
+		{
+			name: "on-conflict-columns-update-all",
+			e:    newEntryFn(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+				Opts: []dbw.Option{
+					dbw.WithOnConflict(&dbw.OnConflict{
+						Target: dbw.Columns{"name"},
+						Action: dbw.UpdateAll(true),
+					})},
+			},
+		},
+		{
+			name: "on-conflict-columns-set-col-value-with-expr",
+			e:    newEntryFn(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+				Opts: []dbw.Option{
+					dbw.WithOnConflict(&dbw.OnConflict{
+						Target: dbw.Columns{"name"},
+						Action: dbw.SetColumnValues(map[string]interface{}{"name": dbw.Expr("NULL")}),
+					})},
+			},
+		},
+		{
+			name: "on-conflict-columns-set-col-value",
+			e:    newEntryFn(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+				Opts: []dbw.Option{
+					dbw.WithOnConflict(&dbw.OnConflict{
+						Target: dbw.Columns{"name"},
+						Action: dbw.SetColumnValues(map[string]interface{}{"name": testId(t)}),
+					})},
+			},
+		},
+		{
+			name: "on-conflict-columns-set-col-value",
+			e:    newEntryFn(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+				Opts: []dbw.Option{
+					dbw.WithOnConflict(&dbw.OnConflict{
+						Target: dbw.Columns{"name"},
+						Action: dbw.SetColumns([]string{"email"}),
+					})},
+			},
+		},
+		{
+			name: "missing-entry",
+			e:    func() *Entry { e := newEntryFn(); e.Entry = nil; return e }(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+			},
+			wantErr:         true,
+			wantErrContains: "nil entry",
+		},
+		{
+			name: "missing-entry-version",
+			e:    func() *Entry { e := newEntryFn(); e.Entry.Version = ""; return e }(),
+			w:    &Writer{db},
+			msg: &Message{
+				Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+				TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+			},
+			wantErr:         true,
+			wantErrContains: "missing entry version",
+		},
+		// TODO: jimlambrt (Dec 2021) - we need a way to create a replay table
+		// that contains the existing named constraints.  Once that done, we can
+		// enable this test and write more.  This is just an example of the type
+		// test we need to create using a constraint target
+		// {
+		// 	name: "on-conflict-column-value",
+		// 	e:    testEntry,
+		// 	w:    &Writer{db},
+		// 	msg: &Message{
+		// 		Message:  testUser(t, db, "foo-"+testId(t), "", ""),
+		// 		TypeName: "user", OpType: OpType_OP_TYPE_CREATE,
+		// 		Opts: []dbw.Option{
+		// 			dbw.WithOnConflict(&dbw.OnConflict{
+		// 				Target: dbw.Constraint{"oplog_test_user_name_uq"},
+		// 				Action: dbw.SetColumnValues(map[string]interface{}{"name": dbw.Expr("NULL")}),
+		// 			})},
+		// 	},
+		// },
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ticket, err := ticketer.GetTicket(testCtx, "default")
+			require.NoError(err)
+			err = tt.e.WriteEntryWith(
+				testCtx,
+				tt.w,
+				ticket,
+				tt.msg,
+			)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			var foundEntry Entry
+			require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{tt.e.Id}))
+			require.NoError(err)
+			foundEntry.Cipherer = cipherer
+			types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
+			require.NoError(err)
+			err = foundEntry.DecryptData(context.Background())
+			require.NoError(err)
+			msgs, err := foundEntry.UnmarshalData(testCtx, types)
+			require.NoError(err)
+			require.Equal(1, len(msgs))
+			entry := msgs[0]
+			entryUser := entry.Message.(*oplog_test.TestUser)
+			assert.Equal(entryUser.Name, tt.msg.Message.(*oplog_test.TestUser).Name)
+			assert.Equal(entry.FieldMaskPaths, tt.msg.FieldMaskPaths)
+			assert.Equal(entry.SetToNullPaths, tt.msg.SetToNullPaths)
+			assert.Equal(entry.OpType, tt.msg.OpType)
+			assert.Equal(entry.TypeName, tt.msg.TypeName)
+
+			entryOpts := dbw.GetOpts(entry.Opts...)
+			testMsgOpts := dbw.GetOpts(tt.msg.Opts...)
+			assert.Equal(entryOpts, testMsgOpts)
+
+			foundEntry.Cipherer = cipherer
+			err = foundEntry.DecryptData(context.Background())
+			require.NoError(err)
+			err = foundEntry.Replay(context.Background(), tt.w, types, tableSuffix)
+			require.NoError(err)
+			foundUser := testFindUser(t, tt.w.DB, entryUser.Id)
+
+			var foundReplayedUser oplog_test.TestUser
+			foundReplayedUser.Table = foundReplayedUser.TableName() + tableSuffix
+			require.NoError(dbw.New(tt.w.DB).LookupWhere(testCtx, &foundReplayedUser, "id = ?", []interface{}{entryUser.Id}))
+			require.NoError(err)
+
+			assert.Equal(foundUser.Id, foundReplayedUser.Id)
+			assert.Equal(foundUser.Name, foundReplayedUser.Name)
+			assert.Equal(foundUser.PhoneNumber, foundReplayedUser.PhoneNumber)
+			assert.Equal(foundUser.Email, foundReplayedUser.Email)
+		})
+	}
+}
+
 // Test_TicketSerialization provides unit tests for making sure oplog.Tickets properly serialize writes to oplog entries
 func Test_TicketSerialization(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	assert, require := assert.New(t), require.New(t)
 	testCtx := context.Background()
 

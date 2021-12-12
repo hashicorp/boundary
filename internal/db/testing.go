@@ -59,10 +59,10 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 		t.Fatal(err)
 	}
 	switch {
-	case opts.withLogLevel != 0:
+	case opts.withLogLevel != DefaultTestLogLevel:
 		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
 	default:
-		db.wrapped.LogLevel(dbw.LogLevel(dbw.Error))
+		db.wrapped.LogLevel(dbw.Error)
 	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
@@ -265,8 +265,7 @@ const (
 )
 
 // WithTestLogLevel provides a way to specify a test log level for the
-// underlying database package (if applicable).  To be clear, this has no affect
-// on the events that may be emitted.
+// underlying database package (if applicable).
 func WithTestLogLevel(_ *testing.T, l TestLogLevel) TestOption {
 	return func(o *testOptions) {
 		o.withLogLevel = l

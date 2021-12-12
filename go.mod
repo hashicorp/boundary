@@ -84,11 +84,11 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.0.0-20211210175753-62b2c7533970 // this is a branch and should be updated before merging
+require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
 require (
 	github.com/hashicorp/go-sockaddr v1.0.2
-	golang.org/x/sys v0.0.0-20211102192858-4dd72447c267
+	golang.org/x/sys v0.0.0-20211210111614-af8b64212486
 )
 
 require (
@@ -220,4 +220,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/sqlite v1.2.4 // indirect
+	gotest.tools/v3 v3.0.3 // indirect
 )

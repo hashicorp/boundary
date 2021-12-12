@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
 
 package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/boundary/internal/oplog;oplog";
@@ -56,38 +57,20 @@ message AnyOperation {
 // keep the docs in-sync from the dbw package, so if you need more information
 // on what the option does please see the dbw package docs.
 message OperationOptions {
-  // with_lookup (see dbw package for docs)
-  bool with_lookup = 1;
-
-  // with_limit (see dbw package for docs)
-  uint32 with_limit = 2;
-
-  oneof with_version {
-    bool with_version_set = 3;
-    // with_version (see dbw package for docs)
-    uint32 with_version_value = 4;
-  }
+  // with_version (see dbw package for docs)
+  google.protobuf.UInt32Value with_version = 1;
 
   // with_skip_vet_for_write (see dbw package for docs)
-  bool with_skip_vet_for_write = 5;
+  bool with_skip_vet_for_write = 2;
 
   // with_where_clause (see dbw package for docs)
-  string with_where_clause = 6;
+  string with_where_clause = 3;
 
   // with_where_clause_args (see dbw package for docs)
-  repeated google.protobuf.Value with_where_clause_args = 7;
+  repeated google.protobuf.Value with_where_clause_args = 4;
 
-  // with_order (see dbw package for docs)
-  string with_order = 8;
-
-  // with_prng_values (see dbw package for docs)
-  repeated string with_prng_values = 9;
-
-  oneof with_on_conflict {
-    bool with_on_conflict_set = 10;
-    // with_on_conflict (see dbw package for docs)
-    WithOnConflict with_on_conflict_value = 11;
-  }
+  // with_on_conflict (see dbw package for docs)
+  WithOnConflict with_on_conflict = 5;
 }
 
 // WithOnConflict defines the parameters needed for an sql "on conflict clause"
@@ -117,7 +100,7 @@ message WithOnConflict {
 // Columns defines a set of column properties
 message Columns {
   // name of the columns
-  repeated string name = 1;
+  repeated string names = 1;
 }
 
 // ColumnValue defines a column value
@@ -126,10 +109,32 @@ message ColumnValue {
   string name = 1;
 
   // value of the column
-  google.protobuf.Value value = 2;
+  oneof value {
+    google.protobuf.Value raw = 2;
+    ExprValue expr_value = 3;
+    Column column = 4;
+  };
 }
 
 // ColumnValues defines a set of column value properies
 message ColumnValues {
+  // values are the values of the columns
   repeated ColumnValue values = 1;
+}
+
+// ExprValue defines an expr value that can be used as a column value
+message ExprValue {
+  // sql is the sql clause of the expr
+  string sql = 1;
+
+  // args are the sql args of the expr
+  repeated google.protobuf.Value args = 2;
+}
+
+// Column represents a table Column
+message Column {
+  // name of the column
+  string name = 1;
+  // table name of the column
+  string table = 2;
 }

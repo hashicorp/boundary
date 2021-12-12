@@ -11,8 +11,7 @@ import (
 
 // Test_NewGormTicketer provides unit tests for creating a Gorm ticketer
 func Test_NewTicketer(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	t.Run("valid", func(t *testing.T) {
@@ -31,8 +30,7 @@ func Test_NewTicketer(t *testing.T) {
 
 // Test_GetTicket provides unit tests for getting oplog.Tickets
 func Test_GetTicket(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
@@ -57,8 +55,7 @@ func Test_GetTicket(t *testing.T) {
 
 // Test_Redeem provides unit tests for redeeming tickets
 func Test_Redeem(t *testing.T) {
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	testCtx := context.Background()
 
 	t.Run("valid", func(t *testing.T) {

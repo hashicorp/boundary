@@ -16,7 +16,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
-	"github.com/hashicorp/go-dbw"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -422,9 +421,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					if err := w.Create(
 						ctx,
 						updatedSecret,
-						db.WithOnConflict(&dbw.OnConflict{
-							Target: dbw.Columns{"catalog_id"},
-							Action: dbw.SetColumns([]string{"secret", "key_id"}),
+						db.WithOnConflict(&db.OnConflict{
+							Target: db.Columns{"catalog_id"},
+							Action: db.SetColumns([]string{"secret", "key_id"}),
 						}),
 						db.NewOplogMsg(&sOplogMsg),
 					); err != nil {

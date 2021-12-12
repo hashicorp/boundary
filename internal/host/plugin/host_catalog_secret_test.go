@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
-	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -152,9 +151,9 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	newSecretUpsert := secret.clone()
 	newSecretUpsert.Secret = newStructUpsert
 	require.NoError(t, newSecretUpsert.encrypt(ctx, databaseWrapper))
-	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&dbw.OnConflict{
-		Target: dbw.Columns{"catalog_id"},
-		Action: dbw.SetColumns([]string{"secret", "key_id"}),
+	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&db.OnConflict{
+		Target: db.Columns{"catalog_id"},
+		Action: db.SetColumns([]string{"secret", "key_id"}),
 	})))
 	found := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{

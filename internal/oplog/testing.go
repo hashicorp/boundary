@@ -3,7 +3,6 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
@@ -16,26 +15,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t *testing.T) (func() error, *dbw.DB) {
+func setup(t *testing.T) *dbw.DB {
 	t.Helper()
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)
 	require.NoError(err)
-	db, err := testOpen("postgres", url)
+	db := testOpen(t, "postgres", url)
 	require.NoError(err)
 	oplog_test.Init(t, db)
 	t.Cleanup(func() {
-		require.NoError(db.Close(context.Background()))
+		assert.NoError(t, db.Close(context.Background()))
+		assert.NoError(t, cleanup())
 	})
-	return cleanup, db
+	return db
 }
 
-func testOpen(dbType string, connectionUrl string) (*dbw.DB, error) {
-	var dialect gorm.Dialector
+func testOpen(t *testing.T, dbType string, connectionUrl string) *dbw.DB {
+	t.Helper()
+	require := require.New(t)
+	var dialect dbw.Dialector
 	switch dbType {
 	case "postgres":
 		dialect = postgres.New(postgres.Config{
@@ -43,19 +44,12 @@ func testOpen(dbType string, connectionUrl string) (*dbw.DB, error) {
 		},
 		)
 	default:
-		return nil, fmt.Errorf("unable to open %s database type", dbType)
+		t.Errorf("unable to open %s database type", dbType)
+		t.FailNow()
 	}
 	db, err := dbw.OpenWith(dialect)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open database: %w", err)
-	}
-	return db, nil
-}
-func testCleanup(t *testing.T, cleanupFunc func() error, db *dbw.DB) {
-	t.Helper()
-	err := cleanupFunc()
-	assert.NoError(t, err)
-	assert.NoError(t, db.Close(context.Background()))
+	require.NoError(err)
+	return db
 }
 
 func testUser(t *testing.T, db *dbw.DB, name, phoneNumber, email string) *oplog_test.TestUser {
@@ -85,11 +79,9 @@ func testId(t *testing.T) string {
 
 func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
 	t.Helper()
-
+	require := require.New(t)
 	cleanup, retURL, _, err = dbtest.StartUsingTemplate(dbtest.Postgres)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 	testInitStore(t, cleanup, retURL)
 	return
 }
@@ -118,4 +110,43 @@ func testInitStore(t *testing.T, cleanup func() error, url string) {
 	sm, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
 	require.NoError(t, sm.ApplyMigrations(ctx))
+}
+
+type constraintResults struct {
+	Name      string
+	TableName string
+}
+
+func testListConstraints(t *testing.T, db *dbw.DB, tableName string) []constraintResults {
+	t.Helper()
+	require := require.New(t)
+	testCtx := context.Background()
+	const constraintSql = `select pgc.conname as name,
+	ccu.table_schema as table_schema,
+	ccu.table_name,
+	ccu.column_name,
+	pgc.consrc as definition
+from pg_constraint pgc
+join pg_namespace nsp on nsp.oid = pgc.connamespace
+join pg_class  cls on pgc.conrelid = cls.oid
+left join information_schema.constraint_column_usage ccu
+	   on pgc.conname = ccu.constraint_name
+	   and nsp.nspname = ccu.constraint_schema 
+-- where contype ='c'
+order by ccu.table_name,pgc.conname `
+
+	rw := dbw.New(db)
+	rows, err := rw.Query(testCtx, constraintSql, []interface{}{tableName})
+	require.NoError(err)
+	type result struct {
+		Name      string
+		TableName string
+	}
+	results := []constraintResults{}
+	for rows.Next() {
+		var r constraintResults
+		rw.ScanRows(rows, &r)
+		results = append(results, r)
+	}
+	return results
 }

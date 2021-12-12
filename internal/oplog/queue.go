@@ -138,7 +138,7 @@ func (q *Queue) remove(ctx context.Context) (*queueEntry, error) {
 	if msg.Value == nil {
 		return nil, nil
 	}
-	any, err := q.Catalog.Get(msg.TypeName)
+	any, err := q.Catalog.Get(ctx, msg.TypeName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting the TypeName: %s", msg.TypeName)))
 	}

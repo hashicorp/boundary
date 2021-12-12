@@ -14,7 +14,7 @@ import (
 func Test_Queue(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	types, err := NewTypeCatalog(
+	types, err := NewTypeCatalog(testCtx,
 		Type{new(oplog_test.TestUser), "user"},
 		Type{new(oplog_test.TestCar), "car"},
 		Type{new(oplog_test.TestRental), "rental"},

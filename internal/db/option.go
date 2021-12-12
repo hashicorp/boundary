@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -50,7 +51,48 @@ func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, op
 		dbwOpts = append(dbwOpts, dbw.WithAfterWrite(after))
 	}
 	if opts.withOnConflict != nil {
-		dbwOpts = append(dbwOpts, dbw.WithOnConflict(opts.withOnConflict))
+		c := &dbw.OnConflict{}
+		switch target := opts.withOnConflict.Target.(type) {
+		case Constraint:
+			c.Target = dbw.Constraint(target)
+		case Columns:
+			c.Target = dbw.Columns(target)
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported target type: %T", target))
+		}
+		switch action := opts.withOnConflict.Action.(type) {
+		case DoNothing:
+			c.Action = dbw.DoNothing(bool(action))
+		case UpdateAll:
+			c.Action = dbw.UpdateAll(bool(action))
+		case []ColumnValue:
+			colVals := make([]dbw.ColumnValue, 0, len(action))
+			for _, cv := range action {
+				dbwColVal := dbw.ColumnValue{
+					Column: cv.column,
+				}
+				switch cvVal := cv.value.(type) {
+				case ExprValue:
+					dbwColVal.Value = dbw.ExprValue{
+						Sql:  cvVal.sql,
+						Vars: cvVal.vars,
+					}
+				case column:
+					dbwColVal.Column = cvVal.name
+					dbwColVal.Value = dbw.Column{
+						Table: cvVal.table,
+						Name:  cvVal.name,
+					}
+				default:
+					dbwColVal.Value = cv.value
+				}
+				colVals = append(colVals, dbwColVal)
+			}
+			c.Action = colVals
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a valid supported action: %T", action))
+		}
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(c))
 	}
 	if opts.withLookup {
 		dbwOpts = append(dbwOpts, dbw.WithLookup(opts.withLookup))
@@ -131,7 +173,7 @@ type Options struct {
 	// mode
 	withDebug bool
 
-	withOnConflict   *dbw.OnConflict
+	withOnConflict   *OnConflict
 	withRowsAffected *int64
 }
 
@@ -282,7 +324,7 @@ func WithDebug(with bool) Option {
 // WithOnConflict specifies an optional on conflict criteria which specify
 // alternative actions to take when an insert results in a unique constraint or
 // exclusion constraint error
-func WithOnConflict(onConflict *dbw.OnConflict) Option {
+func WithOnConflict(onConflict *OnConflict) Option {
 	return func(o *Options) {
 		o.withOnConflict = onConflict
 	}

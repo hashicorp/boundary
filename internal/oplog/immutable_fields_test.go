@@ -17,8 +17,7 @@ import (
 
 func Test_ImmutableFields(t *testing.T) {
 	testCtx := context.Background()
-	cleanup, db := setup(t)
-	defer testCleanup(t, cleanup, db)
+	db := setup(t)
 	cipherer := testWrapper(t)
 
 	writer := &Writer{db}

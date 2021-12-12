@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Version of oplog entries (among other things, it's used to manage upgrade
@@ -96,10 +98,10 @@ func (e *Entry) validate(ctx context.Context) error {
 func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Message, error) {
 	const op = "oplog.(Entry).UnmarshalData"
 	if types == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil type catalog")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil type catalog")
 	}
 	if len(e.Data) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing data")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing data")
 	}
 	msgs := []Message{}
 	queue := Queue{
@@ -112,11 +114,11 @@ func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Messag
 			break
 		}
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error removing item from queue"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error removing item from queue"))
 		}
-		name, err := types.GetTypeName(item.msg)
+		name, err := types.GetTypeName(ctx, item.msg)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		dbwOpts, err := convertToDbwOpts(ctx, item.operationOptions)
 		if err != nil {
@@ -135,37 +137,161 @@ func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Messag
 }
 
 func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option, error) {
+	const op = "oplog.convertToDbwOpts"
 	if opts == nil {
 		return []dbw.Option{}, nil
 	}
 	dbwOpts := []dbw.Option{
-		dbw.WithLookup(opts.GetWithLookup()),
-		dbw.WithLimit(int(opts.GetWithLimit())),
 		dbw.WithSkipVetForWrite(opts.GetWithSkipVetForWrite()),
-		dbw.WithWhere(opts.GetWithWhereClause(), opts.GetWithWhereClauseArgs()),
-		dbw.WithOrder(opts.GetWithOrder()),
-		dbw.WithPrngValues(opts.GetWithPrngValues()),
 	}
-	if opts.GetWithVersionSet() {
-		v := opts.GetWithVersionValue()
-		dbwOpts = append(dbwOpts, dbw.WithVersion(&v))
+	if opts.GetWithVersion() != nil {
+		dbwOpts = append(dbwOpts, dbw.WithVersion(&opts.GetWithVersion().Value))
 	}
-	if opts.GetWithOnConflictSet() {
-		c := opts.GetWithOnConflictValue()
-		dbwOpts = append(dbwOpts, dbw.WithOnConflict(
-			&dbw.OnConflict{
-				Target: c.GetTarget(),
-				Action: c.GetAction(),
-			},
-		))
+	if opts.GetWithOnConflict() != nil {
+		c := &dbw.OnConflict{}
+
+		switch targetType := opts.GetWithOnConflict().GetTarget().(type) {
+		case *WithOnConflict_Columns:
+			c.Target = dbw.Columns(opts.GetWithOnConflict().GetColumns().GetNames())
+		case *WithOnConflict_Constraint:
+			c.Target = dbw.Constraint(opts.GetWithOnConflict().GetConstraint())
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported target type: %T", targetType))
+		}
+
+		switch actionType := opts.GetWithOnConflict().GetAction().(type) {
+		case *WithOnConflict_DoNothing:
+			c.Action = dbw.DoNothing(opts.GetWithOnConflict().GetDoNothing())
+		case *WithOnConflict_UpdateAll:
+			c.Action = dbw.UpdateAll(opts.GetWithOnConflict().GetUpdateAll())
+		case *WithOnConflict_ColumnValues:
+			cvAction := make([]dbw.ColumnValue, 0, len(actionType.ColumnValues.GetValues()))
+			for _, cv := range actionType.ColumnValues.GetValues() {
+				newColVal := dbw.ColumnValue{
+					Column: cv.GetName(),
+				}
+				switch pbVal := cv.Value.(type) {
+				case *ColumnValue_Raw:
+					newColVal.Value = pbVal.Raw.AsInterface()
+				case *ColumnValue_ExprValue:
+					expr := dbw.ExprValue{
+						Sql: pbVal.ExprValue.GetSql(),
+					}
+					args := make([]interface{}, 0, len(pbVal.ExprValue.GetArgs()))
+					for _, a := range pbVal.ExprValue.GetArgs() {
+						args = append(args, a.AsInterface())
+					}
+					newColVal.Value = expr
+				case *ColumnValue_Column:
+					newColVal.Value = dbw.Column{
+						Name:  pbVal.Column.GetName(),
+						Table: pbVal.Column.GetTable(),
+					}
+				default:
+					return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported column value type: %T", pbVal))
+				}
+				cvAction = append(cvAction, newColVal)
+			}
+			c.Action = cvAction
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported action type: %T", actionType))
+		}
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(c))
+	}
+	if opts.GetWithWhereClause() != "" {
+		sql := opts.GetWithWhereClause()
+		args := make([]interface{}, 0, len(opts.GetWithWhereClauseArgs()))
+		for _, a := range opts.GetWithWhereClauseArgs() {
+			args = append(args, a.AsInterface())
+		}
+		dbwOpts = append(dbwOpts, dbw.WithWhere(sql, args...))
+
 	}
 	return dbwOpts, nil
 }
 
 // convertFromDbwOpts converts dbw options to an OperationalOptions for an Entry
 func convertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOptions, error) {
+	const op = "oplog.convertFromDbwOptions"
 	pbOpts := &OperationOptions{
-		WithLookup: opts.WithLookup,
+		WithSkipVetForWrite: opts.WithSkipVetForWrite,
+		WithWhereClause:     opts.WithWhereClause,
+	}
+	if opts.WithVersion != nil {
+		pbOpts.WithVersion = &wrappers.UInt32Value{Value: *opts.WithVersion}
+	}
+
+	clauseValues := make([]*structpb.Value, 0, len(opts.WithWhereClauseArgs))
+	for _, arg := range opts.WithWhereClauseArgs {
+		v, err := structpb.NewValue(arg)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		clauseValues = append(clauseValues, v)
+	}
+	pbOpts.WithWhereClauseArgs = clauseValues
+
+	if opts.WithOnConflict != nil {
+		c := &WithOnConflict{}
+		switch target := opts.WithOnConflict.Target.(type) {
+		case dbw.Constraint:
+			c.Target = &WithOnConflict_Constraint{string(target)}
+		case dbw.Columns:
+			c.Target = &WithOnConflict_Columns{
+				&Columns{
+					Names: []string(target),
+				},
+			}
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported target type: %T", target))
+		}
+		switch action := opts.WithOnConflict.Action.(type) {
+		case dbw.DoNothing:
+			c.Action = &WithOnConflict_DoNothing{bool(action)}
+		case dbw.UpdateAll:
+			c.Action = &WithOnConflict_UpdateAll{bool(action)}
+		case []dbw.ColumnValue:
+			colVals := make([]*ColumnValue, 0, len(action))
+			for _, cv := range action {
+				pbColVal := &ColumnValue{
+					Name: cv.Column,
+				}
+				switch cvVal := cv.Value.(type) {
+				case dbw.ExprValue:
+					args := make([]*structpb.Value, 0, len(cvVal.Vars))
+					for _, vv := range cvVal.Vars {
+						pbVar, err := structpb.NewValue(vv)
+						if err != nil {
+							return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create expr arg"))
+						}
+						args = append(args, pbVar)
+					}
+					pbColVal.Value = &ColumnValue_ExprValue{&ExprValue{
+						Sql:  cvVal.Sql,
+						Args: args,
+					}}
+				case dbw.Column:
+					pbColVal.Value = &ColumnValue_Column{
+						&Column{
+							Name:  cvVal.Name,
+							Table: cvVal.Table,
+						},
+					}
+				default:
+					exprVal, err := structpb.NewValue(cv.Value)
+					if err != nil {
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create column value"))
+					}
+					pbColVal.Value = &ColumnValue_Raw{exprVal}
+				}
+				colVals = append(colVals, pbColVal)
+			}
+			c.Action = &WithOnConflict_ColumnValues{ColumnValues: &ColumnValues{Values: colVals}}
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a valid supported action: %T", action))
+		}
+
+		pbOpts.WithOnConflict = c
 	}
 	return pbOpts, nil
 }
@@ -278,14 +404,23 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 
 		/*
 			how replay will be implemented for snapshots is still very much under discussion.
-			when we go to implement snapshots we may very well need to refactor this create table
-			choice... there are many issues with doing the "create" in this manner:
+			when we go to implement snapshots we may very well need to refactor
+			this create table choice... there are many issues with doing the
+			"create" in this manner:
 				* the perms needed to create a table and possible security issues
-				* the fk references would be to the original tables, not the new replay tables.
-			It may be a better choice to just create separate schemas for replay named blue and green
-			since we need at min of two replay tables definitions. if we went with separate schemas they
-			could be create with a boundary cli cmd that had appropriate privs (reducing security issues)
-			and the separate schemas wouldn't have the fk reference issues mentioned above.
+				* the fk references would be to the original tables, not the new
+				  replay tables.
+				* we need a way to create a replay table that contains the existing
+				  named constraints.  Currently, on conflicts using a constraint
+				  target won't work.
+			It may be a better choice to just create separate schemas for replay
+			named blue and green since we need at min of two replay tables
+			definitions. if we went with separate schemas they could be create
+			with a boundary cli cmd that had appropriate privs (reducing
+			security issues) and the separate schemas wouldn't have the fk
+			reference issues mentioned above.
+
+
 		*/
 		replayTable := origTableName + tableSuffix
 		hasTable, err := tx.hasTable(ctx, replayTable)
@@ -306,6 +441,9 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_CREATE_ITEMS:
+			// TODO: jimlambrt 12/2021 -> while this will work for
+			// CreateItems(...) it's hardly efficient.  We'll need to refactor
+			// oplog quite a bit to support a multi-message operation.
 			if err := rw.CreateItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -318,6 +456,9 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_DELETE_ITEMS:
+			// TODO: jimlambrt 12/2021 -> while this will work for
+			// DeleteItems(...) it's hardly efficient.  We'll need to refactor
+			// oplog quite a bit to support a multi-message operation.
 			if _, err := rw.DeleteItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 )
@@ -210,10 +209,10 @@ func Test_getOpts(t *testing.T) {
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-		columns := dbw.SetColumns([]string{"name", "description"})
-		columnValues := dbw.SetColumnValues(map[string]interface{}{"expiration": "NULL"})
-		testOnConflict := dbw.OnConflict{
-			Target: dbw.Constraint("uniq-name"),
+		columns := SetColumns([]string{"name", "description"})
+		columnValues := SetColumnValues(map[string]interface{}{"expiration": "NULL"})
+		testOnConflict := OnConflict{
+			Target: Constraint("uniq-name"),
 			Action: append(columns, columnValues...),
 		}
 		opts = GetOpts(WithOnConflict(&testOnConflict))

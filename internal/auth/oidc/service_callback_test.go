@@ -35,6 +35,8 @@ func Test_Callback(t *testing.T) {
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
+	testCtx := context.Background()
+
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -393,7 +395,7 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
 			require.NoError(err)
-			types, err := oplog.NewTypeCatalog(
+			types, err := oplog.NewTypeCatalog(testCtx,
 				oplog.Type{Interface: new(store.Account), Name: "auth_oidc_account"},
 				oplog.Type{Interface: new(iamStore.User), Name: "iam_user"},
 				oplog.Type{Interface: new(authStore.Account), Name: "auth_account"},
