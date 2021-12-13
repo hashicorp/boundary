@@ -13,4 +13,4 @@ cd "$PREVIEW_DIR"
 # TODO: branch is useful for dev
 git checkout main
 # Run the dev-portal content-repo start script
-REPO=waypoint PREVIEW_DIR="$PREVIEW_DIR" ./scripts/content-repo-preview/start.sh
+REPO=boundary PREVIEW_DIR="$PREVIEW_DIR" ./scripts/content-repo-preview/start.sh

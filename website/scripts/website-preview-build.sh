@@ -10,4 +10,4 @@ cd "$PREVIEW_DIR"
 git checkout zs.refine-preview-modes
 cd ..
 # Run the dev-portal content-repo build script
-REPO=waypoint PREVIEW_DIR="$PREVIEW_DIR" "./$PREVIEW_DIR/scripts/content-repo-preview/build.sh"
+REPO=boundary PREVIEW_DIR="$PREVIEW_DIR" "./$PREVIEW_DIR/scripts/content-repo-preview/build.sh"
