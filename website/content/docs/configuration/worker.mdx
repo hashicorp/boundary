@@ -23,6 +23,9 @@ worker {
   the name will be read.
 
 - `description` - Specifies a friendly description of this worker.
+  This value can be a direct description string, can refer to a file on disk
+  (file://) from which a description will be read; or an env var (env://) from
+  which the description will be read.
 
 - `public_addr` - Specifies the public host or IP address (and optionally port)
   at which the worker can be reached _by clients for proxying_. This defaults to

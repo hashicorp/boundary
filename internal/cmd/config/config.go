@@ -376,6 +376,14 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("Worker name contains non-printable characters")
 		}
 
+		result.Worker.Description, err = parseutil.ParsePath(result.Worker.Description)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing worker description: %w", err)
+		}
+		if !strutil.Printable(result.Worker.Description) {
+			return nil, errors.New("Worker description contains non-printable characters")
+		}
+
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
 			// We allow `tags` to be a simple string containing a URL with schema.
