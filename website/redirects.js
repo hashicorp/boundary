@@ -4,6 +4,11 @@ module.exports = [
 
   // Top level redirect
   {
+    source: '/home',
+    destination: '/',
+    permanent: true,
+  },
+  {
     source: '/help/admin-ui',
     destination: '/docs',
     permanent: false,
