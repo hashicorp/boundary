@@ -3,6 +3,10 @@
   "description": "Documentation website for Boundary",
   "version": "1.0.0",
   "author": "HashiCorp",
+  "engines": {
+    "node": "14.x - 16.x",
+    "npm": ">=7.0.0"
+  },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.9",
     "@hashicorp/mktg-global-styles": "^4.0.0",
@@ -57,9 +61,6 @@
     "hooks": {
       "pre-commit": "next-hashicorp precommit"
     }
-  },
-  "engines": {
-    "npm": ">=7.0.0"
   },
   "scripts": {
     "build": "node --max-old-space-size=2048 ./node_modules/.bin/next build",
