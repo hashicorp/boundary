@@ -7,7 +7,7 @@ git clone "https://github.com/hashicorp/dev-portal.git" "$PREVIEW_DIR"
 # TODO will later just run off of main branch.
 # Change into the cloned dev-portal directory
 cd "$PREVIEW_DIR"
-git checkout zs.refine-preview-modes
+git checkout main
 cd ..
 # Run the dev-portal content-repo build script
 REPO=boundary PREVIEW_DIR="$PREVIEW_DIR" "./$PREVIEW_DIR/scripts/content-repo-preview/build.sh"
