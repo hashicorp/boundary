@@ -11,7 +11,7 @@
     "linkcheck": "linkcheck boundary.io",
     "format": "next-hashicorp format content/**/* data/**/*",
     "lint": "next-hashicorp lint content/**/* data/**/*",
-    "build": "echo 'no build script yet!'"
+    "build": "npm i -g npm@7 && ./scripts/website-preview-build.sh"
   },
   "husky": {
     "hooks": {
