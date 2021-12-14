@@ -87,6 +87,11 @@ func (c *Command) printListTable(items []*credentiallibraries.CredentialLibrary)
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)
 		}
+		if m.CredentialType != "" {
+			output = append(output,
+				fmt.Sprintf("    Credential Type:     %s", m.CredentialType),
+			)
+		}
 		if m.Name != "" {
 			output = append(output,
 				fmt.Sprintf("    Name:                %s", m.Name),
