@@ -262,6 +262,9 @@ func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, 
 		// expired or invalid token
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	if secret == nil {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
 	cred, err := newCredential(pl.GetPublicId(), sessionId, secret.LeaseID, pl.TokenHmac, leaseDuration)

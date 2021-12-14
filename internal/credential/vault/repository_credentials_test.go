@@ -69,6 +69,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		libPKI
 		libErrPKI
 		libUsrPassKV
+		libErrKV
 	)
 
 	libs := make(map[libT]string)
@@ -145,6 +146,16 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
 		libs[libUsrPassKV] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("secret", "data", "fake-secret")
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
+		libs[libErrKV] = lib.GetPublicId()
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -256,6 +267,17 @@ func TestRepository_IssueCredentials(t *testing.T) {
 					Purpose:  credential.ApplicationPurpose,
 				},
 			},
+		},
+		{
+			name:      "invalid-kv-does-not-exist",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libErrKV],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
+			wantErr: errors.VaultEmptySecret,
 		},
 	}
 	for _, tt := range tests {
