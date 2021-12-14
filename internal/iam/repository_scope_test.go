@@ -448,7 +448,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			for _, f := range tt.wantNullFields {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), &foundScope, where, org.PublicId)
+			err = rw.LookupWhere(context.Background(), &foundScope, where, []interface{}{org.PublicId})
 			require.NoError(err)
 			assert.Equal(org.PublicId, foundScope.PublicId)
 			assert.Equal(tt.wantName, foundScope.Name)

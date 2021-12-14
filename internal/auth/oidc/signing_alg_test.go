@@ -122,7 +122,7 @@ func TestSigningAlg_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := AllocSigningAlg()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", tt.args.authMethodId, string(tt.args.alg)))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{tt.args.authMethodId, string(tt.args.alg)}))
 				assert.Equal(got, &found)
 			}
 		})
@@ -210,7 +210,7 @@ func TestSigningAlg_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocSigningAlg()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", tt.SigningAlg.OidcMethodId, tt.SigningAlg.String())
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{tt.SigningAlg.OidcMethodId, tt.SigningAlg.String()})
 			assert.Truef(errors.IsNotFoundError(err), "unexpected error: %s", err.Error())
 		})
 	}

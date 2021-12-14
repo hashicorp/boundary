@@ -80,7 +80,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(err)
 
 	outToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", inToken.TokenHmac))
+	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 	require.NoError(outToken.decrypt(context.Background(), databaseWrapper))
 
 	return outToken
@@ -141,7 +141,7 @@ func testVaultCred(t *testing.T,
 	assert.NoError(err)
 
 	outCred := allocCredential()
-	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", id))
+	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", []interface{}{id}))
 
 	return secret, outCred
 }

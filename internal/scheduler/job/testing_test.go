@@ -23,7 +23,7 @@ func Test_TestJob(t *testing.T) {
 
 	rw := db.New(conn)
 	var got Job
-	err := rw.LookupWhere(context.Background(), &got, "name = ?", job.Name)
+	err := rw.LookupWhere(context.Background(), &got, "name = ?", []interface{}{job.Name})
 	require.NoError(err)
 	assert.Equal("testJob", got.Name)
 	assert.Equal("testDescription", got.Description)
@@ -34,7 +34,7 @@ func Test_TestJob(t *testing.T) {
 	require.NotNil(job1)
 
 	var got1 Job
-	err = rw.LookupWhere(context.Background(), &got1, "name = ?", job1.Name)
+	err = rw.LookupWhere(context.Background(), &got1, "name = ?", []interface{}{job1.Name})
 	require.NoError(err)
 	assert.Equal("testJob1", got1.Name)
 	assert.Equal("testDescription1", got1.Description)
@@ -66,7 +66,7 @@ func Test_TestRun(t *testing.T) {
 
 	rw := db.New(conn)
 	var got Run
-	err = rw.LookupWhere(context.Background(), &got, "private_id = ?", run.PrivateId)
+	err = rw.LookupWhere(context.Background(), &got, "private_id = ?", []interface{}{run.PrivateId})
 	require.NoError(err)
 	assert.Equal(server.PrivateId, got.ServerId)
 	assert.Equal(job.Name, got.JobName)

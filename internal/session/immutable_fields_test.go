@@ -102,7 +102,7 @@ func TestState_ImmutableFields(t *testing.T) {
 	state := TestState(t, conn, session.PublicId, StatusPending)
 
 	var new State
-	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", state.SessionId, state.Status)
+	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", []interface{}{state.SessionId, state.Status})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -152,7 +152,7 @@ func TestState_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
+			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", []interface{}{new.SessionId, new.StartTime})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -160,7 +160,7 @@ func TestState_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
+			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", []interface{}{new.SessionId, new.StartTime})
 			require.NoError(err)
 			assert.Equal(orig.(*State), after)
 		})
@@ -249,7 +249,7 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 	state := TestConnectionState(t, conn, connection.PublicId, StatusConnected)
 
 	var new ConnectionState
-	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
+	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", []interface{}{state.ConnectionId, state.Status})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -307,7 +307,7 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			err := rw.LookupWhere(context.Background(), orig, "connection_id = ? and start_time = ?", []interface{}{new.ConnectionId, new.StartTime})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -320,7 +320,7 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrContains)
 			}
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", []interface{}{new.ConnectionId, new.StartTime})
 			require.NoError(err)
 			assert.Equal(orig.(*ConnectionState), after)
 		})

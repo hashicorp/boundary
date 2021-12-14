@@ -112,7 +112,7 @@ func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...O
 	}
 	p := allocPlugin()
 
-	if err := r.reader.LookupWhere(ctx, p, "name=?", name); err != nil {
+	if err := r.reader.LookupWhere(ctx, p, "name=?", []interface{}{name}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}

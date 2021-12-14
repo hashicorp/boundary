@@ -244,7 +244,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			assert.NoError(err)
 
 			found := iam.AllocManagedGroupRole()
-			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", r.RoleId, r.PrincipalId)
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
 			assert.Equal(r, &found)
 		})
@@ -358,7 +358,7 @@ func TestManagedGroupRole_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := iam.AllocManagedGroupRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

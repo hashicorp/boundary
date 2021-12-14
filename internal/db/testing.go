@@ -173,12 +173,12 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var metadata store.Metadata
-	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
+	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs); err != nil {
 		return err
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil

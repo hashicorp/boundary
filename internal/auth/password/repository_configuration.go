@@ -92,7 +92,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(rr db.Reader, w db.Writer) error {
 			where, args := c.whereDup()
-			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args...); err != nil {
+			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args); err != nil {
 				if !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}
@@ -134,7 +134,7 @@ func (c *currentConfig) TableName() string {
 func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
 	const op = "password.(Repository).currentConfig"
 	var cc currentConfig
-	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
+	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", []interface{}{authMethodId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &cc, nil

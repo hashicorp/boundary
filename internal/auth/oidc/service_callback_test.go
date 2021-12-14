@@ -375,7 +375,7 @@ func Test_Callback(t *testing.T) {
 
 			// make sure the account was updated properly
 			var acct Account
-			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", tt.am.PublicId, tt.wantSubject)
+			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []interface{}{tt.am.PublicId, tt.wantSubject})
 			require.NoError(err)
 			assert.Equal(tt.wantInfoEmail, acct.Email)
 			assert.Equal(tt.wantInfoName, acct.FullName)

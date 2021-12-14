@@ -50,7 +50,7 @@ type Reader interface {
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
-	LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error
+	LookupWhere(ctx context.Context, resource interface{}, where string, args []interface{}, opt ...Option) error
 
 	// SearchWhere will search for all the resources it can find using a where
 	// clause with parameters. Supports the WithLimit option.  If
@@ -210,14 +210,14 @@ func New(underlying *DB) *Db {
 }
 
 // Exec will execute the sql with the values as parameters. The int returned
-// is the number of rows affected by the sql. No options are currently
-// supported.
-func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, _ ...Option) (int, error) {
+// is the number of rows affected by the sql. WithDebug is supported.
+func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error) {
 	const op = "db.Exec"
 	if sql == "" {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	rowsAffected, err := dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values)
+	opts := GetOpts(opt...)
+	rowsAffected, err := dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -228,12 +228,13 @@ func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, _ ...O
 // operate within the context of any ongoing transaction for the db.Reader.  The
 // caller must close the returned *sql.Rows. Query can/should be used in
 // combination with ScanRows.
-func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, _ ...Option) (*sql.Rows, error) {
+func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error) {
 	const op = "db.Query"
 	if sql == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
-	rows, err := dbw.New(rw.underlying.wrapped).Query(ctx, sql, values)
+	opts := GetOpts(opt...)
+	rows, err := dbw.New(rw.underlying.wrapped).Query(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return nil, wrapError(ctx, err, op)
 	}
@@ -437,30 +438,33 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler Tx
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
 // must be unique. Options are ignored.
-func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, _ ...Option) error {
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
-	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder); err != nil {
+	opts := GetOpts(opt...)
+	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
 }
 
 // LookupByPublicId will lookup resource by its public_id, which must be unique.
-// Options are ignored.
+// WithDebug is supported.
 func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	return rw.LookupById(ctx, resource, opt...)
 }
 
-// LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
+// LookupWhere will lookup the first resource using a where clause with
+// parameters (it only returns the first one). WithDebug is supported.
+func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
-	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args); err != nil {
+	opts := GetOpts(opt...)
+	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil

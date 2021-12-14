@@ -357,7 +357,7 @@ func TestDb_Update(t *testing.T) {
 				}
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), foundUser, where, tt.args.i.PublicId)
+			err = rw.LookupWhere(context.Background(), foundUser, where, []interface{}{tt.args.i.PublicId})
 			require.NoError(err)
 			assert.Equal(tt.args.i.Id, foundUser.Id)
 			assert.Equal(tt.wantName, foundUser.Name)
@@ -873,7 +873,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.NotEmpty(user.PublicId)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", user.PublicId)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{user.PublicId})
 		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -881,7 +881,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		var foundUser db_test.TestUser
-		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{1})
 		require.Error(err)
 		assert.Equal("db.LookupWhere: missing underlying db: parameter violation: error #100", err.Error())
 	})
@@ -892,7 +892,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 	})
@@ -903,7 +903,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []interface{}{id})
 		require.Error(err)
 	})
 }

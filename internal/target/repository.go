@@ -110,7 +110,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 				lookupErr = read.LookupById(ctx, &target)
 			default:
 				target.PublicId = ""
-				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs...)
+				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs)
 			}
 			if lookupErr != nil {
 				return errors.Wrap(ctx, lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicIdOrName)))

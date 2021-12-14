@@ -113,7 +113,7 @@ func TestAudClaim_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := AllocAudClaim()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", tt.args.authMethodId, tt.args.aud))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", []interface{}{tt.args.authMethodId, tt.args.aud}))
 				assert.Equal(got, &found)
 			}
 		})
@@ -192,7 +192,7 @@ func TestAudClaim_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocAudClaim()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", tt.AudClaim.OidcMethodId, tt.AudClaim.Aud)
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and aud_claim = ?", []interface{}{tt.AudClaim.OidcMethodId, tt.AudClaim.Aud})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}
