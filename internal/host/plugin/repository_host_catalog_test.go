@@ -357,7 +357,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			require.Empty(t, cSecret.Secret)
 			require.NotEmpty(t, cSecret.CtSecret)
 			if tt.wantSecretTtl != 0 {
-				assert.Equal(tt.wantSecretTtl, cSecret.TtlSeconds)
+				assert.Equal(
+					time.Now().Add(time.Second*time.Duration(tt.wantSecretTtl)).Round(time.Second),
+					cSecret.RefreshAtTime.AsTime().Round(time.Second),
+				)
 			}
 
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
@@ -655,6 +658,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	// Note that wantTtl for checkSecrets will check RefreshAtTime at the number
+	// of seconds after the current time.
 	checkSecrets := func(wantTtl int32, wantSecret map[string]interface{}) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
@@ -673,7 +678,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 			st := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(cSecret.Secret, st))
-			assert.Equal(wantTtl, cSecret.TtlSeconds)
+			assert.Equal(
+				time.Now().Add(time.Second*time.Duration(wantTtl)).Round(time.Second),
+				cSecret.RefreshAtTime.AsTime().Round(time.Second),
+			)
 			assert.Empty(cmp.Diff(mustStruct(wantSecret), st, protocmp.Transform()))
 		}
 	}

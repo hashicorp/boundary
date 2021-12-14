@@ -132,9 +132,10 @@ message HostCatalogSecret {
   // @inject_tag: `gorm:"not_null"`
   string key_id = 6;
   
-  // The cache TTL of the persisted secrets, in seconds.
-  // @inject_tag: `gorm:"not_null"`
-  int32 ttl_seconds = 7;
+  // The time to refresh the secret. A null value denotes never
+  // refresh.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp refresh_at_time = 7;
 }
 
 // TODO: Add a field which tracks if the host in cache should be considered

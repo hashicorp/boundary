@@ -743,5 +743,5 @@ func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId strin
 	if err := proto.Unmarshal(cSecret.GetSecret(), secrets); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unmarshaling secret"))
 	}
-	return &plgpb.HostCatalogPersisted{Secrets: secrets, TtlSeconds: cSecret.TtlSeconds}, nil
+	return &plgpb.HostCatalogPersisted{Secrets: secrets, RefreshAtTime: cSecret.RefreshAtTime.Timestamp}, nil
 }

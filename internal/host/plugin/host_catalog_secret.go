@@ -2,7 +2,9 @@ package plugin
 
 import (
 	"context"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -21,12 +23,20 @@ type HostCatalogSecret struct {
 
 // newHostCatalogSecret creates an in memory host catalog secret.
 // All options are ignored.
+//
+// The TTL indicates the refresh time in from the current time in
+// seconds. A negative value indicates never refresh.
 func newHostCatalogSecret(ctx context.Context, catalogId string, ttl int32, secret *structpb.Struct, _ ...Option) (*HostCatalogSecret, error) {
 	const op = "plugin.newHostCatlogSecret"
+	var refreshAtTime *timestamp.Timestamp
+	if ttl >= 0 {
+		refreshAtTime = timestamp.New(time.Now().Add(time.Second * time.Duration(ttl)))
+	}
+
 	hcs := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
-			CatalogId:  catalogId,
-			TtlSeconds: ttl,
+			CatalogId:     catalogId,
+			RefreshAtTime: refreshAtTime,
 		},
 	}
 

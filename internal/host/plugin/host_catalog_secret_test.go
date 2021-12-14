@@ -3,9 +3,11 @@ package plugin
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -44,9 +46,12 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			name: "blank-catalog-id",
 			args: args{
 				catalogId: "",
+				ttl:       -1,
 			},
 			want: &HostCatalogSecret{
-				HostCatalogSecret: &store.HostCatalogSecret{},
+				HostCatalogSecret: &store.HostCatalogSecret{
+					RefreshAtTime: nil,
+				},
 			},
 			wantEncryptErr: true,
 		},
@@ -54,10 +59,12 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			name: "no-attributes",
 			args: args{
 				catalogId: cat.GetPublicId(),
+				ttl:       -1,
 			},
 			want: &HostCatalogSecret{
 				HostCatalogSecret: &store.HostCatalogSecret{
-					CatalogId: cat.GetPublicId(),
+					CatalogId:     cat.GetPublicId(),
+					RefreshAtTime: nil,
 				},
 			},
 			wantEncryptErr: true,
@@ -75,8 +82,8 @@ func TestHostCatalogSecret_New(t *testing.T) {
 			},
 			want: &HostCatalogSecret{
 				HostCatalogSecret: &store.HostCatalogSecret{
-					CatalogId:  cat.GetPublicId(),
-					TtlSeconds: 42,
+					CatalogId:     cat.GetPublicId(),
+					RefreshAtTime: timestamp.New(time.Now().Add(time.Second * time.Duration(42))),
 					Secret: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{"foo": "bar"})
 						require.NoError(t, err)
@@ -152,12 +159,12 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 		"baz": "qux",
 	})
 	newSecretUpsert := secret.clone()
-	newSecretUpsert.TtlSeconds = 30
+	newSecretUpsert.RefreshAtTime = timestamp.New(time.Now().Add(time.Second * 30))
 	newSecretUpsert.Secret = newStructUpsert
 	require.NoError(t, newSecretUpsert.encrypt(ctx, databaseWrapper))
 	require.NoError(t, w.Create(ctx, newSecretUpsert, db.WithOnConflict(&db.OnConflict{
 		Target: db.Columns{"catalog_id"},
-		Action: db.SetColumns([]string{"secret", "key_id", "ttl_seconds"}),
+		Action: db.SetColumns([]string{"secret", "key_id", "refresh_at_time"}),
 	})))
 	found := &HostCatalogSecret{
 		HostCatalogSecret: &store.HostCatalogSecret{
@@ -166,6 +173,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 	}
 	require.NoError(t, w.LookupById(ctx, found))
 	assert.Empty(t, cmp.Diff(newSecretUpsert.HostCatalogSecret, found.HostCatalogSecret, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(newSecretUpsert.RefreshAtTime, found.RefreshAtTime, protocmp.Transform()))
 	require.NoError(t, found.decrypt(ctx, databaseWrapper))
 	assert.Empty(t, cmp.Diff(newStructUpsert, found.Secret, protocmp.Transform()))
 
@@ -174,7 +182,7 @@ func TestHostCatalogSecret_Create_Upsert_Update_Delete(t *testing.T) {
 		"one": "two",
 	})
 	newSecretUpdate := newSecretUpsert.clone()
-	newSecretUpdate.TtlSeconds = 60
+	newSecretUpdate.RefreshAtTime = timestamp.New(time.Now().Add(time.Second * 60))
 	newSecretUpdate.Secret = newStructUpdate
 	require.NoError(t, newSecretUpdate.encrypt(ctx, databaseWrapper))
 	rowsUpdated, err := w.Update(ctx, newSecretUpdate, []string{"CtSecret"}, []string{})

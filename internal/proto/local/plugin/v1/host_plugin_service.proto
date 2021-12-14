@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
 import "controller/api/resources/hostsets/v1/host_set.proto";
@@ -211,5 +212,17 @@ message HostCatalogPersisted {
   // TTL is expired, the secrets are refreshed via
   // RefreshHostCatalogPersisted. Persisted secrets must be non-nil
   // in order for this parameter to be processed.
+  //
+  // Set this value to a negative value in the response in order to
+  // tell Boundary to never refresh the secrets.
+  //
+  // This field is unused in the request.
   int32 ttl_seconds = 200;
+ 
+  // The timestamp of the next refresh. This is not a guaranteed
+  // execution time for the refresh but rather an estimation. If this
+  // field is empty, the secrets will never refresh.
+  //
+  // Note that this field is not used in a response.
+  google.protobuf.Timestamp refresh_at_time = 300;
 }

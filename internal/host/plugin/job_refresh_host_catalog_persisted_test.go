@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -238,7 +239,10 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 		require.NoError(rw.LookupWhere(ctx, &cSecret, "catalog_id=?", cat.GetPublicId()))
 		require.Empty(cSecret.Secret)
 		require.NotEmpty(cSecret.CtSecret)
-		require.Equal(wantTtl, cSecret.TtlSeconds)
+		require.Equal(
+			time.Now().Add(time.Second*time.Duration(wantTtl)).Round(time.Second),
+			cSecret.RefreshAtTime.AsTime().Round(time.Second),
+		)
 
 		dbWrapper, err := kmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
 		require.NoError(err)
@@ -261,9 +265,8 @@ func TestRefreshHostCatalogPersistedJob_Run(t *testing.T) {
 
 		cSecret := allocHostCatalogSecret()
 		require.NoError(rw.LookupWhere(ctx, &cSecret, "catalog_id=?", cat.GetPublicId()))
-
-		cSecret.TtlSeconds = ttl
-		n, err := rw.Update(ctx, cSecret, []string{"TtlSeconds"}, []string{})
+		cSecret.RefreshAtTime = timestamp.New(time.Now().Add(time.Second * time.Duration(ttl)))
+		n, err := rw.Update(ctx, cSecret, []string{"RefreshAtTime"}, []string{})
 		require.NoError(err)
 		require.Equal(n, 1)
 	}

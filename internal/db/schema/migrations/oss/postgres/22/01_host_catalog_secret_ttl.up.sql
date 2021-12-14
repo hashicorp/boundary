@@ -1,8 +1,6 @@
 begin;
   alter table host_plugin_catalog_secret
-    add column ttl_seconds int
-      constraint ttl_seconds_not_less_than_zero
-        check(ttl_seconds >= 0);
+    add column refresh_at_time wt_timestamp;
 
 -- replace host_plugin_catalog_with_secret to add the ttl_seconds secret column.
 drop view host_plugin_catalog_with_secret;
@@ -22,7 +20,7 @@ select
   hcs.key_id,
   hcs.create_time as persisted_create_time,
   hcs.update_time as persisted_update_time,
-  hcs.ttl_seconds as persisted_ttl_seconds
+  hcs.refresh_at_time as refresh_at_time
 from
   host_plugin_catalog hc
     left outer join host_plugin_catalog_secret hcs   on hc.public_id = hcs.catalog_id;
