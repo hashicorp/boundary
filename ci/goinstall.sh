@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="1.17.3"
+VERSION="1.17.5"
 
 [ -z "$GOROOT" ] && GOROOT="$HOME/.go"
 [ -z "$GOPATH" ] && GOPATH="$HOME/go"
