@@ -107,6 +107,7 @@ const (
 	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
 	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
 	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
+	VaultEmptySecret              Code = 3015 // VaultEmptySecret represents a empty secret was returned from Vault without error
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint

@@ -228,6 +228,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "request for a new credential from vault failed",
 		Kind:    External,
 	},
+	VaultEmptySecret: {
+		Message: "vault secret is empty",
+		Kind:    Integrity,
+	},
 	OidcProviderCallbackError: {
 		Message: "oidc provider callback error",
 		Kind:    External,

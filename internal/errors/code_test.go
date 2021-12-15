@@ -283,6 +283,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: VaultCredentialRequest,
 		},
 		{
+			name: "VaultEmptySecret",
+			c:    VaultEmptySecret,
+			want: VaultEmptySecret,
+		},
+		{
 			name: "OidcProviderCallbackError",
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,

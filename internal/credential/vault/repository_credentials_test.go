@@ -28,6 +28,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true), vault.WithTestVaultTLS(vault.TestClientTLS))
 	v.MountDatabase(t)
 	v.MountPKI(t)
+	v.AddKVPolicy(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -44,7 +45,10 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	err = vault.RegisterJobs(ctx, sche, rw, rw, kms)
 	require.NoError(err)
 
-	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki"}))
+	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
+
+	// Create valid KV secret
+	v.CreateKVSecret(t, "my-secret", []byte(`{"data":{"username":"user","password":"pass"}}`))
 
 	var opts []vault.Option
 	opts = append(opts, vault.WithCACert(v.CaCert))
@@ -64,6 +68,8 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		libDB libT = iota
 		libPKI
 		libErrPKI
+		libKV
+		libErrKV
 	)
 
 	libs := make(map[libT]string)
@@ -97,6 +103,26 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(lib)
 		libs[libErrPKI] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("secret", "data", "my-secret")
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(err)
+		require.NotNil(libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(err)
+		require.NotNil(lib)
+		libs[libKV] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("secret", "data", "fake-secret")
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
+		assert.NoError(err)
+		require.NotNil(libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(err)
+		require.NotNil(lib)
+		libs[libErrKV] = lib.GetPublicId()
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -177,6 +203,27 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				},
 			},
 			wantErr: errors.InvalidDynamicCredential,
+		},
+		{
+			name:      "valid-kv-secret",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libKV],
+					Purpose:  credential.IngressPurpose,
+				},
+			},
+		},
+		{
+			name:      "invalid-kv-does-not-exist",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libErrKV],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
+			wantErr: errors.VaultEmptySecret,
 		},
 	}
 	for _, tt := range tests {
