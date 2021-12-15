@@ -2,6 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.7.2 (2021/12/14)
+
+### Security
+
+* Boundary now uses Go 1.17.5 to address a security vulnerability (CVE-2021-44716) where
+  an attacker can cause unbounded memory growth in a Go server accepting HTTP/2 requests.
+  See the [Go announcement](https://groups.google.com/g/golang-announce/c/hcmEScgc00k) for
+  more details. ([PR](https://github.com/hashicorp/boundary/pull/1789))
+
 ## 0.7.1 (2021/11/18)
 
 ### Bug Fixes
