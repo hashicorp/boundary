@@ -145,6 +145,52 @@ begin;
     ('c___cr-sthcl', 'h_____cr__08', '8.red.color'),
     ('c___cr-sthcl', 'h_____cr__09', '9.red.color');
 
+  insert into host_dns_name
+    (host_id, name)
+  values
+    -- note there are no dns names for blue 1
+    ('h_____cb__02', '2.blue.color'),
+    ('h_____cb__03', '3.blue.color'),
+    ('h_____cb__04', '4.blue.color'),
+    ('h_____cb__05', '5.blue.color'),
+    ('h_____cb__06', '6.blue.color'),
+    ('h_____cb__07', '7.blue.color'),
+    ('h_____cb__08', '8.blue.color'),
+    ('h_____cb__09', '9.blue.color'),
+
+    ('h_____cr__02', '1.red.color'),
+    ('h_____cr__02', '2.red.color'),
+    ('h_____cr__03', '3.red.color'),
+    ('h_____cr__04', '4.red.color'),
+    ('h_____cr__05', '5.red.color'),
+    ('h_____cr__06', '6.red.color'),
+    ('h_____cr__07', '7.red.color'),
+    ('h_____cr__08', '8.red.color'),
+    ('h_____cr__09', '9.red.color');
+
+  insert into host_ip_address
+    (host_id, address)
+  values
+    -- note there are no address for blue 1
+    ('h_____cb__02', '10.0.0.2'),
+    ('h_____cb__03', '10.0.0.3'),
+    ('h_____cb__04', '10.0.0.4'),
+    ('h_____cb__05', '10.0.0.5'),
+    ('h_____cb__06', '10.0.0.6'),
+    ('h_____cb__07', '10.0.0.7'),
+    ('h_____cb__08', '10.0.0.8'),
+    ('h_____cb__09', '10.0.0.9'),
+
+    ('h_____cr__01', '11.11.11.11'),
+    ('h_____cr__02', '22.22.22.22'),
+    ('h_____cr__03', '33.33.33.33'),
+    ('h_____cr__04', '44.44.44.44'),
+    ('h_____cr__05', '55.55.55.55'),
+    ('h_____cr__06', '66.66.66.66'),
+    ('h_____cr__07', '77.77.77.77'),
+    ('h_____cr__08', '88.88.88.88'),
+    ('h_____cr__09', '99.99.99.99');
+
   insert into static_host_set
     (catalog_id, public_id, name)
   values
