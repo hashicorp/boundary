@@ -31,6 +31,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * plugins/aws: AWS plugin based hosts now include DNS names in addition to the
   IP addresses they already provide.
 
+### Bug Fixes
+* session: Fix duplicate sessions and invalid session state transitions. ([PR](https://github.com/hashicorp/boundary/pull/1793))
+
 ## 0.7.3 (2021/12/16)
 
 ### Bug Fixes
