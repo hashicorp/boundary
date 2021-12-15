@@ -3,6 +3,10 @@
   "description": "Documentation website for Boundary",
   "version": "1.0.0",
   "author": "HashiCorp",
+  "engines": {
+    "node": "14.x - 16.x",
+    "npm": ">=7.0.0"
+  },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.9",
     "@hashicorp/mktg-global-styles": "^4.0.0",
@@ -15,7 +19,7 @@
     "@hashicorp/react-button": "^6.0.1",
     "@hashicorp/react-consent-manager": "^7.1.0",
     "@hashicorp/react-content": "^8.0.2",
-    "@hashicorp/react-docs-page": "^14.4.2",
+    "@hashicorp/react-docs-page": "^14.11.0",
     "@hashicorp/react-enterprise-alert": "^6.0.1",
     "@hashicorp/react-hashi-stack-menu": "^2.1.2",
     "@hashicorp/react-head": "^3.1.2",
@@ -57,9 +61,6 @@
     "hooks": {
       "pre-commit": "next-hashicorp precommit"
     }
-  },
-  "engines": {
-    "npm": ">=7.0.0"
   },
   "scripts": {
     "build": "node --max-old-space-size=2048 ./node_modules/.bin/next build",
