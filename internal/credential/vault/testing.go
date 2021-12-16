@@ -18,10 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
-
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
