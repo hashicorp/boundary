@@ -63,6 +63,9 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			// expired or invalid token
 			return nil, errors.Wrap(ctx, err, op)
 		}
+		if secret == nil {
+			return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+		}
 
 		leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
 		if minLease > leaseDuration {
