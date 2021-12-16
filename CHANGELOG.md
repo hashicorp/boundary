@@ -2,6 +2,16 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.7.3 (2021/12/16)
+
+### Bug Fixes
+
+* target: Fix permission bug which prevents the UI from being able to add and remove
+  host sources on a target. ([PR](https://github.com/hashicorp/boundary/pull/1794))
+* credential: Fix panic during credential issue when a nil secret is received. This can
+  occur when using the Vault KV backend which returns a nil secret and no error if the
+  secret does not exist. ([PR](https://github.com/hashicorp/boundary/pull/1798))
+
 ## 0.7.2 (2021/12/14)
 
 ### Security
