@@ -8,28 +8,25 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
-	"github.com/hashicorp/boundary/internal/credential"
+	cred "github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
+	iamStore "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jackc/pgconn"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/iam"
-
-	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_ListSession(t *testing.T) {
@@ -1700,15 +1697,15 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
 	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 	libs := []*target.CredentialLibrary{
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), credential.ApplicationPurpose),
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), credential.ApplicationPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), cred.ApplicationPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), cred.ApplicationPurpose),
 	}
 
 	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), libs)
 	require.NoError(err)
 	creds := []*DynamicCredential{
-		NewDynamicCredential(libIds[0].GetPublicId(), credential.ApplicationPurpose),
-		NewDynamicCredential(libIds[1].GetPublicId(), credential.ApplicationPurpose),
+		NewDynamicCredential(libIds[0].GetPublicId(), cred.ApplicationPurpose),
+		NewDynamicCredential(libIds[1].GetPublicId(), cred.ApplicationPurpose),
 	}
 	params.DynamicCredentials = creds
 	return params
