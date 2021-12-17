@@ -77,7 +77,7 @@ func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj 
 	return
 }
 
-func TestOrg(t *testing.T, repo *Repository, opt ...Option) (org *Scope) {
+func TestOrg(t *testing.T, repo *Repository, opt ...Option) *Scope {
 	t.Helper()
 	require := require.New(t)
 
@@ -85,12 +85,28 @@ func TestOrg(t *testing.T, repo *Repository, opt ...Option) (org *Scope) {
 
 	org, err := NewOrg(opt...)
 	require.NoError(err)
-	org, err = repo.CreateScope(context.Background(), org, opts.withUserId)
+	org, err = repo.CreateScope(context.Background(), org, opts.withUserId, opt...)
 	require.NoError(err)
 	require.NotNil(org)
 	require.NotEmpty(org.GetPublicId())
 
-	return
+	return org
+}
+
+func TestProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *Scope {
+	t.Helper()
+	require := require.New(t)
+
+	opts := getOpts(opt...)
+
+	proj, err := NewProject(orgId, opt...)
+	require.NoError(err)
+	proj, err = repo.CreateScope(context.Background(), proj, opts.withUserId, opt...)
+	require.NoError(err)
+	require.NotNil(proj)
+	require.NotEmpty(proj.GetPublicId())
+
+	return proj
 }
 
 func testOrg(t *testing.T, repo *Repository, name, description string) (org *Scope) {

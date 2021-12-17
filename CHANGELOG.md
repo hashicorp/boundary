@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* In newly-created scopes, if default role creation is not disabled, the roles
+  will now contain a grant to allow listing targets. This will still be subject
+  to listing visibility rules, so only targets the user is granted some action
+  on will be returned.
+
 ### New and Improved
 
 * config: The `description` field for workers now supports being set
@@ -23,11 +30,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   as well as files. ([PR](https://github.com/hashicorp/boundary/pull/1758))
 * config: Add support for go-sockaddr templates to Worker and Controller
   addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
+* controllers/workers: Add client IP to inbound request information which is included in
+  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
 * host: Plugin-based host catalogs will now schedule updates for all
   of its host sets when its attributes are updated.
   ([PR](https://github.com/hashicorp/boundary/pull/1736))
-* controllers/workers: Add client IP to inbound request information which is included in
-  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
+* scopes: Default roles in newly-created scopes now contain a grant to allow
+  listing targets. ([PR](https://github.com/hashicorp/boundary/pull/1803))
 * plugins/aws: AWS plugin based hosts now include DNS names in addition to the
   IP addresses they already provide.
 
