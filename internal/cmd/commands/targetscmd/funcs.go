@@ -676,13 +676,21 @@ func printItemTable(result api.GenericResult) string {
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	var hostSourceMaps []map[string]interface{}
+	// used as a key to ensure there are no repeat printed values among HostSources and HostSets
+	type setInfo struct {
+		id            interface{}
+		hostCatalogID interface{}
+	}
+	hostSourceInfo := make(map[setInfo]map[string]interface{})
 	if len(item.HostSources) > 0 {
 		for _, set := range item.HostSources {
 			m := map[string]interface{}{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
-			hostSourceMaps = append(hostSourceMaps, m)
+			k := setInfo{set.Id, set.HostCatalogId}
+			hostSourceInfo[k] = m
+			//hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
@@ -694,11 +702,17 @@ func printItemTable(result api.GenericResult) string {
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
-			hostSourceMaps = append(hostSourceMaps, m)
+			k := setInfo{set.Id, set.HostCatalogId}
+			hostSourceInfo[k] = m
+			//hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
 		}
+	}
+	fmt.Println(hostSourceInfo)
+	for _, m := range hostSourceInfo {
+		hostSourceMaps = append(hostSourceMaps, m)
 	}
 
 	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
