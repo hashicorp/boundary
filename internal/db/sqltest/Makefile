@@ -18,7 +18,9 @@ endif
 PROVE_OPTS ?=
 
 TESTS ?= tests/setup/*.sql \
-		 tests/wh/*/*.sql
+		 tests/wh/*/*.sql \
+		 tests/sentinel/*.sql \
+		 tests/credential/*/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
