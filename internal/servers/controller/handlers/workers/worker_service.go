@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 type workerServiceServer struct {
@@ -277,6 +278,22 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 	}
 
+	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ScopeId, sessionInfo.PublicId)
+	if err != nil {
+		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+			fmt.Sprintf("Error retrieving session credentials: %s", err))
+	}
+	var workerCreds []*pbs.Credential
+	for _, c := range creds {
+		m := &pbs.Credential{}
+		err = proto.Unmarshal(c, m)
+		if err != nil {
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+				fmt.Sprintf("Error unmarshaling credentials: %s", err))
+		}
+		workerCreds = append(workerCreds, m)
+	}
+
 	resp := &pbs.LookupSessionResponse{
 		Authorization: &targets.SessionAuthorizationData{
 			SessionId:   sessionInfo.GetPublicId(),
@@ -293,6 +310,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		HostSetId:       sessionInfo.HostSetId,
 		TargetId:        sessionInfo.TargetId,
 		UserId:          sessionInfo.UserId,
+		Credentials:     workerCreds,
 	}
 	if resp.ConnectionsLeft != -1 {
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
