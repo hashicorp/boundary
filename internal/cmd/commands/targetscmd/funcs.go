@@ -690,7 +690,6 @@ func printItemTable(result api.GenericResult) string {
 			}
 			k := setInfo{set.Id, set.HostCatalogId}
 			hostSourceInfo[k] = m
-			//hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
@@ -704,13 +703,11 @@ func printItemTable(result api.GenericResult) string {
 			}
 			k := setInfo{set.Id, set.HostCatalogId}
 			hostSourceInfo[k] = m
-			//hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
 		}
 	}
-	fmt.Println(hostSourceInfo)
 	for _, m := range hostSourceInfo {
 		hostSourceMaps = append(hostSourceMaps, m)
 	}
