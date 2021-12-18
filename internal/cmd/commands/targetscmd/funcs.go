@@ -694,13 +694,12 @@ func printItemTable(result api.GenericResult) string {
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
-			hostSourceMaps = append(hostSourceMaps, m)			
+			hostSourceMaps = append(hostSourceMaps, m)
 		}
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
 		}
 	}
-
 
 	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
 	if len(item.ApplicationCredentialSources) > 0 {
