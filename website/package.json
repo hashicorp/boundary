@@ -31,7 +31,7 @@
     "@hashicorp/react-product-features-list": "^5.0.0",
     "@hashicorp/react-search": "^6.1.1",
     "@hashicorp/react-section-header": "^5.0.4",
-    "@hashicorp/react-subnav": "^9.2.2",
+    "@hashicorp/react-subnav": "^9.3.1",
     "@hashicorp/react-use-cases": "^5.0.0",
     "@hashicorp/react-vertical-text-block-list": "^7.0.0",
     "change-case": "4.1.2",
