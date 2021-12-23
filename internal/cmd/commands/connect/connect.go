@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/proxy"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
@@ -808,9 +809,26 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	defer c.connWg.Done()
 	defer c.proxyCancel()
 
+	type sessionSecret struct {
+		username string
+		password string
+	}
+
 	port := strconv.Itoa(c.listenerAddr.Port)
 	ip := c.listenerAddr.IP.String()
 	addr := c.listenerAddr.String()
+	creds := c.sessionAuthz.Credentials
+	var secret sessionSecret
+
+	if len(creds) > 0 {
+		for _, cred := range creds {
+			if cred.CredentialLibrary.Type == credential.UserPasswordType {
+				secret.password = cred.Secret.Decoded["password"].(string)
+				secret.username = cred.Secret.Decoded["username"].(string)
+				break
+			}
+		}
+	}
 
 	var args []string
 	var envs []string
@@ -872,9 +890,14 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	}
 
 	for i := range args {
-		args[i] = stringReplacer(args[i], "port", port)
-		args[i] = stringReplacer(args[i], "ip", ip)
 		args[i] = stringReplacer(args[i], "addr", addr)
+		args[i] = stringReplacer(args[i], "ip", ip)
+		args[i] = stringReplacer(args[i], "port", port)
+
+		if secret.username != "" {
+			args[i] = stringReplacer(args[i], "password", secret.password)
+			args[i] = stringReplacer(args[i], "username", secret.username)
+		}
 	}
 
 	// NOTE: exec.CommandContext is a hard kill, so if used it leaves the
@@ -883,10 +906,18 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	cmd := exec.Command(c.flagExec, args...)
 	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
-		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
+		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
 	)
+
+	if secret.username != "" {
+		cmd.Env = append(cmd.Env,
+			fmt.Sprintf("BOUNDARY_PROXIED_PASSWORD=%s", secret.password),
+			fmt.Sprintf("BOUNDARY_PROXIED_USERNAME=%s", secret.username),
+		)
+	}
+
 	// Envs that came from subcommand handling
 	cmd.Env = append(cmd.Env, envs...)
 	cmd.Stdin = os.Stdin

@@ -117,6 +117,10 @@ variables in the executed command:
   socket that `boundary connect` has opened.
 - `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
   address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
+- `{{boundary.password}}` (`BOUNDARY_PROXIED_PASSWORD`): if an available credential
+  library is attached to the target, the first brokered password provided by the credential store.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): if an available credential
+  library is attached to the target, the first brokered username provided by the credential store.
 
 For example, if you wanted to use Boundary to create an authenticated firewall
 around 'curl', you could update the default TCP target from a default port
