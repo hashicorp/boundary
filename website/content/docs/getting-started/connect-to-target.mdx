@@ -119,7 +119,7 @@ variables in the executed command:
   address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
 - `{{boundary.password}}` (`BOUNDARY_PROXIED_PASSWORD`): if an available credential
   library is attached to the target, the first brokered password provided by the credential store.
-- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): if an available credential
+- `{{boundary.username}}` (`BOUNDARY_PROXIED_USERNAME`): if an available credential
   library is attached to the target, the first brokered username provided by the credential store.
 
 For example, if you wanted to use Boundary to create an authenticated firewall
