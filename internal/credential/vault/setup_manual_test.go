@@ -20,6 +20,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
 )
 
 func TestSetupSleepyDevEnvironment(t *testing.T) {

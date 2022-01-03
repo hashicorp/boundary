@@ -3,6 +3,7 @@ package vault
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +82,30 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithRequestBody([]byte("body")))
 		testOpts := getDefaultOptions()
 		testOpts.withRequestBody = []byte("body")
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithCredentialType", func(t *testing.T) {
+		opts := getOpts(WithCredentialType(credential.UserPasswordType))
+		testOpts := getDefaultOptions()
+		testOpts.withCredentialType = credential.UserPasswordType
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithOverrideUsernameAttribute", func(t *testing.T) {
+		opts := getOpts(WithOverrideUsernameAttribute("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withOverrideUsernameAttribute = "test"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithOverridePasswordAttribute", func(t *testing.T) {
+		opts := getOpts(WithOverridePasswordAttribute("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withOverridePasswordAttribute = "test"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithMappingOverride", func(t *testing.T) {
+		opts := getOpts(WithMappingOverride(unknownMapper(1)))
+		testOpts := getDefaultOptions()
+		testOpts.withMappingOverride = unknownMapper(1)
 		assert.Equal(t, opts, testOpts)
 	})
 }

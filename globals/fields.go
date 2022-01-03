@@ -70,4 +70,6 @@ const (
 	EgressCredentialSourceIdsField       = "egress_credential_source_ids"
 	EgressCredentialSourcesField         = "egress_credential_sources"
 	ConnectionsField                     = "connections"
+	CredentialTypeField                  = "credential_type"
+	CredentialMappingOverridesField      = "credential_mapping_overrides"
 )

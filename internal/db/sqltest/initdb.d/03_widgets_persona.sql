@@ -313,12 +313,41 @@ begin;
     values
       ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
 
-    insert into credential_vault_library
-      (store_id,       public_id,      name,                   description, vault_path,           http_method)
+    insert into credential_vault_token
+      (store_id,       key_id,          status,   token_hmac,   token,         last_renewal_time, expiration_time)
     values
-      ('vs_______wvs', 'vl______wvl1', 'widget vault library', 'None',      '/secrets',           'GET'),
-      ('vs_______wvs', 'vl______wvl2', 'widget vault ssh',     'None',      '/secrets/ssh/admin', 'GET'),
-      ('vs_______wvs', 'vl______wvl3', 'widget vault kv',      'None',      '/secrets/kv',        'GET');
+      ('vs_______wvs', 'kdkv___widget', 'current', 'hmac-value', 'token-value', now(),             now() + interval '1 hour');
+
+    insert into credential_vault_library
+      (store_id,       public_id,      name,                    description, vault_path,           http_method, credential_type)
+    values
+      ('vs_______wvs', 'vl______wvl1', 'widget vault library',  'None',      '/secrets',           'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl2', 'widget vault ssh',      'None',      '/secrets/ssh/admin', 'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl3', 'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'user_password'),
+      ('vs_______wvs', 'vl______wvl4', 'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'user_password'),
+      ('vs_______wvs', 'vl______wvl5', 'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'user_password'),
+      ('vs_______wvs', 'vl______wvl6', 'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'user_password'),
+      ('vs_______wvs', 'vl______wvl7', 'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'user_password');
+
+    insert into credential_vault_library_user_password_mapping_override
+      (library_id)
+    values
+      ('vl______wvl4');
+
+    insert into credential_vault_library_user_password_mapping_override
+      (library_id,     username_attribute)
+    values
+      ('vl______wvl5', 'my_username');
+
+    insert into credential_vault_library_user_password_mapping_override
+      (library_id,     password_attribute)
+    values
+      ('vl______wvl6', 'my_password');
+
+    insert into credential_vault_library_user_password_mapping_override
+      (library_id,     username_attribute, password_attribute)
+    values
+      ('vl______wvl7', 'my_username',      'my_password');
 
     insert into target_credential_library
       (target_id,      credential_library_id, credential_purpose)
@@ -330,4 +359,3 @@ begin;
   end;
   $$ language plpgsql;
 commit;
-
