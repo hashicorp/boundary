@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -37,7 +38,6 @@ func TestCredentialLibrary_New(t *testing.T) {
 		name          string
 		args          args
 		want          *CredentialLibrary
-		wantErr       bool
 		wantCreateErr bool
 	}{
 		{
@@ -190,6 +190,63 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			wantCreateErr: true,
 		},
+		{
+			name: "minimum-actually-valid",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:    cs.PublicId,
+					VaultPath:  "vault/path",
+					HttpMethod: string(MethodGet),
+				},
+			},
+		},
+		{
+			name: "credential-type",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+					WithCredentialType(credential.UserPasswordType),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.PublicId,
+					VaultPath:      "vault/path",
+					HttpMethod:     string(MethodGet),
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+		},
+		{
+			name: "credential-type-with-userpass-mapping",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+					WithCredentialType(credential.UserPasswordType),
+					WithMappingOverride(NewUserPasswordOverride(WithOverrideUsernameAttribute("test"))),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.PublicId,
+					VaultPath:      "vault/path",
+					HttpMethod:     string(MethodGet),
+					CredentialType: string(credential.UserPasswordType),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -198,16 +255,20 @@ func TestCredentialLibrary_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			got, err := NewCredentialLibrary(tt.args.storeId, tt.args.vaultPath, tt.args.opts...)
-			if tt.wantErr {
-				assert.Error(err)
-				require.Nil(got)
-				return
-			}
 			require.NoError(err)
 			require.NotNil(got)
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)
+
+			switch ct := tt.want.GetCredentialType(); ct {
+			case string(credential.UserPasswordType):
+				assert.Equal(credential.UserPasswordType, got.CredentialType())
+			case string(credential.UnspecifiedType), "":
+				assert.Equal(credential.UnspecifiedType, got.CredentialType())
+			default:
+				assert.Failf("Unknown credential type", "%s", ct)
+			}
 
 			id, err := newCredentialLibraryId()
 			assert.NoError(err)

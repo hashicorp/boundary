@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	"github.com/hashicorp/boundary/internal/credential"
+	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 // Option - how Options are passed as arguments.
@@ -18,7 +18,7 @@ func GetOpts(opt ...Option) Options {
 
 // Options = how options are represented
 type Options struct {
-	WithEgressCredentials []credential.Credential
+	WithEgressCredentials []*serverpb.Credential
 }
 
 func getDefaultOptions() Options {
@@ -28,7 +28,7 @@ func getDefaultOptions() Options {
 }
 
 // WithEgressCredentials provides an optional egress credentials to use when establishing a proxy
-func WithEgressCredentials(creds []credential.Credential) Option {
+func WithEgressCredentials(creds []*serverpb.Credential) Option {
 	return func(o *Options) {
 		o.WithEgressCredentials = creds
 	}

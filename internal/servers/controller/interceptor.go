@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -17,9 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-
 	"github.com/mr-tron/base58"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -304,4 +304,18 @@ func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (
 		// call the handler...
 		return handler(interceptorCtx, req)
 	}, nil
+}
+
+func recoveryHandler() grpc_recovery.RecoveryHandlerFuncContext {
+	const op = "controller.recoveryHandler"
+	return func(ctx context.Context, p interface{}) (err error) {
+		event.WriteError(
+			ctx,
+			op,
+			fmt.Errorf("recovered from panic: %v", p),
+			event.WithInfo("stack", string(debug.Stack())),
+		)
+
+		return status.Errorf(codes.Internal, "%v", p)
+	}
 }

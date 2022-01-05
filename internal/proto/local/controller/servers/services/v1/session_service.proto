@@ -6,10 +6,11 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/serve
 
 import "google/protobuf/timestamp.proto";
 import "controller/api/resources/targets/v1/target.proto";
+import "controller/servers/services/v1/credential.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
 
 service SessionService {
-  // GetSession allows a worker to retrieve session information from the
+  // LookupSession allows a worker to retrieve session information from the
   // controller.
   rpc LookupSession(LookupSessionRequest) returns (LookupSessionResponse) {}
 
@@ -52,6 +53,7 @@ message LookupSessionResponse {
   string host_set_id = 100;                                  // @gotags: `class:"public"`
   string target_id = 110;                                    // @gotags: `class:"public"`
   string user_id = 120;                                      // @gotags: `class:"public"`
+  repeated Credential credentials = 130;                     // @gotags: `class:"secret"`
 }
 
 message ActivateSessionRequest {

@@ -18,11 +18,21 @@ type Store interface {
 	GetScopeId() string
 }
 
+// Type is the type of credential provided by a library.
+type Type string
+
+// Credential type values.
+const (
+	UnspecifiedType  Type = "unspecified"
+	UserPasswordType Type = "user_password"
+)
+
 // A Library is a resource that provides credentials that are of the same
 // type and access level from a single store.
 type Library interface {
 	boundary.Resource
 	GetStoreId() string
+	CredentialType() Type
 }
 
 // Purpose is the purpose of the credential.
