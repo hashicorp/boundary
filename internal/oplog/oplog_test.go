@@ -744,7 +744,8 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
 						Action: dbw.DoNothing(true),
-					})},
+					}),
+				},
 			},
 		},
 		{
@@ -758,7 +759,8 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
 						Action: dbw.UpdateAll(true),
-					})},
+					}),
+				},
 			},
 		},
 		{
@@ -772,7 +774,8 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
 						Action: dbw.SetColumnValues(map[string]interface{}{"name": dbw.Expr("NULL")}),
-					})},
+					}),
+				},
 			},
 		},
 		{
@@ -786,7 +789,8 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
 						Action: dbw.SetColumnValues(map[string]interface{}{"name": testId(t)}),
-					})},
+					}),
+				},
 			},
 		},
 		{
@@ -800,7 +804,8 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
 						Action: dbw.SetColumns([]string{"email"}),
-					})},
+					}),
+				},
 			},
 		},
 		{

@@ -150,8 +150,8 @@ func errorInterceptor(
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
-
+		handler grpc.UnaryHandler) (interface{}, error,
+	) {
 		// call the handler...
 		h, handlerErr := handler(interceptorCtx, req)
 
@@ -201,8 +201,8 @@ func statusCodeInterceptor(
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
-
+		handler grpc.UnaryHandler) (interface{}, error,
+	) {
 		// call the handler...
 		h, handlerErr := handler(interceptorCtx, req)
 
@@ -237,8 +237,8 @@ func auditRequestInterceptor(
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
-
+		handler grpc.UnaryHandler) (interface{}, error,
+	) {
 		if msg, ok := req.(proto.Message); ok {
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: msg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
@@ -256,8 +256,8 @@ func auditResponseInterceptor(
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
-
+		handler grpc.UnaryHandler) (interface{}, error,
+	) {
 		// call the handler...
 		resp, err := handler(interceptorCtx, req)
 

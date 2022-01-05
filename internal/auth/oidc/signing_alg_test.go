@@ -141,18 +141,17 @@ func TestSigningAlg_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod :=
-		TestAuthMethod(
-			t,
-			conn,
-			databaseWrapper,
-			org.PublicId,
-			InactiveState,
-			"alice_rp",
-			"my-dogs-name",
-			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
-			WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
+	testAuthMethod := TestAuthMethod(
+		t,
+		conn,
+		databaseWrapper,
+		org.PublicId,
+		InactiveState,
+		"alice_rp",
+		"my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+		WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, signingAlg Alg) *SigningAlg {
 		c, err := NewSigningAlg(ctx, authMethodId, signingAlg)

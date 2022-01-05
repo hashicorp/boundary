@@ -13,8 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type beforeWriteFn func(interface{}) error
-type afterWriteFn func(interface{}, int) error
+type (
+	beforeWriteFn func(interface{}) error
+	afterWriteFn  func(interface{}, int) error
+)
 
 func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, opType OpType, opts Options) (beforeWriteFn, afterWriteFn, error) {
 	const op = "db.generateOplogBeforeAfterOpts"

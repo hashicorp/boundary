@@ -133,8 +133,7 @@ func TestCertificate_Delete(t *testing.T) {
 
 	cert, _ := testGenerateCA(t, "localhost")
 
-	testAuthMethod :=
-		TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name", WithApiUrl(TestConvertToUrls(t, "https://apiurl.com")[0]), WithCertificates(cert)) // seed an extra callback url to just make sure the delete only gets the right num of rows
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name", WithApiUrl(TestConvertToUrls(t, "https://apiurl.com")[0]), WithCertificates(cert)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	// make another test cert
 	_, pem2 := testGenerateCA(t, "localhost")

@@ -122,7 +122,6 @@ func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Messag
 		}
 		dbwOpts, err := convertToDbwOpts(ctx, item.operationOptions)
 		if err != nil {
-
 		}
 		msgs = append(msgs, Message{
 			Message:        item.msg,
