@@ -185,11 +185,11 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			// for all scopes which are not global, and the global case was
 			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
-			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
+			if err := r.LookupWhere(ctx, &p, where, []interface{}{s.PublicId}); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent public id from public id"))
 			}
 		default:
-			if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
+			if err := r.LookupWhere(ctx, &p, "public_id = ?", []interface{}{s.ParentId}); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent from public id"))
 			}
 		}

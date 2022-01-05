@@ -123,7 +123,7 @@ func Test_UserCreate(t *testing.T) {
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("db.Create: iam.(User).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
+		assert.Equal("db.Create: dbw.Create: error before write: iam.(User).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
 	})
 }
 
@@ -170,7 +170,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Update: iam.(User).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
+			wantErrMsg: "db.Update: dbw.Update: error before write: iam.(User).VetForWrite: iam.validateScopeForWrite: not allowed to change a resource's scope: parameter violation: error #100",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -212,7 +212,7 @@ func Test_UserUpdate(t *testing.T) {
 				dbOpts:         []db.Option{db.WithSkipVetForWrite(true)},
 			},
 			wantErr:    true,
-			wantErrMsg: `db.Update: immutable column: iam_user.scope_id: integrity violation: error #1003`,
+			wantErrMsg: "integrity violation: error #1003",
 		},
 	}
 	for _, tt := range tests {
@@ -237,7 +237,7 @@ func Test_UserUpdate(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)

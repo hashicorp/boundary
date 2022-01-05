@@ -4,7 +4,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,11 +24,9 @@ import (
 )
 
 func TestDb_UpdateUnsetField(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
-	rw := &Db{
-		underlying: db,
-	}
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
+	rw := New(conn)
 	tu := &db_test.TestUser{
 		StoreTestUser: &db_test.StoreTestUser{
 			PublicId: testId(t),
@@ -49,8 +46,9 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 }
 
 func TestDb_Update(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	testCtx := context.Background()
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
@@ -131,7 +129,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "with version option is zero: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: dbw.whereClausesFromOpts: with version option is zero",
 		},
 		{
 			name: "simple-with-version",
@@ -278,7 +276,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: not allowed on primary key field Id: parameter violation: error #103",
+			wantErrMsg: "parameter violation: error #103: dbw.Update: not allowed on primary key field Id: invalid field mask",
 		},
 		{
 			name: "both are missing",
@@ -295,7 +293,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: both fieldMaskPaths and setToNullPaths are missing: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: both fieldMaskPaths and setToNullPaths are missing",
 		},
 		{
 			name: "i is nil",
@@ -306,7 +304,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: missing interface: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: missing interface: invalid parameter",
 		},
 		{
 			name: "only read-only",
@@ -323,16 +321,14 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "db.Update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100: dbw.Update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: db,
-			}
-			u := testUser(t, db, tt.name+id, id, id)
+			rw := New(conn)
+			u := testUser(t, conn, tt.name+id, id, id)
 
 			if tt.args.i != nil {
 				tt.args.i.Id = u.Id
@@ -361,7 +357,7 @@ func TestDb_Update(t *testing.T) {
 				}
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), foundUser, where, tt.args.i.PublicId)
+			err = rw.LookupWhere(context.Background(), foundUser, where, []interface{}{tt.args.i.PublicId})
 			require.NoError(err)
 			assert.Equal(tt.args.i.Id, foundUser.Id)
 			assert.Equal(tt.wantName, foundUser.Name)
@@ -375,10 +371,10 @@ func TestDb_Update(t *testing.T) {
 	}
 	t.Run("no-version-field", func(t *testing.T) {
 		assert := assert.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		car := testCar(t, db, "foo-"+id, id, int32(100))
+		car := testCar(t, conn, "foo-"+id, id, int32(100))
 
 		car.Name = "friendly-" + id
 		versionOne := uint32(1)
@@ -388,10 +384,10 @@ func TestDb_Update(t *testing.T) {
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
-		user := testUser(t, db, "foo-"+id, id, id)
+		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
@@ -406,6 +402,8 @@ func TestDb_Update(t *testing.T) {
 					"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 				}),
 		)
+		conn.Debug(false)
+
 		require.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
@@ -416,12 +414,12 @@ func TestDb_Update(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
-		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
+		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 	})
 	t.Run("both-WithOplog-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -450,9 +448,9 @@ func TestDb_Update(t *testing.T) {
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 
-		ticket, err := w.GetTicket(&db_test.TestUser{})
+		ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 		require.NoError(err)
 
 		id, err := uuid.GenerateUUID()
@@ -488,12 +486,12 @@ func TestDb_Update(t *testing.T) {
 		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
-		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("vet-for-write", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		user := &testUserWithVet{
@@ -502,7 +500,7 @@ func TestDb_Update(t *testing.T) {
 			PhoneNumber: id,
 			Email:       id,
 		}
-		err = db.Create(user).Error
+		err = w.Create(context.Background(), user)
 		require.NoError(err)
 
 		user.Name = "friendly-" + id
@@ -528,7 +526,7 @@ func TestDb_Update(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 
-		user := testUser(t, db, "foo-"+id, id, id)
+		user := testUser(t, conn, "foo-"+id, id, id)
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
@@ -536,10 +534,10 @@ func TestDb_Update(t *testing.T) {
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
-		user := testUser(t, db, "foo-"+id, id, id)
+		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
@@ -554,14 +552,14 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Contains(err.Error(), "db.Update: oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
-		user := testUser(t, db, "foo-"+id, id, id)
+		user := testUser(t, conn, "foo-"+id, id, id)
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			WithOplog(
@@ -571,14 +569,14 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Contains(err.Error(), "db.Update: oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
 	})
 	t.Run("multi-column", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
-		scooter := testScooter(t, db, "", 0)
-		accessory := testAccessory(t, db, "test accessory")
-		scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+		w := New(conn)
+		scooter := testScooter(t, conn, "", 0)
+		accessory := testAccessory(t, conn, "test accessory")
+		scooterAccessory := testScooterAccessory(t, conn, scooter.Id, accessory.AccessoryId)
 		scooterAccessory.Review = "this is great"
 		rowsUpdated, err := w.Update(context.Background(), scooterAccessory, []string{"Review"}, nil)
 		require.NoError(err)
@@ -627,11 +625,11 @@ func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpTy
 
 func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -656,7 +654,7 @@ func TestDb_Create(t *testing.T) {
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -686,7 +684,7 @@ func TestDb_Create(t *testing.T) {
 	})
 	t.Run("both-Oplog-NewOplogMsg", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -703,10 +701,11 @@ func TestDb_Create(t *testing.T) {
 		assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
 	})
 	t.Run("valid-NewOplogMsg", func(t *testing.T) {
+		testCtx := context.Background()
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 
-		ticket, err := w.GetTicket(&db_test.TestUser{})
+		ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 		require.NoError(err)
 
 		id, err := uuid.GenerateUUID()
@@ -742,12 +741,12 @@ func TestDb_Create(t *testing.T) {
 		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
-		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -766,11 +765,11 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.Create: oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing wrapper: parameter violation: error #100")
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -785,7 +784,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.Create: oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
+		assert.Contains(err.Error(), "oplog validation failed: db.validateOplogArgs: missing metadata: parameter violation: error #100")
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -803,11 +802,11 @@ func TestDb_Create(t *testing.T) {
 
 func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -835,17 +834,17 @@ func TestDb_LookupByPublicId(t *testing.T) {
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		foundUser, err := db_test.NewTestUser()
 		foundUser.PublicId = ""
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.LookupById: db.primaryKeysWhere: missing primary key: parameter violation: error #100")
+		assert.Contains(err.Error(), "missing primary key: invalid parameter")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		foundUser, err := db_test.NewTestUser()
@@ -859,11 +858,11 @@ func TestDb_LookupByPublicId(t *testing.T) {
 
 func TestDb_LookupWhere(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -874,7 +873,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.NotEmpty(user.PublicId)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", user.PublicId)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{user.PublicId})
 		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -882,38 +881,38 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		var foundUser db_test.TestUser
-		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{1})
 		require.Error(err)
 		assert.Equal("db.LookupWhere: missing underlying db: parameter violation: error #100", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 	})
 	t.Run("bad-where", func(t *testing.T) {
 		require := require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []interface{}{id})
 		require.Error(err)
 	})
 }
 
 func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
-	knownUser := testUser(t, db, "zedUser", "", "")
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
+	knownUser := testUser(t, conn, "zedUser", "", "")
 
 	type args struct {
 		where string
@@ -922,7 +921,7 @@ func TestDb_SearchWhere(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		db            Db
+		db            *Db
 		createCnt     int
 		args          args
 		wantCnt       int
@@ -931,7 +930,7 @@ func TestDb_SearchWhere(t *testing.T) {
 	}{
 		{
 			name:      "no-limit",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 10,
 			args: args{
 				where: "1=1",
@@ -943,7 +942,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "no-where",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 10,
 			args: args{
 				opt: []Option{WithLimit(10)},
@@ -953,7 +952,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "custom-limit",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 10,
 			args: args{
 				where: "1=1",
@@ -964,7 +963,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "simple",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
@@ -976,7 +975,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "no args",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 1,
 			args: args{
 				where: fmt.Sprintf("public_id = '%v'", knownUser.PublicId),
@@ -987,7 +986,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "no where, but with args",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 1,
 			args: args{
 				arg: []interface{}{knownUser.PublicId},
@@ -997,7 +996,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "not-found",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
@@ -1009,7 +1008,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "bad-where",
-			db:        Db{underlying: db},
+			db:        New(conn),
 			createCnt: 1,
 			args: args{
 				where: "bad_column_name = ?",
@@ -1021,7 +1020,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		},
 		{
 			name:      "nil-underlying",
-			db:        Db{},
+			db:        New(nil),
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
@@ -1037,7 +1036,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testUsers := []*db_test.TestUser{}
 			for i := 0; i < tt.createCnt; i++ {
-				testUsers = append(testUsers, testUser(t, db, tt.name+strconv.Itoa(i), "", ""))
+				testUsers = append(testUsers, testUser(t, conn, tt.name+strconv.Itoa(i), "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
 
@@ -1064,10 +1063,10 @@ func TestDb_SearchWhere(t *testing.T) {
 func TestDb_Exec(t *testing.T) {
 	t.Parallel()
 	t.Run("update", func(t *testing.T) {
-		db, _ := TestSetup(t, "postgres")
-		TestCreateTables(t, db)
+		conn, _ := TestSetup(t, "postgres")
+		TestCreateTables(t, conn)
 		require := require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		id := testId(t)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
@@ -1084,11 +1083,11 @@ func TestDb_Exec(t *testing.T) {
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
 			func(Reader, Writer) error {
@@ -1104,7 +1103,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("valid-with-1-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
 			func(Reader, Writer) error {
@@ -1120,7 +1119,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("valid-with-2-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
 			func(Reader, Writer) error {
@@ -1136,7 +1135,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("valid-with-4-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
 			func(Reader, Writer) error {
@@ -1152,7 +1151,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("zero-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		require.NoError(err)
@@ -1161,7 +1160,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{nil}
+		w := Db{}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		require.Error(err)
@@ -1170,7 +1169,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return stderrors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
@@ -1178,7 +1177,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := &Db{underlying: db}
+		w := New(conn)
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
 			attempts += 1
@@ -1190,7 +1189,7 @@ func TestDb_DoTx(t *testing.T) {
 	})
 	t.Run("updating-good-bad-good", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := Db{underlying: db}
+		rw := New(conn)
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -1257,12 +1256,10 @@ func TestDb_DoTx(t *testing.T) {
 }
 
 func TestDb_Delete(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	newUser := func() *db_test.TestUser {
-		w := &Db{
-			underlying: db,
-		}
+		w := New(conn)
 		u, err := db_test.NewTestUser()
 		require.NoError(t, err)
 		err = w.Create(context.Background(), u)
@@ -1307,7 +1304,7 @@ func TestDb_Delete(t *testing.T) {
 	}{
 		{
 			name:       "simple-no-oplog",
-			underlying: db,
+			underlying: conn,
 			wrapper:    TestWrapper(t),
 			args: args{
 				i: newUser(),
@@ -1317,7 +1314,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "with-where-no-delete",
-			underlying: db,
+			underlying: conn,
 			wrapper:    TestWrapper(t),
 			args: args{
 				i:   newUser(),
@@ -1329,7 +1326,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "with-where-and-delete",
-			underlying: db,
+			underlying: conn,
 			wrapper:    TestWrapper(t),
 			args: args{
 				i:   newUser(),
@@ -1340,7 +1337,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "valid-with-oplog",
-			underlying: db,
+			underlying: conn,
 			wrapper:    TestWrapper(t),
 			args: args{
 				i:        newUser(),
@@ -1352,7 +1349,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "nil-wrapper",
-			underlying: db,
+			underlying: conn,
 			wrapper:    nil,
 			args: args{
 				i:        newUser(),
@@ -1365,7 +1362,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "nil-metadata",
-			underlying: db,
+			underlying: conn,
 			wrapper:    nil,
 			args: args{
 				i:        newUser(),
@@ -1389,7 +1386,7 @@ func TestDb_Delete(t *testing.T) {
 		},
 		{
 			name:       "not-found",
-			underlying: db,
+			underlying: conn,
 			wrapper:    TestWrapper(t),
 			args: args{
 				i: notFoundUser(),
@@ -1402,9 +1399,7 @@ func TestDb_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
+			rw := New(tt.underlying)
 			if tt.wantOplog {
 				metadata := tt.args.metadata(tt.args.i.PublicId)
 				opLog := WithOplog(tt.wrapper, metadata)
@@ -1443,7 +1438,7 @@ func TestDb_Delete(t *testing.T) {
 		})
 		t.Run("both-WithOplog-NewOplogMsg", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			w := Db{underlying: db}
+			w := New(conn)
 			id, err := uuid.GenerateUUID()
 			require.NoError(err)
 			user, err := db_test.NewTestUser()
@@ -1464,10 +1459,11 @@ func TestDb_Delete(t *testing.T) {
 			assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
 		})
 		t.Run("valid-NewOplogMsg", func(t *testing.T) {
+			testCtx := context.Background()
 			assert, require := assert.New(t), require.New(t)
-			w := Db{underlying: db}
+			w := New(conn)
 
-			ticket, err := w.GetTicket(&db_test.TestUser{})
+			ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 			require.NoError(err)
 
 			id, err := uuid.GenerateUUID()
@@ -1501,15 +1497,15 @@ func TestDb_Delete(t *testing.T) {
 			err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
 			require.NoError(err)
 
-			err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+			err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
 			require.NoError(err)
 		})
 		t.Run("multi-column", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			w := Db{underlying: db}
-			scooter := testScooter(t, db, "", 0)
-			accessory := testAccessory(t, db, "test accessory")
-			scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+			w := New(conn)
+			scooter := testScooter(t, conn, "", 0)
+			accessory := testAccessory(t, conn, "test accessory")
+			scooterAccessory := testScooterAccessory(t, conn, scooter.Id, accessory.AccessoryId)
 			rowsDeleted, err := w.Delete(context.Background(), scooterAccessory)
 			require.NoError(err)
 			assert.Equal(1, rowsDeleted)
@@ -1519,11 +1515,11 @@ func TestDb_Delete(t *testing.T) {
 
 func TestDb_ScanRows(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		w := New(conn)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
 		err = w.Create(context.Background(), user)
@@ -1538,7 +1534,7 @@ func TestDb_ScanRows(t *testing.T) {
 			require.NoError(err)
 
 			// scan the row into your Gorm struct
-			err = w.ScanRows(rows, &u)
+			err = w.ScanRows(context.Background(), rows, &u)
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
@@ -1547,11 +1543,11 @@ func TestDb_ScanRows(t *testing.T) {
 
 func TestDb_Query(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		rw := Db{underlying: db}
+		rw := New(conn)
 		user, err := db_test.NewTestUser()
 		user.Name = "alice"
 		require.NoError(err)
@@ -1568,7 +1564,7 @@ func TestDb_Query(t *testing.T) {
 			u, err := db_test.NewTestUser()
 			require.NoError(err)
 			// scan the row into your Gorm struct
-			err = rw.ScanRows(rows, &u)
+			err = rw.ScanRows(context.Background(), rows, &u)
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
@@ -1755,9 +1751,7 @@ func TestDb_CreateItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
+			rw := New(tt.underlying)
 			err := rw.CreateItems(context.Background(), tt.args.createItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -1951,9 +1945,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
+			rw := New(tt.underlying)
 			rowsDeleted, err := rw.DeleteItems(context.Background(), tt.args.deleteItems, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -1998,7 +1990,8 @@ func testUser(t *testing.T, conn *DB, name, email, phoneNumber string) *db_test.
 		},
 	}
 	if conn != nil {
-		err = conn.Create(u).Error
+		rw := New(conn)
+		err := rw.Create(context.Background(), u)
 		require.NoError(err)
 	}
 	return u
@@ -2019,7 +2012,8 @@ func testCar(t *testing.T, conn *DB, name, model string, mpg int32) *db_test.Tes
 		},
 	}
 	if conn != nil {
-		err = conn.Create(c).Error
+		rw := New(conn)
+		err := rw.Create(context.Background(), c)
 		require.NoError(err)
 	}
 	return c
@@ -2047,7 +2041,8 @@ func testScooter(t *testing.T, conn *DB, model string, mpg int32) *db_test.TestS
 		},
 	}
 	if conn != nil {
-		err = conn.Create(u).Error
+		rw := New(conn)
+		err := rw.Create(context.Background(), u)
 		require.NoError(err)
 	}
 	return u
@@ -2059,7 +2054,8 @@ func testAccessory(t *testing.T, conn *DB, description string) *db_test.TestAcce
 	a, err := db_test.NewTestAccessory(description)
 	require.NoError(err)
 	if conn != nil {
-		err = conn.Create(a).Error
+		rw := New(conn)
+		rw.Create(context.Background(), a)
 		require.NoError(err)
 	}
 	return a
@@ -2071,7 +2067,8 @@ func testScooterAccessory(t *testing.T, conn *DB, scooterId, accessoryId uint32)
 	a, err := db_test.NewTestScooterAccessory(scooterId, accessoryId)
 	require.NoError(err)
 	if conn != nil {
-		err = conn.Create(a).Error
+		rw := New(conn)
+		rw.Create(context.Background(), a)
 		require.NoError(err)
 	}
 	return a
@@ -2079,12 +2076,12 @@ func testScooterAccessory(t *testing.T, conn *DB, scooterId, accessoryId uint32)
 
 func TestDb_LookupById(t *testing.T) {
 	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
-	scooter := testScooter(t, db, "", 0)
-	user := testUser(t, db, "", "", "")
-	accessory := testAccessory(t, db, "test accessory")
-	scooterAccessory := testScooterAccessory(t, db, scooter.Id, accessory.AccessoryId)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
+	scooter := testScooter(t, conn, "", 0)
+	user := testUser(t, conn, "", "", "")
+	accessory := testAccessory(t, conn, "test accessory")
+	scooterAccessory := testScooterAccessory(t, conn, scooter.Id, accessory.AccessoryId)
 
 	type args struct {
 		resource interface{}
@@ -2100,7 +2097,7 @@ func TestDb_LookupById(t *testing.T) {
 	}{
 		{
 			name:       "simple-private-id",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: scooter,
 			},
@@ -2109,7 +2106,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "simple-public-id",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: user,
 			},
@@ -2118,7 +2115,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "simple-non-public-non-private-id",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: accessory,
 			},
@@ -2127,7 +2124,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "compond",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: scooterAccessory,
 			},
@@ -2136,7 +2133,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "compond-with-zero-value-pk",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: func() interface{} {
 					cp := scooterAccessory.Clone()
@@ -2149,7 +2146,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "missing-public-id",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: &db_test.TestUser{
 					StoreTestUser: &db_test.StoreTestUser{},
@@ -2160,7 +2157,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "missing-private-id",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: &db_test.TestScooter{
 					StoreTestScooter: &db_test.StoreTestScooter{},
@@ -2171,7 +2168,7 @@ func TestDb_LookupById(t *testing.T) {
 		},
 		{
 			name:       "not-an-ider",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				resource: &db_test.NotIder{},
 			},
@@ -2191,9 +2188,7 @@ func TestDb_LookupById(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
+			rw := New(tt.underlying)
 			cloner, ok := tt.args.resource.(db_test.Cloner)
 			require.True(ok)
 			cp := cloner.Clone()
@@ -2208,10 +2203,8 @@ func TestDb_LookupById(t *testing.T) {
 		})
 	}
 	t.Run("not-ptr", func(t *testing.T) {
-		u := testUser(t, db, "", "", "")
-		rw := &Db{
-			underlying: db,
-		}
+		u := testUser(t, conn, "", "", "")
+		rw := New(conn)
 		err := rw.LookupById(context.Background(), *u)
 		require.Error(t, err)
 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -2219,6 +2212,7 @@ func TestDb_LookupById(t *testing.T) {
 }
 
 func TestDb_GetTicket(t *testing.T) {
+	testCtx := context.Background()
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
 	type notReplayable struct{}
@@ -2260,10 +2254,8 @@ func TestDb_GetTicket(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
-			got, err := rw.GetTicket(tt.aggregateType)
+			rw := New(tt.underlying)
+			got, err := rw.GetTicket(testCtx, tt.aggregateType)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error type: %s", err.Error())
@@ -2279,11 +2271,12 @@ func TestDb_GetTicket(t *testing.T) {
 }
 
 func TestDb_WriteOplogEntryWith(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
-	w := Db{underlying: db}
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
+	w := New(conn)
+	testCtx := context.Background()
 
-	ticket, err := w.GetTicket(&db_test.TestUser{})
+	ticket, err := w.GetTicket(testCtx, &db_test.TestUser{})
 	require.NoError(t, err)
 
 	id, err := uuid.GenerateUUID()
@@ -2319,7 +2312,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 	}{
 		{
 			name:       "valid",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  TestWrapper(t),
 				ticket:   ticket,
@@ -2330,7 +2323,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 		},
 		{
 			name:       "valid-multiple",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  TestWrapper(t),
 				ticket:   ticket,
@@ -2341,7 +2334,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 		},
 		{
 			name:       "missing-ticket",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  TestWrapper(t),
 				ticket:   nil,
@@ -2365,7 +2358,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 		},
 		{
 			name:       "missing-wrapper",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  nil,
 				ticket:   ticket,
@@ -2377,7 +2370,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 		},
 		{
 			name:       "nil-metadata",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  TestWrapper(t),
 				ticket:   ticket,
@@ -2389,7 +2382,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 		},
 		{
 			name:       "empty-metadata",
-			underlying: db,
+			underlying: conn,
 			args: args{
 				wrapper:  TestWrapper(t),
 				ticket:   ticket,
@@ -2403,9 +2396,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
+			rw := New(tt.underlying)
 			err := rw.WriteOplogEntryWith(context.Background(), tt.args.wrapper, tt.args.ticket, tt.args.metadata, tt.args.msgs, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -2420,492 +2411,492 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 	}
 }
 
-func TestClear_InputTypes(t *testing.T) {
-	type Z struct {
-		F string
-	}
+// func TestClear_InputTypes(t *testing.T) {
+// 	type Z struct {
+// 		F string
+// 	}
 
-	var nilZ *Z
-	s := "test-string"
+// 	var nilZ *Z
+// 	s := "test-string"
 
-	type args struct {
-		v interface{}
-		f []string
-		d int
-	}
+// 	type args struct {
+// 		v interface{}
+// 		f []string
+// 		d int
+// 	}
 
-	tests := []struct {
-		name string
-		args args
-		want interface{}
-		err  errors.Code
-	}{
-		{
-			name: "nil",
-			args: args{
-				v: nil,
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "string",
-			args: args{
-				v: "blank",
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "pointer-to-nil-struct",
-			args: args{
-				v: nilZ,
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "pointer-to-string",
-			args: args{
-				v: &s,
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "not-pointer",
-			args: args{
-				v: Z{
-					F: "foo",
-				},
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "map",
-			args: args{
-				v: map[string]int{
-					"A": 31,
-					"B": 34,
-				},
-				f: []string{"field"},
-				d: 1,
-			},
-			err: errors.InvalidParameter,
-		},
-		{
-			name: "pointer-to-struct",
-			args: args{
-				v: &Z{
-					F: "foo",
-				},
-				f: []string{"field"},
-				d: 1,
-			},
-			want: &Z{
-				F: "foo",
-			},
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			input := tt.args.v
-			err := Clear(input, tt.args.f, tt.args.d)
-			if tt.err != 0 {
-				assert.True(errors.Match(errors.T(tt.err), err))
-				return
-			}
-			require.NoError(err)
-			assert.Equal(tt.want, input)
-		})
-	}
-}
+// 	tests := []struct {
+// 		name string
+// 		args args
+// 		want interface{}
+// 		err  errors.Code
+// 	}{
+// 		{
+// 			name: "nil",
+// 			args: args{
+// 				v: nil,
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "string",
+// 			args: args{
+// 				v: "blank",
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "pointer-to-nil-struct",
+// 			args: args{
+// 				v: nilZ,
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "pointer-to-string",
+// 			args: args{
+// 				v: &s,
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "not-pointer",
+// 			args: args{
+// 				v: Z{
+// 					F: "foo",
+// 				},
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "map",
+// 			args: args{
+// 				v: map[string]int{
+// 					"A": 31,
+// 					"B": 34,
+// 				},
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			err: errors.InvalidParameter,
+// 		},
+// 		{
+// 			name: "pointer-to-struct",
+// 			args: args{
+// 				v: &Z{
+// 					F: "foo",
+// 				},
+// 				f: []string{"field"},
+// 				d: 1,
+// 			},
+// 			want: &Z{
+// 				F: "foo",
+// 			},
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		tt := tt
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			assert, require := assert.New(t), require.New(t)
+// 			input := tt.args.v
+// 			err := Clear(input, tt.args.f, tt.args.d)
+// 			if tt.err != 0 {
+// 				assert.True(errors.Match(errors.T(tt.err), err))
+// 				return
+// 			}
+// 			require.NoError(err)
+// 			assert.Equal(tt.want, input)
+// 		})
+// 	}
+// }
 
-func TestClear_Structs(t *testing.T) {
-	s := "test-string"
+// func TestClear_Structs(t *testing.T) {
+// 	s := "test-string"
 
-	type A struct{ F string }
-	type B struct{ F *string }
+// 	type A struct{ F string }
+// 	type B struct{ F *string }
 
-	type AB struct {
-		A A
-		B *B
-		F string
+// 	type AB struct {
+// 		A A
+// 		B *B
+// 		F string
 
-		IN io.Reader
-		MP map[int]int
-		SL []string
-		AR [1]int
-		CH chan int
-		FN func()
-	}
+// 		IN io.Reader
+// 		MP map[int]int
+// 		SL []string
+// 		AR [1]int
+// 		CH chan int
+// 		FN func()
+// 	}
 
-	type AFB struct {
-		F A
-		B *B
-	}
+// 	type AFB struct {
+// 		F A
+// 		B *B
+// 	}
 
-	type ABF struct {
-		A A
-		F *B
-	}
+// 	type ABF struct {
+// 		A A
+// 		F *B
+// 	}
 
-	type C struct {
-		F  string
-		NF string
-	}
+// 	type C struct {
+// 		F  string
+// 		NF string
+// 	}
 
-	type EA struct {
-		A
-		M  string
-		NF string
-	}
+// 	type EA struct {
+// 		A
+// 		M  string
+// 		NF string
+// 	}
 
-	type EAP struct {
-		*A
-		M  string
-		NF string
-	}
+// 	type EAP struct {
+// 		*A
+// 		M  string
+// 		NF string
+// 	}
 
-	type DEA struct {
-		EA
-		F string
-	}
+// 	type DEA struct {
+// 		EA
+// 		F string
+// 	}
 
-	type DEAP struct {
-		*EAP
-		F string
-	}
+// 	type DEAP struct {
+// 		*EAP
+// 		F string
+// 	}
 
-	type args struct {
-		v interface{}
-		f []string
-		d int
-	}
-	tests := []struct {
-		name string
-		args args
-		want interface{}
-	}{
-		{
-			name: "blank-A",
-			args: args{
-				v: &A{},
-				f: []string{"F"},
-				d: 1,
-			},
-			want: &A{},
-		},
-		{
-			name: "clear-A",
-			args: args{
-				v: &A{"clear"},
-				f: []string{"F"},
-				d: 1,
-			},
-			want: &A{},
-		},
-		{
-			name: "clear-B",
-			args: args{
-				v: &B{&s},
-				f: []string{"F"},
-				d: 1,
-			},
-			want: &B{},
-		},
-		{
-			name: "clear-C",
-			args: args{
-				v: &C{"clear", "notclear"},
-				f: []string{"F"},
-				d: 1,
-			},
-			want: &C{"", "notclear"},
-		},
-		{
-			name: "shallow-clear-AB",
-			args: args{
-				v: &AB{
-					A: A{"notclear"},
-					B: &B{&s},
-					F: "clear",
-				},
-				f: []string{"F"},
-				d: 1,
-			},
-			want: &AB{
-				A: A{"notclear"},
-				B: &B{&s},
-				F: "",
-			},
-		},
-		{
-			name: "deep-clear-AB",
-			args: args{
-				v: &AB{
-					A: A{"clear"},
-					B: &B{&s},
-					F: "clear",
-				},
-				f: []string{"F"},
-				d: 2,
-			},
-			want: &AB{
-				A: A{""},
-				B: &B{},
-				F: "",
-			},
-		},
-		{
-			name: "clear-AFB",
-			args: args{
-				v: &AFB{
-					F: A{"clear"},
-					B: &B{&s},
-				},
-				f: []string{"F"},
-				d: 2,
-			},
-			want: &AFB{
-				F: A{""},
-				B: &B{},
-			},
-		},
-		{
-			name: "clear-ABF",
-			args: args{
-				v: &ABF{
-					A: A{"clear"},
-					F: &B{&s},
-				},
-				f: []string{"F"},
-				d: 2,
-			},
-			want: &ABF{
-				A: A{""},
-				F: nil,
-			},
-		},
-		{
-			name: "embedded-struct",
-			args: args{
-				v: &EA{
-					A:  A{"clear"},
-					M:  "clear",
-					NF: "notclear",
-				},
-				f: []string{"F", "M"},
-				d: 2,
-			},
-			want: &EA{
-				A:  A{""},
-				M:  "",
-				NF: "notclear",
-			},
-		},
-		{
-			name: "embedded-struct-pointer",
-			args: args{
-				v: &EAP{
-					A:  &A{"clear"},
-					M:  "clear",
-					NF: "notclear",
-				},
-				f: []string{"F", "M"},
-				d: 2,
-			},
-			want: &EAP{
-				A:  &A{""},
-				M:  "",
-				NF: "notclear",
-			},
-		},
-		{
-			name: "embedded-struct-pointer-extra-depth",
-			args: args{
-				v: &EAP{
-					A:  &A{"clear"},
-					M:  "clear",
-					NF: "notclear",
-				},
-				f: []string{"F", "M"},
-				d: 12,
-			},
-			want: &EAP{
-				A:  &A{""},
-				M:  "",
-				NF: "notclear",
-			},
-		},
-		{
-			name: "deep-embedded-struct",
-			args: args{
-				v: &DEA{
-					EA: EA{
-						A:  A{"clear"},
-						M:  "clear",
-						NF: "notclear",
-					},
-					F: "clear",
-				},
-				f: []string{"F", "M"},
-				d: 3,
-			},
-			want: &DEA{
-				EA: EA{
-					A:  A{""},
-					M:  "",
-					NF: "notclear",
-				},
-				F: "",
-			},
-		},
-		{
-			name: "deep-embedded-struct-pointer",
-			args: args{
-				v: &DEAP{
-					EAP: &EAP{
-						A:  &A{"clear"},
-						M:  "clear",
-						NF: "notclear",
-					},
-					F: "clear",
-				},
-				f: []string{"F", "M"},
-				d: 3,
-			},
-			want: &DEAP{
-				EAP: &EAP{
-					A:  &A{""},
-					M:  "",
-					NF: "notclear",
-				},
-				F: "",
-			},
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			input := tt.args.v
-			err := Clear(input, tt.args.f, tt.args.d)
-			assert.NotEmpty(s)
-			require.NoError(err)
-			assert.Equal(tt.want, input)
-		})
-	}
-}
+// 	type args struct {
+// 		v interface{}
+// 		f []string
+// 		d int
+// 	}
+// 	tests := []struct {
+// 		name string
+// 		args args
+// 		want interface{}
+// 	}{
+// 		{
+// 			name: "blank-A",
+// 			args: args{
+// 				v: &A{},
+// 				f: []string{"F"},
+// 				d: 1,
+// 			},
+// 			want: &A{},
+// 		},
+// 		{
+// 			name: "clear-A",
+// 			args: args{
+// 				v: &A{"clear"},
+// 				f: []string{"F"},
+// 				d: 1,
+// 			},
+// 			want: &A{},
+// 		},
+// 		{
+// 			name: "clear-B",
+// 			args: args{
+// 				v: &B{&s},
+// 				f: []string{"F"},
+// 				d: 1,
+// 			},
+// 			want: &B{},
+// 		},
+// 		{
+// 			name: "clear-C",
+// 			args: args{
+// 				v: &C{"clear", "notclear"},
+// 				f: []string{"F"},
+// 				d: 1,
+// 			},
+// 			want: &C{"", "notclear"},
+// 		},
+// 		{
+// 			name: "shallow-clear-AB",
+// 			args: args{
+// 				v: &AB{
+// 					A: A{"notclear"},
+// 					B: &B{&s},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F"},
+// 				d: 1,
+// 			},
+// 			want: &AB{
+// 				A: A{"notclear"},
+// 				B: &B{&s},
+// 				F: "",
+// 			},
+// 		},
+// 		{
+// 			name: "deep-clear-AB",
+// 			args: args{
+// 				v: &AB{
+// 					A: A{"clear"},
+// 					B: &B{&s},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F"},
+// 				d: 2,
+// 			},
+// 			want: &AB{
+// 				A: A{""},
+// 				B: &B{},
+// 				F: "",
+// 			},
+// 		},
+// 		{
+// 			name: "clear-AFB",
+// 			args: args{
+// 				v: &AFB{
+// 					F: A{"clear"},
+// 					B: &B{&s},
+// 				},
+// 				f: []string{"F"},
+// 				d: 2,
+// 			},
+// 			want: &AFB{
+// 				F: A{""},
+// 				B: &B{},
+// 			},
+// 		},
+// 		{
+// 			name: "clear-ABF",
+// 			args: args{
+// 				v: &ABF{
+// 					A: A{"clear"},
+// 					F: &B{&s},
+// 				},
+// 				f: []string{"F"},
+// 				d: 2,
+// 			},
+// 			want: &ABF{
+// 				A: A{""},
+// 				F: nil,
+// 			},
+// 		},
+// 		{
+// 			name: "embedded-struct",
+// 			args: args{
+// 				v: &EA{
+// 					A:  A{"clear"},
+// 					M:  "clear",
+// 					NF: "notclear",
+// 				},
+// 				f: []string{"F", "M"},
+// 				d: 2,
+// 			},
+// 			want: &EA{
+// 				A:  A{""},
+// 				M:  "",
+// 				NF: "notclear",
+// 			},
+// 		},
+// 		{
+// 			name: "embedded-struct-pointer",
+// 			args: args{
+// 				v: &EAP{
+// 					A:  &A{"clear"},
+// 					M:  "clear",
+// 					NF: "notclear",
+// 				},
+// 				f: []string{"F", "M"},
+// 				d: 2,
+// 			},
+// 			want: &EAP{
+// 				A:  &A{""},
+// 				M:  "",
+// 				NF: "notclear",
+// 			},
+// 		},
+// 		{
+// 			name: "embedded-struct-pointer-extra-depth",
+// 			args: args{
+// 				v: &EAP{
+// 					A:  &A{"clear"},
+// 					M:  "clear",
+// 					NF: "notclear",
+// 				},
+// 				f: []string{"F", "M"},
+// 				d: 12,
+// 			},
+// 			want: &EAP{
+// 				A:  &A{""},
+// 				M:  "",
+// 				NF: "notclear",
+// 			},
+// 		},
+// 		{
+// 			name: "deep-embedded-struct",
+// 			args: args{
+// 				v: &DEA{
+// 					EA: EA{
+// 						A:  A{"clear"},
+// 						M:  "clear",
+// 						NF: "notclear",
+// 					},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F", "M"},
+// 				d: 3,
+// 			},
+// 			want: &DEA{
+// 				EA: EA{
+// 					A:  A{""},
+// 					M:  "",
+// 					NF: "notclear",
+// 				},
+// 				F: "",
+// 			},
+// 		},
+// 		{
+// 			name: "deep-embedded-struct-pointer",
+// 			args: args{
+// 				v: &DEAP{
+// 					EAP: &EAP{
+// 						A:  &A{"clear"},
+// 						M:  "clear",
+// 						NF: "notclear",
+// 					},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F", "M"},
+// 				d: 3,
+// 			},
+// 			want: &DEAP{
+// 				EAP: &EAP{
+// 					A:  &A{""},
+// 					M:  "",
+// 					NF: "notclear",
+// 				},
+// 				F: "",
+// 			},
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		tt := tt
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			assert, require := assert.New(t), require.New(t)
+// 			input := tt.args.v
+// 			err := Clear(input, tt.args.f, tt.args.d)
+// 			assert.NotEmpty(s)
+// 			require.NoError(err)
+// 			assert.Equal(tt.want, input)
+// 		})
+// 	}
+// }
 
-func TestClear_SetFieldsToNil(t *testing.T) {
-	type P struct{ F *string }
-	type A struct{ F string }
+// func TestClear_SetFieldsToNil(t *testing.T) {
+// 	type P struct{ F *string }
+// 	type A struct{ F string }
 
-	type EA struct {
-		A
-		M  string
-		NF string
-	}
+// 	type EA struct {
+// 		A
+// 		M  string
+// 		NF string
+// 	}
 
-	type EAP struct {
-		*A
-		M  string
-		NF string
-	}
+// 	type EAP struct {
+// 		*A
+// 		M  string
+// 		NF string
+// 	}
 
-	type DEA struct {
-		EA
-		F string
-	}
+// 	type DEA struct {
+// 		EA
+// 		F string
+// 	}
 
-	type DEAP struct {
-		*EAP
-		F string
-	}
+// 	type DEAP struct {
+// 		*EAP
+// 		F string
+// 	}
 
-	type args struct {
-		v interface{}
-		f []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want interface{}
-	}{
-		{
-			name: "dont-panic",
-			args: args{
-				v: P{},
-				f: []string{"F"},
-			},
-			want: P{},
-		},
-		{
-			name: "deep-embedded-struct",
-			args: args{
-				v: &DEA{
-					EA: EA{
-						A:  A{"notclear"},
-						M:  "clear",
-						NF: "notclear",
-					},
-					F: "clear",
-				},
-				f: []string{"F", "M"},
-			},
-			want: &DEA{
-				EA: EA{
-					A:  A{"notclear"},
-					M:  "",
-					NF: "notclear",
-				},
-				F: "",
-			},
-		},
-		{
-			name: "deep-embedded-struct-pointer",
-			args: args{
-				v: &DEAP{
-					EAP: &EAP{
-						A:  &A{"notclear"},
-						M:  "clear",
-						NF: "notclear",
-					},
-					F: "clear",
-				},
-				f: []string{"F", "M"},
-			},
-			want: &DEAP{
-				EAP: &EAP{
-					A:  &A{"notclear"},
-					M:  "",
-					NF: "notclear",
-				},
-				F: "",
-			},
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			input := tt.args.v
-			require.NotPanics(func() {
-				setFieldsToNil(input, tt.args.f)
-			})
-			assert.Equal(tt.want, input)
-		})
-	}
-}
+// 	type args struct {
+// 		v interface{}
+// 		f []string
+// 	}
+// 	tests := []struct {
+// 		name string
+// 		args args
+// 		want interface{}
+// 	}{
+// 		{
+// 			name: "dont-panic",
+// 			args: args{
+// 				v: P{},
+// 				f: []string{"F"},
+// 			},
+// 			want: P{},
+// 		},
+// 		{
+// 			name: "deep-embedded-struct",
+// 			args: args{
+// 				v: &DEA{
+// 					EA: EA{
+// 						A:  A{"notclear"},
+// 						M:  "clear",
+// 						NF: "notclear",
+// 					},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F", "M"},
+// 			},
+// 			want: &DEA{
+// 				EA: EA{
+// 					A:  A{"notclear"},
+// 					M:  "",
+// 					NF: "notclear",
+// 				},
+// 				F: "",
+// 			},
+// 		},
+// 		{
+// 			name: "deep-embedded-struct-pointer",
+// 			args: args{
+// 				v: &DEAP{
+// 					EAP: &EAP{
+// 						A:  &A{"notclear"},
+// 						M:  "clear",
+// 						NF: "notclear",
+// 					},
+// 					F: "clear",
+// 				},
+// 				f: []string{"F", "M"},
+// 			},
+// 			want: &DEAP{
+// 				EAP: &EAP{
+// 					A:  &A{"notclear"},
+// 					M:  "",
+// 					NF: "notclear",
+// 				},
+// 				F: "",
+// 			},
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		tt := tt
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			assert, require := assert.New(t), require.New(t)
+// 			input := tt.args.v
+// 			require.NotPanics(func() {
+// 				setFieldsToNil(input, tt.args.f)
+// 			})
+// 			assert.Equal(tt.want, input)
+// 		})
+// 	}
+// }
 
 func TestDb_oplogMsgsForItems(t *testing.T) {
 	t.Parallel()
@@ -3008,92 +2999,90 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 	}
 }
 
-func TestDb_lookupAfterWrite(t *testing.T) {
-	t.Parallel()
-	db, _ := TestSetup(t, "postgres")
-	TestCreateTables(t, db)
-	scooter := testScooter(t, db, "", 0)
-	user := testUser(t, db, "", "", "")
-	type args struct {
-		resourceWithIder interface{}
-		opt              []Option
-	}
-	tests := []struct {
-		name       string
-		underlying *DB
-		args       args
-		wantErr    bool
-		want       proto.Message
-		wantIsErr  error
-	}{
-		{
-			name:       "simple-private-id",
-			underlying: db,
-			args: args{
-				resourceWithIder: scooter,
-				opt:              []Option{WithLookup(true)},
-			},
-			wantErr: false,
-			want:    scooter,
-		},
-		{
-			name:       "simple-public-id",
-			underlying: db,
-			args: args{
-				resourceWithIder: user,
-				opt:              []Option{WithLookup(true)},
-			},
-			wantErr: false,
-			want:    user,
-		},
-		{
-			name:       "no-lookup-private-id",
-			underlying: db,
-			args: args{
-				resourceWithIder: scooter,
-				opt:              []Option{WithLookup(false)},
-			},
-			wantErr: false,
-			want:    nil,
-		},
-		{
-			name:       "no-lookup-public-id",
-			underlying: db,
-			args: args{
-				resourceWithIder: user,
-				opt:              []Option{WithLookup(false)},
-			},
-			wantErr: false,
-			want:    nil,
-		},
-		{
-			name:       "not-an-ider",
-			underlying: db,
-			args: args{
-				resourceWithIder: &db_test.NotIder{},
-				opt:              []Option{WithLookup(true)},
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			rw := &Db{
-				underlying: tt.underlying,
-			}
-			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
-			require.True(ok)
-			cp := cloner.Clone()
-			err := rw.lookupAfterWrite(context.Background(), cp, tt.args.opt...)
-			if tt.wantErr {
-				require.Error(err)
-				return
-			}
-			require.NoError(err)
-			if tt.want != nil {
-				assert.True(proto.Equal(tt.want, cp.(proto.Message)))
-			}
-		})
-	}
-}
+// func TestDb_lookupAfterWrite(t *testing.T) {
+// 	t.Parallel()
+// 	db, _ := TestSetup(t, "postgres")
+// 	TestCreateTables(t, db)
+// 	scooter := testScooter(t, db, "", 0)
+// 	user := testUser(t, db, "", "", "")
+// 	type args struct {
+// 		resourceWithIder interface{}
+// 		opt              []Option
+// 	}
+// 	tests := []struct {
+// 		name       string
+// 		underlying *DB
+// 		args       args
+// 		wantErr    bool
+// 		want       proto.Message
+// 		wantIsErr  error
+// 	}{
+// 		{
+// 			name:       "simple-private-id",
+// 			underlying: db,
+// 			args: args{
+// 				resourceWithIder: scooter,
+// 				opt:              []Option{WithLookup(true)},
+// 			},
+// 			wantErr: false,
+// 			want:    scooter,
+// 		},
+// 		{
+// 			name:       "simple-public-id",
+// 			underlying: db,
+// 			args: args{
+// 				resourceWithIder: user,
+// 				opt:              []Option{WithLookup(true)},
+// 			},
+// 			wantErr: false,
+// 			want:    user,
+// 		},
+// 		{
+// 			name:       "no-lookup-private-id",
+// 			underlying: db,
+// 			args: args{
+// 				resourceWithIder: scooter,
+// 				opt:              []Option{WithLookup(false)},
+// 			},
+// 			wantErr: false,
+// 			want:    nil,
+// 		},
+// 		{
+// 			name:       "no-lookup-public-id",
+// 			underlying: db,
+// 			args: args{
+// 				resourceWithIder: user,
+// 				opt:              []Option{WithLookup(false)},
+// 			},
+// 			wantErr: false,
+// 			want:    nil,
+// 		},
+// 		{
+// 			name:       "not-an-ider",
+// 			underlying: db,
+// 			args: args{
+// 				resourceWithIder: &db_test.NotIder{},
+// 				opt:              []Option{WithLookup(true)},
+// 			},
+// 			wantErr: true,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			assert, require := assert.New(t), require.New(t)
+// 			rw := New(tt.underlying)
+// 			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
+// 			require.True(ok)
+// 			cp := cloner.Clone()
+// 			err := rw.lookupAfterWrite(context.Background(), cp, tt.args.opt...)
+// 			if tt.wantErr {
+// 				require.Error(err)
+// 				return
+// 			}
+// 			require.NoError(err)
+// 			if tt.want != nil {
+// 				assert.True(proto.Equal(tt.want, cp.(proto.Message)))
+// 			}
+// 		})
+// 	}
+// }

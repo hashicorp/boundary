@@ -23,8 +23,8 @@ func TestOplogKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocOplogKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocOplogKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestOplogKey(t, conn, rk.PrivateId)
 
@@ -91,7 +91,7 @@ func TestOplogKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestOplogKey(t, conn, rk.PrivateId)
@@ -189,8 +189,8 @@ func TestTokenKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocTokenKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocTokenKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestTokenKey(t, conn, rk.PrivateId)
 
@@ -257,7 +257,7 @@ func TestTokenKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestTokenKey(t, conn, rk.PrivateId)
@@ -355,8 +355,8 @@ func TestSessionKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocSessionKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocSessionKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestSessionKey(t, conn, rk.PrivateId)
 
@@ -423,7 +423,7 @@ func TestSessionKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestSessionKey(t, conn, rk.PrivateId)
@@ -521,8 +521,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKeyVersion()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKeyVersion(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new, _ := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
@@ -609,7 +609,7 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	new := kms.TestRootKey(t, conn, org.PublicId)
 
 	tests := []struct {
@@ -675,8 +675,8 @@ func TestDatabaseKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocDatabaseKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocDatabaseKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestDatabaseKey(t, conn, rk.PrivateId)
 
@@ -743,7 +743,7 @@ func TestDatabaseKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestDatabaseKey(t, conn, rk.PrivateId)
@@ -841,8 +841,8 @@ func TestOidcKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocOidcKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestOidcKey(t, conn, rk.PrivateId)
 
@@ -909,7 +909,7 @@ func TestOidcKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestOidcKey(t, conn, rk.PrivateId)
@@ -1007,8 +1007,8 @@ func TestAuditKey_ImmutableFields(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocAuditKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	new := kms.TestAuditKey(t, conn, rk.PrivateId)
 
@@ -1075,10 +1075,9 @@ func TestAuditKeyVersion_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
-	conn.Debug(true)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
 	new := kms.TestAuditKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("audit key"))
 

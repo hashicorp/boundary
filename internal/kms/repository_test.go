@@ -86,7 +86,7 @@ func TestCreateKeysTx(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 
 	type args struct {
 		ctx          context.Context

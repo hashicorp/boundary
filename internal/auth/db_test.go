@@ -68,7 +68,7 @@ select count(*) from test_auth_method where public_id = @public_id
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
-		err := rw.ScanRows(rows, &count)
+		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
 	assert.Equal(1, count.Count)
@@ -78,7 +78,7 @@ select count(*) from test_auth_method where public_id = @public_id
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
-		err := rw.ScanRows(rows, &count)
+		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
 	assert.Equal(1, count.Count)
@@ -150,7 +150,7 @@ values
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
-		err := rw.ScanRows(rows, &count)
+		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
 	assert.Equal(1, count.Count)
@@ -160,7 +160,7 @@ values
 	require.NoError(err)
 	defer rows.Close()
 	for rows.Next() {
-		err := rw.ScanRows(rows, &count)
+		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
 	assert.Equal(1, count.Count)

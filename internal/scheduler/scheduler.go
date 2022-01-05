@@ -238,7 +238,7 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 		case ctx.Err() != nil:
 			// Base context is no longer valid, skip repo updates as they will fail and exit
 		case runErr == nil:
-			nextRun, inner := j.NextRunIn()
+			nextRun, inner := j.NextRunIn(ctx)
 			if inner != nil {
 				event.WriteError(ctx, op, inner, event.WithInfoMsg("error getting next run time", "name", j.Name()))
 			}

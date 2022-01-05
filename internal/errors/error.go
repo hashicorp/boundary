@@ -211,7 +211,7 @@ func Convert(e error) *Err {
 		}
 		switch pgxError.Code {
 		case "42P01":
-			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pgxError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pgxError.Message), WithWrap(e)).(*Err)
 		case "42703":
 			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":

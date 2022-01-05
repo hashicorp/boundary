@@ -110,7 +110,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 				lookupErr = read.LookupById(ctx, &target)
 			default:
 				target.PublicId = ""
-				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs...)
+				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs)
 			}
 			if lookupErr != nil {
 				return errors.Wrap(ctx, lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicIdOrName)))
@@ -380,7 +380,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			targetTicket, err := w.GetTicket(t)
+			targetTicket, err := w.GetTicket(ctx, t)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

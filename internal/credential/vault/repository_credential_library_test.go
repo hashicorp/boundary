@@ -330,7 +330,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 				// verify it was persisted in the database
 				override := allocUserPasswordOverride()
-				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", got.GetPublicId()))
+				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
 			}
 		})
 	}

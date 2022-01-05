@@ -34,7 +34,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 
 			for rows.Next() {
 				run := allocRun()
-				err = r.ScanRows(rows, run)
+				err = r.ScanRows(ctx, rows, run)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
@@ -77,7 +77,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, run)
+				err = r.ScanRows(ctx, rows, run)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
@@ -141,7 +141,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, run)
+				err = r.ScanRows(ctx, rows, run)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
@@ -171,7 +171,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows1, job)
+				err = r.ScanRows(ctx, rows1, job)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"))
 				}
@@ -221,7 +221,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, run)
+				err = r.ScanRows(ctx, rows, run)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
@@ -281,7 +281,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 
 			for rows.Next() {
 				run := allocRun()
-				err = r.ScanRows(rows, run)
+				err = r.ScanRows(ctx, rows, run)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}

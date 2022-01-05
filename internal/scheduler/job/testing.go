@@ -40,8 +40,8 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 	`
 	rw := db.New(conn)
 	run := allocRun()
-
-	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId})
+	ctx := context.Background()
+	rows, err := rw.Query(ctx, query, []interface{}{pluginId, name, cId})
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 		return nil, fmt.Errorf("expected to rows")
 	}
 
-	err = rw.ScanRows(rows, run)
+	err = rw.ScanRows(ctx, rows, run)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +68,8 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	`
 	rw := db.New(conn)
 	run := allocRun()
-
-	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId, updateTime})
+	ctx := context.Background()
+	rows, err := rw.Query(ctx, query, []interface{}{pluginId, name, cId, updateTime})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 		return nil, fmt.Errorf("expected to rows")
 	}
 
-	err = rw.ScanRows(rows, run)
+	err = rw.ScanRows(ctx, rows, run)
 	if err != nil {
 		return nil, err
 	}

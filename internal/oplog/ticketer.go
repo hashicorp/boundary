@@ -1,9 +1,11 @@
 package oplog
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
-	"gorm.io/gorm"
+	"github.com/hashicorp/go-dbw"
 )
 
 const DefaultAggregateName = "global"
@@ -16,63 +18,65 @@ type Ticketer interface {
 	// db migrations script.  Requiring this insert as part of migrations ensures that the tickets are initialized in
 	// a separate transaction from when a client calls GetTicket(aggregateName) which is critical for the optimized locking
 	// pattern to work properly
-	GetTicket(aggregateName string) (*store.Ticket, error)
+	GetTicket(ctx context.Context, aggregateName string) (*store.Ticket, error)
 
 	// Redeem ticket will attempt to redeem the ticket and ensure it's serialized with other tickets using the same
 	// aggregate name
-	Redeem(ticket *store.Ticket) error
+	Redeem(ctx context.Context, ticket *store.Ticket) error
 }
 
-// GormTicketer uses a gorm DB connection for ticket storage
-type GormTicketer struct {
-	tx                 *gorm.DB
+// DbwTicketer defines a ticketer that uses the dbw pkg for database operations.
+type DbwTicketer struct {
+	tx                 *dbw.DB
 	withAggregateNames bool
 }
 
-// NewGormTicketer creates a new ticketer that uses gorm for storage
-func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
-	const op = "oplog.NewGormTicketer"
+// NewTicketer creates a new ticketer that uses dbw for storage
+func NewTicketer(ctx context.Context, tx *dbw.DB, opt ...Option) (*DbwTicketer, error) {
+	const op = "oplog.NewDbwTicketer"
 	if tx == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil tx")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil tx")
 	}
 	opts := GetOpts(opt...)
 	enableAggregateNames := opts[optionWithAggregateNames].(bool)
-	return &GormTicketer{tx: tx, withAggregateNames: enableAggregateNames}, nil
+	return &DbwTicketer{tx: tx, withAggregateNames: enableAggregateNames}, nil
 }
 
 // GetTicket returns a ticket for the specified name.  You MUST GetTicket in the same transaction
 // that you're using to write to the database tables. Names allow us to shard tickets around domain root names
-func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, error) {
+func (ticketer *DbwTicketer) GetTicket(ctx context.Context, aggregateName string) (*store.Ticket, error) {
 	const op = "oplog.(GormTicketer).GetTicket"
 	if aggregateName == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing ticket name")
 	}
 	name := DefaultAggregateName
 	if ticketer.withAggregateNames {
 		name = aggregateName
 	}
 	ticket := store.Ticket{}
-	if err := ticketer.tx.First(&ticket, store.Ticket{Name: name}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NewDeprecated(errors.TicketNotFound, op, "ticket not found")
+	if err := dbw.New(ticketer.tx).LookupWhere(ctx, &ticket, "name = ?", []interface{}{name}); err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, errors.New(ctx, errors.TicketNotFound, op, "ticket not found")
 		}
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error retrieving ticket from storage"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error retrieving ticket from storage"))
 	}
 	return &ticket, nil
 }
 
 // Redeem will attempt to redeem the ticket. If the ticket version has already been used, then an error is returned
-func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
+func (ticketer *DbwTicketer) Redeem(ctx context.Context, t *store.Ticket) error {
 	const op = "oplog.(GormTicketer).Redeem"
 	if t == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticket")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil ticket")
 	}
-	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
-	if tx.Error != nil {
-		return errors.WrapDeprecated(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
+	currentVersion := t.Version
+	t.Version = t.Version + 1
+	rowsUpdated, err := dbw.New(ticketer.tx).Update(ctx, t, []string{"Version"}, nil, dbw.WithVersion(&currentVersion))
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error trying to redeem ticket"))
 	}
-	if tx.RowsAffected != 1 {
-		return errors.NewDeprecated(errors.TicketAlreadyRedeemed, op, "ticket already redeemed")
+	if rowsUpdated != 1 {
+		return errors.New(ctx, errors.TicketAlreadyRedeemed, op, "ticket already redeemed")
 	}
 	return nil
 }

@@ -86,7 +86,7 @@ func (r *OrphanedHostCleanupJob) Run(ctx context.Context) error {
 }
 
 // NextRunIn returns the default run frequency of the cleanup job.
-func (r *OrphanedHostCleanupJob) NextRunIn() (time.Duration, error) {
+func (r *OrphanedHostCleanupJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	const op = "plugin.(OrphanedHostCleanupJob).NextRunIn"
 	return orphanedHostCleanupJobRunInterval, nil
 }

@@ -176,7 +176,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			var rowCnt int
 			for rows.Next() {
 				rowCnt += 1
-				err = r.reader.ScanRows(rows, &result)
+				err = r.reader.ScanRows(ctx, rows, &result)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for account"))
 				}
@@ -184,7 +184,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			if rowCnt > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
-			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", am.PublicId, iss, sub); err != nil {
+			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", []interface{}{am.PublicId, iss, sub}); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
 			}
 			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
@@ -238,7 +238,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	if operation == oplog.OpType_OP_TYPE_UPDATE && len(fieldMasks) == 0 && len(nullMasks) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "update operations must specify field masks and/or null masks")
 	}
-	ticket, err := w.GetTicket(acct)
+	ticket, err := w.GetTicket(ctx, acct)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}

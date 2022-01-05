@@ -270,7 +270,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", orig.HostId, orig.SetId)
+			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", []interface{}{orig.HostId, orig.SetId})
 			require.NoError(err)
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -278,7 +278,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), after, "host_id = ? and set_id = ?", after.HostId, after.SetId)
+			err = w.LookupWhere(context.Background(), after, "host_id = ? and set_id = ?", []interface{}{after.HostId, after.SetId})
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))

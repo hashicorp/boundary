@@ -65,7 +65,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -161,7 +161,7 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -285,7 +285,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

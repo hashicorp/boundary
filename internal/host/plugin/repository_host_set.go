@@ -117,7 +117,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+2)
-			ticket, err := w.GetTicket(s)
+			ticket, err := w.GetTicket(ctx, s)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -365,7 +365,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		func(reader db.Reader, w db.Writer) error {
 			returnedSet = newSet.clone()
 			msgs := make([]*oplog.Message, 0, len(preferredEndpoints)+len(currentSet.PreferredEndpoints)+2)
-			ticket, err := w.GetTicket(s)
+			ticket, err := w.GetTicket(ctx, s)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

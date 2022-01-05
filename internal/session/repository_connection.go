@@ -187,7 +187,7 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 
 			for rows.Next() {
 				var result CloseConnectionsForDeadWorkersResult
-				if err := w.ScanRows(rows, &result); err != nil {
+				if err := w.ScanRows(ctx, rows, &result); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 
