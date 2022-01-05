@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -1063,52 +1064,78 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	var creds []*pb.SessionCredential
+	var workerCreds []session.Credential
 	for _, c := range cs {
-		l := c.Library()
-		secret := c.Secret()
-		// TODO: Access the json directly from the vault response instead of re-marshalling it.
-		jSecret, err := json.Marshal(secret)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
-		}
-		var sSecret *structpb.Struct
-		switch secret.(type) {
-		case map[string]interface{}:
-			// In this case we actually have to re-decode it. The proto wrappers
-			// choke on json.Number and at the time I'm writing this I don't
-			// have time to write a walk function to dig through with reflect
-			// and find all json.Numbers and replace them. So we eat the
-			// inefficiency. So note that we are specifically _not_ using a
-			// decoder with UseNumber here.
-			var dSecret map[string]interface{}
-			if err := json.Unmarshal(jSecret, &dSecret); err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
-			}
-			sSecret, err = structpb.NewStruct(dSecret)
+		switch c.Purpose() {
+		case credential.EgressPurpose:
+			m, err := credentialToProto(ctx, c)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
+				return nil, errors.Wrap(ctx, err, op)
 			}
+			data, err := proto.Marshal(m)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to proto"))
+			}
+			workerCreds = append(workerCreds, data)
+
+		case credential.ApplicationPurpose:
+			l := c.Library()
+			secret := c.Secret()
+			// TODO: Access the json directly from the vault response instead of re-marshalling it.
+			jSecret, err := json.Marshal(secret)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
+			}
+			var sSecret *structpb.Struct
+			switch secret.(type) {
+			case map[string]interface{}:
+				// In this case we actually have to re-decode it. The proto wrappers
+				// choke on json.Number and at the time I'm writing this I don't
+				// have time to write a walk function to dig through with reflect
+				// and find all json.Numbers and replace them. So we eat the
+				// inefficiency. So note that we are specifically _not_ using a
+				// decoder with UseNumber here.
+				var dSecret map[string]interface{}
+				if err := json.Unmarshal(jSecret, &dSecret); err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
+				}
+				sSecret, err = structpb.NewStruct(dSecret)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
+				}
+			}
+			creds = append(creds, &pb.SessionCredential{
+				CredentialLibrary: &pb.CredentialLibrary{
+					Id:                l.GetPublicId(),
+					Name:              l.GetName(),
+					Description:       l.GetDescription(),
+					CredentialStoreId: l.GetStoreId(),
+					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+				},
+				CredentialSource: &pb.CredentialSource{
+					Id:                l.GetPublicId(),
+					Name:              l.GetName(),
+					Description:       l.GetDescription(),
+					CredentialStoreId: l.GetStoreId(),
+					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+				},
+				Secret: &pb.SessionSecret{
+					Raw:     base64.StdEncoding.EncodeToString(jSecret),
+					Decoded: sSecret,
+				},
+			})
+
+		default:
+			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", c.Purpose()))
 		}
-		creds = append(creds, &pb.SessionCredential{
-			CredentialLibrary: &pb.CredentialLibrary{
-				Id:                l.GetPublicId(),
-				Name:              l.GetName(),
-				Description:       l.GetDescription(),
-				CredentialStoreId: l.GetStoreId(),
-				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
-			},
-			CredentialSource: &pb.CredentialSource{
-				Id:                l.GetPublicId(),
-				Name:              l.GetName(),
-				Description:       l.GetDescription(),
-				CredentialStoreId: l.GetStoreId(),
-				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
-			},
-			Secret: &pb.SessionSecret{
-				Raw:     base64.StdEncoding.EncodeToString(jSecret),
-				Decoded: sSecret,
-			},
-		})
+	}
+
+	if len(workerCreds) > 0 {
+		// store credentials in repo, worker will request creds when a connection is established
+		err = sessionRepo.AddSessionCredentials(ctx, sess.ScopeId, sess.PublicId, workerCreds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	sad := &pb.SessionAuthorizationData{
@@ -2078,4 +2105,23 @@ func createCredLibs(targetId string, applicationIds, ingressIds, egressIds []str
 		}
 	}
 	return credLibs, nil
+}
+
+// credentialToProto converts the strongly typed credential.Credential into a known proto.Message.
+func credentialToProto(ctx context.Context, cred credential.Credential) (*serverpb.Credential, error) {
+	const op = "targets.credentialToProto"
+	switch c := cred.(type) {
+	case credential.UserPassword:
+		return &serverpb.Credential{
+			Credential: &serverpb.Credential_UserPassword{
+				UserPassword: &serverpb.UserPassword{
+					Username: c.Username(),
+					Password: string(c.Password()),
+				},
+			},
+		}, nil
+
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
+	}
 }

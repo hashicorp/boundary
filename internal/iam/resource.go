@@ -69,7 +69,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		}
 	}
 	var p Scope
-	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
+	if err := reader.LookupWhere(ctx, &p, "public_id = ?", []interface{}{resource.GetScopeId()}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &p, nil

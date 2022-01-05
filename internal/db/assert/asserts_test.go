@@ -115,7 +115,7 @@ type testModel struct {
 func (*testModel) TableName() string { return "test_table_dbasserts" }
 
 // CreateTestModel is a helper that creates a testModel in the DB.
-func createTestModel(t dbassert.TestingT, db *db.DB, nullable *string, typeInt *int) *testModel {
+func createTestModel(t dbassert.TestingT, d *db.DB, nullable *string, typeInt *int) *testModel {
 	publicId, err := base62.Random(12)
 	assert.NoError(t, err)
 	m := testModel{
@@ -123,12 +123,12 @@ func createTestModel(t dbassert.TestingT, db *db.DB, nullable *string, typeInt *
 		Nullable: nullable,
 		TypeInt:  typeInt,
 	}
-	err = db.Create(&m).Error
-	assert.NoError(t, err)
+	rw := db.New(d)
+	require.NoError(t, rw.Create(context.Background(), &m))
 	return &m
 }
 
-func initStore(t *testing.T, db *db.DB) {
+func initStore(t *testing.T, d *db.DB) {
 	t.Helper()
 	const (
 		createDomainType = `
@@ -150,6 +150,11 @@ comment on table test_table_dbasserts is
 'dbasserts test table'
 `
 	)
-	require.NoError(t, db.Exec(createDomainType).Error)
-	require.NoError(t, db.Exec(createTable).Error)
+	rw := db.New(d)
+
+	ctx := context.Background()
+	_, err := rw.Exec(ctx, createDomainType, nil)
+	require.NoError(t, err)
+	_, err = rw.Exec(ctx, createTable, nil)
+	require.NoError(t, err)
 }

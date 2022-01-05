@@ -367,7 +367,6 @@ func TestScheduler_Start(t *testing.T) {
 		wantErr         bool
 		wantErrContains string
 	}{
-
 		{
 			name:            "missing-ctx",
 			wg:              &sync.WaitGroup{},

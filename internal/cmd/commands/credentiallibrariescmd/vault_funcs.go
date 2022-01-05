@@ -13,15 +13,19 @@ func init() {
 }
 
 const (
-	pathFlagName            = "vault-path"
-	httpMethodFlagName      = "vault-http-method"
-	httpRequestBodyFlagName = "vault-http-request-body"
+	pathFlagName              = "vault-path"
+	httpMethodFlagName        = "vault-http-method"
+	httpRequestBodyFlagName   = "vault-http-request-body"
+	credentialTypeFlagName    = "credential-type"
+	credentialMappingFlagName = "credential-mapping-override"
 )
 
 type extraVaultCmdVars struct {
-	flagPath            string
-	flagHttpMethod      string
-	flagHttpRequestBody string
+	flagPath              string
+	flagHttpMethod        string
+	flagHttpRequestBody   string
+	flagCredentialType    string
+	flagCredentialMapping []base.CombinedSliceFlagValue
 }
 
 func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
@@ -30,9 +34,16 @@ func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
 			pathFlagName,
 			httpMethodFlagName,
 			httpRequestBodyFlagName,
+			credentialTypeFlagName,
+			credentialMappingFlagName,
+		},
+		"update": {
+			pathFlagName,
+			httpMethodFlagName,
+			httpRequestBodyFlagName,
+			credentialMappingFlagName,
 		},
 	}
-	flags["update"] = flags["create"]
 	return flags
 }
 
@@ -59,11 +70,24 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 				Target: &c.flagHttpRequestBody,
 				Usage:  "The http request body the library uses to communicate with vault. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
+		case credentialTypeFlagName:
+			f.StringVar(&base.StringVar{
+				Name:   credentialTypeFlagName,
+				Target: &c.flagCredentialType,
+				Usage:  "The type of credential this library will issue, defaults to Unspecified.",
+			})
+		case credentialMappingFlagName:
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:    credentialMappingFlagName,
+				Target:  &c.flagCredentialMapping,
+				KvSplit: true,
+				Usage:   "The credential mapping override.",
+			})
 		}
 	}
 }
 
-func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]credentiallibraries.Option) bool {
+func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]credentiallibraries.Option) bool {
 	switch c.flagPath {
 	case "":
 	default:
@@ -84,11 +108,44 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 		rb, _ := parseutil.ParsePath(c.flagHttpRequestBody)
 		*opts = append(*opts, credentiallibraries.WithVaultCredentialLibraryHttpRequestBody(rb))
 	}
+	switch c.flagCredentialType {
+	case "":
+	case "null":
+		*opts = append(*opts, credentiallibraries.DefaultCredentialType())
+	default:
+		*opts = append(*opts, credentiallibraries.WithCredentialType(c.flagCredentialType))
+	}
+	switch len(c.flagCredentialMapping) {
+	case 0:
+	case 1:
+		if len(c.flagCredentialMapping[0].Keys) == 0 && c.flagCredentialMapping[0].Value == "null" {
+			*opts = append(*opts, credentiallibraries.DefaultCredentialMappingOverrides())
+			break
+		}
+		fallthrough
+	default:
+		mappings := make(map[string]interface{}, len(c.flagCredentialMapping))
+		for _, mapping := range c.flagCredentialMapping {
+			switch {
+			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == "":
+				// mapping override does not support key segments (e.g. 'x.y=z')
+				c.UI.Error("Credential mapping override must be in the format 'key=value', 'key=null' to clear field or 'null' to clear all.")
+				return false
+			case mapping.Value == "null":
+				// user provided 'key=null' indicating the field specific override should
+				// be cleared, set map value to nil
+				mappings[mapping.Keys[0]] = nil
+			default:
+				mappings[mapping.Keys[0]] = mapping.Value
+			}
+		}
+		*opts = append(*opts, credentiallibraries.WithCredentialMappingOverrides(mappings))
+	}
 
 	return true
 }
 
-func (c *VaultCommand) extraVaultHelpFunc(helpMap map[string]func() string) string {
+func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "create":

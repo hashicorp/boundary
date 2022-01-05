@@ -24,7 +24,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 
 	type args struct {
 		scopeId    string
@@ -127,7 +127,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 
 	type args struct {
 		key *kms.RootKey
@@ -252,7 +252,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for i := 0; i < tt.createCnt; i++ {

@@ -11,6 +11,8 @@ message TestUser {
   string name = 4;
   string phone_number = 5;
   string email = 6;
+  // @inject_tag: gorm:"default:null"
+  uint32 version = 9;
   // @inject_tag: gorm:"-" json:"-"
   string table = 7;
 }

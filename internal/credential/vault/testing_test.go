@@ -7,11 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"net/http"
 	"path"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vault "github.com/hashicorp/vault/api"
@@ -539,4 +541,69 @@ func Test_testClientCert(t *testing.T) {
 	// cert1 and cert2 should have different certs but the same key
 	assert.NotEqual(cert1.Cert.Cert, cert2.Cert.Cert)
 	assert.Equal(cert1.Cert.Key, cert2.Cert.Key)
+}
+
+func TestTestVaultServer_AddKVPolicy(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t)
+
+		sec := v.CreateKVSecret(t, "my-secret", []byte(`{"data" : {"foo":"bar"}}`))
+		require.NotNil(sec)
+
+		_, token := v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
+		require.NotNil(token)
+		client := v.clientUsingToken(t, token)
+
+		_, err := client.get("/secret/data/my-secret")
+		assert.Error(err)
+
+		// An attempt to get my-secret should now fail with a 403
+		var respErr *vault.ResponseError
+		ok := errors.As(err, &respErr)
+		require.True(ok)
+		assert.Equal(http.StatusForbidden, respErr.StatusCode)
+
+		// Add KV policy and get should work
+		v.AddKVPolicy(t)
+		_, token = v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
+		require.NotNil(token)
+		client = v.clientUsingToken(t, token)
+
+		_, err = client.get("/secret/data/my-secret")
+		assert.NoError(err)
+	})
+}
+
+func TestTestVaultServer_CreateKVSecret(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t)
+		vc := v.client(t)
+
+		// Attempt to read my-secret should return a nil secret
+		got, err := vc.cl.Logical().Read("/secret/data/my-secret")
+		require.NoError(err)
+		require.Nil(got)
+
+		secret := v.CreateKVSecret(t, "my-secret", []byte(`{"data" : {"foo":"bar"}}`))
+		require.NotNil(secret)
+
+		// Now that secret exists try read again
+		got, err = vc.cl.Logical().Read("/secret/data/my-secret")
+		require.NoError(err)
+		require.NotNil(got)
+		require.NotNil(got.Data)
+		require.NotNil(got.Data["data"])
+
+		gotData, ok := got.Data["data"].(map[string]interface{})
+		require.True(ok)
+		require.NotNil(gotData["foo"])
+
+		gotFoo, ok := gotData["foo"].(string)
+		require.True(ok)
+		assert.Equal("bar", gotFoo)
+	})
 }

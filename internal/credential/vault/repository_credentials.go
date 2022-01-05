@@ -2,13 +2,11 @@ package vault
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	vault "github.com/hashicorp/vault/api"
 )
 
 var _ credential.Issuer = (*Repository)(nil)
@@ -36,45 +34,13 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	var creds []credential.Dynamic
 	var minLease time.Duration
 	for _, lib := range libs {
-		// Get the credential ID early. No need to get a secret from Vault
-		// if there is no way to save it in the database.
-		credId, err := newCredentialId()
+		cred, err := lib.retrieveCredential(ctx, op, sessionId)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, err
 		}
-
-		client, err := lib.client()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+		if minLease > cred.getExpiration() {
+			minLease = cred.getExpiration()
 		}
-
-		var secret *vault.Secret
-		switch Method(lib.HttpMethod) {
-		case MethodGet:
-			secret, err = client.get(lib.VaultPath)
-		case MethodPost:
-			secret, err = client.post(lib.VaultPath, lib.HttpRequestBody)
-		default:
-			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", lib.PublicId))
-		}
-
-		if err != nil {
-			// TODO(mgaffney) 05/2021: detect if the error is because of an
-			// expired or invalid token
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
-		leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
-		if minLease > leaseDuration {
-			minLease = leaseDuration
-		}
-		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, leaseDuration)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		cred.PublicId = credId
-		cred.IsRenewable = secret.Renewable
-
 		insertQuery, insertQueryValues := cred.insertQuery()
 		updateQuery, updateQueryValues := cred.updateSessionQuery(lib.Purpose)
 		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -102,13 +68,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			return nil, errors.Wrap(ctx, err, op)
 		}
 
-		creds = append(creds, &actualCredential{
-			id:         cred.PublicId,
-			sessionId:  cred.SessionId,
-			lib:        lib,
-			secretData: secret.Data,
-			purpose:    lib.Purpose,
-		})
+		creds = append(creds, cred)
 	}
 
 	// Best effort update next run time of credential renewal job, but an error should not

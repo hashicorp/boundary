@@ -78,7 +78,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			// We need a ticket, which won't be redeemed until all the other
 			// writes are successful. We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds.
-			mgTicket, err := w.GetTicket(ticketMg)
+			mgTicket, err := w.GetTicket(ctx, ticketMg)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket for oidc managed groups"))
 			}

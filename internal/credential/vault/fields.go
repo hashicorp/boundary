@@ -17,4 +17,8 @@ const (
 	tlsServerNameField  = "TlsServerName"
 	tlsSkipVerifyField  = "TlsSkipVerify"
 	tokenField          = "Token"
+
+	// MappingOverrideField represents the field mask indicating a mapping override
+	// update has been requested.
+	MappingOverrideField = "MappingOverride"
 )

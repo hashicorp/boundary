@@ -87,6 +87,11 @@ func (c *Command) printListTable(items []*credentiallibraries.CredentialLibrary)
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)
 		}
+		if m.CredentialType != "" {
+			output = append(output,
+				fmt.Sprintf("    Credential Type:     %s", m.CredentialType),
+			)
+		}
 		if m.Name != "" {
 			output = append(output,
 				fmt.Sprintf("    Name:                %s", m.Name),
@@ -166,6 +171,20 @@ func printItemTable(result api.GenericResult) string {
 			"  Attributes:",
 			base.WrapMap(4, maxLength, item.Attributes),
 		)
+	}
+
+	if item.CredentialType != "" {
+		ret = append(ret,
+			"",
+			"  Credential Type:",
+			fmt.Sprintf("    %v", item.CredentialType),
+		)
+		if len(item.CredentialMappingOverrides) > 0 {
+			ret = append(ret,
+				"  Credential Mapping Overrides:",
+				base.WrapMap(4, maxLength, item.CredentialMappingOverrides),
+			)
+		}
 	}
 
 	return base.WrapForHelpText(ret)

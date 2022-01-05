@@ -235,9 +235,9 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 }
 
 // NextRunIn queries the vault credential repo to determine when the next token renewal job should run.
-func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
+func (r *TokenRenewalJob) NextRunIn(ctx context.Context) (time.Duration, error) {
 	const op = "vault.(TokenRenewalJob).NextRunIn"
-	next, err := nextRenewal(r)
+	next, err := nextRenewal(ctx, r)
 	if err != nil {
 		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
@@ -245,7 +245,7 @@ func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
 	return next, nil
 }
 
-func nextRenewal(j scheduler.Job) (time.Duration, error) {
+func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	const op = "vault.nextRenewal"
 	var query string
 	var r db.Reader
@@ -271,7 +271,7 @@ func nextRenewal(j scheduler.Job) (time.Duration, error) {
 			RenewalIn time.Duration
 		}
 		var n NextRenewal
-		err = r.ScanRows(rows, &n)
+		err = r.ScanRows(ctx, rows, &n)
 		if err != nil {
 			return 0, errors.WrapDeprecated(err, op)
 		}
@@ -446,7 +446,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 }
 
 // NextRunIn determines when the next token revocation job should run.
-func (r *TokenRevocationJob) NextRunIn() (time.Duration, error) {
+func (r *TokenRevocationJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return defaultNextRunIn, nil
 }
 
@@ -603,9 +603,9 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 }
 
 // NextRunIn queries the vault credential repo to determine when the next credential renewal job should run.
-func (r *CredentialRenewalJob) NextRunIn() (time.Duration, error) {
+func (r *CredentialRenewalJob) NextRunIn(ctx context.Context) (time.Duration, error) {
 	const op = "vault.(CredentialRenewalJob).NextRunIn"
-	next, err := nextRenewal(r)
+	next, err := nextRenewal(ctx, r)
 	if err != nil {
 		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
@@ -751,7 +751,7 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 }
 
 // NextRunIn determine when the next credential revocation job should run.
-func (r *CredentialRevocationJob) NextRunIn() (time.Duration, error) {
+func (r *CredentialRevocationJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return defaultNextRunIn, nil
 }
 
@@ -866,7 +866,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 }
 
 // NextRunIn determine when the next credential store cleanup job should run.
-func (r *CredentialStoreCleanupJob) NextRunIn() (time.Duration, error) {
+func (r *CredentialStoreCleanupJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return defaultNextRunIn, nil
 }
 
@@ -940,7 +940,7 @@ func (r *CredentialCleanupJob) Run(ctx context.Context) error {
 }
 
 // NextRunIn determine when the next credential cleanup job should run.
-func (r *CredentialCleanupJob) NextRunIn() (time.Duration, error) {
+func (r *CredentialCleanupJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return defaultNextRunIn, nil
 }
 

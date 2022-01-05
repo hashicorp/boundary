@@ -6,6 +6,7 @@ import (
 	"net"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -77,6 +78,9 @@ func newGatewayServer(
 				errorInterceptor(ctx),         // convert domain and api errors into headers for the http proxy
 				statusCodeInterceptor(ctx),    // convert grpc codes into http status codes for the http proxy (can modify the resp)
 				auditResponseInterceptor(ctx), // as we finish, audit the response
+				grpc_recovery.UnaryServerInterceptor( // recover from panics with a grpc internal error
+					grpc_recovery.WithRecoveryHandlerContext(recoveryHandler()),
+				),
 			),
 		),
 	), ticket, nil

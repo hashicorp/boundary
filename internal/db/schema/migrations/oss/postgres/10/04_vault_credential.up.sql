@@ -577,6 +577,7 @@ begin;
     'credential_vault_store_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
+-- Replaced in 21/05_vault_private_library.up.sql
      create view credential_vault_library_private as
      select library.public_id         as public_id,
             library.store_id          as store_id,

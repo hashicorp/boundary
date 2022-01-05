@@ -115,9 +115,9 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 }
 
 // NextRunIn queries the plugin host set db to determine when the next set should be synced.
-func (r *SetSyncJob) NextRunIn() (time.Duration, error) {
+func (r *SetSyncJob) NextRunIn(ctx context.Context) (time.Duration, error) {
 	const op = "plugin.(SetSyncJob).NextRunIn"
-	next, err := nextSync(r)
+	next, err := nextSync(ctx, r)
 	if err != nil {
 		return setSyncJobRunInterval, errors.WrapDeprecated(err, op)
 	}
@@ -134,7 +134,7 @@ func (r *SetSyncJob) Description() string {
 	return "Periodically syncs plugin based catalog hosts and host set memberships."
 }
 
-func nextSync(j scheduler.Job) (time.Duration, error) {
+func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	const op = "plugin.nextSync"
 	var query string
 	var r db.Reader
@@ -162,7 +162,7 @@ func nextSync(j scheduler.Job) (time.Duration, error) {
 		ResyncIn            time.Duration
 	}
 	var n NextResync
-	err = r.ScanRows(rows, &n)
+	err = r.ScanRows(ctx, rows, &n)
 	if err != nil {
 		return 0, errors.WrapDeprecated(err, op)
 	}
@@ -409,7 +409,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 			db.ExpBackoff{},
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
-				ticket, err := w.GetTicket(ret)
+				ticket, err := w.GetTicket(ctx, ret)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
@@ -524,7 +524,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 			func(r db.Reader, w db.Writer) error {
 				msgs := make([]*oplog.Message, 0)
 
-				ticket, err := w.GetTicket(hs)
+				ticket, err := w.GetTicket(ctx, hs)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func TestController_New(t *testing.T) {
 		require.NoError(err)
 
 		// this tests a scenario where there is NOT an audit DEK
-		require.NoError(c.conf.Server.Database.Where("1=1").Delete(kms.AllocAuditKey()).Error)
+		db.TestDeleteWhere(t, c.conf.Server.Database, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
 		_, err = New(testCtx, conf)
 		require.NoError(err)
 	})

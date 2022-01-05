@@ -18,10 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
-
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -227,7 +226,7 @@ func testTokens(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, st
 		num := r.Int31()
 		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
-		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
 
 		tokens = append(tokens, outToken)
@@ -787,6 +786,39 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 	require.NoError(err)
 
 	return s
+}
+
+// AddKVPolicy adds a Vault policy named 'secret' to v and adds it to the
+// standard set of polices attached to tokens created with v.CreateToken.
+// The policy is defined as:
+//
+//   path "secret/*" {
+//     capabilities = ["create", "read", "update", "delete", "list"]
+//   }
+//
+// All options are ignored.
+func (v *TestVaultServer) AddKVPolicy(t *testing.T, _ ...TestOption) {
+	t.Helper()
+
+	pc := pathCapabilities{
+		"secret/data/*": createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "secret", pc)
+}
+
+// CreateKVSecret calls the /secret/data/:p endpoint with the provided
+// data. Please note for KV-v2 the provided data needs to be in JSON format similar to:
+// `{"data": {"key": "value", "key2": "value2"}}`
+// See
+// https://www.vaultproject.io/api-docs/secret/kv/kv-v2#create-update-secret
+func (v *TestVaultServer) CreateKVSecret(t *testing.T, p string, data []byte) *vault.Secret {
+	t.Helper()
+	require := require.New(t)
+
+	vc := v.client(t)
+	cred, err := vc.post(path.Join("secret", "data", p), data)
+	require.NoError(err)
+	return cred
 }
 
 // TestVaultServer is a vault server running in a docker container suitable
