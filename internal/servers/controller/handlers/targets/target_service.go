@@ -1065,10 +1065,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	var creds []*pb.SessionCredential
 	var workerCreds []session.Credential
-	for _, c := range cs {
-		switch c.Purpose() {
+	for _, cred := range cs {
+		switch cred.Purpose() {
 		case credential.EgressPurpose:
-			m, err := credentialToProto(ctx, c)
+			m, err := credentialToProto(ctx, cred)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
@@ -1079,8 +1079,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			workerCreds = append(workerCreds, data)
 
 		case credential.ApplicationPurpose:
-			l := c.Library()
-			secret := c.Secret()
+			l := cred.Library()
+			secret := cred.Secret()
 			// TODO: Access the json directly from the vault response instead of re-marshalling it.
 			jSecret, err := json.Marshal(secret)
 			if err != nil {
@@ -1104,6 +1104,30 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
 				}
 			}
+
+			var credType string
+			var credData *structpb.Struct
+			if l.CredentialType() != credential.UnspecifiedType {
+				credType = string(l.CredentialType())
+
+				switch c := cred.(type) {
+				case credential.UserPassword:
+					credData, err = handlers.ProtoToStruct(
+						&pb.UserPasswordCredential{
+							Username: c.Username(),
+							Password: string(c.Password()),
+						},
+					)
+					if err != nil {
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+					}
+
+				default:
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unsupported credential type"))
+				}
+
+			}
+
 			creds = append(creds, &pb.SessionCredential{
 				CredentialLibrary: &pb.CredentialLibrary{
 					Id:                l.GetPublicId(),
@@ -1118,15 +1142,17 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 					Description:       l.GetDescription(),
 					CredentialStoreId: l.GetStoreId(),
 					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+					CredentialType:    credType,
 				},
 				Secret: &pb.SessionSecret{
 					Raw:     base64.StdEncoding.EncodeToString(jSecret),
 					Decoded: sSecret,
 				},
+				Credential: credData,
 			})
 
 		default:
-			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", c.Purpose()))
+			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", cred.Purpose()))
 		}
 	}
 
