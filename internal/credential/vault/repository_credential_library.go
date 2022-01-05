@@ -68,7 +68,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			var msgs []*oplog.Message
-			ticket, err := w.GetTicket(l)
+			ticket, err := w.GetTicket(ctx, l)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -222,7 +222,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(rr db.Reader, w db.Writer) error {
 			var msgs []*oplog.Message
-			ticket, err := w.GetTicket(l)
+			ticket, err := w.GetTicket(ctx, l)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
