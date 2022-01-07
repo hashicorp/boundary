@@ -12,12 +12,11 @@ begin;
     nag_key wh_dim_key;
     a_key  wh_dim_key;
   begin
-    -- if there are no addresses, use the already existing 'Unknown' group.
     if not exists (
       select 1
       from whx_network_address_dimension_source
       where host_id = p_host_id) then
-      return 'Unknown';
+      return 'No Addresses';
     end if;
 
     insert into wh_network_address_dimension (
@@ -76,7 +75,7 @@ begin;
   $$ language plpgsql;
 
 
-  -- replaces function from 15/01_wh_rename_key_columns.up.sql
+  -- replaces function from 15/02_wh_rename_key_columns.up.sql
   -- adds the network address key to the host dimension table.
   drop function wh_upsert_host;
   create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)

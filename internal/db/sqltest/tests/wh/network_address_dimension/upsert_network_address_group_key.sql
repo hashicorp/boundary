@@ -3,7 +3,7 @@ begin;
   select plan(4);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts');
 
-  select is(wh_upsert_network_address_dimension('non-existant-key'), 'Unknown');
+  select is(wh_upsert_network_address_dimension('non-existant-key'), 'No Addresses');
 
   -- The network address group key remains the same for the same set of
   -- addresses.

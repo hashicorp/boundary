@@ -4,7 +4,7 @@ begin;
   -- about those addresses.
   create table wh_network_address_dimension (
     address                   wh_dim_text primary key,
-    address_type              wh_dim_text, --(IP Address, DNS Name, Unknown)
+    address_type              wh_dim_text, -- (IP Address, DNS Name, Unknown)
     ip_address_family         wh_dim_text, -- (IPv4, IPv6, Not Applicable)
     private_ip_address_status wh_dim_text, -- (Public, Private, Not Applicable)
     dns_name                  wh_dim_text,
@@ -44,7 +44,7 @@ begin;
   -- prepare a group which can be referenced by the newly created
   -- wh_host_dimension column.
   insert into wh_network_address_group(key)
-  values('Unknown'), ('Unsupported');
+  values('Unknown'), ('Unsupported'), ('No Addresses');
   insert into wh_network_address_group_membership(network_address_group_key, network_address)
   values('Unknown', 'Unknown'), ('Unsupported', 'Unsupported');
 
@@ -56,5 +56,8 @@ begin;
       references wh_network_address_group(key)
         on delete restrict
         on update cascade;
+
+  alter table wh_host_dimension
+    alter column network_address_group_key drop default;
 
 commit;

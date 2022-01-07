@@ -8,7 +8,7 @@ begin;
   -- ensure no existing dimensions
   select is(count(*), 0::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
-  -- insert first session, should result in a new user dimension
+  -- insert first session, should result in a new host dimension
   insert into session
     ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
