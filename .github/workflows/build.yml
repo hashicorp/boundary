@@ -71,7 +71,7 @@ jobs:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         goarch: [ "386", "amd64", "arm" ]
-        go: ${{ env.GO_VERSION }}
+        go: [ "${{ env.GO_VERSION }}" ]
         exclude:
           - goos: solaris
             goarch: 386
@@ -134,7 +134,7 @@ jobs:
       matrix:
         goos: [linux]
         goarch: ["arm", "arm64", "386", "amd64"]
-        go: ${{ env.GO_VERSION }}
+        go: [ "${{ env.GO_VERSION }}" ]
       fail-fast: true
 
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
@@ -192,7 +192,7 @@ jobs:
       matrix:
         goos: [ darwin ]
         goarch: [ "amd64", "arm64" ]
-        go: ${{ env.GO_VERSION }}
+        go: [ "${{ env.GO_VERSION }}" ]
       fail-fast: true
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
 
