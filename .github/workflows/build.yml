@@ -177,7 +177,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir dist out
-          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
         with:
@@ -185,7 +185,7 @@ jobs:
           path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-darwin:
-    needs: get-product-version
+    needs: [get-product-version, set-ld-flags]
     runs-on: macos-latest
     strategy:
       matrix:
@@ -198,6 +198,7 @@ jobs:
     env:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
+      LD_FLAGS: ${{ needs.set-ld-flags.outputs.ldflags }}
 
     steps:
       - uses: actions/checkout@v2
@@ -234,7 +235,7 @@ jobs:
           unset GOPATH;
           # Build plugins
           sh ./scripts/plugins.sh
-          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
         with:
