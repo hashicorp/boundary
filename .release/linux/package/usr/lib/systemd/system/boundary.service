@@ -18,8 +18,6 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 LimitMEMLOCK=infinity
-Capabilities=CAP_IPC_LOCK+ep
-CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
 
 [Install]
 WantedBy=multi-user.target
