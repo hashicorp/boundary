@@ -676,7 +676,8 @@ func printItemTable(result api.GenericResult) string {
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	var hostSourceMaps []map[string]interface{}
-	if len(item.HostSources) > 0 {
+	switch {
+	case len(item.HostSources) > 0:
 		for _, set := range item.HostSources {
 			m := map[string]interface{}{
 				"ID":              set.Id,
@@ -687,8 +688,7 @@ func printItemTable(result api.GenericResult) string {
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
 		}
-	}
-	if len(item.HostSets) > 0 {
+	case len(item.HostSets) > 0:
 		for _, set := range item.HostSets {
 			m := map[string]interface{}{
 				"ID":              set.Id,

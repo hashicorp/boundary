@@ -86,7 +86,7 @@ func TestRoleGrant_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { a := allocRoleGrant(); return &a }(), "1=1")
 			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -191,7 +191,8 @@ func TestRoleGrant_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+			r := allocRoleGrant()
+			db.TestDeleteWhere(t, conn, &r, "1=1")
 			rg, err := NewRoleGrant(projRole.PublicId, "id=a_bcde;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))

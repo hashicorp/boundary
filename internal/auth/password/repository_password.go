@@ -221,7 +221,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	defer rows.Close()
 	for rows.Next() {
 		var aa authAccount
-		if err := r.reader.ScanRows(rows, &aa); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &aa); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		accts = append(accts, aa)
@@ -316,7 +316,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			acct = updatedAccount
 
 			oldCred := allocCredential()
-			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
+			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", []interface{}{accountId}); err != nil {
 				if !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}

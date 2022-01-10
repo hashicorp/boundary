@@ -1007,6 +1007,61 @@ func TestControllerDescription(t *testing.T) {
 	}
 }
 
+func TestWorkerDescription(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envDescription string
+		expDescription string
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid worker description from env var",
+			in: `
+			worker {
+				description = "env://WORKER_DESCRIPTION"
+			}`,
+			envDescription: "Test worker description",
+			expDescription: "Test worker description",
+			expErr:         false,
+		}, {
+			name: "Invalid worker description",
+			in: `
+			worker {
+				description = "\uTest worker description"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:22: illegal char escape",
+		}, {
+			name: "Not a URL, non-printable description",
+			in: `
+			worker {
+				description = "\x00"
+			}`,
+			expErr:    true,
+			expErrStr: "Worker description contains non-printable characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("WORKER_DESCRIPTION", tt.envDescription)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Worker)
+			require.Equal(t, tt.expDescription, c.Worker.Description)
+		})
+	}
+}
+
 func TestPluginExecutionDir(t *testing.T) {
 	tests := []struct {
 		name                  string

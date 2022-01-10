@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SessionServiceClient interface {
-	// GetSession allows a worker to retrieve session information from the
+	// LookupSession allows a worker to retrieve session information from the
 	// controller.
 	LookupSession(ctx context.Context, in *LookupSessionRequest, opts ...grpc.CallOption) (*LookupSessionResponse, error)
 	// ActivateSession allows a worker to activate a session on a controller.
@@ -99,7 +99,7 @@ func (c *sessionServiceClient) CloseConnection(ctx context.Context, in *CloseCon
 // All implementations must embed UnimplementedSessionServiceServer
 // for forward compatibility
 type SessionServiceServer interface {
-	// GetSession allows a worker to retrieve session information from the
+	// LookupSession allows a worker to retrieve session information from the
 	// controller.
 	LookupSession(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error)
 	// ActivateSession allows a worker to activate a session on a controller.

@@ -492,7 +492,6 @@ func Test_workerRequestInfoInterceptor(t *testing.T) {
 		wantRequestErrMatch    *errors.Template
 		wantRequestErrContains string
 	}{
-
 		{
 			name:                   "missing-eventer",
 			requestCtx:             requestCtx,

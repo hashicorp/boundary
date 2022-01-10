@@ -215,7 +215,7 @@ func TestRepository_ListTargets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			require.NoError(conn.Where("1=1").Delete(tcp.NewTestTarget("")).Error)
+			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
 			testGroups := []target.Target{}
 			for i := 0; i < tt.createCnt; i++ {
 				switch {
@@ -249,7 +249,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
-	require.NoError(t, conn.Where("1=1").Delete(tcp.NewTestTarget("")).Error)
+	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
 
 	ctx := context.Background()
 	const numPerScope = 10

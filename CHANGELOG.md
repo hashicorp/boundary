@@ -6,6 +6,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* config: The `description` field for workers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1783))
 * config: The `max_open_connections` field for the database field in controllers now supports being set
   from environment variables or a file on disk
   ([PR](https://github.com/hashicorp/boundary/pull/1776))
@@ -25,6 +28,27 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/1736))
 * controllers/workers: Add client IP to inbound request information which is included in
   Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
+* plugins/aws: AWS plugin based hosts now include DNS names in addition to the
+  IP addresses they already provide.
+
+## 0.7.3 (2021/12/16)
+
+### Bug Fixes
+
+* target: Fix permission bug which prevents the UI from being able to add and remove
+  host sources on a target. ([PR](https://github.com/hashicorp/boundary/pull/1794))
+* credential: Fix panic during credential issue when a nil secret is received. This can
+  occur when using the Vault KV backend which returns a nil secret and no error if the
+  secret does not exist. ([PR](https://github.com/hashicorp/boundary/pull/1798))
+
+## 0.7.2 (2021/12/14)
+
+### Security
+
+* Boundary now uses Go 1.17.5 to address a security vulnerability (CVE-2021-44716) where
+  an attacker can cause unbounded memory growth in a Go server accepting HTTP/2 requests.
+  See the [Go announcement](https://groups.google.com/g/golang-announce/c/hcmEScgc00k) for
+  more details. ([PR](https://github.com/hashicorp/boundary/pull/1789))
 
 ## 0.7.1 (2021/11/18)
 

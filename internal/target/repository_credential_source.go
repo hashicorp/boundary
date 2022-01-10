@@ -102,7 +102,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -194,7 +194,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -320,7 +320,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
+			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -421,7 +421,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, cls []*Creden
 	var changes []*change
 	for rows.Next() {
 		var chg changeQueryResult
-		if err := r.reader.ScanRows(rows, &chg); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &change{

@@ -86,6 +86,30 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithCredentialMappingOverrides(inCredentialMappingOverrides map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["credential_mapping_overrides"] = inCredentialMappingOverrides
+	}
+}
+
+func DefaultCredentialMappingOverrides() Option {
+	return func(o *options) {
+		o.postMap["credential_mapping_overrides"] = nil
+	}
+}
+
+func WithCredentialType(inCredentialType string) Option {
+	return func(o *options) {
+		o.postMap["credential_type"] = inCredentialType
+	}
+}
+
+func DefaultCredentialType() Option {
+	return func(o *options) {
+		o.postMap["credential_type"] = nil
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription

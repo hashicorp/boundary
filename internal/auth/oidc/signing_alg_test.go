@@ -122,7 +122,7 @@ func TestSigningAlg_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := AllocSigningAlg()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", tt.args.authMethodId, string(tt.args.alg)))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{tt.args.authMethodId, string(tt.args.alg)}))
 				assert.Equal(got, &found)
 			}
 		})
@@ -141,18 +141,17 @@ func TestSigningAlg_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod :=
-		TestAuthMethod(
-			t,
-			conn,
-			databaseWrapper,
-			org.PublicId,
-			InactiveState,
-			"alice_rp",
-			"my-dogs-name",
-			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
-			WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
+	testAuthMethod := TestAuthMethod(
+		t,
+		conn,
+		databaseWrapper,
+		org.PublicId,
+		InactiveState,
+		"alice_rp",
+		"my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+		WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, signingAlg Alg) *SigningAlg {
 		c, err := NewSigningAlg(ctx, authMethodId, signingAlg)
@@ -210,7 +209,7 @@ func TestSigningAlg_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocSigningAlg()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", tt.SigningAlg.OidcMethodId, tt.SigningAlg.String())
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{tt.SigningAlg.OidcMethodId, tt.SigningAlg.String()})
 			assert.Truef(errors.IsNotFoundError(err), "unexpected error: %s", err.Error())
 		})
 	}

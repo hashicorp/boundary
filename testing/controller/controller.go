@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+
+	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
 )
 
 type option struct {

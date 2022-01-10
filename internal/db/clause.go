@@ -2,9 +2,6 @@ package db
 
 import (
 	"sort"
-
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // ColumnValue defines a column and it's assigned value for a database operation
@@ -13,28 +10,10 @@ type ColumnValue struct {
 	value  interface{}
 }
 
-type assigner interface {
-	toAssignment(column string) clause.Assignment
-}
-
 // column represents a table column
 type column struct {
 	name  string
 	table string
-}
-
-func (c *column) toAssignment(column string) clause.Assignment {
-	return clause.Assignment{
-		Column: clause.Column{Name: column},
-		Value:  clause.Column{Table: c.table, Name: c.name},
-	}
-}
-
-func rawAssignment(column string, value interface{}) clause.Assignment {
-	return clause.Assignment{
-		Column: clause.Column{Name: column},
-		Value:  value,
-	}
 }
 
 // ExprValue encapsulates an expression value for a column assignment.  See
@@ -42,13 +21,6 @@ func rawAssignment(column string, value interface{}) clause.Assignment {
 type ExprValue struct {
 	sql  string
 	vars []interface{}
-}
-
-func (ev *ExprValue) toAssignment(column string) clause.Assignment {
-	return clause.Assignment{
-		Column: clause.Column{Name: column},
-		Value:  gorm.Expr(ev.sql, ev.vars...),
-	}
 }
 
 // Expr creates an expression value (ExprValue) which can be used when setting

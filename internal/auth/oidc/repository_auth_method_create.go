@@ -72,7 +72,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 5)
-			ticket, err := w.GetTicket(am)
+			ticket, err := w.GetTicket(ctx, am)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

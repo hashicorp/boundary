@@ -302,7 +302,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			cSecret := allocHostCatalogSecret()
-			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", got.GetPublicId())
+			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{got.GetPublicId()})
 			if tt.wantSecret == nil {
 				assert.Nil(got.Secrets)
 				require.Error(t, err)
@@ -608,7 +608,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			require := require.New(t)
 
 			cSecret := allocHostCatalogSecret()
-			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", gotCatalog.GetPublicId())
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{gotCatalog.GetPublicId()})
 			require.NoError(err)
 			require.Empty(cSecret.Secret)
 			require.NotEmpty(cSecret.CtSecret)
@@ -629,7 +629,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert := assert.New(t)
 
 			cSecret := allocHostCatalogSecret()
-			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", gotCatalog.GetPublicId())
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{gotCatalog.GetPublicId()})
 			assert.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		}
@@ -1453,10 +1453,12 @@ func (j *testSyncJob) Status() scheduler.JobStatus {
 	}
 }
 
-func (j *testSyncJob) Run(_ context.Context) error       { return nil }
-func (j *testSyncJob) NextRunIn() (time.Duration, error) { return setSyncJobRunInterval, nil }
-func (j *testSyncJob) Name() string                      { return setSyncJobName }
-func (j *testSyncJob) Description() string               { return setSyncJobName }
+func (j *testSyncJob) Run(_ context.Context) error { return nil }
+func (j *testSyncJob) NextRunIn(_ context.Context) (time.Duration, error) {
+	return setSyncJobRunInterval, nil
+}
+func (j *testSyncJob) Name() string        { return setSyncJobName }
+func (j *testSyncJob) Description() string { return setSyncJobName }
 
 func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	ctx := context.Background()

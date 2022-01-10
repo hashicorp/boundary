@@ -947,7 +947,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-Account-test-update-name-repo")),
 			masks:      []string{NameField},
 			wantIsErr:  errors.RecordNotFound,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: record not found, search issue: error #1100: dbw.Update: dbw.lookupAfterWrite: dbw.LookupById: record not found",
 		},
 		{
 			name:    "empty-field-mask",

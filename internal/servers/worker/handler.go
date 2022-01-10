@@ -93,6 +93,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		tofuToken := si.LookupSessionResponse.GetTofuToken()
 		version := si.LookupSessionResponse.GetVersion()
 		endpoint := si.LookupSessionResponse.GetEndpoint()
+		credentials := si.LookupSessionResponse.GetCredentials()
 		sessStatus := si.Status
 		si.RUnlock()
 
@@ -249,7 +250,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
-		if err = handleProxyFn(connCtx, conf); err != nil {
+		var proxyOpts []proxyHandlers.Option
+		if len(credentials) > 0 {
+			proxyOpts = append(proxyOpts, proxyHandlers.WithEgressCredentials(credentials))
+		}
+
+		if err = handleProxyFn(connCtx, conf, proxyOpts...); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error handling proxy", "session_id", sessionId, "endpoint", endpoint))
 			if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))

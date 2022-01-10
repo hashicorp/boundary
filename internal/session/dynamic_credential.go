@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/hashicorp/boundary/internal/credential"
+	cred "github.com/hashicorp/boundary/internal/credential"
 )
 
 // A DynamicCredential represents the relationship between a session, a
@@ -18,7 +18,7 @@ type DynamicCredential struct {
 
 // NewDynamicCredential creates a new in memory Credential representing the
 // relationship between session and a credential library.
-func NewDynamicCredential(libraryId string, purpose credential.Purpose) *DynamicCredential {
+func NewDynamicCredential(libraryId string, purpose cred.Purpose) *DynamicCredential {
 	return &DynamicCredential{
 		LibraryId:         libraryId,
 		CredentialPurpose: string(purpose),

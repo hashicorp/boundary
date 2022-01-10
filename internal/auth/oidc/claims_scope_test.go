@@ -115,7 +115,7 @@ func TestClaimsScope_Create(t *testing.T) {
 				}
 				assert.NoError(err)
 				found := AllocClaimsScope()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", tt.args.authMethodId, tt.args.claimsScope))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []interface{}{tt.args.authMethodId, tt.args.claimsScope}))
 			}
 		})
 	}
@@ -133,9 +133,8 @@ func TestClaimsScope_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod :=
-		TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
-			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, claimsScope string) *ClaimsScope {
 		c, err := NewClaimsScope(ctx, authMethodId, claimsScope)
@@ -193,7 +192,7 @@ func TestClaimsScope_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocClaimsScope()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", tt.claimsScope.OidcMethodId, tt.claimsScope.Scope)
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []interface{}{tt.claimsScope.OidcMethodId, tt.claimsScope.Scope})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,14 +15,16 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm/logger"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
+// setup the tests (initialize the database one-time and intialized
+// testDatabaseURL). Do not close the returned db. Supported options:
+// WithTestLogLevel, WithTestDatabaseUrl
 func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	var cleanup func() error
 	var url string
@@ -55,7 +58,12 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db.Logger.LogMode(logger.Error)
+	switch {
+	case opts.withLogLevel != DefaultTestLogLevel:
+		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
+	default:
+		db.wrapped.LogLevel(dbw.Error)
+	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
 		assert.NoError(t, err)
@@ -95,6 +103,20 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 	parts := strings.Split(actual, "_")
 	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+}
+
+// TestDeleteWhere allows you to easily delete resources for testing purposes
+// including all the current resources.
+func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+	tabler, ok := i.(interface {
+		TableName() string
+	})
+	require.True(ok)
+	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	require.NoError(err)
 }
 
 // TestVerifyOplog will verify that there is an oplog entry that matches the provided resourceId.
@@ -151,12 +173,12 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var metadata store.Metadata
-	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
+	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs); err != nil {
 		return err
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil
@@ -181,6 +203,7 @@ type testOptions struct {
 	withTestDatabaseUrl   string
 	withResourcePrivateId bool
 	withTemplate          string
+	withLogLevel          TestLogLevel
 }
 
 func getDefaultTestOptions() testOptions {
@@ -226,6 +249,26 @@ func WithResourcePrivateId(enable bool) TestOption {
 func WithTemplate(template string) TestOption {
 	return func(o *testOptions) {
 		o.withTemplate = template
+	}
+}
+
+// TestLogLevel defines a test log level for the underlying db package (if applicable)
+type TestLogLevel int
+
+const (
+	// See WithTestLogLevel(...) test only option
+	DefaultTestLogLevel TestLogLevel = iota
+	SilentTestLogLevel
+	ErrorTestLogLevel
+	WarnTestLogLevel
+	InfoTestLogLevel
+)
+
+// WithTestLogLevel provides a way to specify a test log level for the
+// underlying database package (if applicable).
+func WithTestLogLevel(_ *testing.T, l TestLogLevel) TestOption {
+	return func(o *testOptions) {
+		o.withLogLevel = l
 	}
 }
 

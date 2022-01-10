@@ -216,11 +216,11 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			outToken := allocToken()
-			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", got.PublicId))
+			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", []interface{}{got.PublicId}))
 
 			if tt.tls == TestClientTLS {
 				outClientCert := allocClientCertificate()
-				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", got.PublicId))
+				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", []interface{}{got.PublicId}))
 			}
 		})
 	}

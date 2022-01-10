@@ -80,7 +80,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(err)
 
 	outToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", inToken.TokenHmac))
+	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 	require.NoError(outToken.decrypt(context.Background(), databaseWrapper))
 
 	return outToken
@@ -141,7 +141,7 @@ func testVaultCred(t *testing.T,
 	assert.NoError(err)
 
 	outCred := allocCredential()
-	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", id))
+	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", []interface{}{id}))
 
 	return secret, outCred
 }
@@ -582,7 +582,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				assert.Equal(1, count)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating tokens and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
@@ -1437,7 +1437,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, token, cred.s, cred.e)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))

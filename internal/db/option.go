@@ -1,7 +1,12 @@
 package db
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
@@ -13,6 +18,122 @@ func GetOpts(opt ...Option) Options {
 		o(&opts)
 	}
 	return opts
+}
+
+func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, opt ...Option) ([]dbw.Option, error) {
+	const op = "db.getDbwOptions"
+	opts := GetOpts(opt...)
+	dbwOpts := make([]dbw.Option, 0, len(opt))
+	oplogBefore, after, err := rw.generateOplogBeforeAfterOpts(ctx, i, opType, opts)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	before := oplogBefore
+	if !opts.withSkipVetForWrite && (opType != DeleteOp && opType != DeleteItemsOp) {
+		if vetter, ok := i.(VetForWriter); ok {
+			before = func(i interface{}) error {
+				if err := vetter.VetForWrite(ctx, rw, opType, opt...); err != nil {
+					return err
+				}
+				if oplogBefore != nil {
+					if err := oplogBefore(i); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		}
+	}
+	if before != nil {
+		dbwOpts = append(dbwOpts, dbw.WithBeforeWrite(before))
+	}
+	if after != nil {
+		dbwOpts = append(dbwOpts, dbw.WithAfterWrite(after))
+	}
+	if opts.withOnConflict != nil {
+		c := &dbw.OnConflict{}
+		switch target := opts.withOnConflict.Target.(type) {
+		case Constraint:
+			c.Target = dbw.Constraint(target)
+		case Columns:
+			c.Target = dbw.Columns(target)
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported target type: %T", target))
+		}
+		switch action := opts.withOnConflict.Action.(type) {
+		case DoNothing:
+			c.Action = dbw.DoNothing(bool(action))
+		case UpdateAll:
+			c.Action = dbw.UpdateAll(bool(action))
+		case []ColumnValue:
+			colVals := make([]dbw.ColumnValue, 0, len(action))
+			for _, cv := range action {
+				dbwColVal := dbw.ColumnValue{
+					Column: cv.column,
+				}
+				switch cvVal := cv.value.(type) {
+				case ExprValue:
+					dbwColVal.Value = dbw.ExprValue{
+						Sql:  cvVal.sql,
+						Vars: cvVal.vars,
+					}
+				case column:
+					dbwColVal.Column = cvVal.name
+					dbwColVal.Value = dbw.Column{
+						Table: cvVal.table,
+						Name:  cvVal.name,
+					}
+				default:
+					dbwColVal.Value = cv.value
+				}
+				colVals = append(colVals, dbwColVal)
+			}
+			c.Action = colVals
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a valid supported action: %T", action))
+		}
+		dbwOpts = append(dbwOpts, dbw.WithOnConflict(c))
+	}
+	if opts.withLookup {
+		dbwOpts = append(dbwOpts, dbw.WithLookup(opts.withLookup))
+	}
+	if opts.WithLimit != 0 {
+		dbwOpts = append(dbwOpts, dbw.WithLimit(opts.WithLimit))
+	}
+	if len(opts.WithFieldMaskPaths) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithFieldMaskPaths(opts.WithFieldMaskPaths))
+	}
+	if len(opts.WithNullPaths) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithNullPaths(opts.WithNullPaths))
+	}
+	if opts.WithVersion != nil {
+		dbwOpts = append(dbwOpts, dbw.WithVersion(opts.WithVersion))
+	}
+	if opts.withSkipVetForWrite {
+		dbwOpts = append(dbwOpts, dbw.WithSkipVetForWrite(opts.withSkipVetForWrite))
+	}
+	if opts.withWhereClause != "" {
+		dbwOpts = append(dbwOpts, dbw.WithWhere(opts.withWhereClause, opts.withWhereClauseArgs...))
+	}
+	if opts.withOrder != "" {
+		dbwOpts = append(dbwOpts, dbw.WithOrder(opts.withOrder))
+	}
+	if len(opts.withPrngValues) > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithPrngValues(opts.withPrngValues))
+	}
+	if opts.withGormFormatter != nil {
+		dbwOpts = append(dbwOpts, dbw.WithLogger(opts.withGormFormatter))
+	}
+	if opts.withMaxOpenConnections > 0 {
+		dbwOpts = append(dbwOpts, dbw.WithMaxOpenConnections(opts.withMaxOpenConnections))
+	}
+	if opts.withDebug {
+		dbwOpts = append(dbwOpts, dbw.WithDebug(opts.withDebug))
+	}
+	if opts.withRowsAffected != nil {
+		dbwOpts = append(dbwOpts, dbw.WithReturnRowsAffected(opts.withRowsAffected))
+	}
+	return dbwOpts, nil
 }
 
 // Option - how Options are passed as arguments.
