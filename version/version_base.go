@@ -8,8 +8,7 @@ var (
 	// Whether cgo is enabled or not; set at build time
 	CgoEnabled bool
 
-	// Version is set at compile time when using 'make build' or building in CI.
-	Version = "0.7.2"
+	Version = "0.8.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
 	VersionPrerelease = ""

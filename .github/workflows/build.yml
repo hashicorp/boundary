@@ -19,6 +19,10 @@ jobs:
       product-version: ${{ steps.get-product-version.outputs.product-version }}
     steps:
       - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.17.2"
       - name: get product version
         id: get-product-version
         run: |
@@ -45,8 +49,22 @@ jobs:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
 
-  build-other:
+  set-ld-flags:
     needs: get-product-version
+    runs-on: ubuntu-latest
+    outputs:
+      ldflags: ${{ steps.generate-ld-flags.outputs.ldflags }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: 'Generate ld flags'
+        id: generate-ld-flags
+        run: |
+          project="$(go list -m)"
+          sha="$(git rev-parse HEAD)"
+          echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
+
+  build-other:
+    needs: [get-product-version, set-ld-flags]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,6 +84,7 @@ jobs:
     env:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
+      LD_FLAGS: ${{ needs.set-ld-flags.outputs.ldflags }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup go
@@ -100,7 +119,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir dist out
-          go build -v -tags "ui" -ldflags " -X $VERSION_PKG_PATH.Version=${{ needs.get-product-version.outputs.product-version }} -X $VERSION_PKG_PATH.GitCommit=$GITHUB_SHA" -o dist/ ./cmd/boundary
+          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
         with:
@@ -108,7 +127,7 @@ jobs:
           path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
-    needs: get-product-version
+    needs: [get-product-version, set-ld-flags]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -122,6 +141,7 @@ jobs:
     env:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
+      LD_FLAGS: ${{ needs.set-ld-flags.outputs.ldflags }}
 
     steps:
       - uses: actions/checkout@v2

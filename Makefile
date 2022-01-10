@@ -220,7 +220,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.7.1
+VERSION?=0.8.0
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
@@ -268,4 +268,4 @@ ci-verify:
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml
 version:
-	@$(CURDIR)/scripts/version.sh version/version_base.go
+	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
