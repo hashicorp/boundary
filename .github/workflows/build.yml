@@ -11,6 +11,7 @@ on:
 
 env:
   PKG_NAME: "boundary"
+  GO_VERSION: "1.17.5"
 
 jobs:
   get-product-version:
@@ -22,7 +23,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v2
         with:
-          go-version: "1.17.2"
+          go-version: ${{ env.GO_VERSION }}
       - name: get product version
         id: get-product-version
         run: |
@@ -70,7 +71,7 @@ jobs:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         goarch: [ "386", "amd64", "arm" ]
-        go: [ "1.17.2" ]
+        go: [ ${{ env.GO_VERSION }} ]
         exclude:
           - goos: solaris
             goarch: 386
@@ -133,7 +134,7 @@ jobs:
       matrix:
         goos: [linux]
         goarch: ["arm", "arm64", "386", "amd64"]
-        go: ["1.17.2"]
+        go: [ ${{ env.GO_VERSION }} ]
       fail-fast: true
 
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
@@ -191,7 +192,7 @@ jobs:
       matrix:
         goos: [ darwin ]
         goarch: [ "amd64", "arm64" ]
-        go: [ "1.17.2" ]
+        go: [ ${{ env.GO_VERSION }} ]
       fail-fast: true
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
 
