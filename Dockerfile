@@ -1,6 +1,12 @@
-FROM docker.mirror.hashicorp.services/alpine:3.13.6
+FROM docker.mirror.hashicorp.services/alpine:3.13.6 as default
 
-ARG VERSION=0.8.0
+ARG BIN_NAME
+# NAME and VERSION are the name of the software in releases.hashicorp.com
+# and the version to download. Example: NAME=boundary VERSION=1.2.3.
+ARG NAME=boundary
+ARG VERSION
+# TARGETARCH and TARGETOS are set automatically when --platform is provided.
+ARG TARGETOS TARGETARCH
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
@@ -33,7 +39,9 @@ RUN set -eux && \
     rm boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS boundary_${VERSION}_SHA256SUMS.sig && \
     mkdir /boundary
 
-COPY config.hcl /boundary/config.hcl
+COPY docker/config.hcl /boundary/config.hcl
+
+COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
 RUN chown -R boundary:boundary /boundary/ 
 
