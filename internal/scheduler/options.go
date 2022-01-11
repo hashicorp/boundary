@@ -28,6 +28,7 @@ type options struct {
 	withRunJobInterval     time.Duration
 	withMonitorInterval    time.Duration
 	withInterruptThreshold time.Duration
+	withRunNow             bool
 }
 
 func getDefaultOptions() options {
@@ -93,5 +94,14 @@ func WithInterruptThreshold(l time.Duration) Option {
 func WithNextRunIn(d time.Duration) Option {
 	return func(o *options) {
 		o.withNextRunIn = d
+	}
+}
+
+// WithRunNow provides an option to trigger the scheduling loop after updating the next run time
+// of a specific job. Note this does not guarantee the job will run on the scheduler that updated
+// the job run time.
+func WithRunNow(b bool) Option {
+	return func(o *options) {
+		o.withRunNow = b
 	}
 }

@@ -66,4 +66,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithRunNow", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRunNow(true))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withRunNow = true
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -33,6 +33,7 @@ type Scheduler struct {
 	runJobsInterval    time.Duration
 	monitorInterval    time.Duration
 	interruptThreshold time.Duration
+	runNow             chan struct{}
 }
 
 // New creates a new Scheduler
@@ -62,6 +63,7 @@ func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, 
 		runJobsInterval:    opts.withRunJobInterval,
 		monitorInterval:    opts.withMonitorInterval,
 		interruptThreshold: opts.withInterruptThreshold,
+		runNow:             make(chan struct{}, 1),
 	}, nil
 }
 
@@ -101,8 +103,8 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 // the nextRunInAtLeast parameter or the current NextScheduledRun time value, which ever is sooner.
 // If nextRunInAtLeast == 0 the job will be available to run immediately.
 //
-// All options are ignored.
-func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) error {
+// WithRunNow is the only supported option.
+func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, opt ...Option) error {
 	const op = "scheduler.(Scheduler).UpdateJobNextRunInAtLeast"
 	if name == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing name")
@@ -115,6 +117,11 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 	_, err = repo.UpdateJobNextRunInAtLeast(ctx, name, nextRunInAtLeast)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+
+	opts := getOpts(opt...)
+	if opts.withRunNow {
+		s.RunNow()
 	}
 	return nil
 }
@@ -165,9 +172,19 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
+// RunNow attempts to trigger the scheduling loop, if the scheduling loop is actively running it will
+// cause the loop to run again immediately after finishing.
+func (s *Scheduler) RunNow() {
+	// Do not block on writing to runNow chan.
+	select {
+	case s.runNow <- struct{}{}:
+	default:
+	}
+}
+
 func (s *Scheduler) start(ctx context.Context) {
 	const op = "scheduler.(Scheduler).start"
-	timer := time.NewTimer(s.runJobsInterval)
+	timer := time.NewTimer(0)
 	var wg sync.WaitGroup
 	for {
 		select {
@@ -177,30 +194,36 @@ func (s *Scheduler) start(ctx context.Context) {
 			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
-			repo, err := s.jobRepoFn()
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
-				break
-			}
-
-			runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
-				break
-			}
-
-			for _, r := range runs {
-				err := s.runJob(ctx, &wg, r)
-				if err != nil {
-					event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
-					if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
-						event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
-					}
-				}
-			}
+		case <-s.runNow:
 		}
 
+		s.schedule(ctx, &wg)
 		timer.Reset(s.runJobsInterval)
+	}
+}
+
+func (s *Scheduler) schedule(ctx context.Context, wg *sync.WaitGroup) {
+	const op = "scheduler.(Scheduler).schedule"
+	repo, err := s.jobRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error creating job repo"))
+		return
+	}
+
+	runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting jobs to run from repo"))
+		return
+	}
+
+	for _, r := range runs {
+		err := s.runJob(ctx, wg, r)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error starting job"))
+			if _, inner := repo.FailRun(ctx, r.PrivateId, 0, 0); inner != nil {
+				event.WriteError(ctx, op, inner, event.WithInfoMsg("error updating failed job run"))
+			}
+		}
 	}
 }
 
