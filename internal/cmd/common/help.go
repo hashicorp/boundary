@@ -126,17 +126,16 @@ func subtype(in []string, resType string, prefixMap map[string]string) []string 
 		articleType = fmt.Sprintf("a %s", articleType)
 	}
 	for i, v := range in {
-		in[i] =
+		in[i] = strings.Replace(
 			strings.Replace(
 				strings.Replace(
 					strings.Replace(
 						strings.Replace(
-							strings.Replace(
-								v, "{{hyphentype}}", hyphenType, -1),
-							"{{type}}", resType, -1),
-						"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
-					"{{prefix}}", prefixMap[resType], -1),
-				"{{articletype}}", articleType, -1)
+							v, "{{hyphentype}}", hyphenType, -1),
+						"{{type}}", resType, -1),
+					"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
+				"{{prefix}}", prefixMap[resType], -1),
+			"{{articletype}}", articleType, -1)
 	}
 	return in
 }

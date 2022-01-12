@@ -51,7 +51,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been created", errors.WithoutEvent())
 				}
 				rowCnt++
-				err = r.ScanRows(rows, j)
+				err = r.ScanRows(ctx, rows, j)
 				if err != nil {
 					_ = rows.Close()
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"), errors.WithoutEvent())
@@ -100,7 +100,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, j)
+				err = r.ScanRows(ctx, rows, j)
 				if err != nil {
 					_ = rows.Close()
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows"))

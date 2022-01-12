@@ -166,7 +166,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `db.Create: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "bad-user-id",
@@ -180,7 +180,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `integrity violation: error #1003`,
 		},
 		{
 			name: "missing-group-id",
@@ -227,7 +227,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
 		},
 	}
 
@@ -251,7 +251,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocGroupMember()
-			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", gm.GroupId, gm.MemberId)
+			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{gm.GroupId, gm.MemberId})
 			require.NoError(err)
 			assert.Equal(gm, &found)
 		})
@@ -329,7 +329,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocGroupMember()
-			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
+			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{tt.gm.GetGroupId(), tt.gm.GetMemberId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

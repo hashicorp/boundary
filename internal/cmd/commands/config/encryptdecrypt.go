@@ -60,13 +60,12 @@ func (c *EncryptDecryptCommand) Help() string {
 	)
 
 	for i, line := range args {
-		args[i] =
+		args[i] = strings.Replace(
 			strings.Replace(
-				strings.Replace(
-					line, "{{func}}", c.Func, -1,
-				),
-				"{{upperfunc}}", textproto.CanonicalMIMEHeaderKey(c.Func), -1,
-			)
+				line, "{{func}}", c.Func, -1,
+			),
+			"{{upperfunc}}", textproto.CanonicalMIMEHeaderKey(c.Func), -1,
+		)
 	}
 
 	return base.WrapForHelpText(args) + c.Flags().Help()

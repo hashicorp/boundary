@@ -104,6 +104,7 @@ func TestNewRepository(t *testing.T) {
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 	t.Run("valid-scope", func(t *testing.T) {
@@ -125,11 +126,11 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
+		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", []interface{}{"resource-public-id", s.PublicId})
 		require.NoError(err)
 
 		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId})
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
@@ -159,7 +160,8 @@ func Test_Repository_delete(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		require.NoError(err)
 	})
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	rk := kms.AllocRootKey()
+	db.TestDeleteWhere(t, conn, &rk, "1=1")
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
@@ -243,7 +245,7 @@ func TestRepository_update(t *testing.T) {
 			},
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: getting update fields failed: common.UpdateFields: fieldMashPaths and setToNullPaths cannot intersect: parameter violation: error #100",
+			wantErrMsg:      "fieldMashPaths and setToNullPaths cannot intersect: invalid parameter",
 		},
 		{
 			name: "only-field-masks",
@@ -299,7 +301,7 @@ func TestRepository_update(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)
@@ -313,7 +315,7 @@ func TestRepository_update(t *testing.T) {
 			for _, f := range tt.args.setToNullPaths {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), &foundResource, where, tt.args.resource.GetPublicId())
+			err = rw.LookupWhere(context.Background(), &foundResource, where, []interface{}{tt.args.resource.GetPublicId()})
 			require.NoError(err)
 			assert.Equal(tt.args.resource.GetPublicId(), foundResource.GetPublicId())
 			assert.Equal(tt.wantName, foundResource.GetName())

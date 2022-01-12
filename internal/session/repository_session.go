@@ -105,7 +105,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				defer rows.Close()
 				for rows.Next() {
 					var returnedCred DynamicCredential
-					w.ScanRows(rows, &returnedCred)
+					w.ScanRows(ctx, rows, &returnedCred)
 					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
 				}
 			}
@@ -276,7 +276,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	var sessionsList []*sessionListView
 	for rows.Next() {
 		var s sessionListView
-		if err := r.reader.ScanRows(rows, &s); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		sessionsList = append(sessionsList, &s)
@@ -504,7 +504,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 			return nil, errors.New(ctx, errors.MultipleRecords, op, "query returned more than one row")
 		}
 		info = &ConnectionAuthzSummary{}
-		if err := r.reader.ScanRows(rows, info); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, info); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 	}

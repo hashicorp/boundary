@@ -226,7 +226,7 @@ func testTokens(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, st
 		num := r.Int31()
 		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
-		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
 
 		tokens = append(tokens, outToken)

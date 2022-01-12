@@ -22,7 +22,7 @@ type Job interface {
 	// is being persisted by the scheduler.  If an error is returned, the error will be logged
 	// but the duration returned will still be used in scheduling.  If a zero duration is returned
 	// the job will be scheduled to run again immediately.
-	NextRunIn() (time.Duration, error)
+	NextRunIn(context.Context) (time.Duration, error)
 
 	// Name is the unique name of the job.
 	Name() string

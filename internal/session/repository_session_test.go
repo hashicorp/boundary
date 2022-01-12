@@ -107,7 +107,7 @@ func TestRepository_ListSession(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
@@ -142,7 +142,7 @@ func TestRepository_ListSession(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -159,7 +159,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withUserId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -172,7 +172,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			// Scope 1 User 1
@@ -195,7 +195,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		testSessions := []*Session{}
 		for i := 0; i < 10; i++ {
 			s := TestSession(t, conn, wrapper, composedOf)
@@ -212,7 +212,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withServerId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		for i := 0; i < 6; i++ {
 			if i%2 == 0 {
 				TestWorker(t, conn, wrapper, WithServerId(fmt.Sprintf("server-%d", i/2)))
@@ -248,7 +248,7 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	require.NoError(t, conn.Where("1=1").Delete(AllocSession()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var projs []string
@@ -1030,7 +1030,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 			args := tt.setup()
 
 			got, err := repo.TerminateCompletedSessions(context.Background())

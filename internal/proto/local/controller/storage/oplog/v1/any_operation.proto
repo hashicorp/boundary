@@ -1,6 +1,8 @@
 syntax = "proto3";
 
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
 
 package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/boundary/internal/oplog;oplog";
@@ -19,6 +21,12 @@ enum OpType {
 
   // OP_TYPE_DELETE defines a delete operation.
   OP_TYPE_DELETE = 3;
+
+  // OP_TYPE_CREATE_ITEMS defines a create operation for multiple items.
+  OP_TYPE_CREATE_ITEMS = 4;
+
+  // OP_TYPE_DELETE_ITEMS defines a delete operation for multiple items.
+  OP_TYPE_DELETE_ITEMS = 5;
 }
 
 // AnyOperation provides a message for anything and the type of operation it
@@ -38,4 +46,95 @@ message AnyOperation {
 
   // null_mask is the mask of fields to set to null.
   google.protobuf.FieldMask null_mask = 5;
+
+  // Options for the operations (see dbw package for definition/documentation of
+  // options)
+  OperationOptions options = 6;
+}
+
+// OperationOptions represent operations options which can/will affect the oplog write
+// operation.  These options are a subset of the dbw.Options. We will not try to
+// keep the docs in-sync from the dbw package, so if you need more information
+// on what the option does please see the dbw package docs.
+message OperationOptions {
+  // with_version (see dbw package for docs)
+  google.protobuf.UInt32Value with_version = 1;
+
+  // with_skip_vet_for_write (see dbw package for docs)
+  bool with_skip_vet_for_write = 2;
+
+  // with_where_clause (see dbw package for docs)
+  string with_where_clause = 3;
+
+  // with_where_clause_args (see dbw package for docs)
+  repeated google.protobuf.Value with_where_clause_args = 4;
+
+  // with_on_conflict (see dbw package for docs)
+  WithOnConflict with_on_conflict = 5;
+}
+
+// WithOnConflict defines the parameters needed for an sql "on conflict clause"
+message WithOnConflict {
+  // target defines the on conflict target
+  oneof target {
+    // constraint is the on conflict constraint
+    string constraint = 10;
+
+    // columns are the on conflict columns
+    Columns columns = 11;
+  };
+
+  // action defines the on conflict action
+  oneof action {
+    // do_nothing defines an on conflict action of do nothing
+    bool do_nothing = 50;
+
+    // update_all defines an on conflict action of updating all the columns
+    bool update_all = 51;
+
+    // column_values defines on conflict action with the columns to update
+    ColumnValues column_values = 52;
+  };
+}
+
+// Columns defines a set of column properties
+message Columns {
+  // name of the columns
+  repeated string names = 1;
+}
+
+// ColumnValue defines a column value
+message ColumnValue {
+  // name of the column
+  string name = 1;
+
+  // value of the column
+  oneof value {
+    google.protobuf.Value raw = 2;
+    ExprValue expr_value = 3;
+    Column column = 4;
+  };
+}
+
+// ColumnValues defines a set of column value properies
+message ColumnValues {
+  // values are the values of the columns
+  repeated ColumnValue values = 1;
+}
+
+// ExprValue defines an expr value that can be used as a column value
+message ExprValue {
+  // sql is the sql clause of the expr
+  string sql = 1;
+
+  // args are the sql args of the expr
+  repeated google.protobuf.Value args = 2;
+}
+
+// Column represents a table Column
+message Column {
+  // name of the column
+  string name = 1;
+  // table name of the column
+  string table = 2;
 }

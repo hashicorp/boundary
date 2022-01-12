@@ -44,8 +44,8 @@ type hostInfo struct {
 func createNewHostMap(ctx context.Context,
 	catalog *HostCatalog,
 	phs []*plgpb.ListHostsResponseHost,
-	currentHostMap map[string]*Host) (map[string]*hostInfo, error) {
-
+	currentHostMap map[string]*Host) (map[string]*hostInfo, error,
+) {
 	const op = "plugin.createNewHostMap"
 	newHostMap := make(map[string]*hostInfo, len(phs))
 
@@ -200,8 +200,8 @@ func getSetChanges(
 	currentHostMap map[string]*Host,
 	newHostMap map[string]*hostInfo) (
 	setMembershipsToAdd, setMembershipsToRemove map[string][]string,
-	allSetIds map[string]struct{}) {
-
+	allSetIds map[string]struct{},
+) {
 	// First, find sets that hosts should be added to: hosts that are new or
 	// have new set IDs returned.
 	for newHostId, newHost := range newHostMap {

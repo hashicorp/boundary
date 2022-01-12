@@ -239,7 +239,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "db.DoTx: iam.(Repository).UpdateGroup: iam.(Repository).update: db.DoTx: iam.(Repository).update: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg:     "record not found, search issue: error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{
@@ -627,7 +627,7 @@ func TestRepository_ListGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroup()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroup(); ; return &i }(), "1=1")
 			testGroups := []*Group{}
 			for i := 0; i < tt.createCnt; i++ {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
@@ -651,7 +651,7 @@ func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	require.NoError(t, conn.Where("1=1").Delete(allocGroup()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroup(); return &g }(), "1=1")
 
 	const numPerScope = 10
 	var total int
@@ -733,7 +733,7 @@ func TestRepository_ListMembers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroupMember(); ; return &i }(), "1=1")
 			gm := []*GroupMemberUser{}
 			for i := 0; i < tt.createCnt; i++ {
 				u := TestUser(t, repo, org.PublicId)
@@ -851,7 +851,9 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 				groupVersion += 1
 				version = groupVersion
 			}
-			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			gm := allocGroupMember()
+			db.TestDeleteWhere(t, conn, &gm, "1=1")
+
 			got, err := repo.AddGroupMembers(context.Background(), tt.args.groupId, version, tt.args.userIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

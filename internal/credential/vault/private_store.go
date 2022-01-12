@@ -45,7 +45,7 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocPrivateStore()
-	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", publicId, CurrentToken); err != nil {
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", []interface{}{publicId, CurrentToken}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}

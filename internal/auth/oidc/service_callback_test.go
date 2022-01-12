@@ -35,6 +35,8 @@ func Test_Callback(t *testing.T) {
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
+	testCtx := context.Background()
+
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -373,7 +375,7 @@ func Test_Callback(t *testing.T) {
 
 			// make sure the account was updated properly
 			var acct Account
-			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", tt.am.PublicId, tt.wantSubject)
+			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []interface{}{tt.am.PublicId, tt.wantSubject})
 			require.NoError(err)
 			assert.Equal(tt.wantInfoEmail, acct.Email)
 			assert.Equal(tt.wantInfoName, acct.FullName)
@@ -393,7 +395,7 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
 			require.NoError(err)
-			types, err := oplog.NewTypeCatalog(
+			types, err := oplog.NewTypeCatalog(testCtx,
 				oplog.Type{Interface: new(store.Account), Name: "auth_oidc_account"},
 				oplog.Type{Interface: new(iamStore.User), Name: "iam_user"},
 				oplog.Type{Interface: new(authStore.Account), Name: "auth_account"},
@@ -407,7 +409,7 @@ func Test_Callback(t *testing.T) {
 				e.Cipherer = oplogWrapper
 				err := e.DecryptData(ctx)
 				require.NoError(err)
-				msgs, err := e.UnmarshalData(types)
+				msgs, err := e.UnmarshalData(ctx, types)
 				require.NoError(err)
 				for _, m := range msgs {
 					switch m.TypeName {

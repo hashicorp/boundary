@@ -204,7 +204,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				adminRole = adminRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 3)
-				roleTicket, err := w.GetTicket(adminRole)
+				roleTicket, err := w.GetTicket(ctx, adminRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
@@ -267,7 +267,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				defaultRole = defaultRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 6)
-				roleTicket, err := w.GetTicket(defaultRole)
+				roleTicket, err := w.GetTicket(ctx, defaultRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}

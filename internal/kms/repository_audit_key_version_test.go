@@ -24,7 +24,7 @@ func TestRepository_CreateAuditKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
@@ -111,7 +111,7 @@ func TestRepository_DeleteAuditKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
@@ -200,7 +200,7 @@ func TestRepository_LatestAuditKeyVersion(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
@@ -245,7 +245,7 @@ func TestRepository_LatestAuditKeyVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocAuditKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKeyVersion(); return &i }(), "1=1")
 			testKeys := []*kms.AuditKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestAuditKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("test audit key"))
@@ -275,7 +275,7 @@ func TestRepository_ListAuditKeyVersions(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 	dk := kms.TestAuditKey(t, conn, rk.PrivateId)
@@ -348,7 +348,7 @@ func TestRepository_ListAuditKeyVersions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(kms.AllocAuditKeyVersion()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKeyVersion(); return &i }(), "1=1")
 			keyVersions := []*kms.AuditKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
 				k := kms.TestAuditKeyVersion(t, conn, rkvWrapper, dk.PrivateId, []byte("audit key"))

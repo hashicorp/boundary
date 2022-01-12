@@ -106,7 +106,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(c)
+			ticket, err := w.GetTicket(ctx, c)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -341,7 +341,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(newCatalog)
+			ticket, err := w.GetTicket(ctx, newCatalog)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}

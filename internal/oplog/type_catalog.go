@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -21,28 +22,28 @@ type Type struct {
 }
 
 // NewTypeCatalog creates a catalog with the types you pass in
-func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
+func NewTypeCatalog(ctx context.Context, withTypes ...Type) (*TypeCatalog, error) {
 	const op = "oplog.NewTypeCatalog"
 	reg := TypeCatalog{}
 	for _, t := range withTypes {
 		if t == (Type{}) {
-			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "error type is {}")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "error type is {}")
 		}
-		if err := reg.Set(t.Interface, t.Name); err != nil {
-			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error setting the type"))
+		if err := reg.Set(ctx, t.Interface, t.Name); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error setting the type"))
 		}
 	}
 	return &reg, nil
 }
 
 // GetTypeName returns the interface's name from the catalog
-func (t *TypeCatalog) GetTypeName(i interface{}) (string, error) {
+func (t *TypeCatalog) GetTypeName(ctx context.Context, i interface{}) (string, error) {
 	const op = "oplog.(TypeCatalog).GetTypeName"
 	if i == nil {
-		return "", errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "nil interface")
 	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return "", errors.NewDeprecated(errors.InvalidParameter, op, "interface must to be a pointer")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "interface must to be a pointer")
 	}
 	interfaceType := reflect.TypeOf(i)
 	for name, t := range *t {
@@ -50,33 +51,33 @@ func (t *TypeCatalog) GetTypeName(i interface{}) (string, error) {
 			return name, nil
 		}
 	}
-	return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown name for interface: %T", i))
+	return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown name for interface: %T", i))
 }
 
 // Set creates an entry in the catalog for the interface
-func (t TypeCatalog) Set(i interface{}, typeName string) error {
+func (t TypeCatalog) Set(ctx context.Context, i interface{}, typeName string) error {
 	const op = "oplog.(TypeCatalog).Set"
 	if i == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil interface")
 	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "interface must to be a pointer")
+		return errors.New(ctx, errors.InvalidParameter, op, "interface must to be a pointer")
 	}
 	if typeName == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing type name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing type name")
 	}
 	t[typeName] = reflect.TypeOf(i)
 	return nil
 }
 
 // Get retrieves the interface via a name
-func (t TypeCatalog) Get(typeName string) (interface{}, error) {
+func (t TypeCatalog) Get(ctx context.Context, typeName string) (interface{}, error) {
 	const op = "oplog.(TypeCatalog).Get"
 	if typeName == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing type name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing type name")
 	}
 	if typ, ok := t[typeName]; ok {
 		return reflect.New(typ.Elem()).Elem().Addr().Interface(), nil
 	}
-	return nil, errors.NewDeprecated(errors.KeyNotFound, op, "type name not found")
+	return nil, errors.New(ctx, errors.KeyNotFound, op, "type name not found")
 }

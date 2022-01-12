@@ -518,6 +518,6 @@ func TestConvertError(t *testing.T) {
 		e := errors.Convert(err)
 		require.NotNil(e)
 		assert.True(errors.Match(errors.T(errors.MissingTable), e))
-		assert.Equal("db.Exec: relation \"not_a_defined_table\" does not exist: integrity violation: error #1004", e.Error())
+		assert.Contains(err.Error(), "db.Exec: relation \"not_a_defined_table\" does not exist: integrity violation: error #1004")
 	})
 }

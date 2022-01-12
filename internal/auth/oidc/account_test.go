@@ -229,17 +229,16 @@ func TestAccount_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod :=
-		TestAuthMethod(
-			t,
-			conn,
-			databaseWrapper,
-			org.PublicId,
-			InactiveState,
-			"alice_rp",
-			"my-dogs-name",
-			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
-			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]))
+	testAuthMethod := TestAuthMethod(
+		t,
+		conn,
+		databaseWrapper,
+		org.PublicId,
+		InactiveState,
+		"alice_rp",
+		"my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]))
 
 	testResource := func(authMethodId string, subject string) *Account {
 		u, err := url.Parse(testAuthMethod.GetIssuer())
