@@ -4,7 +4,7 @@ ARG BIN_NAME
 # NAME and VERSION are the name of the software in releases.hashicorp.com
 # and the version to download. Example: NAME=boundary VERSION=1.2.3.
 ARG NAME=boundary
-ARG VERSION
+ARG VERSION=0.8.0
 # TARGETARCH and TARGETOS are set automatically when --platform is provided.
 ARG TARGETOS TARGETARCH
 
