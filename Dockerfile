@@ -28,7 +28,6 @@ RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-ex
 
 COPY docker/config.hcl /boundary/config.hcl
 
-# COPY /$BIN_NAME/ /bin/
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
 RUN chown -R ${NAME}:${NAME} /boundary
