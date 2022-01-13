@@ -4,7 +4,7 @@ ARG BIN_NAME
 # NAME and VERSION are the name of the software in releases.hashicorp.com
 # and the version to download. Example: NAME=boundary VERSION=1.2.3.
 ARG NAME=boundary
-ARG VERSION=0.8.0
+ARG VERSION
 # TARGETARCH and TARGETOS are set automatically when --platform is provided.
 ARG TARGETOS TARGETARCH
 
@@ -16,38 +16,27 @@ LABEL name="Boundary" \
       summary="Boundary provides simple and secure access to hosts and services" \
       description="The Boundary Docker image is designed to enable practitioners to run Boundary in server mode on a container scheduler"
 
-RUN set -eux && \
-    addgroup boundary && \
-    adduser -s /bin/sh -S -G boundary boundary && \
-    apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables && \
-    gpg --keyserver keyserver.ubuntu.com --recv-keys C874011F0AB405110D02105534365D9472D7468F && \
-    cd /tmp && \
-    apkArch="$(apk --print-arch)" && \
-    case "${apkArch}" in \
-        aarch64) boundaryArch='arm64' ;; \
-        armhf) boundaryArch='armhfv6' ;; \
-        x86) boundaryArch='386' ;; \
-        x86_64) boundaryArch='amd64' ;; \
-        *) echo >&2 "error: unsupported architecture: ${apkArch} (see https://releases.hashicorp.com/boundary/${VERSION}/ )" && exit 1 ;; \
-    esac && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_linux_${boundaryArch}.zip && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_SHA256SUMS && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_SHA256SUMS.sig && \
-    gpg --batch --verify boundary_${VERSION}_SHA256SUMS.sig boundary_${VERSION}_SHA256SUMS && \
-    grep boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS | sha256sum -c && \
-    unzip -d /bin boundary_${VERSION}_linux_${boundaryArch}.zip && \
-    rm boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS boundary_${VERSION}_SHA256SUMS.sig && \
+# Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
+ENV NAME=$NAME
+ENV VERSION=$VERSION
+
+# Create a non-root user to run the software.
+RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
+
+RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables && \
     mkdir /boundary
 
 COPY docker/config.hcl /boundary/config.hcl
 
+# COPY /$BIN_NAME/ /bin/
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
-RUN chown -R boundary:boundary /boundary/ 
+RUN chown -R ${NAME}:${NAME} /boundary
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
 
 COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-config", "/boundary/config.hcl"]
