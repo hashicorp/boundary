@@ -120,7 +120,10 @@ begin;
   insert into auth_token
     (key_id, auth_account_id, public_id, token)
   values
-    ('key', 'apa____clare', 'tok____clare', 'tok____clare'::bytea);
+    ('key', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
+    ('key', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
+    ('key', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
+    ('key', 'apa____carly', 'tok____carly', 'tok____carly'::bytea);
 
   insert into static_host
     (catalog_id, public_id, address)
@@ -194,7 +197,10 @@ begin;
   insert into session
     ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
-    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare');
+    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
+    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),
+    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____ciara'),
+    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1',    's1_____carly');
 
   insert into session_connection
     (session_id, public_id)

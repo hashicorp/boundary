@@ -358,4 +358,16 @@ begin;
       ('t_________wb', 'vl______wvl3',        'egress');
   end;
   $$ language plpgsql;
+
+create function _wtt_load_widgets_sessions()
+    returns void
+as $$
+begin
+    insert into session
+    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+    values
+        ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's1____warren');
+end;
+$$ language plpgsql;
+
 commit;
