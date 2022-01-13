@@ -9,7 +9,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * In newly-created scopes, if default role creation is not disabled, the roles
   will now contain a grant to allow listing targets. This will still be subject
   to listing visibility rules, so only targets the user is granted some action
-  on will be returned.
+  on (such as `authorize-session`) will be returned.
 
 ### New and Improved
 
