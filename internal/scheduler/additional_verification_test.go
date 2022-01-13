@@ -518,6 +518,106 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	close(jobStatus)
 }
 
+func TestSchedulerRunNow(t *testing.T) {
+	// do not use t.Parallel() since it relies on the sys eventer
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
+	testConfig := event.DefaultEventerConfig()
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	err := event.InitSysEventer(testLogger, testLock, "TestSchedulerWorkflow", event.WithEventerConfig(testConfig))
+	require.NoError(err)
+
+	// Create test scheduler that only runs jobs every hour
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Hour))
+
+	jobCh := make(chan struct{})
+	jobReady := make(chan struct{})
+	testDone := make(chan struct{})
+	fn := func(_ context.Context) error {
+		select {
+		case <-testDone:
+			return nil
+		case jobReady <- struct{}{}:
+		}
+		<-jobCh
+		return nil
+	}
+	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
+	err = sched.RegisterJob(context.Background(), tj)
+	require.NoError(err)
+
+	baseCtx, baseCnl := context.WithCancel(context.Background())
+	defer baseCnl()
+	var wg sync.WaitGroup
+	err = sched.Start(baseCtx, &wg)
+	require.NoError(err)
+
+	// Wait for scheduler to run job
+	<-jobReady
+	require.Equal(mapLen(sched.runningJobs), 1)
+
+	runJob, ok := sched.runningJobs.Load(tj.name)
+	require.True(ok)
+	runId := runJob.(*runningJob).runId
+
+	// Complete job
+	jobCh <- struct{}{}
+
+	repo, err := job.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	waitForRunStatus(t, repo, runId, string(job.Completed))
+
+	// Update job to run immediately once scheduling loop is called
+	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0)
+	require.NoError(err)
+
+	// Verify no job is not running
+	select {
+	case <-jobReady:
+		t.Fatal("expected not job to be running")
+	default:
+	}
+
+	// Trigger scheduling loop
+	sched.RunNow()
+
+	// Wait for scheduler to run job
+	<-jobReady
+	require.Equal(mapLen(sched.runningJobs), 1)
+
+	runJob, ok = sched.runningJobs.Load(tj.name)
+	require.True(ok)
+	runId = runJob.(*runningJob).runId
+
+	// Complete job
+	jobCh <- struct{}{}
+
+	waitForRunStatus(t, repo, runId, string(job.Completed))
+
+	// Update job to run again with RunNow option
+	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 0, WithRunNow(true))
+	require.NoError(err)
+
+	// Wait for scheduler to run job
+	<-jobReady
+	require.Equal(mapLen(sched.runningJobs), 1)
+
+	// Complete job
+	jobCh <- struct{}{}
+
+	// Cleanup tests
+	close(testDone)
+	close(jobCh)
+}
+
 func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) *job.Run {
 	t.Helper()
 	var run *job.Run

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -503,7 +504,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	}
 
 	if runSyncJob {
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 	}
 
 	// Even if we didn't update any records, if we were able to find the record

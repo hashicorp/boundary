@@ -250,11 +250,11 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
-		return fmt.Errorf("error starting scheduler: %w", err)
-	}
 	if err := c.startListeners(c.baseContext); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
+	}
+	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
+		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 
 	c.tickerWg.Add(5)
