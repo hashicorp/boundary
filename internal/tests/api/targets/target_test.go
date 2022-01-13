@@ -3,6 +3,7 @@ package targets_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -130,6 +132,24 @@ func TestList(t *testing.T) {
 	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
+	// Add unpriv user to default role in new project. Also add create grant as
+	// it will be needed later in the test and no-op for listing visibility.
+	rls, err := roles.NewClient(client).List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	var defaultRoleId string
+	for _, rl := range rls.Items {
+		if strings.Contains(rl.Name, "Default") {
+			defaultRoleId = rl.Id
+			break
+		}
+	}
+	require.NotEmpty(defaultRoleId)
+	unprivToken := tc.UnprivilegedToken()
+	iam.TestUserRole(t, tc.DbConn(), defaultRoleId, unprivToken.UserId)
+	iam.TestRoleGrant(t, tc.DbConn(), defaultRoleId, "type=target;actions=create")
+	iam.TestRoleGrant(t, tc.DbConn(), defaultRoleId, "id=*;type=target;actions=no-op")
+
+	client.SetToken(unprivToken.Token)
 	tarClient := targets.NewClient(client)
 	ul, err := tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
