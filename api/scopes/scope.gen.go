@@ -41,10 +41,8 @@ func (n ScopeReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	ScopeCreateResult = ScopeReadResult
-	ScopeUpdateResult = ScopeReadResult
-)
+type ScopeCreateResult = ScopeReadResult
+type ScopeUpdateResult = ScopeReadResult
 
 type ScopeDeleteResult struct {
 	response *api.Response

@@ -43,10 +43,8 @@ func (n CredentialLibraryReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	CredentialLibraryCreateResult = CredentialLibraryReadResult
-	CredentialLibraryUpdateResult = CredentialLibraryReadResult
-)
+type CredentialLibraryCreateResult = CredentialLibraryReadResult
+type CredentialLibraryUpdateResult = CredentialLibraryReadResult
 
 type CredentialLibraryDeleteResult struct {
 	response *api.Response

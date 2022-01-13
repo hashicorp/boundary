@@ -519,7 +519,6 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		wantCount int
 		wantErr   errors.Code
 	}{
-
 		{
 			name: "nil-credential-library",
 			orig: &CredentialLibrary{
