@@ -115,11 +115,11 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			if foundStates, err = fetchStates(ctx, read, returnedSession.PublicId); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			if len(foundStates) != 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
-			}
 			if len(foundStates) == 0 {
 				return errors.New(ctx, errors.SessionNotFound, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
+			}
+			if len(foundStates) != 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
 			}
 			returnedSession.States = foundStates
 			if returnedSession.States[0].Status != StatusPending {
