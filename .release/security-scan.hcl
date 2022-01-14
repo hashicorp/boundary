@@ -1,5 +1,5 @@
 container {
-	dependencies = true
+	dependencies = false
 	alpine_secdb = true
 	secrets      = false
 }
