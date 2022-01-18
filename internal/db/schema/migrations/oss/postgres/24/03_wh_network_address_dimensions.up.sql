@@ -20,10 +20,10 @@ begin;
     end if;
 
     insert into wh_network_address_dimension (
-      address, address_type, ip_address_family, private_ip_address_status, dns_name, ip4_address, ip6_address
+      address, address_type, ip_address_family, private_ip_address_indicator, dns_name, ip4_address, ip6_address
     )
     select
-      address, address_type, ip_address_family, private_ip_address_status, dns_name, ip4_address, ip6_address
+      address, address_type, ip_address_family, private_ip_address_indicator, dns_name, ip4_address, ip6_address
     from whx_network_address_dimension_source
     where host_id = p_host_id
     on conflict do nothing;

@@ -10,7 +10,7 @@ begin;
   $$);
 
   insert into wh_network_address_dimension
-    (address, address_type, ip_address_family, private_ip_address_status, dns_name, ip4_address, ip6_address)
+    (address, address_type, ip_address_family, private_ip_address_indicator, dns_name, ip4_address, ip6_address)
   values
     ('1.big.widget', 'DNS Name', 'Not Applicable', 'Not Applicable', '1.big.widget', 'Not Applicable', 'Not Applicable');
 

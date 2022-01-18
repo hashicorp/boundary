@@ -36,19 +36,22 @@ begin;
   where current_row_indicator = 'Current'
   ;
 
-  -- wh_private_address_status returns a warehouse appropriate string
+  -- wh_private_address_indicator returns a warehouse appropriate string
   -- representing if the address is private or public.
-  create function wh_private_address_status(inet) returns text
+  create function wh_private_address_indicator(inet) returns text
   as $$
   begin
     case
       when $1 << any ('{10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12, fc00::/7, fe80::/10}'::cidr[]) then
-        return 'Private';
+        return 'Private IP address';
+      when $1 is null then
+        return 'Not Applicable';
       else
-        return 'Public';
+        return 'Public IP address';
       end case;
   end;
-  $$ language plpgsql;
+  $$ language plpgsql
+    immutable;
 
   create view whx_network_address_dimension_source as
     select
@@ -56,7 +59,7 @@ begin;
       hdns.name as address,
       'DNS Name' as address_type,
       'Not Applicable' as ip_address_family,
-      'Not Applicable' private_ip_address_status,
+      'Not Applicable' private_ip_address_indicator,
       hdns.name as dns_name,
       'Not Applicable' as ip4_address,
       'Not Applicable' as ip6_address
@@ -71,7 +74,7 @@ begin;
          when family(hip.address) = 6 then 'IPv6'
          else 'Not Applicable'
          end               as ip_address_family,
-       wh_private_address_status(hip.address) as private_ip_address_status,
+       wh_private_address_indicator(hip.address) as private_ip_address_indicator,
        'Not Applicable' as dns_name,
        case
          when hip.address is not null and family(hip.address) = 4 then host(hip.address)
