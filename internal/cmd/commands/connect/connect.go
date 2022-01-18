@@ -626,13 +626,13 @@ func (c *Command) Run(args []string) (retCode int) {
 	case <-c.Context.Done():
 		termInfo.Reason = "Received shutdown signal"
 		sendSessionCancel = true
-	case <-timer.C:
-		termInfo.Reason = "Session has expired"
 	default:
 		if c.execCmdReturnValue != nil {
 			// Don't print out in this case, so ensure we clear it
 			termInfo.Reason = ""
 			sendSessionCancel = true
+		} else if !timer.Stop() {
+			termInfo.Reason = "Session has expired"
 		} else {
 			if c.connectionsLeft.Load() == 0 {
 				termInfo.Reason = "No connections left in session"
