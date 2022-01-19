@@ -27,7 +27,7 @@
     "@hashicorp/react-image": "^4.0.3",
     "@hashicorp/react-markdown-page": "^1.4.3",
     "@hashicorp/react-open-api-page": "^2.0.1",
-    "@hashicorp/react-product-downloads-page": "^2.5.3",
+    "@hashicorp/react-product-downloads-page": "^2.7.0",
     "@hashicorp/react-product-features-list": "^5.0.0",
     "@hashicorp/react-search": "^6.1.1",
     "@hashicorp/react-section-header": "^5.0.4",
