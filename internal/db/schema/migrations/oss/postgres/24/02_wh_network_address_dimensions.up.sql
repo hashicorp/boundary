@@ -44,14 +44,13 @@ begin;
     case
       when $1 << any ('{10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12, fc00::/7, fe80::/10}'::cidr[]) then
         return 'Private IP address';
-      when $1 is null then
-        return 'Not Applicable';
       else
         return 'Public IP address';
       end case;
   end;
   $$ language plpgsql
-    immutable;
+    immutable
+    returns null on null input;
 
   create view whx_network_address_dimension_source as
     select
