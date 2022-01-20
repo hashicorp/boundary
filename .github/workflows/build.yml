@@ -189,7 +189,7 @@ jobs:
           path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
       - name: Linux Packaging
-        uses: hashicorp/actions-packaging-linux@v1.2
+        uses: hashicorp/actions-packaging-linux@v1
         with:
           name: ${{ github.event.repository.name }}
           description: "HashiCorp Boundary - Identity-based access management for dynamic infrastructure"
