@@ -16,169 +16,6 @@ jobs:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=13-alpine
         name: Run SQL PgTap Tests
-  bundle-releases:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    steps:
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-all-package-cache-keys
-        name: Write all package cache keys
-    - run:
-        command: mkdir -p .buildcache && echo "*" > .buildcache/.gitignore
-        name: Ignore .buildcache
-    - restore_cache:
-        key: package-670845158e5231aa2b5c48603a20853d48f68ef2-{{checksum ".buildcache/cache-keys/package-670845158e5231aa2b5c48603a20853d48f68ef2"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-fb26f9037b4f9b89f09d316f49c0db87693b022d-{{checksum ".buildcache/cache-keys/package-fb26f9037b4f9b89f09d316f49c0db87693b022d"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-23be03371735b06dbd1a733f70df38c32b6b3988-{{checksum ".buildcache/cache-keys/package-23be03371735b06dbd1a733f70df38c32b6b3988"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-88972f670dbb74817cbd87143dc6da3fe0cf09a4-{{checksum ".buildcache/cache-keys/package-88972f670dbb74817cbd87143dc6da3fe0cf09a4"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-7f15ab74610641e4bd377e450ae65889e3a8d969-{{checksum ".buildcache/cache-keys/package-7f15ab74610641e4bd377e450ae65889e3a8d969"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-d2ffa38033819b30c6b8657add046e00f4631a14-{{checksum ".buildcache/cache-keys/package-d2ffa38033819b30c6b8657add046e00f4631a14"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8-{{checksum ".buildcache/cache-keys/package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e-{{checksum ".buildcache/cache-keys/package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70-{{checksum ".buildcache/cache-keys/package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-06451f1395595bf541733bc0fa43b5f8d4c1f871-{{checksum ".buildcache/cache-keys/package-06451f1395595bf541733bc0fa43b5f8d4c1f871"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-54bddba68a649c667f80b520f21ef9a9b7ef3698-{{checksum ".buildcache/cache-keys/package-54bddba68a649c667f80b520f21ef9a9b7ef3698"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-afa42f0d1945248381022b8fec2a00aba89845bc-{{checksum ".buildcache/cache-keys/package-afa42f0d1945248381022b8fec2a00aba89845bc"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1-{{checksum ".buildcache/cache-keys/package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f-{{checksum ".buildcache/cache-keys/package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-5c9d7d2650823a71d79844cc79ad18993c591691-{{checksum ".buildcache/cache-keys/package-5c9d7d2650823a71d79844cc79ad18993c591691"}}
-        name: Restore package cache
-    - restore_cache:
-        key: package-e397af2a56134e2c431d1f1b58260699c331e020-{{checksum ".buildcache/cache-keys/package-e397af2a56134e2c431d1f1b58260699c331e020"}}
-        name: Restore package cache
-    - run:
-        command: make package-meta-all
-        name: Write Package Metadata
-    - run:
-        command: make aliases
-        name: Write package aliases
-    - run:
-        command: ls -lahR .buildcache
-        name: List Build Cache
-    - run:
-        command: cp packages*.lock/pkgs.yml lockfile-3192f2391fc0b61f.yml
-        name: Update Lockfile Name
-    - run:
-        command: tar -czf packages-3192f2391fc0b61f.tar.gz .buildcache/packages lockfile-3192f2391fc0b61f.yml
-        name: Create Raw Package Tarball
-    - run:
-        command: tar -czf meta-3192f2391fc0b61f.tar.gz .buildcache/packages/store/*.json lockfile-3192f2391fc0b61f.yml
-        name: Create Metadata Tarball
-    - store_artifacts:
-        path: lockfile-3192f2391fc0b61f.yml
-    - store_artifacts:
-        path: packages-3192f2391fc0b61f.tar.gz
-    - store_artifacts:
-        path: meta-3192f2391fc0b61f.tar.gz
-    - store_artifacts:
-        path: .buildcache/packages
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-  darwin_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 670845158e5231aa2b5c48603a20853d48f68ef2
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-670845158e5231aa2b5c48603a20853d48f68ef2-{{checksum ".buildcache/cache-keys/package-670845158e5231aa2b5c48603a20853d48f68ef2"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-670845158e5231aa2b5c48603a20853d48f68ef2-{{checksum ".buildcache/cache-keys/package-670845158e5231aa2b5c48603a20853d48f68ef2"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   test-api:
     machine:
       image: ubuntu-2004:202107-02
@@ -201,150 +38,6 @@ jobs:
           make test-api
         name: Run API Tests
         no_output_timeout: 15m
-  darwin_arm64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: fb26f9037b4f9b89f09d316f49c0db87693b022d
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-fb26f9037b4f9b89f09d316f49c0db87693b022d-{{checksum ".buildcache/cache-keys/package-fb26f9037b4f9b89f09d316f49c0db87693b022d"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-fb26f9037b4f9b89f09d316f49c0db87693b022d-{{checksum ".buildcache/cache-keys/package-fb26f9037b4f9b89f09d316f49c0db87693b022d"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  windows_386_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 5c9d7d2650823a71d79844cc79ad18993c591691
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-5c9d7d2650823a71d79844cc79ad18993c591691-{{checksum ".buildcache/cache-keys/package-5c9d7d2650823a71d79844cc79ad18993c591691"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-5c9d7d2650823a71d79844cc79ad18993c591691-{{checksum ".buildcache/cache-keys/package-5c9d7d2650823a71d79844cc79ad18993c591691"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   test-sql-11-alpine:
     machine:
       image: ubuntu-2004:202107-02
@@ -356,263 +49,6 @@ jobs:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=11-alpine
         name: Run SQL PgTap Tests
-  build-common-layers:
-    machine:
-      image: ubuntu-1604:202007-01
-    resource_class: xlarge
-    shell: /usr/bin/env bash -euo pipefail -c
-    steps:
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Layer Cache: copy-source'
-    - run:
-        command: LAYER_SPEC_ID=03-copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -f packages*.lock/layer.mk 00-base-4efc6b999f22c2117dd52d796786af51dd4d4d1f-image
-        name: Build base layer
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -f packages*.lock/layer.mk 01-ui-00aac246fd625f14356db52ed98a657e40b02a82-image
-        name: Build ui layer
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -f packages*.lock/layer.mk 02-go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445-image
-        name: Build go-modules layer
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -f packages*.lock/layer.mk 03-copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d-image
-        name: Build copy-source layer
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -f packages*.lock/layer.mk 03-copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d-save
-        name: Build copy-source layer
-    - save_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        name: 'Save Layer Cache: copy-source'
-        paths:
-        - .buildcache/archives/03-copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d.tar.gz
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-  linux_arm64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70-{{checksum ".buildcache/cache-keys/package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70-{{checksum ".buildcache/cache-keys/package-5fcc03d5f76f38b0ac8b3eeb5eec6e0dda9c6c70"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  linux_arm_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 5270b71f640c6dcd61a271e988a2081bf5bfbb3e
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e-{{checksum ".buildcache/cache-keys/package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e-{{checksum ".buildcache/cache-keys/package-5270b71f640c6dcd61a271e988a2081bf5bfbb3e"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   test-sdk:
     machine:
       image: ubuntu-2004:202107-02
@@ -646,366 +82,6 @@ jobs:
           npm install
           node scripts/index_search_content.js
         name: Push content to Algolia Index
-  linux_386_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: d2ffa38033819b30c6b8657add046e00f4631a14
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-d2ffa38033819b30c6b8657add046e00f4631a14-{{checksum ".buildcache/cache-keys/package-d2ffa38033819b30c6b8657add046e00f4631a14"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-d2ffa38033819b30c6b8657add046e00f4631a14-{{checksum ".buildcache/cache-keys/package-d2ffa38033819b30c6b8657add046e00f4631a14"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  freebsd_386_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 23be03371735b06dbd1a733f70df38c32b6b3988
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-23be03371735b06dbd1a733f70df38c32b6b3988-{{checksum ".buildcache/cache-keys/package-23be03371735b06dbd1a733f70df38c32b6b3988"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-23be03371735b06dbd1a733f70df38c32b6b3988-{{checksum ".buildcache/cache-keys/package-23be03371735b06dbd1a733f70df38c32b6b3988"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  freebsd_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 88972f670dbb74817cbd87143dc6da3fe0cf09a4
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-88972f670dbb74817cbd87143dc6da3fe0cf09a4-{{checksum ".buildcache/cache-keys/package-88972f670dbb74817cbd87143dc6da3fe0cf09a4"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-88972f670dbb74817cbd87143dc6da3fe0cf09a4-{{checksum ".buildcache/cache-keys/package-88972f670dbb74817cbd87143dc6da3fe0cf09a4"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  openbsd_386_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: afa42f0d1945248381022b8fec2a00aba89845bc
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-afa42f0d1945248381022b8fec2a00aba89845bc-{{checksum ".buildcache/cache-keys/package-afa42f0d1945248381022b8fec2a00aba89845bc"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-afa42f0d1945248381022b8fec2a00aba89845bc-{{checksum ".buildcache/cache-keys/package-afa42f0d1945248381022b8fec2a00aba89845bc"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  linux_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 2d94fc6b9b9e25190a72e6334afb3d36a03d19a8
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8-{{checksum ".buildcache/cache-keys/package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8-{{checksum ".buildcache/cache-keys/package-2d94fc6b9b9e25190a72e6334afb3d36a03d19a8"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   test-sql-12-alpine:
     machine:
       image: ubuntu-2004:202107-02
@@ -1017,78 +93,6 @@ jobs:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=12-alpine
         name: Run SQL PgTap Tests
-  solaris_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f-{{checksum ".buildcache/cache-keys/package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f-{{checksum ".buildcache/cache-keys/package-51e5a2cf2270e920dfcb0f04cb0029d6199c1d1f"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   build:
     machine:
       image: ubuntu-2004:202107-02
@@ -1249,78 +253,6 @@ jobs:
         name: Slack - Sending Status Alert
         shell: /bin/bash
         when: always
-  netbsd_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 54bddba68a649c667f80b520f21ef9a9b7ef3698
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-54bddba68a649c667f80b520f21ef9a9b7ef3698-{{checksum ".buildcache/cache-keys/package-54bddba68a649c667f80b520f21ef9a9b7ef3698"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-54bddba68a649c667f80b520f21ef9a9b7ef3698-{{checksum ".buildcache/cache-keys/package-54bddba68a649c667f80b520f21ef9a9b7ef3698"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   trigger-merge-to-ent:
     machine:
       image: ubuntu-2004:202107-02
@@ -1332,294 +264,6 @@ jobs:
         command: |
           ./scripts/trigger-merge-to-ent
         name: Trigger Merge to Enterprise
-  openbsd_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1-{{checksum ".buildcache/cache-keys/package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1-{{checksum ".buildcache/cache-keys/package-eff2b1d9db1cff4f0bf41855c2e85fd5e97b59b1"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  netbsd_386_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 06451f1395595bf541733bc0fa43b5f8d4c1f871
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-06451f1395595bf541733bc0fa43b5f8d4c1f871-{{checksum ".buildcache/cache-keys/package-06451f1395595bf541733bc0fa43b5f8d4c1f871"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-06451f1395595bf541733bc0fa43b5f8d4c1f871-{{checksum ".buildcache/cache-keys/package-06451f1395595bf541733bc0fa43b5f8d4c1f871"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  freebsd_arm_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: 7f15ab74610641e4bd377e450ae65889e3a8d969
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-7f15ab74610641e4bd377e450ae65889e3a8d969-{{checksum ".buildcache/cache-keys/package-7f15ab74610641e4bd377e450ae65889e3a8d969"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-7f15ab74610641e4bd377e450ae65889e3a8d969-{{checksum ".buildcache/cache-keys/package-7f15ab74610641e4bd377e450ae65889e3a8d969"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
-  windows_amd64_package:
-    docker:
-    - image: docker.mirror.hashicorp.services/circleci/buildpack-deps
-    shell: /usr/bin/env bash -euo pipefail -c
-    environment:
-    - AUTO_INSTALL_TOOLS: 'YES'
-    - BUILDKIT_PROGRESS: plain
-    - PRODUCT_REVISION: ''
-    - PACKAGE_SPEC_ID: e397af2a56134e2c431d1f1b58260699c331e020
-    steps:
-    - setup_remote_docker:
-        docker_layer_caching: false
-        version: 19.03.12
-    - add_ssh_keys:
-        fingerprints:
-        - 0e:03:77:f4:e2:c3:56:c2:53:6a:03:e1:31:91:2f:06
-    - checkout:
-        path: .
-    - run:
-        command: make -C packages*.lock write-package-cache-key
-        name: Write package cache key
-    - restore_cache:
-        key: package-e397af2a56134e2c431d1f1b58260699c331e020-{{checksum ".buildcache/cache-keys/package-e397af2a56134e2c431d1f1b58260699c331e020"}}
-        name: Restore package cache
-    - run:
-        command: |2
-
-          if ! { PKG=$(find .buildcache/packages/store -maxdepth 1 -mindepth 1 -name '*.zip' 2> /dev/null) && [ -n "$PKG" ]; }; then
-            echo "No package found, continuing with build."
-            exit 0
-          fi
-          echo "Package already cached, skipping build."
-          circleci-agent step halt
-        name: Check cache status
-    - run:
-        command: make -C packages*.lock write-builder-cache-keys
-        name: Write builder layer cache keys
-    - restore_cache:
-        key: copy-source_2180_{{checksum ".buildcache/cache-keys/copy-source-218031bf58e9e3b8f7f4f78be9a1bdf3caee4d0d"}}
-        keys:
-        - go-modules_3b7f_{{checksum ".buildcache/cache-keys/go-modules-3b7f0b7915342371f9c6fbcb2eb65e75b9fc7445"}}
-        - ui_00aa_{{checksum ".buildcache/cache-keys/ui-00aac246fd625f14356db52ed98a657e40b02a82"}}
-        - base_4efc_{{checksum ".buildcache/cache-keys/base-4efc6b999f22c2117dd52d796786af51dd4d4d1f"}}
-        name: 'Restore Builder Image Cache: copy-source'
-    - run:
-        command: make -C packages*.lock load-builder-cache
-        name: Load whatever builder cache we have (if any) into the Docker daemon
-        no_output_timeout: 30m
-    - run:
-        command: |2-
-
-          KEYFILE="$HOME/.ssh/id_rsa_c6969882dc046c39ddac8305e3151c98"
-          eval "$(ssh-agent -s)"
-          if [ -f "$KEYFILE" ]; then
-            ssh-add "$KEYFILE"
-          else
-            echo "==> INFO: SSH key for github.com not found"
-            echo "    Attempts to access private repositories from within"
-            echo "    the build will fail, e.g. for private go modules, or"
-            echo "    attempts to directly clone private repositories."
-          fi
-
-          make -C packages*.lock package
-        name: Compile Package
-    - run:
-        command: ls -lahR .buildcache/packages
-        name: List packages
-    - save_cache:
-        key: package-e397af2a56134e2c431d1f1b58260699c331e020-{{checksum ".buildcache/cache-keys/package-e397af2a56134e2c431d1f1b58260699c331e020"}}
-        name: Save package cache
-        paths:
-        - .buildcache/packages/store
   test-sql-latest:
     machine:
       image: ubuntu-2004:202107-02
@@ -1632,75 +276,6 @@ jobs:
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
         name: Run SQL PgTap Tests
 workflows:
-  build-3192f2391fc0b61f:
-    jobs:
-    - build-common-layers
-    - darwin_amd64_package:
-        requires:
-        - build-common-layers
-    - bundle-releases:
-        requires:
-        - darwin_amd64_package
-        - darwin_arm64_package
-        - freebsd_386_package
-        - freebsd_amd64_package
-        - freebsd_arm_package
-        - linux_386_package
-        - linux_amd64_package
-        - linux_arm_package
-        - linux_arm64_package
-        - netbsd_386_package
-        - netbsd_amd64_package
-        - openbsd_386_package
-        - openbsd_amd64_package
-        - solaris_amd64_package
-        - windows_386_package
-        - windows_amd64_package
-    - darwin_arm64_package:
-        requires:
-        - build-common-layers
-    - freebsd_386_package:
-        requires:
-        - build-common-layers
-    - freebsd_amd64_package:
-        requires:
-        - build-common-layers
-    - freebsd_arm_package:
-        requires:
-        - build-common-layers
-    - linux_386_package:
-        requires:
-        - build-common-layers
-    - linux_amd64_package:
-        requires:
-        - build-common-layers
-    - linux_arm_package:
-        requires:
-        - build-common-layers
-    - linux_arm64_package:
-        requires:
-        - build-common-layers
-    - netbsd_386_package:
-        requires:
-        - build-common-layers
-    - netbsd_amd64_package:
-        requires:
-        - build-common-layers
-    - openbsd_386_package:
-        requires:
-        - build-common-layers
-    - openbsd_amd64_package:
-        requires:
-        - build-common-layers
-    - solaris_amd64_package:
-        requires:
-        - build-common-layers
-    - windows_386_package:
-        requires:
-        - build-common-layers
-    - windows_amd64_package:
-        requires:
-        - build-common-layers
   ci:
     jobs:
     - build
@@ -1723,3 +298,136 @@ workflows:
             only:
             - main
   version: 2
+
+# Original config.yml file:
+# commands:
+#     install-go:
+#         description: |
+#             Ensure the right version of Go is installed and set PATH, GOPATH, GOROOT
+#         steps:
+#             - run:
+#                 command: |
+#                     make install-go
+#                     source ~/.bashrc
+#                     echo 'export GOROOT=$GOROOT' >> \"$BASH_ENV\"
+#                     echo 'export GOPATH=$GOPATH' >> \"$BASH_ENV\"
+#                     echo 'export PATH=$PATH' >> \"$BASH_ENV\"
+#                     echo \"$ go version\"
+#                     go version
+#                 name: Install go
+# executors:
+#     go-machine:
+#         machine:
+#             image: ubuntu-2004:202107-02
+#         resource_class: large
+#         working_directory: ~/boundary
+#     go-machine-medium:
+#         machine:
+#             image: ubuntu-2004:202107-02
+#         resource_class: medium
+#         working_directory: ~/boundary
+# jobs:
+#     algolia-index:
+#         docker:
+#             - image: docker.mirror.hashicorp.services/node:12
+#         steps:
+#             - checkout
+#             - run:
+#                 command: |-
+#                     cd website/
+#                     npm install
+#                     node scripts/index_search_content.js
+#                 name: Push content to Algolia Index
+#     build:
+#         executor: go-machine
+#         steps:
+#             - checkout
+#             - install-go
+#             - run:
+#                 command: |
+#                     which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
+#                     make DOCKER_ARGS='-d' PG_OPTS='-c shared_buffers=256MB -c max_connections=200000' -C testing/dbtest/docker database-up
+#                     until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit -1; sleep 1; done
+#                 name: Initialize Test Database
+#             - run:
+#                 command: |
+#                     make test-ci
+#                 name: Run Acceptance Tests
+#                 no_output_timeout: 15m
+#             - run:
+#                 command: |
+#                     make -C testing/dbtest/docker clean
+#                 name: Cleanup
+#                 when: always
+#             - slack/status:
+#                 fail_only: true
+#                 only_for_branches: master
+#                 webhook: webhook
+#     test-api:
+#         executor: go-machine-medium
+#         steps:
+#             - checkout
+#             - install-go
+#             - run:
+#                 command: |
+#                     make test-api
+#                 name: Run API Tests
+#                 no_output_timeout: 15m
+#     test-sdk:
+#         executor: go-machine-medium
+#         steps:
+#             - checkout
+#             - install-go
+#             - run:
+#                 command: |
+#                     make test-sdk
+#                 name: Run SDK Tests
+#                 no_output_timeout: 15m
+#     test-sql:
+#         executor: go-machine-medium
+#         parameters:
+#             postgres-version:
+#                 type: string
+#         steps:
+#             - checkout
+#             - run:
+#                 command: |
+#                     make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=<< parameters.postgres-version >>
+#                 name: Run SQL PgTap Tests
+#     trigger-merge-to-ent:
+#         executor: go-machine-medium
+#         steps:
+#             - checkout
+#             - run:
+#                 command: |
+#                     ./scripts/trigger-merge-to-ent
+#                 name: Trigger Merge to Enterprise
+# orbs:
+#     slack: circleci/slack@3.4.2
+# version: 2.1
+# workflows:
+#     ci:
+#         jobs:
+#             - build
+#             - test-api
+#             - test-sdk
+#             - test-sql:
+#                 matrix:
+#                     parameters:
+#                         postgres-version:
+#                             - latest
+#                             - 11-alpine
+#                             - 12-alpine
+#                             - 13-alpine
+#             - algolia-index:
+#                 filters:
+#                     branches:
+#                         only:
+#                             - stable-website
+#     trigger-merge-to-ent:
+#         jobs:
+#             - trigger-merge-to-ent:
+#                 filters:
+#                     branches:
+#                         only:
+#                             - main
