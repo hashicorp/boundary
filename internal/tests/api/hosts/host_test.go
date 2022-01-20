@@ -84,7 +84,7 @@ func comparableHostSlice(in []*hosts.Host) []hosts.Host {
 
 func TestPluginHosts(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -94,6 +94,7 @@ func TestPluginHosts(t *testing.T) {
 
 	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "plugin", proj.GetPublicId(),
 		hostcatalogs.WithPluginId("pl_1234567890"))
+	require.NoError(err)
 	require.NotNil(hc)
 
 	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]interface{}{

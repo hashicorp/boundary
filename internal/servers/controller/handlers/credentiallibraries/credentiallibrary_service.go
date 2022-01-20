@@ -344,8 +344,8 @@ func (s Service) updateInRepo(
 	masks []string,
 	in *pb.CredentialLibrary,
 	currentCredentialType credential.Type,
-	currentMapping vault.MappingOverride) (credential.Library, error) {
-
+	currentMapping vault.MappingOverride) (credential.Library, error,
+) {
 	const op = "credentiallibraries.(Service).updateInRepo"
 
 	var dbMasks []string

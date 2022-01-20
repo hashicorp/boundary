@@ -191,7 +191,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setIds []string) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "no set ids")
 	}
 
-	// Fist, look up the sets corresponding to the set IDs
+	// First, look up the sets corresponding to the set IDs
 	var setAggs []*hostSetAgg
 	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []interface{}{setIds}); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve sets %v", setIds)))

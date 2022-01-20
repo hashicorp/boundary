@@ -4955,6 +4955,11 @@
           "type": "string",
           "description": "Output only. The type of the credential source (e.g. \"vault\"; not the type of the credential itself).",
           "readOnly": true
+        },
+        "credential_type": {
+          "type": "string",
+          "description": "Output only. The type of the credential, empty if unspecified.",
+          "readOnly": true
         }
       }
     },
@@ -5069,6 +5074,11 @@
         "secret": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.SessionSecret",
           "description": "Output only. The secret of this credential base64 encoded.",
+          "readOnly": true
+        },
+        "credential": {
+          "type": "object",
+          "description": "Output only. The fields of the strongly typed credential, empty if the credential type of the \ncredential source is unspecified.",
           "readOnly": true
         }
       },

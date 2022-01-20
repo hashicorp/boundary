@@ -3,8 +3,11 @@ package hostsets_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
@@ -143,7 +146,17 @@ func TestList_Plugin(t *testing.T) {
 	}
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
-	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul.Items))
+	assert.Empty(
+		cmp.Diff(
+			expected,
+			ul.Items,
+			cmpopts.IgnoreUnexported(hostsets.HostSet{}),
+			cmpopts.IgnoreFields(hostsets.HostSet{}, "Version", "UpdatedTime"),
+			cmpopts.SortSlices(func(x, y *hostsets.HostSet) bool {
+				return x.Id < y.Id
+			}),
+		),
+	)
 
 	filterItem := ul.Items[3]
 	ul, err = hClient.List(tc.Context(), hc.Item.Id,
@@ -183,31 +196,41 @@ func TestCrud(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(hc)
 
-	checkHost := func(t *testing.T, step string, h *hostsets.HostSet, err error, wantedName string, wantVersion uint32) {
-		t.Helper()
-		require.NoError(err, step)
-		assert.NotNil(h, "returned no resource", step)
-		gotName := ""
-		if h.Name != "" {
-			gotName = h.Name
+	retryableUpdate := func(c *hostsets.Client, hcId string, version uint32, opts ...hostsets.Option) (*hostsets.HostSetUpdateResult, bool) {
+		var retried bool
+		h, err := c.Update(tc.Context(), hcId, version, opts...)
+		if err != nil && strings.Contains(err.Error(), "set version mismatch") {
+			// Got a version mismatch, this happens because the sync set job runs in the background
+			// and can increment the version between operations in this test, try again
+			retried = true
+			h, err = c.Update(tc.Context(), hcId, version+1, opts...)
 		}
-		assert.Equal(wantedName, gotName, step)
-		assert.Equal(wantVersion, h.Version)
+		require.NoError(err)
+		assert.NotNil(h)
+		return h, retried
 	}
 
 	hClient := hostsets.NewClient(client)
 
 	h, err := hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
-	checkHost(t, "create", h.Item, err, "foo", 1)
+	require.NoError(err)
+	assert.Equal("foo", h.Item.Name)
+	assert.Equal(uint32(1), h.Item.Version)
 
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
-	checkHost(t, "read", h.Item, err, "foo", 1)
+	require.NoError(err)
+	assert.Equal("foo", h.Item.Name)
+	assert.Equal(uint32(1), h.Item.Version)
 
 	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"))
-	checkHost(t, "update", h.Item, err, "bar", 2)
+	require.NoError(err)
+	assert.Equal("bar", h.Item.Name)
+	assert.Equal(uint32(2), h.Item.Version)
 
 	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.DefaultName())
-	checkHost(t, "update", h.Item, err, "", 3)
+	require.NoError(err)
+	assert.Equal("", h.Item.Name)
+	assert.Equal(uint32(3), h.Item.Version)
 
 	_, err = hClient.Delete(tc.Context(), h.Item.Id)
 	assert.NoError(err)
@@ -224,20 +247,31 @@ func TestCrud(t *testing.T) {
 
 	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"),
 		hostsets.WithAttributes(map[string]interface{}{"foo": "bar"}), hostsets.WithPreferredEndpoints([]string{"dns:test"}))
-	checkHost(t, "create", h.Item, err, "foo", 1)
+	require.NoError(err)
+	assert.Equal("foo", h.Item.Name)
+	assert.Equal(uint32(1), h.Item.Version)
 
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
-	checkHost(t, "read", h.Item, err, "foo", 1)
+	require.NoError(err)
+	assert.Equal("foo", h.Item.Name)
+	assert.Equal(uint32(1), h.Item.Version)
 
-	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
+	h, retried := retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
 		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}),
 		hostsets.WithPreferredEndpoints([]string{"dns:update"}))
-	checkHost(t, "update", h.Item, err, "bar", 2)
+	require.NoError(err)
+	assert.Equal("bar", h.Item.Name)
+	switch retried {
+	case true:
+		assert.Equal(uint32(3), h.Item.Version)
+	default:
+		assert.Equal(uint32(2), h.Item.Version)
+	}
 
 	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})
 	assert.Equal(h.Item.PreferredEndpoints, []string{"dns:update"})
 
-	h, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
+	h, _ = retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
 	require.NoError(err)
 	require.NotNil(h)
 	assert.Equal(int32(42), h.Item.SyncIntervalSeconds)

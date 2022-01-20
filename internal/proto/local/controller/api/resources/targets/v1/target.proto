@@ -41,6 +41,9 @@ message CredentialSource {
 
   // Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
   string type = 60;
+
+  // Output only. The type of the credential, empty if unspecified.
+  string credential_type = 70;
 }
 
 message CredentialLibrary {
@@ -80,6 +83,10 @@ message SessionCredential {
 
   // Output only. The secret of this credential base64 encoded.
   SessionSecret secret = 20;
+
+  // Output only. The fields of the strongly typed credential, empty if the credential type of the 
+  // credential source is unspecified.
+  google.protobuf.Struct credential = 40;
 }
 
 // Target contains all fields related to a Target resource
@@ -241,4 +248,13 @@ message SessionAuthorization {
 
   // Output only. The credentials for this session.
   repeated SessionCredential credentials = 110 [json_name = "credentials"];
+}
+
+// The layout of the struct for "credential" field in SessionCredential for a user_password credential type. 
+message UserPasswordCredential {
+  // Username of the credential
+  string username = 1;
+
+  // Password of the credential
+  string password = 2;
 }

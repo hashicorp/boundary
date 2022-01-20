@@ -27,8 +27,8 @@ binary to somewhere in your `$PATH` such as `/usr/local/bin`.
 
 ## Cross Platform Build
 
-If you need to cross compile boundary for another OS or architecture, use the [XC_OSARCH](https://github.com/hashicorp/boundary/blob/master/scripts/build.sh#L26)
-environment variable to set this. Example: `$ XC_OSARCH=linux/amd64 make dev`
+If you need to cross compile boundary for another OS or architecture, use the [GOOS and GOARCH](https://github.com/hashicorp/boundary/blob/master/scripts/build.sh#L26)
+environment variable to set this. Example: `$ GOOS=linux GOARCH=amd64 make dev`
 
 For more details, please consult the [Boundary project on GitHub](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode).
 

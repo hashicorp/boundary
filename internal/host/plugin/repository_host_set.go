@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -164,7 +165,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	}
 
 	// The set now exists in the plugin, sync it immediately.
-	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 
 	plg, err := r.getPlugin(ctx, c.GetPluginId())
 	if err != nil {
@@ -522,13 +523,15 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	switch {
 	case updateAttributes:
 		// Request a host sync since we have updated attributes.
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0)
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, 0, scheduler.WithRunNow(true))
 	case updateSyncInterval:
+		var schOpt []scheduler.Option
 		tilNextSync := time.Until(returnedSet.LastSyncTime.AsTime().Add(time.Duration(returnedSet.SyncIntervalSeconds) * time.Second))
-		if tilNextSync < 0 {
+		if tilNextSync <= 0 {
 			tilNextSync = 0
+			schOpt = append(schOpt, scheduler.WithRunNow(true))
 		}
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync)
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, setSyncJobName, tilNextSync, schOpt...)
 	}
 
 	return returnedSet, hosts, plg, numUpdated, nil

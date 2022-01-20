@@ -2842,6 +2842,258 @@ func TestAuthorizeSession(t *testing.T) {
 	}
 }
 
+func TestAuthorizeSessionTypedCredentials(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
+
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+	sessionRepoFn := func() (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms)
+	}
+	staticHostRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	credentialRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	pluginHostRepoFn := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	ctx = auth.NewVerifierContext(requests.NewRequestContext(ctx),
+		iamRepoFn,
+		atRepoFn,
+		serversRepoFn,
+		kms,
+		&authpb.RequestInfo{
+			Token:       at.GetToken(),
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+		})
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
+	require.NoError(t, err)
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	shs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	_ = static.TestSetMembers(t, conn, shs.GetPublicId(), []*static.Host{h})
+
+	v := vault.NewTestVaultServer(t)
+	v.AddKVPolicy(t)
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "secret"}))
+
+	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
+	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	// Create secret in vault with default username and password fields
+	defaultUserPass := v.CreateKVSecret(t, "default-userpass", []byte(`{"data": {"username": "my-user", "password": "my-pass"}}`))
+	require.NotNil(t, defaultUserPass)
+
+	clsRespUserPassword, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+		CredentialStoreId: store.GetPublicId(),
+		Name:              wrapperspb.String("Userpassword Library"),
+		Description:       wrapperspb.String("Userpassword Library Description"),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"path":        structpb.NewStringValue(path.Join("secret", "data", "default-userpass")),
+			"http_method": structpb.NewStringValue("GET"),
+		}},
+		CredentialType: "user_password",
+	}})
+	require.NoError(t, err)
+
+	clsRespUnspecified, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+		CredentialStoreId: store.GetPublicId(),
+		Name:              wrapperspb.String("Unspecified Library"),
+		Description:       wrapperspb.String("Unspecified Library Description"),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"path":        structpb.NewStringValue(path.Join("secret", "data", "default-userpass")),
+			"http_method": structpb.NewStringValue("GET"),
+		}},
+	}})
+	require.NoError(t, err)
+
+	// Create secret in vault with non default username and password fields
+	nonDefaultUserPass := v.CreateKVSecret(t, "non-default-userpass", []byte(`{"data": {"non-default-user": "my-user", "non-default-pass": "my-pass"}}`))
+	require.NotNil(t, nonDefaultUserPass)
+
+	clsRespUserPasswordWithMapping, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+		CredentialStoreId: store.GetPublicId(),
+		Name:              wrapperspb.String("Userpassword Mapping Library"),
+		Description:       wrapperspb.String("Userpassword Mapping Library Description"),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"path":        structpb.NewStringValue(path.Join("secret", "data", "non-default-userpass")),
+			"http_method": structpb.NewStringValue("GET"),
+		}},
+		CredentialType: "user_password",
+		CredentialMappingOverrides: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"username_attribute": structpb.NewStringValue("non-default-user"),
+			"password_attribute": structpb.NewStringValue("non-default-pass"),
+		}},
+	}})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name           string
+		hostSourceId   string
+		credLib        *credpb.CredentialLibrary
+		wantedHostId   string
+		wantedEndpoint string
+		wantedCredType string
+		wantedCred     *structpb.Struct
+	}{
+		{
+			name:           "unspecified",
+			hostSourceId:   shs.GetPublicId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			credLib:        clsRespUnspecified.GetItem(),
+		},
+		{
+			name:           "userpassword",
+			hostSourceId:   shs.GetPublicId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			credLib:        clsRespUserPassword.GetItem(),
+			wantedCred: func() *structpb.Struct {
+				data := map[string]interface{}{
+					"username": "my-user",
+					"password": "my-pass",
+				}
+				st, err := structpb.NewStruct(data)
+				require.NoError(t, err)
+				return st
+			}(),
+			wantedCredType: string(credential.UserPasswordType),
+		},
+		{
+			name:           "userpassword-with-mapping",
+			hostSourceId:   shs.GetPublicId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			credLib:        clsRespUserPasswordWithMapping.GetItem(),
+			wantedCred: func() *structpb.Struct {
+				data := map[string]interface{}{
+					"password": "my-pass",
+					"username": "my-user",
+				}
+				st, err := structpb.NewStruct(data)
+				require.NoError(t, err)
+				return st
+			}(),
+			wantedCredType: string(credential.UserPasswordType),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name)
+			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+				Id:         tar.GetPublicId(),
+				Version:    tar.GetVersion(),
+				HostSetIds: []string{tc.hostSourceId},
+			})
+			require.NoError(t, err)
+			_, err = s.AddTargetCredentialSources(ctx,
+				&pbs.AddTargetCredentialSourcesRequest{
+					Id:                             tar.GetPublicId(),
+					ApplicationCredentialSourceIds: []string{tc.credLib.GetId()},
+					Version:                        apiTar.GetItem().GetVersion(),
+				})
+			require.NoError(t, err)
+
+			// Tell our DB that there is a worker ready to serve the data
+			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+			_, err = workerService.Status(ctx, &spbs.StatusRequest{
+				Worker: &spb.Server{
+					PrivateId: "testworker",
+					Address:   "localhost:8457",
+				},
+			})
+			require.NoError(t, err)
+
+			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id: tar.GetPublicId(),
+			})
+			require.NoError(t, err)
+
+			want := &pb.SessionAuthorization{
+				Scope: &scopes.ScopeInfo{
+					Id:            proj.GetPublicId(),
+					Type:          proj.GetType(),
+					Name:          proj.GetName(),
+					Description:   proj.GetDescription(),
+					ParentScopeId: proj.GetParentId(),
+				},
+				TargetId:  tar.GetPublicId(),
+				UserId:    at.GetIamUserId(),
+				HostSetId: tc.hostSourceId,
+				HostId:    tc.wantedHostId,
+				Type:      "tcp",
+				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
+				Credentials: []*pb.SessionCredential{
+					{
+						CredentialLibrary: &pb.CredentialLibrary{
+							Id:                tc.credLib.GetId(),
+							Name:              tc.credLib.GetName().GetValue(),
+							Description:       tc.credLib.GetDescription().GetValue(),
+							CredentialStoreId: store.GetPublicId(),
+							Type:              vault.Subtype.String(),
+						},
+						CredentialSource: &pb.CredentialSource{
+							Id:                tc.credLib.GetId(),
+							Name:              tc.credLib.GetName().GetValue(),
+							Description:       tc.credLib.GetDescription().GetValue(),
+							CredentialStoreId: store.GetPublicId(),
+							Type:              vault.Subtype.String(),
+							CredentialType:    tc.wantedCredType,
+						},
+						Credential: tc.wantedCred,
+					},
+				},
+				// TODO: validate the contents of the authorization token is what is expected
+			}
+			got := asRes.GetItem()
+
+			require.Len(t, got.GetCredentials(), 1)
+
+			gotCred := got.Credentials[0]
+			require.NotNil(t, gotCred.Secret)
+			assert.NotEmpty(t, gotCred.Secret.Raw)
+
+			gotCred.Secret = nil
+			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+		})
+	}
+}
+
 func TestAuthorizeSession_Errors(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")

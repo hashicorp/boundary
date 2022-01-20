@@ -249,7 +249,8 @@ docker-multiarch-build:
 
 .PHONY: docker-build-dev
 # builds from locally generated binary in bin/
-docker-build-dev: export XC_OSARCH=linux/amd64
+docker-build-dev: export GOOS=linux
+docker-build-dev: export GOARCH=amd64
 docker-build-dev: dev
 	cp -r bin docker/
 	docker build -t $(IMAGE_TAG_DEV) \

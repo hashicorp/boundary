@@ -847,7 +847,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					}
 
 					ret = append(ret,
-						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialSource.CredentialStoreId),
+						fmt.Sprintf("    Credential Store ID:           %s", cred.CredentialSource.CredentialStoreId),
 						fmt.Sprintf("    Credential Source ID:          %s", cred.CredentialSource.Id),
 						fmt.Sprintf("    Credential Source Type:        %s", cred.CredentialSource.Type))
 
@@ -859,26 +859,43 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						ret = append(ret,
 							fmt.Sprintf("    Credential Source Description: %s", cred.CredentialSource.Description))
 					}
+					if cred.CredentialSource.CredentialType != "" {
+						ret = append(ret,
+							fmt.Sprintf("    Credential Type:               %s", cred.CredentialSource.CredentialType))
+					}
+
 					var secretStr []string
 					switch cred.CredentialSource.Type {
 					case "vault":
-						// If it's Vault, the result will be JSON, except in
-						// specific circumstances that aren't used for
-						// credential fetching. So we can take the bytes
-						// as-is (after base64-decoding), but we'll format
-						// it nicely.
-						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret.Raw), `"`))
-						if err != nil {
-							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
-						}
-						dst := new(bytes.Buffer)
-						if err := json.Indent(dst, in, "      ", "  "); err != nil {
-							return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
-						}
-						secretStr = strings.Split(dst.String(), "\n")
-						if len(secretStr) > 0 {
-							// Indent doesn't apply to the first line 🙄
-							secretStr[0] = fmt.Sprintf("      %s", secretStr[0])
+						switch {
+						case cred.Credential != nil:
+							maxLength := 0
+							for k := range cred.Credential {
+								if len(k) > maxLength {
+									maxLength = len(k)
+								}
+							}
+							secretStr = []string{fmt.Sprintf("    %s", base.WrapMap(2, maxLength+2, cred.Credential))}
+
+						default:
+							// If it's Vault, the result will be JSON, except in
+							// specific circumstances that aren't used for
+							// credential fetching. So we can take the bytes
+							// as-is (after base64-decoding), but we'll format
+							// it nicely.
+							in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret.Raw), `"`))
+							if err != nil {
+								return false, fmt.Errorf("Error decoding secret as base64: %w", err)
+							}
+							dst := new(bytes.Buffer)
+							if err := json.Indent(dst, in, "      ", "  "); err != nil {
+								return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
+							}
+							secretStr = strings.Split(dst.String(), "\n")
+							if len(secretStr) > 0 {
+								// Indent doesn't apply to the first line 🙄
+								secretStr[0] = fmt.Sprintf("      %s", secretStr[0])
+							}
 						}
 					default:
 						// If it's not Vault, and not another known type,
