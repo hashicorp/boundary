@@ -37,7 +37,8 @@ begin;
       address, address_type, ip_address_family, private_ip_address_indicator,
       dns_name, ip4_address, ip6_address
   from whx_network_address_dimension_source
-  where host_id = 'h_____wb__02-plgh';
+  where host_id = 'h_____wb__02-plgh'
+  order by address;
 
   select results_eq(
     'cwant'::refcursor,
