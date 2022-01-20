@@ -58,16 +58,11 @@ begin;
 
     if nag_key is null then
       insert into wh_network_address_group default values returning key into nag_key;
-      for a_key in
-        select address
-        from whx_network_address_dimension_source
-        where host_id = p_host_id
-        loop
-          insert into wh_network_address_group_membership
-          (network_address_group_key, network_address)
-          values
-            (nag_key,               a_key);
-        end loop;
+      insert into wh_network_address_group_membership
+      (network_address_group_key, network_address)
+      select nag_key, address
+      from whx_network_address_dimension_source
+      where host_id = p_host_id;
     end if;
     return nag_key;
 

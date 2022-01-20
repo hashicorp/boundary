@@ -21,11 +21,13 @@ begin;
   -- wh_network_address_group_membership groups the addresses
   create table wh_network_address_group_membership (
     network_address_group_key wh_dim_key
-      references wh_network_address_group (key)
+      constraint wh_network_address_group_fkey
+        references wh_network_address_group (key)
         on delete restrict
         on update cascade,
     network_address wh_dim_text
-      references wh_network_address_dimension (address)
+      constraint wh_network_address_dimension_fkey
+        references wh_network_address_dimension (address)
         on delete restrict
         on update cascade,
     primary key(network_address_group_key, network_address)
@@ -53,7 +55,8 @@ begin;
   alter table wh_host_dimension
     add column network_address_group_key wh_dim_key not null
       default 'Unknown'
-      references wh_network_address_group(key)
+      constraint wh_network_address_group_fkey
+        references wh_network_address_group(key)
         on delete restrict
         on update cascade;
 
