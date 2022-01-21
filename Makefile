@@ -220,41 +220,44 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.8.0
+VERSION?=0.7.4
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
-DOCKER_DIR=./docker
 
 .PHONY: docker
 docker: docker-build
 
 .PHONY: docker-build
-# builds from releases.hashicorp.com official binary
+# Builds from the releases.hashicorp.com official binary
 docker-build:
-	docker build -t $(IMAGE_TAG) \
-	--build-arg VERSION=$(VERSION) \
-	-f Dockerfile docker/ 
-	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
+	docker build \
+		--tag $(IMAGE_TAG) \
+		--tag hashicorp/boundary:latest
+		--target=official \
+		--build-arg VERSION=$(VERSION) \
+		.
 
 .PHONY: docker-multiarch-build
-# builds multiarch from releases.hashicorp.com official binary
+# Builds multiarch from the releases.hashicorp.com official binary
 docker-multiarch-build:
 	docker buildx build \
-	--push \
-	--tag $(IMAGE_TAG) \
-	--tag hashicorp/boundary:latest \
-	--build-arg VERSION=$(VERSION) \
-	--platform linux/amd64,linux/arm64 \
-	--file Dockerfile docker/
+		--tag $(IMAGE_TAG) \
+		--tag hashicorp/boundary:latest \
+		--target=official \
+		--build-arg VERSION=$(VERSION) \
+		--platform linux/amd64,linux/arm64 \
+		.
 
 .PHONY: docker-build-dev
-# builds from locally generated binary in bin/
+# Builds from the locally generated binary in ./bin/
 docker-build-dev: export GOOS=linux
 docker-build-dev: export GOARCH=amd64
 docker-build-dev: dev
-	cp -r bin docker/
-	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile docker/
+	docker build \
+		--tag $(IMAGE_TAG_DEV) \
+		--target=dev \
+		--build-arg=boundary \
+		.
 
 .NOTPARALLEL:
 
