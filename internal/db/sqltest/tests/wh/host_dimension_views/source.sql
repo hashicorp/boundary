@@ -1,6 +1,6 @@
 -- source tests the whx_host_dimension_source view.
 begin;
-  select plan(2);
+  select plan(3);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- Static hosts
@@ -30,6 +30,24 @@ begin;
   where s.host_id     = 'h_____wb__01-plgh'
     and s.host_set_id = 's___2wb-plghs'
     and s.target_id   = 't_________wb';
+
+
+-- network address dimension
+  declare cwant cursor for select
+      address, address_type, ip_address_family, private_ip_address_indicator,
+      dns_name, ip4_address, ip6_address
+  from whx_network_address_dimension_source
+  where host_id = 'h_____wb__02-plgh'
+  order by address;
+
+  select results_eq(
+    'cwant'::refcursor,
+    $$VALUES
+     ('2.big.widget', 'DNS Name',   'Not Applicable', 'Not Applicable',
+     '2.big.widget',  'Not Applicable', 'Not Applicable'),
+     ('fe80::2222:2222:2222:2222',      'IP Address', 'IPv6',  'Private IP address',
+    'Not Applicable', 'Not Applicable', 'fe80::2222:2222:2222:2222')
+    $$);
 
   select * from finish();
 rollback;
