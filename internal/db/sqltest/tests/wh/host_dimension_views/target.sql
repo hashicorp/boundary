@@ -27,7 +27,7 @@ begin;
   insert into wh_host_dimension
     (
       key,                   network_address_group_key,
-      host_id,               host_type,                 host_name,                host_description,         host_address,
+      host_id,               host_type,                 host_name,                host_description,
       host_set_id,           host_set_type,             host_set_name,            host_set_description,
       host_catalog_id,       host_catalog_type,         host_catalog_name,        host_catalog_description,
       target_id,             target_type,               target_name,              target_description,       target_default_port_number, target_session_max_seconds, target_session_connection_limit,
@@ -38,7 +38,7 @@ begin;
   values
     (
       'whd_____1',    'nagk____1_big_widget',
-      'h_____wb__01', 'static host',                   'None',                      'None', '1.big.widget',
+      'h_____wb__01', 'static host',                   'None',                      'None',
       's___2wb-sths', 'static host set',               'Big Widget Static Set 2',   'None',
       'c___wb-sthcl', 'static host catalog',           'Big Widget Static Catalog', 'None',
       't_________wb', 'tcp target',                    'Big Widget Target',         'None', 0,              28800, 1,
@@ -48,7 +48,7 @@ begin;
     ),
     (
       'whd_____2',    'nagk____1_big_widget',
-      'h_____wb__01', 'static host',                   'None',                      'None', '1.big.widget',
+      'h_____wb__01', 'static host',                   'None',                      'None',
       's___2wb-sths', 'static host set',               'Big Widget Static Set 2',   'None',
       'c___wb-sthcl', 'static host catalog',           'Big Widget Static Catalog', 'None',
       't_________wb', 'tcp target',                    'Big Widget Target',         'None', 0,              28800, 1,
@@ -59,7 +59,7 @@ begin;
 
   select is(t.*, row(
     'whd_____2',    'nagk____1_big_widget',
-    'h_____wb__01', 'static host',         'None',                      'None', '1.big.widget',
+    'h_____wb__01', 'static host',         'None',                      'None',
     's___2wb-sths', 'static host set',     'Big Widget Static Set 2',   'None',
     'c___wb-sthcl', 'static host catalog', 'Big Widget Static Catalog', 'None',
     't_________wb', 'tcp target',          'Big Widget Target',         'None', 0,              28800, 1,

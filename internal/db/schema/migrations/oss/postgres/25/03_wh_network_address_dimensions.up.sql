@@ -110,7 +110,7 @@ begin;
       -- insert a new row
       insert into wh_host_dimension (
         host_id,                    host_type,                  host_name,                       host_description,
-        host_address,               network_address_group_key,
+        network_address_group_key,
         host_set_id,                host_set_type,              host_set_name,                   host_set_description,
         host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
         target_id,                  target_type,                target_name,                     target_description,
@@ -120,7 +120,7 @@ begin;
         current_row_indicator,      row_effective_time,         row_expiration_time
       )
       select host_id,                    host_type,                  host_name,                       host_description,
-             host_address,               addr_group_key,
+             addr_group_key,
              host_set_id,                host_set_type,              host_set_name,                   host_set_description,
              host_catalog_id,            host_catalog_type,          host_catalog_name,               host_catalog_description,
              target_id,                  target_type,                target_name,                     target_description,
