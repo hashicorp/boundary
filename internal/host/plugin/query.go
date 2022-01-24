@@ -43,4 +43,12 @@ sync_interval_seconds is null and last_sync_time <= wt_add_seconds_to_now(?)
   or
 sync_interval_seconds > 0 and wt_add_seconds(sync_interval_seconds, last_sync_time) <= current_timestamp
 `
+
+	updateSyncDataQuery = `
+update host_plugin_set
+set
+  last_sync_time = current_timestamp,
+  need_sync = false
+where public_id = ?
+`
 )

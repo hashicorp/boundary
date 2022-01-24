@@ -303,7 +303,7 @@ func TestUtilFunctions(t *testing.T) {
 			// Run through the sets function
 			{
 				newHostMap[baseHostId].h.SetIds = tt.sets()
-				toAdd, toRemove, _ := getSetChanges(currentHostMap, newHostMap)
+				toAdd, toRemove := getSetChanges(currentHostMap, newHostMap)
 				assert.Equal(tt.setsToAdd, toAdd)
 				assert.Equal(tt.setsToRemove, toRemove)
 			}
