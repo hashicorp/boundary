@@ -7,7 +7,7 @@ on:
       # Push events on main branch
       - 'main'
       # Push events on a test branch (this needs to be removed before merging)
-      - 'crt-onboarding'
+      - 'sarah-test'
 
 env:
   PKG_NAME: "boundary"
