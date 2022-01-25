@@ -106,8 +106,8 @@ ENV VERSION=$VERSION
 # Create a non-root user to run the software.
 RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
 
-RUN apk add --no-cache libcap su-exec dumb-init
-# RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
+# RUN apk add --no-cache libcap su-exec dumb-init
+RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 COPY .release/docker/config.hcl /boundary/config.hcl
 
