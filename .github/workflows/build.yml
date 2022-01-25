@@ -283,7 +283,7 @@ jobs:
     needs:
       - get-product-version
       - build-linux
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     strategy:
       matrix:
         arch: ["arm", "arm64", "386", "amd64"]
