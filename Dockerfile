@@ -33,7 +33,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 
 # Official docker image that uses binaries from releases.hashicorp.com
-FROM debian:sid as official
+FROM debian:stable as official
 
 ARG VERSION
 
