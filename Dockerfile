@@ -13,11 +13,10 @@
 # Development docker image
 FROM docker.mirror.hashicorp.services/alpine:3.14 as dev
 
-RUN apk update
-
 RUN set -eux && \
     addgroup boundary && \
     adduser -s /bin/sh -S -G boundary boundary && \
+    apk update && \
     apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 ADD bin/boundary /bin/boundary
