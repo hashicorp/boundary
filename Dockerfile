@@ -13,6 +13,8 @@
 # Development docker image
 FROM docker.mirror.hashicorp.services/alpine:3.14 as dev
 
+RUN apk update
+
 RUN set -eux && \
     addgroup boundary && \
     adduser -s /bin/sh -S -G boundary boundary && \
