@@ -292,6 +292,8 @@ jobs:
       version: ${{ needs.get-product-version.outputs.product-version }}
     steps:
       - uses: actions/checkout@v2
+      - name: Enable update-binfmts for cross-compilation
+        run: sudo update-binfmts --enable
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
