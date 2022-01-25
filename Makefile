@@ -232,7 +232,7 @@ docker: docker-build
 docker-build:
 	docker build \
 		--tag $(IMAGE_TAG) \
-		--tag hashicorp/boundary:latest
+		--tag hashicorp/boundary:latest \
 		--target=official \
 		--build-arg VERSION=$(VERSION) \
 		.
