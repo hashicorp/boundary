@@ -113,8 +113,6 @@ COPY .release/docker/config.hcl /boundary/config.hcl
 
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
-RUN mkdir /boundary
-
 RUN chown -R ${NAME}:${NAME} /boundary
 
 EXPOSE 9200 9201 9202
