@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -798,6 +800,72 @@ func TestRepository_LookupHost(t *testing.T) {
 	}
 }
 
+func TestRepository_LookupHost_HostSets(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
+	hosts := TestHosts(t, conn, catalog.PublicId, 3)
+	hostA, hostB, hostC := hosts[0], hosts[1], hosts[2]
+	setB := TestSets(t, conn, catalog.PublicId, 1)[0]
+	setsC := TestSets(t, conn, catalog.PublicId, 5)
+	TestSetMembers(t, conn, setB.PublicId, []*Host{hostB})
+	hostB.SetIds = []string{setB.PublicId}
+	for _, s := range setsC {
+		hostC.SetIds = append(hostC.SetIds, s.PublicId)
+		TestSetMembers(t, conn, s.PublicId, []*Host{hostC})
+	}
+	sort.Slice(hostC.SetIds, func(i, j int) bool {
+		return hostC.SetIds[i] < hostC.SetIds[j]
+	})
+
+	tests := []struct {
+		name      string
+		in        string
+		want      *Host
+		wantIsErr errors.Code
+	}{
+		{
+			name: "with-zero-hostsets",
+			in:   hostA.PublicId,
+			want: hostA,
+		},
+		{
+			name: "with-one-hostset",
+			in:   hostB.PublicId,
+			want: hostB,
+		},
+		{
+			name: "with-many-hostsets",
+			in:   hostC.PublicId,
+			want: hostC,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.LookupHost(context.Background(), tt.in)
+			assert.Empty(
+				cmp.Diff(
+					tt.want,
+					got,
+					cmpopts.IgnoreUnexported(Host{}, store.Host{}),
+					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+				),
+			)
+		})
+	}
+}
+
 func TestRepository_ListHosts(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -853,6 +921,82 @@ func TestRepository_ListHosts(t *testing.T) {
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
+		})
+	}
+}
+
+func TestRepository_ListHosts_HostSets(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	// testing for full and empty hostset associations
+	catalogs := TestCatalogs(t, conn, prj.PublicId, 3)
+	catalogA, catalogB, catalogC := catalogs[0], catalogs[1], catalogs[2]
+	hostsA := TestHosts(t, conn, catalogA.PublicId, 3)
+	setA := TestSets(t, conn, catalogA.PublicId, 1)[0]
+	TestSetMembers(t, conn, setA.PublicId, hostsA)
+	for _, h := range hostsA {
+		h.SetIds = []string{setA.PublicId}
+	}
+	hostsB := TestHosts(t, conn, catalogB.PublicId, 3)
+
+	// testing for mixed hosts with individual hostsets and empty hostsets
+	hostsC := TestHosts(t, conn, catalogC.PublicId, 5)
+	hostsC0 := TestHosts(t, conn, catalogC.PublicId, 2)
+	setC := TestSets(t, conn, catalogC.PublicId, 5)
+	for i, h := range hostsC {
+		h.SetIds = []string{setC[i].PublicId}
+		TestSetMembers(t, conn, setC[i].PublicId, []*Host{hostsC[i]})
+	}
+	hostsC = append(hostsC, hostsC0...)
+
+	tests := []struct {
+		name      string
+		in        string
+		want      []*Host
+		wantIsErr errors.Code
+	}{
+		{
+			name: "with-hostsets",
+			in:   catalogA.PublicId,
+			want: hostsA,
+		},
+		{
+			name: "empty-hostsets",
+			in:   catalogB.PublicId,
+			want: hostsB,
+		},
+		{
+			name: "mixed-hostsets",
+			in:   catalogC.PublicId,
+			want: hostsC,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListHosts(context.Background(), tt.in)
+			require.NoError(err)
+			// Make sure outputs match. Ignore timestamps.
+			assert.Empty(
+				cmp.Diff(
+					tt.want,
+					got,
+					cmpopts.IgnoreUnexported(Host{}, store.Host{}),
+					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+					cmpopts.SortSlices(func(x, y *Host) bool {
+						return x.GetPublicId() < y.GetPublicId()
+					}),
+				),
+			)
 		})
 	}
 }

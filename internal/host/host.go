@@ -22,4 +22,5 @@ type Host interface {
 	GetAddress() string
 	GetIpAddresses() []string
 	GetDnsNames() []string
+	GetSetIds() []string
 }

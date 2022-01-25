@@ -66,6 +66,8 @@ func TestGet_Static(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	s := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, s.GetPublicId(), []*static.Host{h})
 
 	pHost := &pb.Host{
 		HostCatalogId: hc.GetPublicId(),
@@ -78,6 +80,7 @@ func TestGet_Static(t *testing.T) {
 			"address": structpb.NewStringValue(h.GetAddress()),
 		}},
 		AuthorizedActions: testAuthorizedActions[static.Subtype],
+		HostSetIds:        []string{s.GetPublicId()},
 	}
 
 	cases := []struct {
@@ -253,8 +256,11 @@ func TestList_Static(t *testing.T) {
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
 
+	hset := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	var wantHs []*pb.Host
-	for _, h := range static.TestHosts(t, conn, hc.GetPublicId(), 10) {
+	testHosts := static.TestHosts(t, conn, hc.GetPublicId(), 10)
+	static.TestSetMembers(t, conn, hset.GetPublicId(), testHosts)
+	for _, h := range testHosts {
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -266,8 +272,12 @@ func TestList_Static(t *testing.T) {
 				"address": structpb.NewStringValue(h.GetAddress()),
 			}},
 			AuthorizedActions: testAuthorizedActions[static.Subtype],
+			HostSetIds:        []string{hset.GetPublicId()},
 		})
 	}
+	sort.Slice(wantHs, func(i int, j int) bool {
+		return wantHs[i].GetId() < wantHs[j].GetId()
+	})
 
 	cases := []struct {
 		name string
