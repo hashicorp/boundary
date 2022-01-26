@@ -11,7 +11,7 @@
 
 
 # Development docker image
-FROM docker.mirror.hashicorp.services/alpine:3.14 as dev
+FROM docker.mirror.hashicorp.services/alpine:3.13.6 as dev
 
 RUN set -eux && \
     addgroup boundary && \
@@ -33,7 +33,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 
 # Official docker image that uses binaries from releases.hashicorp.com
-FROM alpine:3.14 as official
+FROM docker.mirror.hashicorp.services/alpine:3.13.6 as official
 
 ARG VERSION
 
@@ -81,7 +81,8 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 
 # Production docker image
-FROM alpine:3.14 as default
+# Remember, this cannot be built locally
+FROM docker.mirror.hashicorp.services/alpine:3.13.6 as default
 
 ARG BIN_NAME
 # NAME and VERSION are the name of the software in releases.hashicorp.com
@@ -106,7 +107,6 @@ ENV VERSION=$VERSION
 # Create a non-root user to run the software.
 RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
 
-# RUN apk add --no-cache libcap su-exec dumb-init
 RUN apk add --no-cache wget ca-certificates dumb-init gnupg libcap openssl su-exec iputils libc6-compat iptables
 
 COPY .release/docker/config.hcl /boundary/config.hcl
