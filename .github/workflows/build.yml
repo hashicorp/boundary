@@ -293,7 +293,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Enable update-binfmts for cross-compilation
-        run: sudo update-binfmts --enable
+        run: sudo /usr/bin/docker run --rm --privileged tonistiigi/binfmt:latest --install all
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
