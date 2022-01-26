@@ -9,9 +9,7 @@ project "boundary" {
     organization = "hashicorp"
     repository = "boundary"
     release_branches = [
-        "main", 
-        // This should be removed before merging
-        "crt-onboarding"
+        "main",
     ]
   }
 }

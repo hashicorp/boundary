@@ -5,7 +5,7 @@ StartLimitIntervalSec=60
 StartLimitBurst=3
 
 [Service]
-EnvironmentFile=/etc/boundary.d/boundary.env
+EnvironmentFile=-/etc/boundary.d/boundary.env
 User=boundary
 Group=boundary
 ProtectSystem=full
