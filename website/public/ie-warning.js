@@ -2,11 +2,11 @@
   'use strict'
 
   const el = document.createElement('div');
-  el.innerHtml =
+  el.innerHTML =
     '<div class="ie-warning">' +
     '  <p class="ie-warning-description">' +
     '    Internet Explorer is no longer supported.' +
-    '    <a href="https://www.microsoft.com/en-us/edge?form=MA13DL&OCID=MA13DL">' +
+    '    <a href="https://support.hashicorp.com/hc/en-us/articles/4416485547795">' +
     '      Learn more.' +
     '    </a>' +
     '  </p>' +
