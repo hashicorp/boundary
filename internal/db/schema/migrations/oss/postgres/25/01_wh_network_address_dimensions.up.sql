@@ -100,8 +100,13 @@ begin;
       where wh_try_cast_inet(hd.host_address) is not null
     )
   insert into wh_network_address_dimension(
-    address, address_type, ip_address_family, private_ip_address_indicator,
-    dns_name, ip4_address, ip6_address
+    address,
+    address_type,
+    ip_address_family,
+    private_ip_address_indicator,
+    dns_name,
+    ip4_address,
+    ip6_address
   )
   select
     address,
@@ -110,32 +115,31 @@ begin;
       when family(inet_address) = 4 then 'IPv4'
       when family(inet_address) = 6 then 'IPv6'
       else 'Not Applicable'
-      end,
+    end,
     wh_private_address_indicator(inet_address),
     'Not Applicable',
     case
       when family(inet_address) = 4 then address
       else 'Not Applicable'
-      end,
+    end,
     case
       when family(inet_address) = 6 then address
       else 'Not Applicable'
-      end
+    end
   from ip_addresses;
 
   -- Everything else left to migrate is a dns name.
   insert into wh_network_address_dimension(
-    address, address_type, ip_address_family, private_ip_address_indicator,
-    dns_name, ip4_address, ip6_address
+    address,           address_type,
+    ip_address_family, private_ip_address_indicator,
+    dns_name,
+    ip4_address,       ip6_address
   )
   select
+    whd.host_address,  'DNS Name',
+    'Not Applicable',  'Not Applicable',
     whd.host_address,
-    'DNS Name',
-    'Not Applicable',
-    'Not Applicable',
-    whd.host_address,
-    'Not Applicable',
-    'Not Applicable'
+    'Not Applicable',  'Not Applicable'
   from wh_host_dimension as whd
   where
       whd.host_address not in (select address from wh_network_address_dimension);
