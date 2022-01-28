@@ -606,6 +606,12 @@ func TestRepository_UpdateHost(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(orig)
 
+			if tt.wantIsErr == 0 {
+				set := TestSets(t, conn, catalog.GetPublicId(), 1)[0]
+				TestSetMembers(t, conn, set.PublicId, []*Host{orig})
+				tt.want.SetIds = []string{set.PublicId}
+			}
+
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
@@ -629,6 +635,9 @@ func TestRepository_UpdateHost(t *testing.T) {
 			if tt.want.Name == "" {
 				dbassert.IsNull(got, "name")
 				return
+			}
+			if tt.wantIsErr == 0 {
+				assert.Equal(tt.want.SetIds, got.SetIds)
 			}
 			assert.Equal(tt.want.Name, got.Name)
 			if tt.want.Description == "" {

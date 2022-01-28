@@ -171,6 +171,9 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			if rowsUpdated > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
 			ha := &hostAgg{
 				PublicId: h.PublicId,
 			}
@@ -178,9 +181,6 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup host after update"))
 			}
 			returnedHost.SetIds = ha.getSetIds()
-			if rowsUpdated > 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
-			}
 			return nil
 		},
 	)

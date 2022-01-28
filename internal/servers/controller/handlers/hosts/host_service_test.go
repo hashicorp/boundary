@@ -803,11 +803,13 @@ func TestUpdate_Static(t *testing.T) {
 	require.NoError(t, err, "Couldn't create new static repo.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	s := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
 	h, err := static.NewHost(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"), static.WithAddress("defaultaddress"))
 	require.NoError(t, err)
 	h, err = repo.CreateHost(context.Background(), proj.GetPublicId(), h)
 	require.NoError(t, err)
+	static.TestSetMembers(t, conn, s.GetPublicId(), []*static.Host{h})
 
 	var version uint32 = 1
 
@@ -857,6 +859,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
@@ -885,6 +888,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
@@ -955,6 +959,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
@@ -980,6 +985,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
@@ -1007,6 +1013,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
@@ -1034,6 +1041,7 @@ func TestUpdate_Static(t *testing.T) {
 						"address": structpb.NewStringValue("defaultaddress"),
 					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
+					HostSetIds:        []string{s.GetPublicId()},
 				},
 			},
 		},
