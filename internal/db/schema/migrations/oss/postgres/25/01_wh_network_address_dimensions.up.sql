@@ -156,9 +156,7 @@ begin;
   select distinct
     host_address, host_address
   from wh_host_dimension
-    -- There should only be a conflict when adding a key for 'Unknown' or
-    -- 'Unsupported' since that was added above.
-  on conflict do nothing;
+  where host_address not in ('Unknown', 'Unsupported');
 
   update wh_host_dimension
   set network_address_group_key = host_address;
