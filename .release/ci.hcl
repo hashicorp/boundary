@@ -9,8 +9,7 @@ project "boundary" {
     organization = "hashicorp"
     repository = "boundary"
     release_branches = [
-        "main",
-        "crt-onboarding"
+        "main"
     ]
   }
 }
