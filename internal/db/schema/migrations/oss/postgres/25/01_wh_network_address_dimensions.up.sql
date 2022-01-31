@@ -148,9 +148,7 @@ begin;
   select distinct
     host_address
   from wh_host_dimension
-    -- There should only be a conflict when adding a key for 'Unknown' since
-    -- that was added in a previous step of this migration.
-  on conflict do nothing;
+  where host_address not in ('Unknown', 'Unsupported');
 
   insert into wh_network_address_group_membership(network_address_group_key, network_address)
   select distinct
