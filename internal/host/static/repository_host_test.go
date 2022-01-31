@@ -606,11 +606,9 @@ func TestRepository_UpdateHost(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(orig)
 
-			if tt.wantIsErr == 0 {
-				set := TestSets(t, conn, catalog.GetPublicId(), 1)[0]
-				TestSetMembers(t, conn, set.PublicId, []*Host{orig})
-				tt.want.SetIds = []string{set.PublicId}
-			}
+			set := TestSets(t, conn, catalog.GetPublicId(), 1)[0]
+			TestSetMembers(t, conn, set.PublicId, []*Host{orig})
+			want_SetIds := []string{set.PublicId}
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
@@ -636,9 +634,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 				dbassert.IsNull(got, "name")
 				return
 			}
-			if tt.wantIsErr == 0 {
-				assert.Equal(tt.want.SetIds, got.SetIds)
-			}
+			assert.Equal(want_SetIds, got.SetIds)
 			assert.Equal(tt.want.Name, got.Name)
 			if tt.want.Description == "" {
 				dbassert.IsNull(got, "description")
@@ -964,10 +960,9 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 	hostsC = append(hostsC, hostsC0...)
 
 	tests := []struct {
-		name      string
-		in        string
-		want      []*Host
-		wantIsErr errors.Code
+		name string
+		in   string
+		want []*Host
 	}{
 		{
 			name: "with-hostsets",
@@ -994,7 +989,6 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.ListHosts(context.Background(), tt.in)
 			require.NoError(err)
-			// Make sure outputs match. Ignore timestamps.
 			assert.Empty(
 				cmp.Diff(
 					tt.want,

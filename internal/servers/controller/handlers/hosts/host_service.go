@@ -257,9 +257,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
-	if outputFields.Has(globals.HostSetIdField) {
-		outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
-	}
+	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
 
 	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {
