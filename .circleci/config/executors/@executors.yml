@@ -1,10 +1,10 @@
 go-machine:
   machine:
-    image: 'ubuntu-2004'
+    image: 'ubuntu-2004:202111-01'
   resource_class: large
   working_directory: ~/boundary
 go-machine-medium:
   machine:
-    image: 'ubuntu-2004'
+    image: 'ubuntu-2004:202111-01'
   resource_class: medium
   working_directory: ~/boundary

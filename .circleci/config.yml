@@ -7,7 +7,7 @@ version: 2
 jobs:
   test-sql-13-alpine:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -18,7 +18,7 @@ jobs:
         name: Run SQL PgTap Tests
   test-api:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -40,7 +40,7 @@ jobs:
         no_output_timeout: 15m
   test-sql-11-alpine:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -51,7 +51,7 @@ jobs:
         name: Run SQL PgTap Tests
   test-sdk:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -84,7 +84,7 @@ jobs:
         name: Push content to Algolia Index
   test-sql-12-alpine:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -95,7 +95,7 @@ jobs:
         name: Run SQL PgTap Tests
   build:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: large
     working_directory: ~/boundary
     steps:
@@ -255,7 +255,7 @@ jobs:
         when: always
   trigger-merge-to-ent:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -266,7 +266,7 @@ jobs:
         name: Trigger Merge to Enterprise
   test-sql-latest:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:202111-01
     resource_class: medium
     working_directory: ~/boundary
     steps:
@@ -318,12 +318,12 @@ workflows:
 # executors:
 #     go-machine:
 #         machine:
-#             image: ubuntu-2004:202107-02
+#             image: ubuntu-2004:202111-01
 #         resource_class: large
 #         working_directory: ~/boundary
 #     go-machine-medium:
 #         machine:
-#             image: ubuntu-2004:202107-02
+#             image: ubuntu-2004:202111-01
 #         resource_class: medium
 #         working_directory: ~/boundary
 # jobs:

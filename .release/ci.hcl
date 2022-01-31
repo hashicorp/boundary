@@ -10,6 +10,7 @@ project "boundary" {
     repository = "boundary"
     release_branches = [
         "main",
+        "crt-onboarding"
     ]
   }
 }
