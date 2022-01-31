@@ -40,9 +40,9 @@ func (c *PasswordCommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary authenticate password [options] [args]",
 		"",
-		"  Invoke the password auth method to authenticate the Boundary CLI:",
+		"  Invoke the password auth method to authenticate the Boundary CLI. Example:",
 		"",
-		`    $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo -password "bar"`,
+		`    $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo`,
 		"",
 		"",
 	}) + c.Flags().Help()

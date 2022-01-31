@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* cli: Update authentication examples to remove password flag and make
+  subcommend selection a bit clearer
+  ([PR](https://github.com/hashicorp/boundary/pull/1835))
+
 ## 0.7.4 (2022/01/18)
 
 ### Deprecations/Changes
