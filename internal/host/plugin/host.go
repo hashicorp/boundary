@@ -104,6 +104,11 @@ func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
+// GetSetIds returns host set ids
+func (h *Host) GetSetIds() []string {
+	return h.SetIds
+}
+
 // hostAgg is a view that aggregates the host's value objects in to
 // string fields delimited with the aggregateDelimiter of "|"
 type hostAgg struct {
@@ -158,6 +163,7 @@ func (agg *hostAgg) TableName() string {
 	return "host_plugin_host_with_value_obj_and_set_memberships"
 }
 
+// GetPublicId returns the host public id as a string
 func (agg *hostAgg) GetPublicId() string {
 	return agg.PublicId
 }

@@ -137,7 +137,14 @@ func TestList_Plugin(t *testing.T) {
 
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
-	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul.Items))
+	assert.Empty(
+		cmp.Diff(
+			comparableSetSlice(expected[:1]),
+			comparableSetSlice(ul.Items),
+			cmpopts.IgnoreUnexported(hostsets.HostSet{}),
+			cmpopts.IgnoreFields(hostsets.HostSet{}, "Version", "UpdatedTime"),
+		),
+	)
 
 	for i := 1; i < 10; i++ {
 		hcr, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName(expected[i].Name))
@@ -196,18 +203,16 @@ func TestCrud(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(hc)
 
-	retryableUpdate := func(c *hostsets.Client, hcId string, version uint32, opts ...hostsets.Option) (*hostsets.HostSetUpdateResult, bool) {
-		var retried bool
+	retryableUpdate := func(c *hostsets.Client, hcId string, version uint32, opts ...hostsets.Option) *hostsets.HostSetUpdateResult {
 		h, err := c.Update(tc.Context(), hcId, version, opts...)
 		if err != nil && strings.Contains(err.Error(), "set version mismatch") {
 			// Got a version mismatch, this happens because the sync set job runs in the background
 			// and can increment the version between operations in this test, try again
-			retried = true
 			h, err = c.Update(tc.Context(), hcId, version+1, opts...)
 		}
 		require.NoError(err)
 		assert.NotNil(h)
-		return h, retried
+		return h
 	}
 
 	hClient := hostsets.NewClient(client)
@@ -246,7 +251,8 @@ func TestCrud(t *testing.T) {
 	require.NoError(err)
 
 	h, err = hClient.Create(tc.Context(), c.Item.Id, hostsets.WithName("foo"),
-		hostsets.WithAttributes(map[string]interface{}{"foo": "bar"}), hostsets.WithPreferredEndpoints([]string{"dns:test"}))
+		hostsets.WithAttributes(map[string]interface{}{"foo": "bar"}), hostsets.WithPreferredEndpoints([]string{"dns:test"}),
+		hostsets.WithSyncIntervalSeconds(-1))
 	require.NoError(err)
 	assert.Equal("foo", h.Item.Name)
 	assert.Equal(uint32(1), h.Item.Version)
@@ -254,24 +260,20 @@ func TestCrud(t *testing.T) {
 	h, err = hClient.Read(tc.Context(), h.Item.Id)
 	require.NoError(err)
 	assert.Equal("foo", h.Item.Name)
-	assert.Equal(uint32(1), h.Item.Version)
+	// If the plugin set has synced after creation, its version will be 2; otherwise it will be 1.
+	assert.Contains([]uint32{1, 2}, h.Item.Version)
 
-	h, retried := retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
+	h = retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithName("bar"),
 		hostsets.WithAttributes(map[string]interface{}{"foo": nil, "key": "val"}),
 		hostsets.WithPreferredEndpoints([]string{"dns:update"}))
-	require.NoError(err)
 	assert.Equal("bar", h.Item.Name)
-	switch retried {
-	case true:
-		assert.Equal(uint32(3), h.Item.Version)
-	default:
-		assert.Equal(uint32(2), h.Item.Version)
-	}
+	// If the plugin set has synced since creation, its version will be 3; otherwise it will be 2.
+	assert.Contains([]uint32{2, 3}, h.Item.Version)
 
 	assert.Equal(h.Item.Attributes, map[string]interface{}{"key": "val"})
 	assert.Equal(h.Item.PreferredEndpoints, []string{"dns:update"})
 
-	h, _ = retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
+	h = retryableUpdate(hClient, h.Item.Id, h.Item.Version, hostsets.WithSyncIntervalSeconds(42))
 	require.NoError(err)
 	require.NotNil(h)
 	assert.Equal(int32(42), h.Item.SyncIntervalSeconds)
