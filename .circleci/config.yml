@@ -71,17 +71,6 @@ jobs:
           make test-sdk
         name: Run SDK Tests
         no_output_timeout: 15m
-  algolia-index:
-    docker:
-    - image: docker.mirror.hashicorp.services/node:12
-    steps:
-    - checkout
-    - run:
-        command: |-
-          cd website/
-          npm install
-          node scripts/index_search_content.js
-        name: Push content to Algolia Index
   test-sql-12-alpine:
     machine:
       image: ubuntu-2004:202111-01
@@ -285,11 +274,6 @@ workflows:
     - test-sql-11-alpine
     - test-sql-12-alpine
     - test-sql-13-alpine
-    - algolia-index:
-        filters:
-          branches:
-            only:
-            - stable-website
   trigger-merge-to-ent:
     jobs:
     - trigger-merge-to-ent:
