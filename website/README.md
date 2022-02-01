@@ -1,6 +1,6 @@
 # Boundary Documentation Website
 
-This subdirectory contains the entire source for the [Boundary Website](https://boundaryproject.io/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
+This subdirectory contains the content for the [Boundary Website](https://boundaryproject.io/).
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information
@@ -48,7 +48,7 @@ If you find a typo or you feel like you can improve the HTML, CSS, or JavaScript
 
 The website can be run locally through [node.js](https://nodejs.org). It works with any supported version. Node.js [can be installed quickly and easily via universal binary](https://nodejs.org).
 
-The first time you are running the site, you will need to run the command `npm install` to install dependencies. Any time after this, `npm start` can be used to run the site locally. It can be seen at `http://localhost:3000`. As you change content, the website will automatically reload to show the latest content.
+The first time you are running the site, you will need to run the command `npm install` to install dependencies. Any time after this, `npm start` can be used to run the site locally. It can be seen at `http://localhost:3000`. We also provide a Docker-based workflow to run the site locally. Just run `make`! As you change content, the website will automatically reload to show the latest content.
 
 <!-- BEGIN: editing-markdown -->
 <!-- Generated text, do not edit directly -->
