@@ -118,7 +118,10 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir dist out
+          mkdir -p dist out
+          unset GOPATH;
+          # Build plugins
+          sh ./scripts/plugins.sh
           go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
@@ -178,7 +181,10 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir dist out
+          mkdir -p dist out
+          unset GOPATH;
+          # Build plugins
+          sh ./scripts/plugins.sh
           go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
