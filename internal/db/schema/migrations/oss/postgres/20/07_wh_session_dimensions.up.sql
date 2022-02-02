@@ -1,7 +1,7 @@
 begin;
 
 -- replaces view from 15/02_wh_rename_host_dimension_org.up.sql
--- replaced by 25/02_wh_network_address_dimensions.up.sql
+-- replaced by 26/02_wh_network_address_dimensions.up.sql
 
 -- Updates whx_host_dimension_source to support plugin based host and related
 -- resources.  While this will return rows where there are host_sets where hosts
