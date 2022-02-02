@@ -14,8 +14,8 @@ import (
 
 func TestMigrations_WareHouse_HostAddresses(t *testing.T) {
 	const (
-		priorMigration   = 24001
-		currentMigration = 25001
+		priorMigration   = 25001
+		currentMigration = 26001
 	)
 
 	t.Parallel()
