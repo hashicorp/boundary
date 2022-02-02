@@ -130,11 +130,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 		if outputFields.Has(globals.AuthorizedActionsField) {
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
-
-		switch h := item.(type) {
-		case *plugin.Host:
-			outputOpts = append(outputOpts, handlers.WithHostSetIds(h.SetIds))
-		}
+		outputOpts = append(outputOpts, handlers.WithHostSetIds(item.GetSetIds()))
 		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
@@ -180,11 +176,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
-
-	switch h := h.(type) {
-	case *plugin.Host:
-		outputOpts = append(outputOpts, handlers.WithHostSetIds(h.SetIds))
-	}
+	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
 	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {
 		return nil, err
@@ -265,6 +257,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
+	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
 
 	item, err := toProto(ctx, h, outputOpts...)
 	if err != nil {

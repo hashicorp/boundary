@@ -4,6 +4,7 @@ import '@hashicorp/platform-util/nprogress/style.css'
 import useFathomAnalytics from '@hashicorp/platform-analytics'
 import NProgress from '@hashicorp/platform-util/nprogress'
 import createConsentManager from '@hashicorp/react-consent-manager/loader'
+import localConsentManagerServices from 'lib/consent-manager-services'
 import useAnchorLinkAnalytics from '@hashicorp/platform-util/anchor-link-analytics'
 import HashiStackMenu from '@hashicorp/react-hashi-stack-menu'
 import Router from 'next/router'
@@ -18,6 +19,7 @@ import alertBannerData, { ALERT_BANNER_ACTIVE } from 'data/alert-banner'
 NProgress({ Router })
 const { ConsentManager, openConsentManager } = createConsentManager({
   preset: 'oss',
+  otherServices: [...localConsentManagerServices],
 })
 
 const title = 'Boundary by HashiCorp'

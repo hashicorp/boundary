@@ -174,6 +174,13 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 			if rowsUpdated > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
+			ha := &hostAgg{
+				PublicId: h.PublicId,
+			}
+			if err := r.reader.LookupByPublicId(ctx, ha); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup host after update"))
+			}
+			returnedHost.SetIds = ha.getSetIds()
 			return nil
 		},
 	)
@@ -203,15 +210,16 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	h := allocHost()
-	h.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, h); err != nil {
+	ha := &hostAgg{
+		PublicId: publicId,
+	}
+	if err := r.reader.LookupByPublicId(ctx, ha); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
-	return h, nil
+	return ha.toHost(), nil
 }
 
 // ListHosts returns a slice of Hosts for the catalogId.
@@ -227,11 +235,16 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var hosts []*Host
-	err := r.reader.SearchWhere(ctx, &hosts, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	var aggs []*hostAgg
+	err := r.reader.SearchWhere(ctx, &aggs, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	hosts := make([]*Host, 0, len(aggs))
+	for _, ha := range aggs {
+		hosts = append(hosts, ha.toHost())
+	}
+
 	return hosts, nil
 }
 
