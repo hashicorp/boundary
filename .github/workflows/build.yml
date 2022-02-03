@@ -6,6 +6,7 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
+      - 'RDX-223-crt-dockerversion-parity'
 
 env:
   PKG_NAME: "boundary"
@@ -306,13 +307,16 @@ jobs:
         uses: docker/setup-qemu-action@v1
         with:
           image: docker.artifactory.hashicorp.engineering/prodsec-binfmt:latest
+      - name: Replace + in version
+        run: |
+          echo "dockerversion=$(echo ${{ needs.get-product-version.outputs.product-version }} | sed 's/+ent/-ent/g')" >> $GITHUB_ENV
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
-          version: ${{ env.version }}
+          version: ${{ env.dockerversion }}
           target: default
           arch: ${{ matrix.arch }}
           zip_artifact_name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_linux_${{ matrix.arch }}.zip
           tags: |
-            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
-            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
+            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
