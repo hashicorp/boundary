@@ -63,4 +63,100 @@ begin;
   alter table wh_host_dimension
     alter column network_address_group_key drop default;
 
+  -- wh_try_cast_inet returns either the provided text cast into inet or a null.
+  create function wh_try_cast_inet(text)
+    returns inet
+  as $$
+  begin
+    return cast($1 as inet);
+  exception when others then
+    return null::inet;
+  end;
+  $$ language plpgsql
+    immutable
+    returns null on null input;
+
+  -- wh_private_address_indicator returns a warehouse appropriate string
+  -- representing if the address is private or public.
+  create function wh_private_address_indicator(inet) returns text
+  as $$
+  begin
+    case
+      when $1 << any ('{10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12, fc00::/7, fe80::/10}'::cidr[]) then
+        return 'Private IP address';
+      else
+        return 'Public IP address';
+      end case;
+  end;
+  $$ language plpgsql
+    immutable
+    returns null on null input;
+
+  -- Migrate all the ip addresses and ignore any addresses which aren't ip.
+  with
+    ip_addresses(address, inet_address) as (
+      select hd.host_address as address, wh_try_cast_inet(hd.host_address) as inet_address
+      from wh_host_dimension as hd
+      where wh_try_cast_inet(hd.host_address) is not null
+    )
+  insert into wh_network_address_dimension(
+    address,
+    address_type,
+    ip_address_family,
+    private_ip_address_indicator,
+    dns_name,
+    ip4_address,
+    ip6_address
+  )
+  select
+    address,
+    'IP Address',
+    case
+      when family(inet_address) = 4 then 'IPv4'
+      when family(inet_address) = 6 then 'IPv6'
+      else 'Not Applicable'
+    end,
+    wh_private_address_indicator(inet_address),
+    'Not Applicable',
+    case
+      when family(inet_address) = 4 then address
+      else 'Not Applicable'
+    end,
+    case
+      when family(inet_address) = 6 then address
+      else 'Not Applicable'
+    end
+  from ip_addresses;
+
+  -- Everything else left to migrate is a dns name.
+  insert into wh_network_address_dimension(
+    address,           address_type,
+    ip_address_family, private_ip_address_indicator,
+    dns_name,
+    ip4_address,       ip6_address
+  )
+  select
+    whd.host_address,  'DNS Name',
+    'Not Applicable',  'Not Applicable',
+    whd.host_address,
+    'Not Applicable',  'Not Applicable'
+  from wh_host_dimension as whd
+  where
+      whd.host_address not in (select address from wh_network_address_dimension);
+
+  insert into wh_network_address_group (key)
+  select distinct
+    host_address
+  from wh_host_dimension
+  where host_address not in ('Unknown', 'Unsupported');
+
+  insert into wh_network_address_group_membership(network_address_group_key, network_address)
+  select distinct
+    host_address, host_address
+  from wh_host_dimension
+  where host_address not in ('Unknown', 'Unsupported');
+
+  update wh_host_dimension
+  set network_address_group_key = host_address;
+
 commit;
