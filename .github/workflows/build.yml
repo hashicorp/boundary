@@ -7,7 +7,6 @@ on:
       # Push events on main branch
       - 'main'
       - 'release/0.7.x'
-      - 'crt-release-0.7.x' # used to test the builds on this release branch; delete before merging
 
 env:
   PKG_NAME: "boundary"

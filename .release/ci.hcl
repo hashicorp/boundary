@@ -10,8 +10,7 @@ project "boundary" {
     repository = "boundary"
     release_branches = [
         "main",
-        "release/0.7.x",
-        "crt-release-0.7.x"
+        "release/0.7.x"
     ]
   }
 }
