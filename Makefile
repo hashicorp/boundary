@@ -192,38 +192,38 @@ IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
 
-docker: docker-build docker-publish
+docker: docker-build
 
-# builds from releases.hashicorp.com official binary
+# Builds from the releases.hashicorp.com official binary
 docker-build:
-	docker build -t $(IMAGE_TAG) \
-	--build-arg VERSION=$(VERSION) \
-	-f $(DOCKER_DIR)/Release.dockerfile docker/ 
-	docker tag $(IMAGE_TAG) hashicorp/boundary:latest
+	docker build \
+		--tag $(IMAGE_TAG) \
+		--tag hashicorp/boundary:latest \
+		--target=official \
+		--build-arg VERSION=$(VERSION) \
+		.
 
-# builds multiarch from releases.hashicorp.com official binary
+# Builds multiarch from the releases.hashicorp.com official binary
 docker-multiarch-build:
 	docker buildx build \
-	--push \
-	--tag $(IMAGE_TAG) \
-	--tag hashicorp/boundary:latest \
-	--build-arg VERSION=$(VERSION) \
-	--platform linux/amd64,linux/arm64 \
-	--file $(DOCKER_DIR)/Release.dockerfile docker/
+		--tag $(IMAGE_TAG) \
+		--tag hashicorp/boundary:latest \
+		--target=official \
+		--build-arg VERSION=$(VERSION) \
+		--platform linux/amd64,linux/arm64 \
+		.
 
-# builds from locally generated binary in bin/
-docker-build-dev: export XC_OSARCH=linux/amd64
+# Builds from the locally generated binary in ./bin/
+docker-build-dev: export GOOS=linux
+docker-build-dev: export GOARCH=amd64
 docker-build-dev: dev
-	cp -r bin docker/
-	docker build -t $(IMAGE_TAG_DEV) \
-	-f $(DOCKER_DIR)/Dev.dockerfile docker/
+	docker build \
+		--tag $(IMAGE_TAG_DEV) \
+		--target=dev \
+		--build-arg=boundary \
+		.
 
-# requires appropriate permissions in dockerhub
-docker-publish:
-	docker push $(IMAGE_TAG)
-	docker push hashicorp/boundary:latest
-
-.PHONY: api cli tools gen proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev docker-publish test-database-up test-database-down
+.PHONY: api cli tools gen proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev test-database-up test-database-down
 
 .NOTPARALLEL:
 
@@ -233,7 +233,7 @@ ci-config:
 ci-verify:
 	@$(MAKE) -C .circleci ci-verify
 
-PACKAGESPEC_CIRCLECI_CONFIG := .circleci/config/@build-release.yml
-PACKAGESPEC_HOOK_POST_CI_CONFIG := $(MAKE) ci-config
-
--include packagespec.mk
+.PHONY: version
+# This is used for release builds by .github/workflows/build.yml
+version:
+	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
