@@ -12,30 +12,24 @@ CGO_ENABLED?=0
 
 export GEN_BASEPATH := $(shell pwd)
 
-.PHONY: api
 api:
 	$(MAKE) --environment-overrides -C internal/api/genapi api
 
-.PHONY: cli
 cli:
 	$(MAKE) --environment-overrides -C internal/cmd/gencli cli
 
-.PHONY: tools
 tools:
 	go generate -tags tools tools/tools.go
 
-.PHONY: cleangen
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
-.PHONY: dev
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
 	@echo "==> Building Boundary with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
-.PHONY: fmt
 fmt:
 	gofumpt -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
 
@@ -49,7 +43,6 @@ $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
 $(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
 
-.PHONY: update-ui-version
 update-ui-version:
 	@if [ -z "$(UI_COMMITISH)" ]; then \
 		echo "==> Setting UI version to latest commit on branch '$(UI_DEFAULT_BRANCH)'"; \
@@ -59,7 +52,6 @@ update-ui-version:
 	fi; \
 	./scripts/uiclone.sh && ./scripts/uiupdate.sh
 
-.PHONY: build-ui
 build-ui:
 	@if [ -z "$(UI_COMMITISH)" ]; then \
 		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
@@ -69,7 +61,6 @@ build-ui:
 	fi; \
 	./scripts/uiclone.sh && ./scripts/uigen.sh
 
-.PHONY: build-ui-ifne
 build-ui-ifne:
 ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
 	@echo "==> No UI assets found, building..."
@@ -78,19 +69,15 @@ else
 	@echo "==> UI assets found, use build-ui target to update"
 endif
 
-.PHONY: perms-table
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-.PHONY: gen
 gen: cleangen proto api cli perms-table fmt
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
-.PHONY: proto
 proto: protolint protobuild
 
-.PHONY: protobuild
 protobuild:
 	# To add a new directory containing a proto pass the  proto's root path in
 	# through the --proto_path flag.
@@ -163,71 +150,50 @@ protobuild:
 
 	@rm -R ${TMP_DIR}
 
-.PHONY: protolint
 protolint:
 	@buf check lint
 	@buf check breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
 
-.PHONY: website
 # must have nodejs and npm installed
 website: website-install website-start
 
-.PHONY: website-install
 website-install:
 	@npm install --prefix website/
 
-.PHONY: website-start
 website-start:
 	@npm start --prefix website/
 
-.PHONY: test-database-up
 test-database-up:
 	make -C testing/dbtest/docker database-up
 
-.PHONY: test-database-down
 test-database-down:
 	make -C testing/dbtest/docker clean
 
-.PHONY: test-ci
+test-ci: install-go
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
-.PHONY: test-sql
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
-.PHONY: test
 test:
 	go test ./... -timeout 30m
 
-.PHONY: test-sdk
-test-sdk:
-	$(MAKE) -C sdk/ test
-
-.PHONY: test-api
-test-api:
-	$(MAKE) -C api/ test
-
-.PHONY: test-all
-test-all: test-sdk test-api test
-
-.PHONY: install-go
 install-go:
 	./ci/goinstall.sh
 
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.7.4
+VERSION?=0.7.1
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
+DOCKER_DIR=./docker
 
-.PHONY: docker
 docker: docker-build
 
-.PHONY: docker-build
 # Builds from the releases.hashicorp.com official binary
 docker-build:
 	docker build \
@@ -237,7 +203,6 @@ docker-build:
 		--build-arg VERSION=$(VERSION) \
 		.
 
-.PHONY: docker-multiarch-build
 # Builds multiarch from the releases.hashicorp.com official binary
 docker-multiarch-build:
 	docker buildx build \
@@ -248,7 +213,6 @@ docker-multiarch-build:
 		--platform linux/amd64,linux/arm64 \
 		.
 
-.PHONY: docker-build-dev
 # Builds from the locally generated binary in ./bin/
 docker-build-dev: export GOOS=linux
 docker-build-dev: export GOARCH=amd64
@@ -259,13 +223,13 @@ docker-build-dev: dev
 		--build-arg=boundary \
 		.
 
+.PHONY: api cli tools gen proto website ci-config ci-verify set-ui-version docker docker-build docker-build-dev test-database-up test-database-down
+
 .NOTPARALLEL:
 
-.PHONY: ci-config
 ci-config:
 	@$(MAKE) -C .circleci ci-config
 
-.PHONY: ci-verify
 ci-verify:
 	@$(MAKE) -C .circleci ci-verify
 
