@@ -131,18 +131,52 @@ begin;
          when family(hip.address) = 4 then 'IPv4'
          when family(hip.address) = 6 then 'IPv6'
          else 'Not Applicable'
-         end               as ip_address_family,
+       end               as ip_address_family,
        wh_private_address_indicator(hip.address) as private_ip_address_indicator,
        'Not Applicable' as dns_name,
        case
          when hip.address is not null and family(hip.address) = 4 then host(hip.address)
          else 'Not Applicable'
-         end as ip4_address,
+       end as ip4_address,
        case
          when hip.address is not null and family(hip.address) = 6 then host(hip.address)
          else 'Not Applicable'
-         end as ip6_address
-    from host_ip_address as hip;
+       end as ip6_address
+    from host_ip_address as hip
+    union
+    select
+      sh.public_id as host_id,
+      sh.address as address,
+      'DNS Name' as address_type,
+      'Not Applicable' as ip_address_family,
+      'Not Applicable' private_ip_address_indicator,
+      sh.address as dns_name,
+      'Not Applicable' as ip4_address,
+      'Not Applicable' as ip6_address
+    from static_host as sh
+    where wh_try_cast_inet(sh.address) is null
+    union
+    select
+      sh.public_id as host_id,
+      host(wh_try_cast_inet(sh.address)) as address,
+      'IP Address' as address_type,
+      case
+        when family(wh_try_cast_inet(sh.address)) = 4 then 'IPv4'
+        when family(wh_try_cast_inet(sh.address)) = 6 then 'IPv6'
+        else 'Not Applicable'
+      end               as ip_address_family,
+      wh_private_address_indicator(wh_try_cast_inet(sh.address)) as private_ip_address_indicator,
+      'Not Applicable' as dns_name,
+      case
+        when wh_try_cast_inet(sh.address) is not null and family(wh_try_cast_inet(sh.address)) = 4 then host(wh_try_cast_inet(sh.address))
+        else 'Not Applicable'
+      end as ip4_address,
+      case
+        when wh_try_cast_inet(sh.address) is not null and family(wh_try_cast_inet(sh.address)) = 6 then host(wh_try_cast_inet(sh.address))
+        else 'Not Applicable'
+      end as ip6_address
+    from static_host as sh
+    where wh_try_cast_inet(sh.address) is not null;
 
   alter table wh_host_dimension
     drop column host_address;

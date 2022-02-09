@@ -12,7 +12,7 @@ begin;
   insert into session
     ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__01-plgh' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
 
   select is(count(*), 1::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
@@ -27,7 +27,7 @@ begin;
   insert into host_dns_name
   (host_id, name)
   values
-    ('h_____wb__01', 'new.big.widget');
+    ('h_____wb__01-plgh', 'new.big.widget');
 
   -- update session, should not impact wh_host_dimension
   update session set

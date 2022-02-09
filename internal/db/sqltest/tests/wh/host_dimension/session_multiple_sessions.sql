@@ -12,7 +12,7 @@ begin;
   insert into session
     ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__02' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__02-plgh' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
 
   select is(count(*), 1::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
@@ -24,7 +24,7 @@ begin;
   insert into session
     ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__02' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's2____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__02-plgh' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's2____walter');
 
   select is(count(*), 1::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
@@ -36,7 +36,7 @@ begin;
   insert into session
     ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__02' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's3____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__02-plgh' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's3____walter');
 
   select is(count(*), 1::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
@@ -48,13 +48,13 @@ begin;
   insert into host_dns_name
   (host_id, name)
   values
-    ('h_____wb__02', 'new.big.widget');
+    ('h_____wb__02-plgh', 'new.big.widget');
 
   -- should result in a new host dimension
   insert into session
   ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__02' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's4____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__02-plgh' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's4____walter');
 
   select is(count(*), 2::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
@@ -66,13 +66,13 @@ begin;
   insert into host_ip_address
   (host_id, address)
   values
-    ('h_____wb__02', 'fe80::beef:1111:2222:333');
+    ('h_____wb__02-plgh', 'fe80::beef:1111:2222:333');
 
   -- should result in a new host dimension
   insert into session
   ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
   values
-    ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__02' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's5____walter');
+    ('p____bwidget' , 't_________wb' , 's___1wb-plghs' , 'h_____wb__02-plgh' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's5____walter');
 
   select is(count(*), 3::bigint) from wh_host_dimension where organization_id = 'o_____widget';
 
