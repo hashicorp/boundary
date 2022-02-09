@@ -1314,12 +1314,14 @@ func TestRepository_Endpoints(t *testing.T) {
 	hostSet10 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet10"), WithPreferredEndpoints([]string{"cidr:10.0.0.1/24"}))
 	hostSet192 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet192"), WithPreferredEndpoints([]string{"cidr:192.168.0.1/24"}))
 	hostSet100 := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSet100"), WithPreferredEndpoints([]string{"cidr:100.100.100.100/24"}))
+	hostSetDNS := TestSet(t, conn, kms, sched, catalog, plgm, WithName("hostSetDNS"), WithPreferredEndpoints([]string{"dns:*"}))
 	hostlessSet := TestSet(t, conn, kms, sched, hostlessCatalog, plgm)
 
-	h1 := TestHost(t, conn, catalog.GetPublicId(), "test", withIpAddresses([]string{"10.0.0.5", "192.168.0.5"}))
+	h1 := TestHost(t, conn, catalog.GetPublicId(), "test", withIpAddresses([]string{"10.0.0.5", "192.168.0.5"}), withDnsNames([]string{"example.com"}))
 	TestSetMembers(t, conn, hostSet10.GetPublicId(), []*Host{h1})
 	TestSetMembers(t, conn, hostSet192.GetPublicId(), []*Host{h1})
 	TestSetMembers(t, conn, hostSet100.GetPublicId(), []*Host{h1})
+	TestSetMembers(t, conn, hostSetDNS.GetPublicId(), []*Host{h1})
 
 	tests := []struct {
 		name      string
@@ -1370,6 +1372,21 @@ func TestRepository_Endpoints(t *testing.T) {
 			name:   "with-no-hosts-from-plugin",
 			setIds: []string{hostlessSet.GetPublicId()},
 			want:   nil,
+		},
+		{
+			name:   "with-dns-names",
+			setIds: []string{hostSetDNS.GetPublicId()},
+			want: []*host.Endpoint{
+				{
+					HostId: func() string {
+						s, err := newHostId(ctx, catalog.GetPublicId(), "test")
+						require.NoError(t, err)
+						return s
+					}(),
+					SetId:   hostSetDNS.GetPublicId(),
+					Address: "example.com",
+				},
+			},
 		},
 	}
 
