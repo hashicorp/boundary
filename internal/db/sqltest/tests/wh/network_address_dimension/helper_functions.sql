@@ -1,6 +1,6 @@
 -- Tests that the helper methods for network address dimension work as expected.
 begin;
-select plan(33);
+select plan(35);
 
 -- test wh_private_address_status
 select is(wh_private_address_indicator('10.0.0.1'::inet), 'Private IP address');
@@ -14,8 +14,10 @@ select is(wh_private_address_indicator(null::inet), null);
 -- test wh_try_cast_ip_inet
 -- ipv4
 select is(wh_try_cast_ip_inet('127.0.0.1'), '127.0.0.1'::inet);
+select is(wh_try_cast_ip_inet('1.2.3.4'), '1.2.3.4'::inet);
 select is(wh_try_cast_ip_inet('0.0.0.0'), '0.0.0.0'::inet);
 
+select is(wh_try_cast_ip_inet('127.0.0.1/16'), null::inet);
 select is(wh_try_cast_ip_inet('1.2.3'), null::inet);
 select is(wh_try_cast_ip_inet('256.256.256.256'), null::inet);
 select is(wh_try_cast_ip_inet(null), null::inet);
