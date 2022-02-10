@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
+	"github.com/hashicorp/go-kms-wrapping/v2/multi"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +90,7 @@ func TestKms(t *testing.T) {
 						continue
 					}
 					require.NoError(err)
-					multi, ok := wrapper.(*multiwrapper.MultiWrapper)
+					multi, ok := wrapper.(*multi.PooledWrapper)
 					require.True(ok)
 					mKeyId, err := multi.KeyId(ctx)
 					require.NoError(err)

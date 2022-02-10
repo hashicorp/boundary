@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
+	"github.com/hashicorp/go-kms-wrapping/v2/multi"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 )
 
@@ -179,7 +179,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// DB.
 	val, ok := k.scopePurposeCache.Load(scopeId + purpose.String())
 	if ok {
-		wrapper := val.(*multiwrapper.MultiWrapper)
+		wrapper := val.(*multi.PooledWrapper)
 		if opts.withKeyId == "" {
 			return wrapper, nil
 		}
@@ -217,7 +217,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	return wrapper, nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multiwrapper.MultiWrapper, string, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
 	const op = "kms.loadRoot"
 	opts := getOpts(opt...)
 	repo := opts.withRepository
@@ -262,7 +262,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		return nil, "", errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
 	}
 
-	var multi *multiwrapper.MultiWrapper
+	var multi *multi.PooledWrapper
 	for i, key := range rootKeyVersions {
 		var err error
 		wrapper := aead.NewWrapper()
@@ -273,7 +273,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 		}
 		if i == 0 {
-			multi, err = multiwrapper.NewMultiWrapper(ctx, wrapper)
+			multi, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root multiwrapper for key version 0 in scope %s", scopeId)))
 			}
@@ -342,7 +342,7 @@ type DekVersion interface {
 	GetKey() []byte
 }
 
-func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multiwrapper.MultiWrapper, error) {
+func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multi.PooledWrapper, error) {
 	const op = "kms.loadDek"
 	if rootWrapper == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("nil root wrapper for scope %s", scopeId))
@@ -413,7 +413,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
 	}
 
-	var multi *multiwrapper.MultiWrapper
+	var multi *multi.PooledWrapper
 	for i, keyVersion := range keyVersions {
 		var err error
 		wrapper := aead.NewWrapper()
@@ -424,7 +424,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
 		if i == 0 {
-			multi, err = multiwrapper.NewMultiWrapper(ctx, wrapper)
+			multi, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version 0 in scope %s", purpose.String(), scopeId)))
 			}
