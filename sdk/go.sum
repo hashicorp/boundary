@@ -265,8 +265,8 @@ github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORR
 github.com/gordonklaus/ineffassign v0.0.0-20200309095847-7953dde2c7bf/go.mod h1:cuNKsD1zp2v6XfE/orVX2QE1LC+i254ceGcVeDT3pTU=
 github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
-github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661 h1:3BAcBTWbUqlOOfnzH+6togUn4j7YuFBbHfU/v74UKKY=
-github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661/go.mod h1:ABs05kCUwjhfEwpsIjPcYRXAuauDTMrt7fjnX0uuQ/w=
+github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e h1:1k2IfQ2+wHXK+DiYoAiIMauKLwSqrzVJwRGqe4Z97Po=
+github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e/go.mod h1:ABs05kCUwjhfEwpsIjPcYRXAuauDTMrt7fjnX0uuQ/w=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=

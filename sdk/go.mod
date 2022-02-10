@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/sdk
 go 1.17
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661
+	github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239
 	github.com/hashicorp/go-hclog v1.1.0
