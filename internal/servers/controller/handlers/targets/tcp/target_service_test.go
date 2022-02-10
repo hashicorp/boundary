@@ -2776,6 +2776,12 @@ func TestAuthorizeSession(t *testing.T) {
 			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
 				"the credentials aren't unique per request authorized session")
 
+			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id:     tar.GetPublicId(),
+				HostId: asRes2.GetItem().GetHostId(),
+			})
+			require.NoError(t, err, "session must authorize with explicit host ID")
+
 			wantedHostId := tc.wantedHostId
 			if tc.wantedHostId == "?" {
 				wantedHostId = asRes2.GetItem().GetHostId()
