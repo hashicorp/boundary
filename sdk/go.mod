@@ -3,12 +3,10 @@ module github.com/hashicorp/boundary/sdk
 go 1.17
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220210224923-dc7130554b6b
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220210190615-b1e6d48e09a7
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.44.0
@@ -16,8 +14,8 @@ require (
 )
 
 require (
-	github.com/hashicorp/go-kms-wrapping v0.6.6 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20211004181306-dd5d7c1b481a // indirect
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220210190615-b1e6d48e09a7 // indirect
 )
 
 require (
