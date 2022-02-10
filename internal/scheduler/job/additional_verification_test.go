@@ -28,7 +28,7 @@ func TestJobWorkflow(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), "job1", "description")
+	job, err := repo.UpsertJob(context.Background(), "job1", "description")
 	require.NoError(err)
 	require.NotNil(job)
 	assert.Equal(defaultPluginId, job.PluginId)
@@ -100,7 +100,7 @@ func TestPlugin(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 
-		rows, err := rw.Query(context.Background(), createJobQuery, []interface{}{
+		rows, err := rw.Query(context.Background(), upsertJobQuery, []interface{}{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -109,25 +109,43 @@ func TestPlugin(t *testing.T) {
 		require.NoError(err)
 		_ = rows.Close()
 
-		// Creating a job with same name and pluginId should return a unique constraint error
-		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+		rows, err = rw.Query(context.Background(), "select * from job;", nil)
+		require.NoError(err)
+		var numRows int
+		for rows.Next() {
+			numRows++
+		}
+		_ = rows.Close()
+		require.Equal(1, numRows)
+
+		// Calling upsertJob with same name and pluginId should not insert a new job
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
 			sql.Named("next_scheduled_run", 0),
 		})
-		require.Error(err)
-		assert.Nil(rows)
-		assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_pkey\"")
+		require.NoError(err)
+		_ = rows.Close()
+
+		// Validate there is still only 1 job in the database
+		rows, err = rw.Query(context.Background(), "select * from job;", nil)
+		require.NoError(err)
+		numRows = 0
+		for rows.Next() {
+			numRows++
+		}
+		_ = rows.Close()
+		require.Equal(1, numRows)
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err = rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
 		require.NoError(err)
 		assert.Equal(1, numRows)
 
-		// Creating the a job with the same name and different pluginId should succeed
-		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+		// Calling upsertJob with the same name and different pluginId should create a new job
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
 			sql.Named("plugin_id", testPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -136,16 +154,15 @@ func TestPlugin(t *testing.T) {
 		assert.NoError(err)
 		_ = rows.Close()
 
-		// Creating a job with same name and pluginId should again return a unique constraint error
-		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-			sql.Named("plugin_id", testPluginId),
-			sql.Named("name", "same-job-name"),
-			sql.Named("description", "description"),
-			sql.Named("next_scheduled_run", 0),
-		})
-		require.Error(err)
-		assert.Nil(rows)
-		assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_pkey\"")
+		// Validate there are 2 jobs in the database
+		rows, err = rw.Query(context.Background(), "select * from job;", nil)
+		require.NoError(err)
+		numRows = 0
+		for rows.Next() {
+			numRows++
+		}
+		_ = rows.Close()
+		require.Equal(2, numRows)
 	})
 	t.Run("plugin-id-immutable", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
