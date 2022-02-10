@@ -27,8 +27,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -527,7 +529,12 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 		var ifWrapper wrapping.InitFinalizer
 		var cleanupFunc func() error
 		if wrapperPath != "" {
-			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(c.Context, wrapperPath, "config")
+			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
+				c.Context,
+				wrapperPath,
+				"config",
+				configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+			)
 			if err != nil {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
 				return nil, base.CommandUserError

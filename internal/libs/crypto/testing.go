@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 )
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing

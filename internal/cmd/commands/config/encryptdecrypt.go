@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -143,7 +144,12 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		kmsDefFile = strings.TrimSpace(c.flagConfigKms)
 	}
 
-	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, kmsDefFile, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
+		c.Context,
+		kmsDefFile,
+		"config",
+		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+	)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError

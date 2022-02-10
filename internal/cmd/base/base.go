@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -223,7 +225,12 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 	switch {
 	case c.FlagRecoveryConfig != "":
-		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, c.FlagRecoveryConfig, "recovery")
+		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
+			c.Context,
+			c.FlagRecoveryConfig,
+			"recovery",
+			configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+		)
 		if err != nil {
 			return nil, err
 		}

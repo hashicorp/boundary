@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/multi"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -28,7 +28,7 @@ func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byt
 	}
 	var aeadWrapper *aead.Wrapper
 	switch w := wrapper.(type) {
-	case *multiwrapper.MultiWrapper:
+	case *multi.PooledWrapper:
 		raw := w.WrapperForKeyID("__base__")
 		var ok bool
 		if aeadWrapper, ok = raw.(*aead.Wrapper); !ok {

@@ -10,8 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -471,7 +473,12 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(c.Context, wrapperPath, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
+		c.Context,
+		wrapperPath,
+		"config",
+		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+	)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
