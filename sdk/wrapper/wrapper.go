@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	kmsplugins "github.com/hashicorp/boundary/plugins/kms"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -48,7 +49,7 @@ func getWrapper(ctx context.Context, kmses []*configutil.KMS, purpose string) (w
 		kms,
 		nil,
 		nil,
-		configutil.WithKmsPluginsFilesystem("boundary-plugin-kms-", kmsplugins.FileSystem()),
+		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 		configutil.WithLogger(hclog.NewNullLogger()),
 	)
 	if err != nil {
