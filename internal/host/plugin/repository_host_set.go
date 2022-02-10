@@ -816,7 +816,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 				opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
 			}
 			if len(h.GetDnsNames()) > 0 {
-				opts = append(opts, endpoint.WithIpAddrs(h.GetDnsNames()))
+				opts = append(opts, endpoint.WithDnsNames(h.GetDnsNames()))
 			}
 			addr, err := pref.Choose(ctx, opts...)
 			if err != nil {
