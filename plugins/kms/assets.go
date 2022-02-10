@@ -1,4 +1,4 @@
-package plugins
+package kms_plugin_assets
 
 import (
 	"embed"
