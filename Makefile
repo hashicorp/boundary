@@ -28,6 +28,10 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
+.PHONY: dev-no-plugins
+dev-no-plugins: export SKIP_PLUGIN_BUILD=1
+dev-no-plugins: dev
+
 .PHONY: dev
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui

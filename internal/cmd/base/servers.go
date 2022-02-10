@@ -37,6 +37,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
@@ -493,7 +494,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				kms,
 				&b.InfoKeys,
 				&b.Info,
-				configutil.WithKmsPluginsFilesystem("boundary-plugin-kms-", kmsplugins.FileSystem()),
+				configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 				configutil.WithLogger(hclog.NewNullLogger()),
 			)
 			if wrapperConfigError != nil {

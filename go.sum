@@ -474,8 +474,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFb
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0 h1:rgxjzoDmDXw5q8HONgyHhBas4to0/XWRo/gPpJhsUNQ=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0/go.mod h1:qrJPVzv9YlhsrxJc3P/Q85nr0w1lIRikTl4JlhdDH5w=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
-github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661 h1:3BAcBTWbUqlOOfnzH+6togUn4j7YuFBbHfU/v74UKKY=
-github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661/go.mod h1:ABs05kCUwjhfEwpsIjPcYRXAuauDTMrt7fjnX0uuQ/w=
+github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e h1:1k2IfQ2+wHXK+DiYoAiIMauKLwSqrzVJwRGqe4Z97Po=
+github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e/go.mod h1:ABs05kCUwjhfEwpsIjPcYRXAuauDTMrt7fjnX0uuQ/w=
 github.com/hashicorp/cap v0.1.1 h1:GjO4+9+H0wv/89YoEsxeVc2jIizL19r5v5l2lpaH8Kg=
 github.com/hashicorp/cap v0.1.1/go.mod h1:VfBvK2ULRyqsuqAnjgZl7HJ7/CGMC7ro4H5eXiZuun8=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=

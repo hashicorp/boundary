@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary/api v0.0.21
-	github.com/hashicorp/boundary/sdk v0.0.13
+	github.com/hashicorp/boundary/sdk v0.0.14-0.20220210201127-fb63929af5a3
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -88,10 +88,11 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210194259-0213485e0661
+	github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.5
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220210190615-b1e6d48e09a7
 )
 
 require (
@@ -153,7 +154,6 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20211004181306-dd5d7c1b481a // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220210190615-b1e6d48e09a7 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
 	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
