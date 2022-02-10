@@ -119,14 +119,11 @@ main
 /pkg/
 /bin/
 update-ui-assets*
-/plugins/kms/assets/
+/plugins/kms/assets/boundary-plugin*
 /plugins/host/assets/boundary-plugin*
 
 # Test config file
 test*.hcl
-
-# KMS plugin binaries
-/plugins/kms/assets/
 
 # vim: set filetype=conf :
 
