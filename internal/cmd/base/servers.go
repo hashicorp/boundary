@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"

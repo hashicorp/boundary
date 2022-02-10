@@ -28,7 +28,11 @@ func (c *credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	if err := structwrapping.WrapStruct(ctx, cipher, c, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	c.KeyId = cipher.KeyID()
+	var err error
+	c.KeyId, err = cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to discover wrapper key id"))
+	}
 	return nil
 }
 

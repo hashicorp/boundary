@@ -262,7 +262,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		return nil, "", errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
 	}
 
-	var multi *multi.PooledWrapper
+	var pooled *multi.PooledWrapper
 	for i, key := range rootKeyVersions {
 		var err error
 		wrapper := aead.NewWrapper()
@@ -273,19 +273,19 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 		}
 		if i == 0 {
-			multi, err = multi.NewPooledWrapper(ctx, wrapper)
+			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root multiwrapper for key version 0 in scope %s", scopeId)))
 			}
 		} else {
-			_, err = multi.AddWrapper(ctx, wrapper)
+			_, err = pooled.AddWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error adding multiwrapper for key version %d in scope %s", i, scopeId)))
 			}
 		}
 	}
 
-	return multi, rootKeyId, nil
+	return pooled, rootKeyId, nil
 }
 
 // ReconcileKeys will reconcile the keys in the kms against known possible issues.
@@ -413,7 +413,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
 	}
 
-	var multi *multi.PooledWrapper
+	var pooled *multi.PooledWrapper
 	for i, keyVersion := range keyVersions {
 		var err error
 		wrapper := aead.NewWrapper()
@@ -424,17 +424,17 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead %s wrapper in scope %s", purpose.String(), scopeId)))
 		}
 		if i == 0 {
-			multi, err = multi.NewPooledWrapper(ctx, wrapper)
+			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version 0 in scope %s", purpose.String(), scopeId)))
 			}
 		} else {
-			_, err = multi.AddWrapper(ctx, wrapper)
+			_, err = pooled.AddWrapper(ctx, wrapper)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version %d in scope %s", purpose.String(), i, scopeId)))
 			}
 		}
 	}
 
-	return multi, nil
+	return pooled, nil
 }

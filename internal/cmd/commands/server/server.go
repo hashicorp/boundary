@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"

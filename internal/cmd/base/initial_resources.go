@@ -617,6 +617,7 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		ctx,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)

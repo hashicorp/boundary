@@ -20,12 +20,12 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/hashicorp/boundary/api v0.0.21
-	github.com/hashicorp/boundary/sdk v0.0.14-0.20220210201127-fb63929af5a3
+	github.com/hashicorp/boundary/sdk v0.0.14-0.20220210230258-80b1df83acb0
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20211027211326-5db60a48f239
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220210224923-dc7130554b6b
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.1.0
@@ -88,7 +88,7 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210201109-e116a963d60e
+	github.com/hashicorp/boundary/plugins v0.0.0-20220210230258-80b1df83acb0
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.5

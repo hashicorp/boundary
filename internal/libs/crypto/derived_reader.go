@@ -29,7 +29,7 @@ func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byt
 	var aeadWrapper *aead.Wrapper
 	switch w := wrapper.(type) {
 	case *multi.PooledWrapper:
-		raw := w.WrapperForKeyID("__base__")
+		raw := w.WrapperForKeyId("__base__")
 		var ok bool
 		if aeadWrapper, ok = raw.(*aead.Wrapper); !ok {
 			return nil, fmt.Errorf("%s: unexpected wrapper type from multiwrapper base: %w", op, ErrInvalidParameter)

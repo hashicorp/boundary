@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"

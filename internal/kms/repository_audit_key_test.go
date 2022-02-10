@@ -96,9 +96,10 @@ func TestRepository_CreateAuditKey(t *testing.T) {
 				key:     []byte("test key"),
 				keyWrapper: func() wrapping.Wrapper {
 					w := db.TestWrapper(t)
-					_, err = w.(*aead.Wrapper).SetConfig(map[string]string{
-						"key_id": "",
-					})
+					_, err = w.(*aead.Wrapper).SetConfig(
+						context.Background(),
+						wrapping.WithKeyId(""),
+					)
 					require.NoError(t, err)
 					return w
 				}(),

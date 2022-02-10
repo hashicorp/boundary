@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"

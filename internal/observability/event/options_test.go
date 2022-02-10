@@ -185,9 +185,9 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 		t.Fatal(n)
 	}
 	root := aead.NewWrapper(nil)
-	_, err = root.SetConfig(map[string]string{
-		"key_id": base64.StdEncoding.EncodeToString(rootKey),
-	})
+	_, err = root.SetConfig(
+		wrapping.WithKeyid(base64.StdEncoding.EncodeToString(rootKey)),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
