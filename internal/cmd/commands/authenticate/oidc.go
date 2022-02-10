@@ -34,7 +34,7 @@ func (c *OidcCommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary authenticate oidc [options] [args]",
 		"",
-		"  Invoke the OIDC auth method to authenticate the Boundary CLI:",
+		"  Invoke the OIDC auth method to authenticate the Boundary CLI. Example:",
 		"",
 		`    $ boundary authenticate oidc -auth-method-id amoidc_1234567890`,
 		"",

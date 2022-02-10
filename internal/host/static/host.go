@@ -1,6 +1,10 @@
 package static
 
 import (
+	"sort"
+	"strings"
+
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -15,7 +19,8 @@ const (
 // A Host contains a static address.
 type Host struct {
 	*store.Host
-	tableName string `gorm:"-"`
+	SetIds    []string `gorm:"-"`
+	tableName string   `gorm:"-"`
 }
 
 // NewHost creates a new in memory Host for address assigned to catalogId.
@@ -36,6 +41,16 @@ func NewHost(catalogId string, opt ...Option) (*Host, error) {
 		},
 	}
 	return host, nil
+}
+
+// For compatibility with the general Host type
+func (h *Host) GetIpAddresses() []string {
+	return nil
+}
+
+// For compatibility with the general Host type
+func (h *Host) GetDnsNames() []string {
+	return nil
 }
 
 // TableName returns the table name for the host.
@@ -60,9 +75,18 @@ func allocHost() *Host {
 
 func (h *Host) clone() *Host {
 	cp := proto.Clone(h.Host)
-	return &Host{
+	nh := &Host{
 		Host: cp.(*store.Host),
 	}
+	switch {
+	case h.SetIds == nil:
+	case len(h.SetIds) == 0:
+		nh.SetIds = make([]string, 0)
+	default:
+		nh.SetIds = make([]string, len(h.SetIds))
+		copy(nh.SetIds, h.SetIds)
+	}
+	return nh
 }
 
 func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
@@ -75,4 +99,56 @@ func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["catalog-id"] = []string{h.CatalogId}
 	}
 	return metadata
+}
+
+// GetSetIds returns host set ids
+func (h *Host) GetSetIds() []string {
+	return h.SetIds
+}
+
+type hostAgg struct {
+	PublicId    string `gorm:"primary_key"`
+	CatalogId   string
+	Name        string
+	Description string
+	CreateTime  *timestamp.Timestamp
+	UpdateTime  *timestamp.Timestamp
+	Version     uint32
+	Address     string
+	SetIds      string
+}
+
+func (agg *hostAgg) toHost() *Host {
+	h := allocHost()
+	h.PublicId = agg.PublicId
+	h.CatalogId = agg.CatalogId
+	h.Name = agg.Name
+	h.Description = agg.Description
+	h.CreateTime = agg.CreateTime
+	h.UpdateTime = agg.UpdateTime
+	h.Version = agg.Version
+	h.Address = agg.Address
+	h.SetIds = agg.getSetIds()
+	return h
+}
+
+// TableName returns the table name for gorm
+func (agg *hostAgg) TableName() string {
+	return "static_host_with_set_memberships"
+}
+
+// GetPublicId returns the host public id as a string
+func (agg *hostAgg) GetPublicId() string {
+	return agg.PublicId
+}
+
+// GetSetIds returns a list of all associated host sets to the host
+func (agg *hostAgg) getSetIds() []string {
+	const aggregateDelimiter = "|"
+	var ids []string
+	if agg.SetIds != "" {
+		ids = strings.Split(agg.SetIds, aggregateDelimiter)
+		sort.Strings(ids)
+	}
+	return ids
 }

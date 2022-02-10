@@ -13,7 +13,7 @@ func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) st
 			"",
 			"  Create a static-type host catalog. Example:",
 			"",
-			`    $ boundary host-catalogs create static -name prodops -description "Static host-catalog for ProdOps"`,
+			`    $ boundary host-catalogs create static -scope-id p_1234567890 -name prodops -description "Static host-catalog for ProdOps"`,
 			"",
 			"",
 		})

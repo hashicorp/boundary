@@ -441,6 +441,25 @@ func toProto(ctx context.Context, in *session.Session, opt ...handlers.Option) (
 			}
 		}
 	}
+
+	if len(in.Connections) > 0 {
+		if outputFields.Has(globals.ConnectionsField) {
+			connections := make([]*pb.Connection, 0, len(in.Connections))
+			for _, c := range in.Connections {
+				connections = append(connections, &pb.Connection{
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+					BytesUp:            c.BytesUp,
+					BytesDown:          c.BytesDown,
+					ClosedReason:       c.ClosedReason,
+				})
+			}
+			out.Connections = append(out.Connections, connections...)
+		}
+	}
+
 	return &out, nil
 }
 

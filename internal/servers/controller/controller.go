@@ -4,28 +4,39 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"sync"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/plugin/host"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
+	"google.golang.org/grpc"
 )
 
 type Controller struct {
@@ -36,13 +47,19 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 	started     *ua.Bool
 
-	tickerWg    sync.WaitGroup
-	schedulerWg sync.WaitGroup
+	tickerWg    *sync.WaitGroup
+	schedulerWg *sync.WaitGroup
 
-	workerAuthCache *cache.Cache
+	workerAuthCache *sync.Map
 
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
+
+	// grpc gateway server
+	gatewayServer   *grpc.Server
+	gatewayTicket   string
+	gatewayListener gatewayListener
+	gatewayMux      *runtime.ServeMux
 
 	// Repo factory methods
 	AuthTokenRepoFn       common.AuthTokenRepoFactory
@@ -53,11 +70,15 @@ type Controller struct {
 	ServersRepoFn         common.ServersRepoFactory
 	SessionRepoFn         common.SessionRepoFactory
 	StaticHostRepoFn      common.StaticRepoFactory
+	PluginHostRepoFn      common.PluginHostRepoFactory
+	HostPluginRepoFn      common.HostPluginRepoFactory
 	TargetRepoFn          common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
+
+	enabledPlugins []base.EnabledPlugin
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -65,7 +86,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
 		started:                 ua.NewBool(false),
+		tickerWg:                new(sync.WaitGroup),
+		schedulerWg:             new(sync.WaitGroup),
+		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
+		enabledPlugins:          conf.Server.EnabledPlugins,
 	}
 
 	c.started.Store(false)
@@ -99,6 +124,39 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	for _, enabledPlugin := range c.enabledPlugins {
+		switch enabledPlugin {
+		case base.EnabledPluginHostLoopback:
+			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
+			opts := []hostplugin.Option{
+				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+			}
+			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+				return nil, err
+			}
+		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		}
+	}
+
+	if conf.HostPlugins == nil {
+		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
+	}
+
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
 	kmsRepo, err := kms.NewRepository(dbase, dbase)
@@ -117,12 +175,30 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
+	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader); err != nil {
+		return nil, fmt.Errorf("error reconciling kms keys: %w", err)
+	}
+
+	// now that the kms is configured, we can get the audit wrapper and rotate
+	// the eventer audit wrapper, so the emitted events can include encrypt and
+	// hmac-sha256 data
+	auditWrapper, err := c.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeAudit)
+	if err != nil {
+		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
+	}
+	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
+	}
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
 	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
 	// currently caps the scheduler at running 10 jobs per interval.
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, scheduler.WithRunJobsLimit(10))
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(10)}
+	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -131,6 +207,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
+	}
+	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
+		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
+	}
+	c.HostPluginRepoFn = func() (*host.Repository, error) {
+		return host.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
@@ -155,7 +237,6 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.SessionRepoFn = func() (*session.Repository, error) {
 		return session.NewRepository(dbase, dbase, c.kms)
 	}
-	c.workerAuthCache = cache.New(0, 0)
 
 	return c, nil
 }
@@ -170,11 +251,11 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.scheduler.Start(c.baseContext, &c.schedulerWg); err != nil {
-		return fmt.Errorf("error starting scheduler: %w", err)
-	}
-	if err := c.startListeners(); err != nil {
+	if err := c.startListeners(c.baseContext); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
+	}
+	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
+		return fmt.Errorf("error starting scheduler: %w", err)
 	}
 
 	c.tickerWg.Add(5)
@@ -184,7 +265,7 @@ func (c *Controller) Start() error {
 	}()
 	go func() {
 		defer c.tickerWg.Done()
-		c.startRecoveryNonceCleanupTicking(c.baseContext)
+		c.startNonceCleanupTicking(c.baseContext)
 	}()
 	go func() {
 		defer c.tickerWg.Done()
@@ -205,6 +286,9 @@ func (c *Controller) Start() error {
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
 	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
 

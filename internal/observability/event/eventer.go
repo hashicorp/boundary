@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,8 +20,9 @@ import (
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/eventlogger/sinks/writer"
-
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 const (
@@ -66,6 +68,7 @@ type Eventer struct {
 	auditPipelines       []pipeline
 	observationPipelines []pipeline
 	errPipelines         []pipeline
+	auditWrapperNodes    []interface{}
 }
 
 type pipeline struct {
@@ -137,6 +140,19 @@ func SysEventer() *Eventer {
 	return sysEventer
 }
 
+// NewAuditEncryptFilter returns a new encrypt filter which is initialized for
+// audit events.
+func NewAuditEncryptFilter(opt ...Option) (*encrypt.Filter, error) {
+	opts := getOpts(opt...)
+
+	return &encrypt.Filter{
+		Wrapper: opts.withAuditWrapper,
+		IgnoreTypes: []reflect.Type{
+			reflect.TypeOf(&fieldmaskpb.FieldMask{}),
+		},
+	}, nil
+}
+
 // NewEventer creates a new Eventer using the config.  Supports options:
 // WithNow, WithSerializationLock, WithBroker, WithAuditWrapper
 func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, c EventerConfig, opt ...Option) (*Eventer, error) {
@@ -173,9 +189,10 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	}
 
 	e := &Eventer{
-		logger: log,
-		conf:   c,
-		broker: b,
+		logger:            log,
+		conf:              c,
+		broker:            b,
+		auditWrapperNodes: []interface{}{},
 	}
 
 	if !opts.withNow.IsZero() {
@@ -194,7 +211,8 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	allSinkFilenames := map[string]bool{}
 
 	for _, s := range c.Sinks {
-		fmtId, fmtNode, err := newFmtFilterNode(serverName, *s)
+		fmtId, fmtNode, err := newFmtFilterNode(serverName, *s, opt...)
+		e.auditWrapperNodes = append(e.auditWrapperNodes, fmtNode)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -269,9 +287,11 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
-			encryptFilter := &encrypt.Filter{
-				Wrapper: opts.withAuditWrapper,
+			encryptFilter, err := NewAuditEncryptFilter(opt...)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
+			e.auditWrapperNodes = append(e.auditWrapperNodes, encryptFilter)
 			if len(s.AuditConfig.FilterOverrides) > 0 {
 				overrides := encrypt.DefaultFilterOperations()
 				for k, v := range s.AuditConfig.FilterOverrides {
@@ -449,11 +469,12 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	return e, nil
 }
 
-func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, eventlogger.Node, error) {
+func newFmtFilterNode(serverName string, c SinkConfig, opt ...Option) (eventlogger.NodeID, eventlogger.Node, error) {
 	const op = "newFmtFilterNode"
 	if serverName == "" {
 		return "", nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
+	opts := getOpts(opt...)
 	var fmtId eventlogger.NodeID
 	var fmtNode eventlogger.Node
 	switch c.Format {
@@ -464,7 +485,7 @@ func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, even
 		}
 		fmtId = eventlogger.NodeID(id)
 
-		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+		fmtNode, err = newHclogFormatterFilter(c.Format == JSONHclogSinkFormat, WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...), WithAuditWrapper(opts.withAuditWrapper))
 		if err != nil {
 			return "", nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -514,6 +535,26 @@ func DefaultSink() *SinkConfig {
 		Type:        StderrSink,
 		AuditConfig: DefaultAuditConfig(),
 	}
+}
+
+func (e *Eventer) RotateAuditWrapper(ctx context.Context, newWrapper wrapping.Wrapper) error {
+	const op = "event.(Eventer).RotateAuditWrapper"
+	if newWrapper == nil {
+		return fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
+	}
+	for _, n := range e.auditWrapperNodes {
+		switch w := n.(type) {
+		case *hclogFormatterFilter:
+			w.Rotate(newWrapper)
+		case *cloudEventsFormatterFilter:
+			w.Rotate(newWrapper)
+		case *encrypt.Filter:
+			w.Rotate(encrypt.WithWrapper(newWrapper))
+		default:
+			return fmt.Errorf("%s: unsupported node type (%s): %w", op, reflect.TypeOf(w), ErrInvalidParameter)
+		}
+	}
+	return nil
 }
 
 // writeObservation writes/sends an Observation event.

@@ -122,7 +122,7 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
 		require.NoError(err)
 		assert.Equal(1, numRows)
 
@@ -155,7 +155,7 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 
@@ -178,7 +178,7 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 

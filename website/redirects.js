@@ -4,6 +4,11 @@ module.exports = [
 
   // Top level redirect
   {
+    source: '/home',
+    destination: '/',
+    permanent: true,
+  },
+  {
     source: '/help/admin-ui',
     destination: '/docs',
     permanent: false,
@@ -117,6 +122,11 @@ module.exports = [
   {
     source: '/help/admin-ui/credential-libraries',
     destination: '/docs/concepts/domain-model/credential-libraries',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/managed-groups',
+    destination: '/docs/concepts/domain-model/managed-groups',
     permanent: false,
   },
 

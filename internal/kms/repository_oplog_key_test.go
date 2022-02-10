@@ -25,7 +25,7 @@ func TestRepository_CreateOplogKey(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 	_, rkvWrapper := kms.TestRootKeyVersion(t, conn, wrapper, rk.PrivateId)
 
@@ -147,7 +147,7 @@ func TestRepository_DeleteOplogKey(t *testing.T) {
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 	rk := kms.TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
@@ -273,12 +273,12 @@ func TestRepository_ListOplogKeys(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		require.NoError(t, conn.Where("1=1").Delete(kms.AllocRootKey()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			for i := 0; i < tt.createCnt; i++ {
 				org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-				require.NoError(conn.Where("scope_id in(?)", []interface{}{"global", org.PublicId, proj.PublicId}).Delete(kms.AllocRootKey()).Error)
+				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "scope_id in(?)", "global", org.PublicId, proj.PublicId)
 				rk := kms.TestRootKey(t, conn, proj.PublicId)
 				kms.TestOplogKey(t, conn, rk.PrivateId)
 				require.NoError(err)

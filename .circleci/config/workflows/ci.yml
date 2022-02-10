@@ -1,5 +1,7 @@
 jobs:
   - build
+  - test-api
+  - test-sdk
   - test-sql:
       matrix:
         parameters:
@@ -9,3 +11,4 @@ jobs:
           branches:
             only:
               - stable-website
+  - make-gen-deltas

@@ -68,7 +68,9 @@ export NEW_USER='test'
 @test "boundary/user: can delete $NEW_USER user" {
   login $DEFAULT_LOGIN
   local uid=$(user_id $NEW_USER)
-  run delete_user $uid 
+  run delete_user $uid
+  echo $output
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
 

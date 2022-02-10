@@ -182,6 +182,9 @@ type TestWorkerOpts struct {
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
 	StatusGracePeriodDuration time.Duration
+
+	// Whether to set the replay value
+	EnableAuthReplay bool
 }
 
 func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
@@ -275,6 +278,10 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	if err != nil {
 		tw.Shutdown()
 		t.Fatal(err)
+	}
+
+	if opts.EnableAuthReplay {
+		tw.w.testReuseAuthNonces = true
 	}
 
 	if !opts.DisableAutoStart {

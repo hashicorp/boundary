@@ -13,17 +13,19 @@ import (
 )
 
 type CredentialLibrary struct {
-	Id                string                 `json:"id,omitempty"`
-	CredentialStoreId string                 `json:"credential_store_id,omitempty"`
-	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name              string                 `json:"name,omitempty"`
-	Description       string                 `json:"description,omitempty"`
-	CreatedTime       time.Time              `json:"created_time,omitempty"`
-	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
-	Version           uint32                 `json:"version,omitempty"`
-	Type              string                 `json:"type,omitempty"`
-	Attributes        map[string]interface{} `json:"attributes,omitempty"`
-	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
+	Id                         string                 `json:"id,omitempty"`
+	CredentialStoreId          string                 `json:"credential_store_id,omitempty"`
+	Scope                      *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                       string                 `json:"name,omitempty"`
+	Description                string                 `json:"description,omitempty"`
+	CreatedTime                time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                time.Time              `json:"updated_time,omitempty"`
+	Version                    uint32                 `json:"version,omitempty"`
+	Type                       string                 `json:"type,omitempty"`
+	Attributes                 map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions          []string               `json:"authorized_actions,omitempty"`
+	CredentialType             string                 `json:"credential_type,omitempty"`
+	CredentialMappingOverrides map[string]interface{} `json:"credential_mapping_overrides,omitempty"`
 
 	response *api.Response
 }
@@ -41,10 +43,8 @@ func (n CredentialLibraryReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	CredentialLibraryCreateResult = CredentialLibraryReadResult
-	CredentialLibraryUpdateResult = CredentialLibraryReadResult
-)
+type CredentialLibraryCreateResult = CredentialLibraryReadResult
+type CredentialLibraryUpdateResult = CredentialLibraryReadResult
 
 type CredentialLibraryDeleteResult struct {
 	response *api.Response

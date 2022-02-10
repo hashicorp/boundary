@@ -4,6 +4,111 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* cli: Update authentication examples to remove password flag and make
+  subcommend selection a bit clearer
+  ([PR](https://github.com/hashicorp/boundary/pull/1835))
+
+## 0.7.4 (2022/01/18)
+
+### Deprecations/Changes
+
+* In newly-created scopes, if default role creation is not disabled, the roles
+  will now contain a grant to allow listing targets. This will still be subject
+  to listing visibility rules, so only targets the user is granted some action
+  on (such as `authorize-session`) will be returned.
+
+### New and Improved
+
+* config: The `description` field for workers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1783))
+* config: The `max_open_connections` field for the database field in controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1776))
+* config: The `execution_dir` field for plugins now supports being set from environment variables
+  or a file on disk.([PR](https://github.com/hashicorp/boundary/pull/1772))
+* config: Add support for reading worker controllers off of environment
+  variables as well as files. ([PR](https://github.com/hashicorp/boundary/pull/1765))
+* config: The `description` field for controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1766))
+* config: Add support for reading worker tags off of environment variables
+  as well as files. ([PR](https://github.com/hashicorp/boundary/pull/1758))
+* config: Add support for go-sockaddr templates to Worker and Controller
+  addresses. ([PR](https://github.com/hashicorp/boundary/pull/1731))
+* controllers/workers: Add client IP to inbound request information which is included in
+  Boundary events ([PR](https://github.com/hashicorp/boundary/pull/1678))
+* host: Plugin-based host catalogs will now schedule updates for all
+  of its host sets when its attributes are updated.
+  ([PR](https://github.com/hashicorp/boundary/pull/1736))
+* scopes: Default roles in newly-created scopes now contain a grant to allow
+  listing targets. ([PR](https://github.com/hashicorp/boundary/pull/1803))
+* plugins/aws: AWS plugin based hosts now include DNS names in addition to the
+  IP addresses they already provide.
+
+### Bug Fixes
+* session: Fix duplicate sessions and invalid session state transitions. ([PR](https://github.com/hashicorp/boundary/pull/1793))
+
+## 0.7.3 (2021/12/16)
+
+### Bug Fixes
+
+* target: Fix permission bug which prevents the UI from being able to add and remove
+  host sources on a target. ([PR](https://github.com/hashicorp/boundary/pull/1794))
+* credential: Fix panic during credential issue when a nil secret is received. This can
+  occur when using the Vault KV backend which returns a nil secret and no error if the
+  secret does not exist. ([PR](https://github.com/hashicorp/boundary/pull/1798))
+
+## 0.7.2 (2021/12/14)
+
+### Security
+
+* Boundary now uses Go 1.17.5 to address a security vulnerability (CVE-2021-44716) where
+  an attacker can cause unbounded memory growth in a Go server accepting HTTP/2 requests.
+  See the [Go announcement](https://groups.google.com/g/golang-announce/c/hcmEScgc00k) for
+  more details. ([PR](https://github.com/hashicorp/boundary/pull/1789))
+
+## 0.7.1 (2021/11/18)
+
+### Bug Fixes
+
+* db: Fix panic invoking the CLI on Windows. Some changes to how the binary is
+  initialized resulted in running some functions on every startup that looked
+  for some embedded files. However, Go's embed package does not use OS-specific
+  path separators, so a mismatch between path separators caused a failure in the
+  function. ([PR](https://github.com/hashicorp/boundary/pull/1733))
+
+## 0.7.0 (2021/11/17)
+
+### Deprecations/Changes
+
+* tls: Boundary's support for TLS 1.0/1.1 on the API listener was broken. Rather
+  than fix this, we are simply not supporting TLS 1.0/1.1 as they are insecure.
+
+### New and Improved
+
+* Boundary now supports dynamic discovery of host resources using our (currently
+  internal) new plugin system. See the
+  [documentation](https://www.boundaryproject.io/docs) for configuration
+  instructions. Currently, only Azure and AWS are supported, but more providers
+  will be following in future releases.
+* workers: The existing worker connection replay prevention logic has been
+  enhanced to be more robust against attackers that have decryption access to
+  the shared `worker-auth` KMS key
+  ([PR](https://github.com/hashicorp/boundary/pull/1641))
+
+### Bug Fixes
+
+* tls: Support TLS 1.2 for more clients. This was broken for some clients due to
+  a missing mandated cipher suite of the HTTP/2 (`h2`) specification that could
+  result in no shared cipher suites between the Boundary API listener and those
+  clients. ([PR](https://github.com/hashicorp/boundary/pull/1637))
+* vault: Fix credential store support when using Vault namespaces
+  ([Issue](https://github.com/hashicorp/boundary/issues/1597),
+  [PR](https://github.com/hashicorp/boundary/pull/1660))
+
 ## 0.6.2 (2021/09/27)
 
 ### Deprecations/Changes

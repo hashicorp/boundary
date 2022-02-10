@@ -18,15 +18,29 @@ type Store interface {
 	GetScopeId() string
 }
 
+// Type is the type of credential provided by a library.
+type Type string
+
+// Credential type values.
+const (
+	UnspecifiedType  Type = "unspecified"
+	UserPasswordType Type = "user_password"
+)
+
 // A Library is a resource that provides credentials that are of the same
 // type and access level from a single store.
 type Library interface {
 	boundary.Resource
 	GetStoreId() string
+	CredentialType() Type
 }
 
 // Purpose is the purpose of the credential.
 type Purpose string
+
+func (p Purpose) String() string {
+	return string(p)
+}
 
 // Credential purpose values.
 const (
@@ -44,6 +58,13 @@ const (
 	// credentials are never returned to the user.
 	EgressPurpose Purpose = "egress"
 )
+
+// ValidPurposes are the set of all credential Purposes.
+var ValidPurposes = []Purpose{
+	ApplicationPurpose,
+	IngressPurpose,
+	EgressPurpose,
+}
 
 // SecretData represents secret data.
 type SecretData interface{}

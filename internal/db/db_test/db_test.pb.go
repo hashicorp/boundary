@@ -453,6 +453,133 @@ func (x *StoreTestScooter) GetMpg() int32 {
 	return 0
 }
 
+// StoreTestAccessory used in the db tests only and provides a gorm resource with
+// an id that's not a private or public id
+type StoreTestAccessory struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: gorm:"primary_key"
+	AccessoryId uint32 `protobuf:"varint,1,opt,name=accessory_id,json=accessoryId,proto3" json:"accessory_id,omitempty" gorm:"primary_key"`
+	// @inject_tag: `gorm:"default:not_null"`
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty" gorm:"default:not_null"`
+}
+
+func (x *StoreTestAccessory) Reset() {
+	*x = StoreTestAccessory{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StoreTestAccessory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreTestAccessory) ProtoMessage() {}
+
+func (x *StoreTestAccessory) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreTestAccessory.ProtoReflect.Descriptor instead.
+func (*StoreTestAccessory) Descriptor() ([]byte, []int) {
+	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *StoreTestAccessory) GetAccessoryId() uint32 {
+	if x != nil {
+		return x.AccessoryId
+	}
+	return 0
+}
+
+func (x *StoreTestAccessory) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// StoreTestScooterAccessory used in the db tests only and provides a gorm
+// resource with multiple pks
+type StoreTestScooterAccessory struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: gorm:"primary_key"
+	AccessoryId uint32 `protobuf:"varint,1,opt,name=accessory_id,json=accessoryId,proto3" json:"accessory_id,omitempty" gorm:"primary_key"`
+	// @inject_tag: gorm:"primary_key"
+	ScooterId uint32 `protobuf:"varint,2,opt,name=scooter_id,json=scooterId,proto3" json:"scooter_id,omitempty" gorm:"primary_key"`
+	// @inject_tag: `gorm:"default:null"`
+	Review string `protobuf:"bytes,3,opt,name=review,proto3" json:"review,omitempty" gorm:"default:null"`
+}
+
+func (x *StoreTestScooterAccessory) Reset() {
+	*x = StoreTestScooterAccessory{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StoreTestScooterAccessory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreTestScooterAccessory) ProtoMessage() {}
+
+func (x *StoreTestScooterAccessory) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreTestScooterAccessory.ProtoReflect.Descriptor instead.
+func (*StoreTestScooterAccessory) Descriptor() ([]byte, []int) {
+	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *StoreTestScooterAccessory) GetAccessoryId() uint32 {
+	if x != nil {
+		return x.AccessoryId
+	}
+	return 0
+}
+
+func (x *StoreTestScooterAccessory) GetScooterId() uint32 {
+	if x != nil {
+		return x.ScooterId
+	}
+	return 0
+}
+
+func (x *StoreTestScooterAccessory) GetReview() string {
+	if x != nil {
+		return x.Review
+	}
+	return ""
+}
+
 var File_controller_storage_db_db_test_v1_db_test_proto protoreflect.FileDescriptor
 
 var file_controller_storage_db_db_test_v1_db_test_proto_rawDesc = []byte{
@@ -535,12 +662,25 @@ var file_controller_storage_db_db_test_v1_db_test_proto_rawDesc = []byte{
 	0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x69, 0x76, 0x61,
 	0x74, 0x65, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x18, 0x06, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x70,
-	0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x05, 0x52, 0x03, 0x6d, 0x70, 0x67, 0x42, 0x3b, 0x5a, 0x39,
-	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
-	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e,
-	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x64, 0x62, 0x2f, 0x64, 0x62, 0x5f, 0x74, 0x65, 0x73,
-	0x74, 0x3b, 0x64, 0x62, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x05, 0x52, 0x03, 0x6d, 0x70, 0x67, 0x22, 0x59, 0x0a, 0x12,
+	0x53, 0x74, 0x6f, 0x72, 0x65, 0x54, 0x65, 0x73, 0x74, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6f,
+	0x72, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6f, 0x72, 0x79, 0x5f,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x0b, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73,
+	0x6f, 0x72, 0x79, 0x49, 0x64, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70,
+	0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x65, 0x73, 0x63,
+	0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x75, 0x0a, 0x19, 0x53, 0x74, 0x6f, 0x72, 0x65,
+	0x54, 0x65, 0x73, 0x74, 0x53, 0x63, 0x6f, 0x6f, 0x74, 0x65, 0x72, 0x41, 0x63, 0x63, 0x65, 0x73,
+	0x73, 0x6f, 0x72, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6f, 0x72,
+	0x79, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x0b, 0x61, 0x63, 0x63, 0x65,
+	0x73, 0x73, 0x6f, 0x72, 0x79, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x63, 0x6f, 0x6f, 0x74,
+	0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x09, 0x73, 0x63, 0x6f,
+	0x6f, 0x74, 0x65, 0x72, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x76, 0x69, 0x65, 0x77,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x76, 0x69, 0x65, 0x77, 0x42, 0x3b,
+	0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
+	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x64, 0x62, 0x2f, 0x64, 0x62, 0x5f, 0x74,
+	0x65, 0x73, 0x74, 0x3b, 0x64, 0x62, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -555,23 +695,25 @@ func file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP() []byte {
 	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescData
 }
 
-var file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_storage_db_db_test_v1_db_test_proto_goTypes = []interface{}{
-	(*StoreTestUser)(nil),       // 0: controller.storage.db.db_test.v1.StoreTestUser
-	(*StoreTestCar)(nil),        // 1: controller.storage.db.db_test.v1.StoreTestCar
-	(*StoreTestRental)(nil),     // 2: controller.storage.db.db_test.v1.StoreTestRental
-	(*StoreTestScooter)(nil),    // 3: controller.storage.db.db_test.v1.StoreTestScooter
-	(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
+	(*StoreTestUser)(nil),             // 0: controller.storage.db.db_test.v1.StoreTestUser
+	(*StoreTestCar)(nil),              // 1: controller.storage.db.db_test.v1.StoreTestCar
+	(*StoreTestRental)(nil),           // 2: controller.storage.db.db_test.v1.StoreTestRental
+	(*StoreTestScooter)(nil),          // 3: controller.storage.db.db_test.v1.StoreTestScooter
+	(*StoreTestAccessory)(nil),        // 4: controller.storage.db.db_test.v1.StoreTestAccessory
+	(*StoreTestScooterAccessory)(nil), // 5: controller.storage.db.db_test.v1.StoreTestScooterAccessory
+	(*timestamp.Timestamp)(nil),       // 6: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_db_db_test_v1_db_test_proto_depIdxs = []int32{
-	4, // 0: controller.storage.db.db_test.v1.StoreTestUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 1: controller.storage.db.db_test.v1.StoreTestUser.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 2: controller.storage.db.db_test.v1.StoreTestCar.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 3: controller.storage.db.db_test.v1.StoreTestCar.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 4: controller.storage.db.db_test.v1.StoreTestRental.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 5: controller.storage.db.db_test.v1.StoreTestRental.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 6: controller.storage.db.db_test.v1.StoreTestScooter.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	4, // 7: controller.storage.db.db_test.v1.StoreTestScooter.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 0: controller.storage.db.db_test.v1.StoreTestUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 1: controller.storage.db.db_test.v1.StoreTestUser.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 2: controller.storage.db.db_test.v1.StoreTestCar.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 3: controller.storage.db.db_test.v1.StoreTestCar.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 4: controller.storage.db.db_test.v1.StoreTestRental.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 5: controller.storage.db.db_test.v1.StoreTestRental.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 6: controller.storage.db.db_test.v1.StoreTestScooter.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 7: controller.storage.db.db_test.v1.StoreTestScooter.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name
@@ -633,6 +775,30 @@ func file_controller_storage_db_db_test_v1_db_test_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreTestAccessory); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreTestScooterAccessory); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -640,7 +806,7 @@ func file_controller_storage_db_db_test_v1_db_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_db_db_test_v1_db_test_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

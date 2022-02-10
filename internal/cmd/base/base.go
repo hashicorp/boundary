@@ -22,6 +22,28 @@ import (
 	"github.com/posener/complete"
 )
 
+type EnabledPlugin uint
+
+const (
+	EnabledPluginUnknown EnabledPlugin = iota
+	EnabledPluginHostLoopback
+	EnabledPluginHostAws
+	EnabledPluginHostAzure
+)
+
+func (e EnabledPlugin) String() string {
+	switch e {
+	case EnabledPluginHostLoopback:
+		return "Loopback"
+	case EnabledPluginHostAws:
+		return "AWS"
+	case EnabledPluginHostAzure:
+		return "Azure"
+	default:
+		return ""
+	}
+}
+
 const (
 	CommandSuccess int = iota
 	CommandApiError
@@ -74,6 +96,8 @@ type Command struct {
 
 	FlagScopeId           string
 	FlagScopeName         string
+	FlagPluginId          string
+	FlagPluginName        string
 	FlagId                string
 	FlagName              string
 	FlagDescription       string
@@ -83,6 +107,14 @@ type Command struct {
 	FlagVersion           int
 	FlagRecursive         bool
 	FlagFilter            string
+
+	// Attribute values
+	FlagAttributes string
+	FlagAttrs      []CombinedSliceFlagValue
+
+	// Secret values
+	FlagSecrets string
+	FlagScrts   []CombinedSliceFlagValue
 
 	client *api.Client
 

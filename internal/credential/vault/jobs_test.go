@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(err)
 
 	outToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", inToken.TokenHmac))
+	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 	require.NoError(outToken.decrypt(context.Background(), databaseWrapper))
 
 	return outToken
@@ -140,7 +141,7 @@ func testVaultCred(t *testing.T,
 	assert.NoError(err)
 
 	outCred := allocCredential()
-	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", id))
+	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", []interface{}{id}))
 
 	return secret, outCred
 }
@@ -237,6 +238,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	v := NewTestVaultServer(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	count := 5
 	tests := []struct {
@@ -272,8 +274,9 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			_, token := v.CreateToken(t)
 			in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 			require.NoError(err)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kmsCache, sche)
+			require.NoError(err)
+			err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
 			require.NoError(err)
 			cs, err := repo.CreateCredentialStore(context.Background(), in)
 			require.NoError(err)
@@ -329,15 +332,15 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kmsCache, sche)
-	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(context.Background(), in)
-	require.NoError(err)
 
 	r, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-
 	err = sche.RegisterJob(context.Background(), r)
+	require.NoError(err)
+
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
 	err = r.Run(context.Background())
@@ -473,6 +476,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	v := NewTestVaultServer(t)
 
@@ -561,8 +565,9 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				_, token := v.CreateToken(t)
 				in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 				require.NoError(err)
-				sche := scheduler.TestScheduler(t, conn, wrapper)
 				repo, err := NewRepository(rw, rw, kmsCache, sche)
+				require.NoError(err)
+				err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
 				require.NoError(err)
 				cs, err := repo.CreateCredentialStore(context.Background(), in)
 				require.NoError(err)
@@ -577,7 +582,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				assert.Equal(1, count)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating tokens and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
@@ -681,6 +686,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	v := NewTestVaultServer(t)
 
@@ -718,9 +724,11 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			_, token := v.CreateToken(t)
 			in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 			require.NoError(err)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kmsCache, sche)
 			require.NoError(err)
+			err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
+			require.NoError(err)
+
 			cs, err := repo.CreateCredentialStore(context.Background(), in)
 			require.NoError(err)
 
@@ -776,6 +784,12 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
+
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
+
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
@@ -815,7 +829,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -991,6 +1005,12 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
+
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(t, err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(t, err)
+
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
@@ -1008,7 +1028,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1102,6 +1122,10 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
@@ -1117,7 +1141,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1208,6 +1232,10 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
@@ -1223,7 +1251,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1281,6 +1309,10 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(t, err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(t, err)
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
@@ -1296,7 +1328,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1405,7 +1437,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, token, cred.s, cred.e)
 			}
 
-			got, err := r.NextRunIn()
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
@@ -1518,6 +1550,10 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(t, err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(t, err)
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
@@ -1535,7 +1571,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1631,6 +1667,10 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
@@ -1646,7 +1686,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1721,6 +1761,10 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
@@ -1736,7 +1780,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1906,6 +1950,10 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 	cs1, err := repo.CreateCredentialStore(context.Background(), in)
@@ -1939,6 +1987,12 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
+
+	// Register token revocation job needed for delete
+	j1, err := newTokenRevocationJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j1)
+	require.NoError(err)
 
 	// Soft delete both credential stores
 	count, err := repo.DeleteCredentialStore(context.Background(), cs1.PublicId)
@@ -2099,6 +2153,10 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
+	require.NoError(err)
+	err = sche.RegisterJob(context.Background(), j)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
@@ -2114,7 +2172,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess1 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),

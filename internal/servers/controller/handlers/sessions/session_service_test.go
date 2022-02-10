@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
@@ -57,7 +59,7 @@ func TestGetSession(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -86,7 +88,7 @@ func TestGetSession(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
@@ -174,7 +176,7 @@ func TestList_Self(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	// By default a user can read/cancel their own sessions.
 	session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -210,15 +212,15 @@ func TestList_Self(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup the auth request information
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/sessions?scope_id=%s", pWithSessions.GetPublicId()), nil)
-			requestInfo := auth.RequestInfo{
+			requestInfo := authpb.RequestInfo{
 				Path:        req.URL.Path,
 				Method:      req.Method,
-				TokenFormat: auth.AuthTokenTypeBearer,
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
 				PublicId:    tc.requester.GetPublicId(),
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := s.ListSessions(ctx, &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()})
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())
@@ -258,13 +260,13 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := target.TestTcpTarget(t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
+	tarOther := tcp.TestTarget(context.Background(), t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
@@ -278,6 +280,8 @@ func TestList(t *testing.T) {
 			ScopeId:     pWithSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		c := session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
 		status, states := convertStates(sess.States)
 
@@ -298,8 +302,16 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -313,6 +325,8 @@ func TestList(t *testing.T) {
 			ScopeId:     pWithOtherSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
+
+		c = session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
 		status, states = convertStates(sess.States)
 
@@ -333,8 +347,16 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
+			Connections: []*pb.Connection{
+				{
+					ClientTcpAddress:   c.ClientTcpAddress,
+					ClientTcpPort:      c.ClientTcpPort,
+					EndpointTcpAddress: c.EndpointTcpAddress,
+					EndpointTcpPort:    c.EndpointTcpPort,
+				},
+			},
 		})
 	}
 
@@ -401,7 +423,14 @@ func TestList(t *testing.T) {
 				require.Equal(len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.Equal(1, len(wantSess.GetConnections()))
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+					for _, c := range got.GetItems()[i].GetConnections() {
+						assert.Equal("127.0.0.1", c.ClientTcpAddress)
+						assert.Equal(uint32(22), c.ClientTcpPort)
+						assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+						assert.Equal(uint32(23), c.EndpointTcpPort)
+					}
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
@@ -469,7 +498,7 @@ func TestCancel(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := target.TestTcpTarget(t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, p.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 		UserId:      uId,
@@ -496,7 +525,7 @@ func TestCancel(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 

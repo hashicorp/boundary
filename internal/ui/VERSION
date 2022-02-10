@@ -1,4 +1,4 @@
-f29a6bc5d9475ee57327f4ca21aa213908bbfd01 Merge pull request #771 from hashicorp/chore-nth-check-resolutions
+30d029a2238f011f1d58731e2140e0332cbb324c Merge pull request #878 from hashicorp/feature-host-catalogs-only-supports-static-type
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

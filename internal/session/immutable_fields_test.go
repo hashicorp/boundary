@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,10 +99,10 @@ func TestState_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	state := TestState(t, conn, session.PublicId, StatusPending)
+	state := TestState(t, conn, session.PublicId, StatusActive)
 
 	var new State
-	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", state.SessionId, state.Status)
+	err := rw.LookupWhere(context.Background(), &new, "session_id = ? and state = ?", []interface{}{state.SessionId, state.Status})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -122,7 +123,7 @@ func TestState_ImmutableFields(t *testing.T) {
 			name: "status",
 			update: func() *State {
 				s := new.Clone().(*State)
-				s.Status = "active"
+				s.Status = "canceling"
 				return s
 			}(),
 			fieldMask: []string{"Status"},
@@ -151,7 +152,7 @@ func TestState_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
+			err := rw.LookupWhere(context.Background(), orig, "session_id = ? and start_time = ?", []interface{}{new.SessionId, new.StartTime})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -159,7 +160,7 @@ func TestState_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", new.SessionId, new.StartTime)
+			err = rw.LookupWhere(context.Background(), after, "session_id = ? and start_time = ?", []interface{}{new.SessionId, new.StartTime})
 			require.NoError(err)
 			assert.Equal(orig.(*State), after)
 		})
@@ -177,7 +178,7 @@ func TestConnection_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	new := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 
 	tests := []struct {
 		name      string
@@ -244,17 +245,19 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 
 	_, _ = iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
-	state := TestConnectionState(t, conn, connection.PublicId, StatusClosed)
+	connection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+	state := TestConnectionState(t, conn, connection.PublicId, StatusConnected)
 
 	var new ConnectionState
-	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", state.ConnectionId, state.Status)
+	err := rw.LookupWhere(context.Background(), &new, "connection_id = ? and state = ?", []interface{}{state.ConnectionId, state.Status})
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		update    *ConnectionState
-		fieldMask []string
+		name            string
+		update          *ConnectionState
+		fieldMask       []string
+		wantErrMatch    *errors.Template
+		wantErrContains string
 	}{
 		{
 			name: "session_id",
@@ -272,7 +275,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.Status = "closed"
 				return s
 			}(),
-			fieldMask: []string{"Status"},
+			fieldMask:       []string{"Status"},
+			wantErrMatch:    errors.T(errors.NotSpecificIntegrity),
+			wantErrContains: "immutable column",
 		},
 		{
 			name: "start time",
@@ -281,7 +286,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.StartTime = &ts
 				return s
 			}(),
-			fieldMask: []string{"StartTime"},
+			fieldMask:       []string{"StartTime"},
+			wantErrMatch:    errors.T(errors.InvalidFieldMask),
+			wantErrContains: "parameter violation",
 		},
 		{
 			name: "previous_end_time",
@@ -290,7 +297,9 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 				s.PreviousEndTime = &ts
 				return s
 			}(),
-			fieldMask: []string{"PreviousEndTime"},
+			fieldMask:       []string{"PreviousEndTime"},
+			wantErrMatch:    errors.T(errors.NotSpecificIntegrity),
+			wantErrContains: "immutable column",
 		},
 	}
 	for _, tt := range tests {
@@ -298,15 +307,20 @@ func TestConnectionState_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			err := rw.LookupWhere(context.Background(), orig, "connection_id = ? and start_time = ?", []interface{}{new.ConnectionId, new.StartTime})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
-
+			if tt.wantErrMatch != nil {
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted error %s and got: %s", tt.wantErrMatch.Code, err.Error())
+			}
+			if tt.wantErrContains != "" {
+				assert.Contains(err.Error(), tt.wantErrContains)
+			}
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", new.ConnectionId, new.StartTime)
+			err = rw.LookupWhere(context.Background(), after, "connection_id = ? and start_time = ?", []interface{}{new.ConnectionId, new.StartTime})
 			require.NoError(err)
 			assert.Equal(orig.(*ConnectionState), after)
 		})

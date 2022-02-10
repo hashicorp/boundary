@@ -68,6 +68,17 @@ type cmdInfo struct {
 	// This allows the flags to be defined differently from the the attribute
 	// names in the API.
 	PrefixAttributeFieldErrorsWithSubactionPrefix bool
+
+	// HasGenericAttributes controls whether to generate flags for -attributes,
+	// -attr, -string-attr, etc.
+	HasGenericAttributes bool
+
+	// HasGenericSecrets controls whether to generate flags for -secrets,
+	// -secret, -string-secret, etc.
+	HasGenericSecrets bool
+
+	// IsPluginType controls whether standard plugin flags are generated
+	IsPluginType bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -254,6 +265,23 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
 		},
+		{
+			ResourceType:         resource.HostCatalog.String(),
+			Pkg:                  "hostcatalogs",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "plugin",
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			IsPluginType:         true,
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			HasGenericAttributes: true,
+			HasGenericSecrets:    true,
+		},
 	},
 	"hostsets": {
 		{
@@ -281,6 +309,21 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:        "HostCatalog",
 			HasDescription:   true,
 			VersionedActions: []string{"update"},
+		},
+		{
+			ResourceType:         resource.HostSet.String(),
+			Pkg:                  "hostsets",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "plugin",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			Container:            "HostCatalog",
+			HasDescription:       true,
+			HasGenericAttributes: true,
+			VersionedActions:     []string{"update"},
 		},
 	},
 	"hosts": {

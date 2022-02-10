@@ -4,9 +4,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/db_test"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 )
 
@@ -398,6 +402,20 @@ func TestUpdateFields(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
+	t.Run("valid-embedded-timestamp", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		wantTs := &timestamp.Timestamp{
+			Timestamp: &timestamppb.Timestamp{
+				Seconds: 1,
+				Nanos:   1,
+			},
+		}
+		u := testUser(t, "", "")
+		u.UpdateTime = wantTs
+		got, err := UpdateFields(u, []string{"UpdateTime"}, nil)
+		require.NoError(err)
+		assert.True(proto.Equal(wantTs, got["UpdateTime"].(*timestamp.Timestamp)))
+	})
 }
 
 func testUser(t *testing.T, name, email string) *db_test.TestUser {

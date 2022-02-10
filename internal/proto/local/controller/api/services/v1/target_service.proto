@@ -475,21 +475,22 @@ message AddTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
 }
 
 message AddTargetCredentialSourcesResponse {
   api.resources.targets.v1.Target item = 1;
 }
 
-// Sets the values for application_credential_source_ids.  If any
-// credential_source_id field that is not set in the request will result in
-// those fields being cleared.
+// Sets the values for credential sources. Any credential_source_id field that
+// is not set in the request will result in those fields being cleared.
 message SetTargetCredentialSourcesRequest {
   string id = 1;
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -502,6 +503,7 @@ message RemoveTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
   repeated string application_credential_source_ids = 3 [json_name="application_credential_source_id"];
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
 }
 
 message RemoveTargetCredentialSourcesResponse {

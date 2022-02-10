@@ -9,11 +9,11 @@ import (
 
 // MigrateStore executes the migrations needed to initialize the store. It
 // returns true if migrations actually ran; false if the database is already current
-// or if there was an error.  Supports the WithMigrationStates(...) option.
-func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option) (bool, error) {
+// or if there was an error.  Supports the WithEditions(...) option.
+func MigrateStore(ctx context.Context, dialect Dialect, url string, opt ...Option) (bool, error) {
 	const op = "schema.MigrateStore"
 
-	d, err := common.SqlOpen(dialect, url)
+	d, err := common.SqlOpen(dialect.String(), url)
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
@@ -27,15 +27,12 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
-	if st.Dirty {
-		return false, errors.New(ctx, errors.MigrationIntegrity, op, "db marked dirty")
-	}
 
-	if st.InitializationStarted && st.DatabaseSchemaVersion == st.BinarySchemaVersion {
+	if st.Initialized && st.MigrationsApplied() {
 		return false, nil
 	}
 
-	if err := sMan.RollForward(ctx); err != nil {
+	if err := sMan.ApplyMigrations(ctx); err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
 

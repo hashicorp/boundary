@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
+	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -78,6 +80,54 @@ func comparableHostSlice(in []*hosts.Host) []hosts.Host {
 		filtered = append(filtered, p)
 	}
 	return filtered
+}
+
+func TestPluginHosts(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	hc, err := hostcatalogs.NewClient(client).Create(tc.Context(), "plugin", proj.GetPublicId(),
+		hostcatalogs.WithPluginId("pl_1234567890"))
+	require.NoError(err)
+	require.NotNil(hc)
+
+	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]interface{}{
+		"host_info": []interface{}{
+			map[string]interface{}{
+				"external_id":  "test1",
+				"ip_addresses": []string{"10.0.0.1", "192.168.1.1"},
+				"dns_names":    []string{"foo.hashicorp.com", "boundaryproject.io"},
+			},
+			map[string]interface{}{
+				"external_id":  "test2",
+				"ip_addresses": []string{"10.0.0.2", "192.168.1.2"},
+				"dns_names":    []string{"foo2.hashicorp.com", "boundaryproject2.io"},
+			},
+		},
+	}))
+	require.NoError(err)
+	require.NotNil(hset)
+	time.Sleep(1 * time.Second)
+
+	hClient := hosts.NewClient(client)
+	hl, err := hClient.List(tc.Context(), hc.Item.Id)
+	require.NoError(err)
+	require.Len(hl.Items, 2)
+
+	h, err := hClient.Read(tc.Context(), hl.Items[0].Id)
+	require.NoError(err)
+	assert.Equal(hl.Items[0], h.Item)
+
+	_, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hosts.WithName("foo"))
+	require.Error(err)
+	_, err = hClient.Delete(tc.Context(), h.Item.Id)
+	require.Error(err)
 }
 
 func TestCrud(t *testing.T) {

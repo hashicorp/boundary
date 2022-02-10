@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vault "github.com/hashicorp/vault/api"
 )
@@ -140,7 +141,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(cs)
+			ticket, err := w.GetTicket(ctx, cs)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -519,7 +520,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
-			ticket, err := w.GetTicket(cs)
+			ticket, err := w.GetTicket(ctx, cs)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -693,7 +694,7 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			var msgs []*oplog.Message
-			ticket, err := w.GetTicket(cs)
+			ticket, err := w.GetTicket(ctx, cs)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -724,8 +725,8 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 
 	if rows > 0 {
 		// Schedule token revocation and credential store cleanup jobs to run immediately
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevocationJobName, 0)
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialStoreCleanupJobName, 0)
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevocationJobName, 0, scheduler.WithRunNow(true))
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialStoreCleanupJobName, 0, scheduler.WithRunNow(true))
 	}
 	return rows, nil
 }

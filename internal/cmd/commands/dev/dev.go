@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -22,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
-	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -66,7 +67,7 @@ type Command struct {
 	flagWorkerAuthKey                string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
-	flagPassthroughDirectory         string
+	flagUiPassthroughDir             string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
 	flagContainerImage               string
@@ -77,6 +78,8 @@ type Command struct {
 	flagSysEvents                    string
 	flagEveryEventAllowFilters       []string
 	flagEveryEventDenyFilters        []string
+	flagCreateLoopbackHostPlugin     bool
+	flagPluginExecutionDir           string
 }
 
 func (c *Command) Synopsis() string {
@@ -250,9 +253,9 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "passthrough-directory",
-		Target: &c.flagPassthroughDirectory,
-		EnvVar: "BOUNDARY_DEV_PASSTHROUGH_DIRECTORY",
+		Name:   "ui-passthrough-dir",
+		Target: &c.flagUiPassthroughDir,
+		EnvVar: "BOUNDARY_DEV_UI_PASSTHROUGH_DIR",
 		Usage:  "Enables a passthrough directory in the webserver at /",
 	})
 
@@ -308,6 +311,19 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  `The optional every event deny filter. May be specified multiple times.`,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "plugin-execution-dir",
+		Target: &c.flagPluginExecutionDir,
+		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
+		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "create-loopback-host-plugin",
+		Target: &c.flagCreateLoopbackHostPlugin,
+		Hidden: true,
+	})
+
 	return set
 }
 
@@ -343,6 +359,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return base.CommandUserError
 	}
+
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
@@ -351,6 +368,13 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
+
+	c.DevLoginName = c.flagLoginName
+	c.DevPassword = c.flagPassword
+	c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
+	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
+	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -373,21 +397,9 @@ func (c *Command) Run(args []string) int {
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
 		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
-		c.DevTargetId = fmt.Sprintf("%s_%s", target.TcpTargetPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
 	}
-	if c.flagLoginName != "" {
-		c.DevLoginName = c.flagLoginName
-	}
-	if c.flagPassword != "" {
-		c.DevPassword = c.flagPassword
-	}
-	if c.flagUnprivilegedLoginName != "" {
-		c.DevUnprivilegedLoginName = c.flagUnprivilegedLoginName
-	}
-	if c.flagUnprivilegedPassword != "" {
-		c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
-	}
-	c.DevTargetDefaultPort = c.flagTargetDefaultPort
+
 	host, port, err := net.SplitHostPort(c.flagHostAddress)
 	if err != nil {
 		if !strings.Contains(err.Error(), "missing port") {
@@ -408,7 +420,7 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetSessionConnectionLimit = c.flagTargetSessionConnectionLimit
 	c.DevHostAddress = host
 
-	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
+	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
@@ -490,10 +502,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
 
 	// Initialize status grace period (0 denotes using env or default
 	// here)
@@ -511,6 +519,15 @@ func (c *Command) Run(args []string) int {
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
+	}
+	if err := c.SetupEventing(
+		c.Logger,
+		c.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventFlags(eventFlags)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
@@ -542,6 +559,11 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	var opts []base.Option
+	if c.flagCreateLoopbackHostPlugin {
+		c.DevLoopbackHostPluginId = "pl_1234567890"
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
+		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
+	}
 	switch c.flagDatabaseUrl {
 	case "":
 		if c.flagDisableDatabaseDestruction {
@@ -574,6 +596,7 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	{
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,

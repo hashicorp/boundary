@@ -76,6 +76,7 @@ func TestSessionCleanupJob(t *testing.T) {
 				ClientTcpPort:      22,
 				EndpointTcpAddress: "127.0.0.1",
 				EndpointTcpPort:    22,
+				UserClientIp:       "127.0.0.1",
 			})
 			require.NoError(err)
 			require.Len(cs, 2)

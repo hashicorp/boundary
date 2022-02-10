@@ -6,13 +6,22 @@ CWD := $(shell pwd)
 PG_DOCKER_TAG ?= 13-alpine
 # Version of pg_tap docker image
 PG_TAP_DOCKER_TAG ?= pg13
+SQL_TEST_DB_PORT ?=
+DOCKER_ARGS ?=
+ifneq ($(strip $(SQL_TEST_DB_PORT)),)
+	DOCKER_ARGS += -p $(SQL_TEST_DB_PORT):5432
+endif
+
 
 # Pass through options to pg_prove
 # See: https://pgtap.org/pg_prove.html
 PROVE_OPTS ?=
 
 TESTS ?= tests/setup/*.sql \
-		 tests/wh/*/*.sql
+		 tests/wh/*/*.sql \
+		 tests/sentinel/*.sql \
+		 tests/credential/*/*.sql \
+		 tests/session/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
@@ -20,6 +29,8 @@ POSTGRES_DOCKER_IMAGE := $(POSTGRES_DOCKER_IMAGE_BASE):$(PG_DOCKER_TAG)
 
 PG_TAP_DOCKER_IMAGE_BASE ?= subzerocloud/pgtap
 PG_TAP_DOCKER_IMAGE := $(PG_TAP_DOCKER_IMAGE_BASE):$(PG_TAP_DOCKER_TAG)
+
+SQL_TEST_CONTAINER_NAME ?= boundary-sql-tests
 
 
 # re-write paths for docker
@@ -29,16 +40,17 @@ test:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
 	@docker run -d \
-		--name boundary-sql-tests \
+		--name $(SQL_TEST_CONTAINER_NAME) \
+		$(DOCKER_ARGS) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
-		-v "$(CWD)/../schema/migrations/postgres":/migrations \
+		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
 	@docker run -it --rm \
 		--name test \
-		--link boundary-sql-tests:db \
+		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \
 		-e HOST=db \
 		-e PORT=5432 \
@@ -47,24 +59,28 @@ test:
 		-e TESTS="$(PROVE_OPTS) $(dockerized_tests)" \
 		-v "$(CWD)/tests":/test \
 		$(PG_TAP_DOCKER_IMAGE); \
-		(ret=$$?; docker stop boundary-sql-tests &>/dev/null && docker rm -v boundary-sql-tests &>/dev/null && exit $$ret)
+		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) &>/dev/null && docker rm -v $(SQL_TEST_CONTAINER_NAME) &>/dev/null && exit $$ret)
 
 database-up:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)
 	@docker run -d \
-		--name boundary-sql-tests \
+		--name $(SQL_TEST_CONTAINER_NAME) \
+		$(DOCKER_ARGS) \
 		-e POSTGRES_PASSWORD=boundary \
 		-e POSTGRES_USER=boundary \
 		-e POSTGRES_DB=boundary \
-		-v "$(CWD)/../schema/migrations/postgres":/migrations \
+		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
+ifdef SQL_TEST_DB_PORT
+	@echo "Test database available at:  postgres://boundary:boundary@localhost:$(SQL_TEST_DB_PORT)/boundary?sslmode=disable"
+endif
 
 run-tests:
 	@echo Using $(PG_TAP_DOCKER_IMAGE)
 	@docker run -it --rm \
 		--name test \
-		--link boundary-sql-tests:db \
+		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \
 		-e HOST=db \
 		-e PORT=5432 \
@@ -75,7 +91,7 @@ run-tests:
 		$(PG_TAP_DOCKER_IMAGE)
 
 clean:
-	docker stop boundary-sql-tests || true
-	docker rm -v boundary-sql-tests || true
+	docker stop $(SQL_TEST_CONTAINER_NAME) || true
+	docker rm -v $(SQL_TEST_CONTAINER_NAME) || true
 
 .PHONY: all clean test database-up run-tests

@@ -148,6 +148,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "forbidden",
 		Kind:    Other,
 	},
+	Unauthorized: {
+		Message: "unauthorized",
+		Kind:    Other,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,
@@ -224,6 +228,18 @@ var errorCodeInfo = map[Code]Info{
 		Message: "request for a new credential from vault failed",
 		Kind:    External,
 	},
+	VaultEmptySecret: {
+		Message: "vault secret is empty",
+		Kind:    Integrity,
+	},
+	VaultInvalidMappingOverride: {
+		Message: "invalid credential mapping override",
+		Kind:    Parameter,
+	},
+	VaultInvalidCredentialMapping: {
+		Message: "mapping vault secret to a credential type failed",
+		Kind:    Integrity,
+	},
 	OidcProviderCallbackError: {
 		Message: "oidc provider callback error",
 		Kind:    External,
@@ -231,5 +247,9 @@ var errorCodeInfo = map[Code]Info{
 	GracefullyAborted: {
 		Message: "purposefully aborted without error",
 		Kind:    Other,
+	},
+	UnexpectedRowsAffected: {
+		Message: "unexpected number of rows affected",
+		Kind:    Integrity,
 	},
 }

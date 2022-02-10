@@ -108,7 +108,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				defer rows.Close()
 				for rows.Next() {
 					var returnedCred DynamicCredential
-					w.ScanRows(rows, &returnedCred)
+					w.ScanRows(ctx, rows, &returnedCred)
 					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
 				}
 			}
@@ -118,11 +118,11 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			if foundStates, err = fetchStates(ctx, read, returnedSession.PublicId); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			if len(foundStates) != 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
-			}
 			if len(foundStates) == 0 {
 				return errors.New(ctx, errors.SessionNotFound, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
+			}
+			if len(foundStates) != 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
 			}
 			returnedSession.States = foundStates
 			if returnedSession.States[0].Status != StatusPending {
@@ -169,6 +169,12 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			if len(creds) > 0 {
 				session.DynamicCredentials = creds
 			}
+
+			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.Connections = connections
 			return nil
 		},
 	)
@@ -252,6 +258,8 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	case db.AscendingOrderBy:
 		withOrder = "order by create_time asc"
 	case db.DescendingOrderBy:
+		fallthrough
+	default:
 		withOrder = "order by create_time"
 	}
 
@@ -268,15 +276,15 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	}
 	defer rows.Close()
 
-	var sessionsWithState []*sessionView
+	var sessionsList []*sessionListView
 	for rows.Next() {
-		var s sessionView
-		if err := r.reader.ScanRows(rows, &s); err != nil {
+		var s sessionListView
+		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		sessionsWithState = append(sessionsWithState, &s)
+		sessionsList = append(sessionsList, &s)
 	}
-	sessions, err := r.convertToSessions(ctx, sessionsWithState, withListingConvert(true))
+	sessions, err := r.convertToSessions(ctx, sessionsList, withListingConvert(true))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -499,7 +507,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 			return nil, errors.New(ctx, errors.MultipleRecords, op, "query returned more than one row")
 		}
 		info = &ConnectionAuthzSummary{}
-		if err := r.reader.ScanRows(rows, info); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, info); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 	}
@@ -526,11 +534,13 @@ func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Con
 			connection.ClientTcpPort = c.ClientTcpPort
 			connection.EndpointTcpAddress = c.EndpointTcpAddress
 			connection.EndpointTcpPort = c.EndpointTcpPort
+			connection.UserClientIp = c.UserClientIp
 			fieldMask := []string{
 				"ClientTcpAddress",
 				"ClientTcpPort",
 				"EndpointTcpAddress",
 				"EndpointTcpPort",
+				"UserClientIp",
 			}
 			rowsUpdated, err := w.Update(ctx, &connection, fieldMask, nil)
 			if err != nil {
@@ -792,4 +802,16 @@ func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.O
 		return nil, nil
 	}
 	return states, nil
+}
+
+func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*Connection, error) {
+	const op = "session.fetchConnections"
+	var connections []*Connection
+	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if len(connections) == 0 {
+		return nil, nil
+	}
+	return connections, nil
 }

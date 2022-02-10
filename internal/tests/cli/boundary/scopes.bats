@@ -64,6 +64,7 @@ export NEW_PROJECT='test_project'
   local sid=$(scope_id $NEW_PROJECT $parent)
 	run delete_scope $sid
   echo "$output"
+  run has_status_code "$output" "204"
 	[ "$status" -eq 0 ]
 }
 
@@ -79,6 +80,7 @@ export NEW_PROJECT='test_project'
   local sid=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
 	run delete_scope $sid
   echo "$output"
+  run has_status_code "$output" "204"
 	[ "$status" -eq 0 ]
 }
 

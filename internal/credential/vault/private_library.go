@@ -5,91 +5,150 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault/internal/userpassword"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/structwrapping"
+	vault "github.com/hashicorp/vault/api"
 	"google.golang.org/protobuf/proto"
 )
 
-var _ credential.Dynamic = (*actualCredential)(nil)
+var _ credential.UserPassword = (*usrPassCred)(nil)
 
-type actualCredential struct {
-	id         string
-	sessionId  string
-	lib        *privateLibrary
-	secretData map[string]interface{}
-	purpose    credential.Purpose
+type usrPassCred struct {
+	*baseCred
+	username string
+	password credential.Password
 }
 
-func (ac *actualCredential) GetPublicId() string           { return ac.id }
-func (ac *actualCredential) GetSessionId() string          { return ac.sessionId }
-func (ac *actualCredential) Secret() credential.SecretData { return ac.secretData }
-func (ac *actualCredential) Library() credential.Library   { return ac.lib }
-func (ac *actualCredential) Purpose() credential.Purpose   { return ac.purpose }
+func (c *usrPassCred) Username() string              { return c.username }
+func (c *usrPassCred) Password() credential.Password { return c.password }
+
+var _ credential.Dynamic = (*baseCred)(nil)
+
+type baseCred struct {
+	*Credential
+
+	lib        *privateLibrary
+	secretData map[string]interface{}
+}
+
+func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
+func (bc *baseCred) Library() credential.Library   { return bc.lib }
+func (bc *baseCred) Purpose() credential.Purpose   { return bc.lib.Purpose }
+func (bc *baseCred) getExpiration() time.Duration  { return bc.expiration }
+
+// convert converts bc to a specific credential type if bc is not
+// UnspecifiedType.
+func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
+	switch bc.Library().CredentialType() {
+	case credential.UserPasswordType:
+		return baseToUsrPass(ctx, bc)
+	}
+	return bc, nil
+}
+
+func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
+	switch {
+	case bc == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
+	case bc.lib == nil:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
+	case bc.Library().CredentialType() != credential.UserPasswordType:
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
+	}
+
+	uAttr, pAttr := bc.lib.UsernameAttribute, bc.lib.PasswordAttribute
+	if uAttr == "" {
+		uAttr = "username"
+	}
+	if pAttr == "" {
+		pAttr = "password"
+	}
+	username, password := userpassword.Extract(bc.secretData, uAttr, pAttr)
+	if username == "" || password == "" {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
+	}
+
+	return &usrPassCred{
+		baseCred: bc,
+		username: username,
+		password: credential.Password(password),
+	}, nil
+}
 
 var _ credential.Library = (*privateLibrary)(nil)
 
+// A privateLibrary contains all the values needed to connect to Vault and
+// retrieve credentials.
 type privateLibrary struct {
-	PublicId        string `gorm:"primary_key"`
-	StoreId         string
-	Name            string
-	Description     string
-	CreateTime      *timestamp.Timestamp
-	UpdateTime      *timestamp.Timestamp
-	Version         uint32
-	ScopeId         string
-	VaultPath       string
-	HttpMethod      string
-	HttpRequestBody []byte
-	VaultAddress    string
-	Namespace       string
-	CaCert          []byte
-	TlsServerName   string
-	TlsSkipVerify   bool
-	TokenHmac       []byte
-	Token           TokenSecret
-	CtToken         []byte
-	TokenKeyId      string
-	ClientCert      []byte
-	ClientKey       KeySecret
-	CtClientKey     []byte
-	ClientKeyId     string
-	Purpose         credential.Purpose `gorm:"-"`
+	PublicId          string `gorm:"primary_key"`
+	StoreId           string
+	CredType          string `gorm:"column:credential_type"`
+	UsernameAttribute string
+	PasswordAttribute string
+	Name              string
+	Description       string
+	CreateTime        *timestamp.Timestamp
+	UpdateTime        *timestamp.Timestamp
+	Version           uint32
+	ScopeId           string
+	VaultPath         string
+	HttpMethod        string
+	HttpRequestBody   []byte
+	VaultAddress      string
+	Namespace         string
+	CaCert            []byte
+	TlsServerName     string
+	TlsSkipVerify     bool
+	TokenHmac         []byte
+	Token             TokenSecret
+	CtToken           []byte
+	TokenKeyId        string
+	ClientCert        []byte
+	ClientKey         KeySecret
+	CtClientKey       []byte
+	ClientKeyId       string
+	Purpose           credential.Purpose `gorm:"-"`
 }
 
 func (pl *privateLibrary) clone() *privateLibrary {
 	// The 'append(a[:0:0], a...)' comes from
 	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
 	return &privateLibrary{
-		PublicId:        pl.PublicId,
-		StoreId:         pl.StoreId,
-		Name:            pl.Name,
-		Description:     pl.Description,
-		CreateTime:      proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
-		UpdateTime:      proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
-		Version:         pl.Version,
-		ScopeId:         pl.ScopeId,
-		VaultPath:       pl.VaultPath,
-		HttpMethod:      pl.HttpMethod,
-		HttpRequestBody: append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
-		VaultAddress:    pl.VaultAddress,
-		Namespace:       pl.Namespace,
-		CaCert:          append(pl.CaCert[:0:0], pl.CaCert...),
-		TlsServerName:   pl.TlsServerName,
-		TlsSkipVerify:   pl.TlsSkipVerify,
-		TokenHmac:       append(pl.TokenHmac[:0:0], pl.TokenHmac...),
-		Token:           append(pl.Token[:0:0], pl.Token...),
-		CtToken:         append(pl.CtToken[:0:0], pl.CtToken...),
-		TokenKeyId:      pl.TokenKeyId,
-		ClientCert:      append(pl.ClientCert[:0:0], pl.ClientCert...),
-		ClientKey:       append(pl.ClientKey[:0:0], pl.ClientKey...),
-		CtClientKey:     append(pl.CtClientKey[:0:0], pl.CtClientKey...),
-		ClientKeyId:     pl.ClientKeyId,
-		Purpose:         pl.Purpose,
+		PublicId:          pl.PublicId,
+		StoreId:           pl.StoreId,
+		CredType:          pl.CredType,
+		UsernameAttribute: pl.UsernameAttribute,
+		PasswordAttribute: pl.PasswordAttribute,
+		Name:              pl.Name,
+		Description:       pl.Description,
+		CreateTime:        proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
+		UpdateTime:        proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
+		Version:           pl.Version,
+		ScopeId:           pl.ScopeId,
+		VaultPath:         pl.VaultPath,
+		HttpMethod:        pl.HttpMethod,
+		HttpRequestBody:   append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
+		VaultAddress:      pl.VaultAddress,
+		Namespace:         pl.Namespace,
+		CaCert:            append(pl.CaCert[:0:0], pl.CaCert...),
+		TlsServerName:     pl.TlsServerName,
+		TlsSkipVerify:     pl.TlsSkipVerify,
+		TokenHmac:         append(pl.TokenHmac[:0:0], pl.TokenHmac...),
+		Token:             append(pl.Token[:0:0], pl.Token...),
+		CtToken:           append(pl.CtToken[:0:0], pl.CtToken...),
+		TokenKeyId:        pl.TokenKeyId,
+		ClientCert:        append(pl.ClientCert[:0:0], pl.ClientCert...),
+		ClientKey:         append(pl.ClientKey[:0:0], pl.ClientKey...),
+		CtClientKey:       append(pl.CtClientKey[:0:0], pl.CtClientKey...),
+		ClientKeyId:       pl.ClientKeyId,
+		Purpose:           pl.Purpose,
 	}
 }
 
@@ -100,6 +159,15 @@ func (pl *privateLibrary) GetDescription() string              { return pl.Descr
 func (pl *privateLibrary) GetVersion() uint32                  { return pl.Version }
 func (pl *privateLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
 func (pl *privateLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
+
+func (pl *privateLibrary) CredentialType() credential.Type {
+	switch ct := pl.CredType; ct {
+	case "":
+		return credential.UnspecifiedType
+	default:
+		return credential.Type(ct)
+	}
+}
 
 func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(privateLibrary).decrypt"
@@ -157,6 +225,63 @@ func (pl *privateLibrary) client() (*client, error) {
 	return client, nil
 }
 
+type dynamicCred interface {
+	credential.Dynamic
+	getExpiration() time.Duration
+	insertQuery() (query string, queryValues []interface{})
+	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{})
+}
+
+// retrieveCredential retrieves a dynamic credential from Vault for the
+// given sessionId.
+func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string) (dynamicCred, error) {
+	// Get the credential ID early. No need to get a secret from Vault
+	// if there is no way to save it in the database.
+	credId, err := newCredentialId()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	client, err := pl.client()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var secret *vault.Secret
+	switch Method(pl.HttpMethod) {
+	case MethodGet:
+		secret, err = client.get(pl.VaultPath)
+	case MethodPost:
+		secret, err = client.post(pl.VaultPath, pl.HttpRequestBody)
+	default:
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", pl.PublicId))
+	}
+
+	if err != nil {
+		// TODO(mgaffney) 05/2021: detect if the error is because of an
+		// expired or invalid token
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if secret == nil {
+		return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+	}
+
+	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
+	cred, err := newCredential(pl.GetPublicId(), sessionId, secret.LeaseID, pl.TokenHmac, leaseDuration)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	cred.PublicId = credId
+	cred.IsRenewable = secret.Renewable
+
+	dCred := &baseCred{
+		Credential: cred,
+		lib:        pl,
+		secretData: secret.Data,
+	}
+	return convert(ctx, dCred)
+}
+
 // TableName returns the table name for gorm.
 func (pl *privateLibrary) TableName() string {
 	return "credential_vault_library_private"
@@ -192,7 +317,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	var libs []*privateLibrary
 	for rows.Next() {
 		var lib privateLibrary
-		if err := r.reader.ScanRows(rows, &lib); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		purps := mapper.get(lib.GetPublicId())

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
 )
 
@@ -16,6 +17,7 @@ type Host struct {
 	Id                string                 `json:"id,omitempty"`
 	HostCatalogId     string                 `json:"host_catalog_id,omitempty"`
 	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Plugin            *plugins.PluginInfo    `json:"plugin,omitempty"`
 	Name              string                 `json:"name,omitempty"`
 	Description       string                 `json:"description,omitempty"`
 	CreatedTime       time.Time              `json:"created_time,omitempty"`
@@ -24,6 +26,9 @@ type Host struct {
 	Type              string                 `json:"type,omitempty"`
 	HostSetIds        []string               `json:"host_set_ids,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	IpAddresses       []string               `json:"ip_addresses,omitempty"`
+	DnsNames          []string               `json:"dns_names,omitempty"`
+	ExternalId        string                 `json:"external_id,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
@@ -42,10 +47,8 @@ func (n HostReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	HostCreateResult = HostReadResult
-	HostUpdateResult = HostReadResult
-)
+type HostCreateResult = HostReadResult
+type HostUpdateResult = HostReadResult
 
 type HostDeleteResult struct {
 	response *api.Response

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/go-wordwrap"
 )
 
@@ -214,7 +215,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 
 	if len(c.flagGrants) > 0 {
 		for _, grant := range c.flagGrants {
-			_, err := perms.Parse("global", grant)
+			_, err := perms.Parse(scope.Global.String(), grant)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
 				return false

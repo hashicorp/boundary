@@ -204,7 +204,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				adminRole = adminRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 3)
-				roleTicket, err := w.GetTicket(adminRole)
+				roleTicket, err := w.GetTicket(ctx, adminRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
@@ -267,7 +267,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				defaultRole = defaultRoleRaw.(*Role)
 
 				msgs := make([]*oplog.Message, 0, 6)
-				roleTicket, err := w.GetTicket(defaultRole)
+				roleTicket, err := w.GetTicket(ctx, defaultRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 				}
@@ -290,6 +290,12 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					switch s.Type {
 					case scope.Project.String():
 						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
+						if err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
+						}
+						grants = append(grants, roleGrant)
+
+						roleGrant, err = NewRoleGrant(defaultRolePublicId, "type=target;actions=list")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -474,7 +480,7 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	var where string
 	var args []interface{}
 	switch {
-	case rootScopeId == "global":
+	case rootScopeId == scope.Global.String():
 		// Nothing -- we want all scopes
 	case strings.HasPrefix(rootScopeId, "o_"):
 		// The org itself and any projects that have it as parent

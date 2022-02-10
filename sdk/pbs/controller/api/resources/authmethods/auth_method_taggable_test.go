@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/encrypt"
@@ -19,11 +20,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	wrapper := wrapper.TestWrapper(t)
-	testEncryptingFilter := &encrypt.Filter{
-		Wrapper:  wrapper,
-		HmacSalt: []byte("salt"),
-		HmacInfo: []byte("info"),
-	}
+	testEncryptingFilter := api.NewEncryptFilter(t, wrapper)
 
 	tests := []struct {
 		name      string
@@ -49,6 +46,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 							"client_secret_hmac":                   structpb.NewStringValue("public-client_secret_hmac"),
 							"max_age":                              structpb.NewStringValue("public-max_age"),
 							"signing_algorithms":                   structpb.NewStringValue("public-signing_algorithms"),
+							"idp_ca_certs":                         structpb.NewStringValue("public-signing_algorithms"),
 							"api_url_prefix":                       structpb.NewStringValue("public-api_url_prefix"),
 							"callback_url":                         structpb.NewStringValue("public-callback_url"),
 							"allowed_audiences":                    structpb.NewStringValue("public-allowed_audiences"),
@@ -87,6 +85,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 							"client_secret_hmac":                   structpb.NewStringValue("public-client_secret_hmac"),
 							"max_age":                              structpb.NewStringValue("public-max_age"),
 							"signing_algorithms":                   structpb.NewStringValue("public-signing_algorithms"),
+							"idp_ca_certs":                         structpb.NewStringValue("public-signing_algorithms"),
 							"api_url_prefix":                       structpb.NewStringValue("public-api_url_prefix"),
 							"callback_url":                         structpb.NewStringValue("public-callback_url"),
 							"allowed_audiences":                    structpb.NewStringValue("public-allowed_audiences"),
@@ -94,7 +93,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 							"account_claim_maps":                   structpb.NewStringValue("public-account_claim_maps"),
 							"disable_discovered_config_validation": structpb.NewStringValue("public-disable_discovered_config_validation"),
 							"dry_run":                              structpb.NewStringValue("public-dry_run"),
-							"client_secret":                        structpb.NewStringValue("<REDACTED>"),
+							"client_secret":                        structpb.NewStringValue(encrypt.RedactedData),
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},
@@ -119,7 +118,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
-					Type:        "oidc",
+					Type:        "password",
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"min_login_name_length": structpb.NewStringValue("public-min_login_name_length"),
@@ -145,7 +144,7 @@ func TestAuthMethod_Tags(t *testing.T) {
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
-					Type:        "oidc",
+					Type:        "password",
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"min_login_name_length": structpb.NewStringValue("public-min_login_name_length"),

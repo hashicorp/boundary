@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
@@ -20,10 +22,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (c *Controller) startListeners() error {
+func (c *Controller) startListeners(ctx context.Context) error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
+		var err error
+		if c.gatewayServer, c.gatewayTicket, err = newGatewayServer(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer); err != nil {
+			return err
+		}
+		c.gatewayMux = newGatewayMux()
+
 		handler, err := c.handler(HandlerProperties{
 			ListenerConfig: ln.Config,
 			CancelCtx:      c.baseContext,
@@ -31,22 +39,6 @@ func (c *Controller) startListeners() error {
 		if err != nil {
 			return err
 		}
-
-		/*
-			// TODO: As I write this Vault's having this code audited, make sure to
-			// port over any recommendations
-			//
-			// We perform validation on the config earlier, we can just cast here
-			if _, ok := ln.config["x_forwarded_for_authorized_addrs"]; ok {
-				hopSkips := ln.config["x_forwarded_for_hop_skips"].(int)
-				authzdAddrs := ln.config["x_forwarded_for_authorized_addrs"].([]*sockaddr.SockAddrMarshaler)
-				rejectNotPresent := ln.config["x_forwarded_for_reject_not_present"].(bool)
-				rejectNonAuthz := ln.config["x_forwarded_for_reject_not_authorized"].(bool)
-				if len(authzdAddrs) > 0 {
-					handler = vaulthttp.WrapForwardedForHandler(handler, authzdAddrs, rejectNotPresent, rejectNonAuthz, hopSkips)
-				}
-			}
-		*/
 
 		// Resolve it here to avoid race conditions if the base context is
 		// replaced
@@ -116,9 +108,20 @@ func (c *Controller) startListeners() error {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
 
+		workerReqInterceptor, err := workerRequestInfoInterceptor(ctx, c.conf.Eventer)
+		if err != nil {
+			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
+		}
 		workerServer := grpc.NewServer(
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
+			grpc.UnaryInterceptor(
+				grpc_middleware.ChainUnaryServer(
+					workerReqInterceptor,
+					auditRequestInterceptor(ctx),  // before we get started, audit the request
+					auditResponseInterceptor(ctx), // as we finish, audit the response
+				),
+			),
 		)
 		workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
 		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
@@ -133,6 +136,11 @@ func (c *Controller) startListeners() error {
 		})
 		return nil
 	}
+
+	c.gatewayListener, _ = newGatewayListener()
+	servers = append(servers, func() {
+		go c.gatewayServer.Serve(c.gatewayListener)
+	})
 
 	for _, ln := range c.conf.Listeners {
 		var err error
@@ -184,6 +192,21 @@ func (c *Controller) stopListeners(serversOnly bool) error {
 			}
 		}()
 	}
+
+	if c.gatewayServer != nil {
+		serverWg.Add(1)
+		go func() {
+			defer serverWg.Done()
+			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, globals.DefaultMaxRequestDuration)
+			defer shutdownKillCancel()
+			go func() {
+				<-shutdownKill.Done()
+				c.gatewayServer.Stop()
+			}()
+			c.gatewayServer.GracefulStop()
+		}()
+	}
+
 	serverWg.Wait()
 	if serversOnly {
 		return nil

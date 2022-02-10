@@ -120,6 +120,7 @@ main
 /bin/
 update-ui-assets*
 /plugins/kms/assets/
+/plugins/host/assets/boundary-plugin*
 
 # Test config file
 test*.hcl
@@ -128,3 +129,8 @@ test*.hcl
 /plugins/kms/assets/
 
 # vim: set filetype=conf :
+
+# CRT (Common Release Tooling)
+!.release/ci.hcl
+dist
+out

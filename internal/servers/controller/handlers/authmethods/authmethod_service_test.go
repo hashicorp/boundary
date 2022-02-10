@@ -64,6 +64,12 @@ var authorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"managed-groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 }
 
 func TestGet(t *testing.T) {
@@ -428,12 +434,14 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: pwam.GetPublicId(),
 			},
+			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete an Existing OIDC AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: oidcam.GetPublicId(),
 			},
+			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete bad auth_method id",

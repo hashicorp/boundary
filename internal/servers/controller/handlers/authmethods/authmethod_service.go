@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -60,7 +61,8 @@ var (
 	}
 
 	collectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.Account: accounts.CollectionActions,
+		resource.Account:      accounts.CollectionActions,
+		resource.ManagedGroup: managed_groups.CollectionActions,
 	}
 )
 
@@ -389,7 +391,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &pbs.DeleteAuthMethodResponse{}, nil
 }
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.

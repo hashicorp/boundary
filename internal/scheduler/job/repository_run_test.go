@@ -70,7 +70,7 @@ func TestRepository_RunJobs(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.NotSpecificIntegrity,
-			wantErrMsg:  "job.(Repository).RunJobs: db.DoTx: job.(Repository).RunJobs: insert or update on table \"job_run\" violates foreign key constraint \"server_fkey\": integrity violation: error #1003",
+			wantErrMsg:  "job.(Repository).RunJobs: db.DoTx: job.(Repository).RunJobs: db.Query: insert or update on table \"job_run\" violates foreign key constraint \"server_fkey\": integrity violation: error #1003",
 		},
 	}
 	for _, tt := range tests {
@@ -373,7 +373,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.CheckConstraint,
-			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job_run_completed_count_less_than_equal_to_total_count constraint failed: check constraint violated: integrity violation: error #1000",
+			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: db.Query: job_run_completed_count_less_than_equal_to_total_count constraint failed: check constraint violated: integrity violation: error #1000",
 		},
 	}
 
@@ -430,7 +430,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100: dbw.LookupById: record not found", err.Error())
 	})
 }
 
@@ -595,7 +595,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100: dbw.LookupById: record not found", err.Error())
 	})
 }
 
@@ -747,7 +747,7 @@ func TestRepository_FailRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100: dbw.LookupById: record not found", err.Error())
 	})
 }
 

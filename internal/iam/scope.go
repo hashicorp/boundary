@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -36,7 +37,7 @@ var (
 
 func NewOrg(opt ...Option) (*Scope, error) {
 	global := AllocScope()
-	global.PublicId = "global"
+	global.PublicId = scope.Global.String()
 	return newScope(&global, opt...)
 }
 
@@ -63,7 +64,7 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	}
 	var typ scope.Type
 	switch {
-	case parent.PublicId == "global":
+	case parent.PublicId == scope.Global.String():
 		typ = scope.Org
 	case strings.HasPrefix(parent.PublicId, scope.Org.Prefix()):
 		typ = scope.Project
@@ -129,8 +130,8 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 		case s.ParentId == "":
 			return errors.New(ctx, errors.InvalidParameter, op, "scope must have a parent")
 		case s.Type == scope.Org.String():
-			if s.ParentId != "global" {
-				return errors.New(ctx, errors.InvalidParameter, op, `org's parent must be "global"`)
+			if s.ParentId != scope.Global.String() {
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf(`org's parent must be "%s"`, scope.Global.String()))
 			}
 		case s.Type == scope.Project.String():
 			parentScope := AllocScope()
@@ -184,11 +185,11 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			// for all scopes which are not global, and the global case was
 			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
-			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
+			if err := r.LookupWhere(ctx, &p, where, []interface{}{s.PublicId}); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent public id from public id"))
 			}
 		default:
-			if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
+			if err := r.LookupWhere(ctx, &p, "public_id = ?", []interface{}{s.ParentId}); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup parent from public id"))
 			}
 		}

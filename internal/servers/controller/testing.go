@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -27,6 +29,9 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
@@ -42,6 +47,7 @@ const (
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
 	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
+	DefaultTestPluginId                      = "pl_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -337,9 +343,14 @@ type TestControllerOpts struct {
 	// created but examined after-the-fact
 	DisableDatabaseDestruction bool
 
-	// If set, instead of creating a dev database, it will connect to an
-	// existing database given the url
+	// DatabaseUrl will cause the test controller to connect to an existing
+	// database given the url instead of creating a new one
 	DatabaseUrl string
+
+	// DisableDatabaseTemplate forces using a fresh Postgres instance in Docker
+	// instead of using a local templated version. Useful for CI of external
+	// repos, like Terraform.
+	DisableDatabaseTemplate bool
 
 	// If true, the controller will not be started
 	DisableAutoStart bool
@@ -379,6 +390,10 @@ type TestControllerOpts struct {
 	// The amount of time to wait before marking connections as closed when a
 	// worker has not reported in
 	StatusGracePeriodDuration time.Duration
+
+	// The amount of time between the scheduler waking up to run it's registered
+	// jobs.
+	SchedulerRunJobInterval time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -394,6 +409,34 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		ctx:    ctx,
 		cancel: cancel,
 		opts:   opts,
+	}
+
+	conf := TestControllerConfig(t, ctx, tc, opts)
+	var err error
+	tc.c, err = New(ctx, conf)
+	if err != nil {
+		tc.Shutdown()
+		t.Fatal(err)
+	}
+
+	tc.buildClient()
+
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
+	}
+
+	return tc
+}
+
+// TestControllerConfig provides a way to create a config for a TestController.
+// The tc passed as a parameter will be modified by this func.
+func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
+	const op = "controller.TestControllerConfig"
+	if opts == nil {
+		opts = new(TestControllerOpts)
 	}
 
 	// Base server
@@ -453,6 +496,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
+	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
+
+	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginHostLoopback)
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
@@ -472,6 +518,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			t.Fatal(err)
 		}
 	}
+	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
@@ -582,34 +629,19 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
-		createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		if !opts.DisableDatabaseTemplate {
+			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
+		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	conf := &Config{
+	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
-
-	tc.c, err = New(ctx, conf)
-	if err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
-	}
-
-	tc.buildClient()
-
-	if !opts.DisableAutoStart {
-		if err := tc.c.Start(); err != nil {
-			tc.Shutdown()
-			t.Fatal(err)
-		}
-	}
-
-	return tc
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -715,4 +747,40 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	}
 	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
 	return nil
+}
+
+// startTestGreeterService is intended to facilitate the testing of
+// interceptors.  You provide a greeter service that produces appropriate
+// responses to test your interceptor(s).  This test function will start up a
+// test greeter service wrapped with the  specified interceptors and return an
+// initialized client for the service. The test service will be stopped/cleaned
+// up after the test (or subtests) have completed.
+func startTestGreeterService(t *testing.T, greeter interceptor.GreeterServiceServer, interceptors ...grpc.UnaryServerInterceptor) interceptor.GreeterServiceClient {
+	t.Helper()
+	require := require.New(t)
+	dialCtx := context.Background()
+
+	buffer := 1024 * 1024
+	listener := bufconn.Listen(buffer)
+
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)),
+	)
+	interceptor.RegisterGreeterServiceServer(s, greeter)
+	go func() {
+		err := s.Serve(listener)
+		require.NoError(err)
+	}()
+
+	conn, _ := grpc.DialContext(dialCtx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return listener.Dial()
+	}), grpc.WithInsecure())
+
+	t.Cleanup(func() {
+		listener.Close()
+		s.Stop()
+	})
+
+	client := interceptor.NewGreeterServiceClient(conn)
+	return client
 }

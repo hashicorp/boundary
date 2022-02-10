@@ -52,7 +52,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -133,7 +133,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -307,7 +307,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(&role)
+			roleTicket, err := w.GetTicket(ctx, &role)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
@@ -483,7 +483,7 @@ select role_id as role_id, role_scope as scope_id, role_grant as grant from fina
 	defer rows.Close()
 	for rows.Next() {
 		var g perms.GrantTuple
-		if err := r.reader.ScanRows(rows, &g); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &g); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		grants = append(grants, g)

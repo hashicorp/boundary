@@ -100,13 +100,16 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	switch {
 	case err != nil:
 		return errors.Wrap(ctx, err, op)
+	case rowsUpdated == 0:
+		return errors.New(ctx, errors.RecordNotFound, op, "no matching version for host set found")
 	case rowsUpdated > 1:
 		return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+
 	}
 	msgs = append(msgs, setMsg)
 
 	// Write oplog
-	ticket, err := w.GetTicket(set)
+	ticket, err := w.GetTicket(ctx, set)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}
@@ -353,7 +356,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	var changes []*change
 	for rows.Next() {
 		var chg change
-		if err := r.reader.ScanRows(rows, &chg); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
 		changes = append(changes, &chg)

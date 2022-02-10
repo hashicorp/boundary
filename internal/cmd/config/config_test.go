@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -140,6 +141,19 @@ func TestDevController(t *testing.T) {
 		assert.Empty(t, l0.CorsAllowedOrigins)
 		assert.True(t, *l0.CorsDisableDefaultAllowedOriginValues)
 	}
+
+	// Test plugins block
+	{
+		// CORS disabled
+		conf := `
+		plugins {
+			execution_dir = "/tmp/foobar"
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		assert.Equal(t, actual.Plugins.ExecutionDir, "/tmp/foobar")
+	}
 }
 
 func TestDevWorker(t *testing.T) {
@@ -160,9 +174,10 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:        "dev-worker",
-			Description: "A default worker created in dev mode",
-			Controllers: []string{"127.0.0.1"},
+			Name:           "dev-worker",
+			Description:    "A default worker created in dev mode",
+			Controllers:    []string{"127.0.0.1"},
+			ControllersRaw: []interface{}{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -320,6 +335,292 @@ func TestParsingName(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedController, out.Controller.Name)
 			assert.Equal(t, tt.expectedWorker, out.Worker.Name)
+		})
+	}
+}
+
+func TestWorkerTags(t *testing.T) {
+	defaultStateFn := func(t *testing.T, tags string) {
+		t.Setenv("BOUNDARY_WORKER_TAGS", tags)
+	}
+	tests := []struct {
+		name          string
+		in            string
+		stateFn       func(t *testing.T, tags string)
+		actualTags    string
+		expWorkerTags map[string][]string
+		expErr        bool
+		expErrStr     string
+	}{
+		{
+			name: "tags in HCL",
+			in: `
+			worker {
+				tags {
+					type = ["dev", "local"]
+					typetwo = "devtwo"
+				}
+			}`,
+			expWorkerTags: map[string][]string{
+				"type":    {"dev", "local"},
+				"typetwo": {"devtwo"},
+			},
+			expErr: false,
+		},
+		{
+			name: "tags in HCL key=value",
+			in: `
+			worker {
+				tags = ["type=dev", "type=local", "typetwo=devtwo"]
+			}
+			`,
+			expWorkerTags: map[string][]string{
+				"type":    {"dev", "local"},
+				"typetwo": {"devtwo"},
+			},
+			expErr: false,
+		},
+		{
+			name: "no tags",
+			in: `
+			worker {
+				name = "testworker"
+			}
+			`,
+			expWorkerTags: nil,
+			expErr:        false,
+		},
+		{
+			name: "empty tags",
+			in: `
+			worker {
+				name = "testworker"
+				tags = {}
+			}
+			`,
+			expWorkerTags: map[string][]string{},
+			expErr:        false,
+		},
+		{
+			name: "empty tags 2",
+			in: `
+			worker {
+				name = "testworker"
+				tags = []
+			}
+			`,
+			expWorkerTags: map[string][]string{},
+			expErr:        false,
+		},
+		{
+			name: "empty str",
+			in: `
+			worker {
+				tags = ""
+			}`,
+			expWorkerTags: map[string][]string{},
+			expErr:        false,
+		},
+		{
+			name: "empty env var",
+			in: `
+			worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			expWorkerTags: map[string][]string{},
+			expErr:        false,
+		},
+		{
+			name: "not a url - entire tags block",
+			in: `
+			worker {
+				tags = "\x00"
+			}`,
+			expWorkerTags: map[string][]string{},
+			expErr:        true,
+			expErrStr:     `Error parsing worker tags: error parsing url ("parse \"\\x00\": net/url: invalid control character in URL"): not a url`,
+		},
+		{
+			name: "not a url - key's value set to string",
+			in: `
+			worker {
+				tags {
+					type = "\x00"
+				}
+			}
+			`,
+			expWorkerTags: map[string][]string{
+				"type": {"\x00"},
+			},
+			expErr: false,
+		},
+		{
+			name: "one tag key",
+			in: `
+			worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			stateFn:    defaultStateFn,
+			actualTags: `type = ["dev", "local"]`,
+			expWorkerTags: map[string][]string{
+				"type": {"dev", "local"},
+			},
+			expErr: false,
+		},
+		{
+			name: "multiple tag keys",
+			in: `
+			worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			stateFn: defaultStateFn,
+			actualTags: `
+			type = ["dev", "local"]
+			typetwo = ["devtwo", "localtwo"]
+			`,
+			expWorkerTags: map[string][]string{
+				"type":    {"dev", "local"},
+				"typetwo": {"devtwo", "localtwo"},
+			},
+			expErr: false,
+		},
+		{
+			name: "json tags - entire tags block",
+			in: `
+			worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			stateFn: defaultStateFn,
+			actualTags: `
+			{
+				"type": ["dev", "local"],
+				"typetwo": ["devtwo", "localtwo"]
+			}
+			`,
+			expWorkerTags: map[string][]string{
+				"type":    {"dev", "local"},
+				"typetwo": {"devtwo", "localtwo"},
+			},
+			expErr: false,
+		},
+		{
+			name: "json tags - keys specified in the HCL file, values point to env/file",
+			in: `
+			worker {
+				tags = {
+					type = "env://BOUNDARY_WORKER_TAGS"
+					typetwo = "env://BOUNDARY_WORKER_TAGS_TWO"
+				}
+			}`,
+			stateFn: func(t *testing.T, tags string) {
+				defaultStateFn(t, tags)
+				t.Setenv("BOUNDARY_WORKER_TAGS_TWO", `["devtwo", "localtwo"]`)
+			},
+			actualTags: `["dev","local"]`,
+			expWorkerTags: map[string][]string{
+				"type":    {"dev", "local"},
+				"typetwo": {"devtwo", "localtwo"},
+			},
+			expErr: false,
+		},
+		{
+			name: "json tags - mix n' match",
+			in: `
+			worker {
+				name = "web-prod-us-east-1"
+				tags {
+				  type = "env://BOUNDARY_WORKER_TYPE_TAGS"
+				  typetwo = "file://type_two_tags.json"
+				  typethree = ["devthree", "localthree"]
+				}
+			}
+			`,
+			stateFn: func(t *testing.T, tags string) {
+				workerTypeTags := `["dev", "local"]`
+				t.Setenv("BOUNDARY_WORKER_TYPE_TAGS", workerTypeTags)
+
+				filepath := "./type_two_tags.json"
+				err := os.WriteFile(filepath, []byte(`["devtwo", "localtwo"]`), 0o666)
+				require.NoError(t, err)
+
+				t.Cleanup(func() {
+					err := os.Remove(filepath)
+					require.NoError(t, err)
+				})
+			},
+			expWorkerTags: map[string][]string{
+				"type":      {"dev", "local"},
+				"typetwo":   {"devtwo", "localtwo"},
+				"typethree": {"devthree", "localthree"},
+			},
+			expErr: false,
+		},
+		{
+			name: "bad json tags",
+			in: `
+			worker {
+				tags = {
+					type = "env://BOUNDARY_WORKER_TAGS"
+					typetwo = "env://BOUNDARY_WORKER_TAGS"
+				}
+			}`,
+			stateFn: defaultStateFn,
+			actualTags: `
+			{
+				"type": ["dev", "local"],
+				"typetwo": ["devtwo", "localtwo"]
+			}
+			`,
+			expWorkerTags: nil,
+			expErr:        true,
+			expErrStr:     "Error unmarshalling env var/file contents: json: cannot unmarshal object into Go value of type []string",
+		},
+		{
+			name: "no clean mapping to internal structures",
+			in: `
+			worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			stateFn: defaultStateFn,
+			actualTags: `
+			worker {
+				tags {
+					type = "indeed"
+				}
+			}
+			`,
+			expErr:    true,
+			expErrStr: "Error decoding the worker's tags: 1 error(s) decoding:\n\n* '[0][worker][0]' expected type 'string', got unconvertible type 'map[string]interface {}', value: 'map[tags:[map[type:indeed]]]'",
+		},
+		{
+			name: "not HCL",
+			in: `worker {
+				tags = "env://BOUNDARY_WORKER_TAGS"
+			}`,
+			stateFn:    defaultStateFn,
+			actualTags: `not_hcl`,
+			expErr:     true,
+			expErrStr:  "Error decoding raw worker tags: At 1:9: key 'not_hcl' expected start of object ('{') or assignment ('=')",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t, tt.actualTags)
+			}
+
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Worker)
+			require.Equal(t, tt.expWorkerTags, c.Worker.Tags)
 		})
 	}
 }
@@ -508,6 +809,394 @@ func TestController_EventingConfig(t *testing.T) {
 				assert.NotEmpty(c)
 				assert.Equal(tt.wantEventerConfig, c.Eventing)
 			}
+		})
+	}
+}
+
+func TestWorkerControllers(t *testing.T) {
+	tests := []struct {
+		name                 string
+		in                   string
+		stateFn              func(t *testing.T)
+		expWorkerControllers []string
+		expErr               bool
+		expErrIs             error
+		expErrStr            string
+	}{
+		{
+			name: "No Controllers",
+			in: `
+			worker {
+				name = "test"
+			}
+			`,
+			expWorkerControllers: nil,
+			expErr:               false,
+		},
+		{
+			name: "One Controller",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1"]
+			}
+			`,
+			expWorkerControllers: []string{"127.0.0.1"},
+			expErr:               false,
+		},
+		{
+			name: "Multiple controllers",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
+			}
+			`,
+			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:               false,
+		},
+		{
+			name: "Using env var",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
+			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:               false,
+		},
+		{
+			name: "Using env var - invalid input 1",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn: func(t *testing.T) {
+				controllers := `
+				worker {
+					controllers = ["127.0.0.1"]
+				}
+				`
+				t.Setenv("BOUNDARY_WORKER_CONTROLLERS", controllers)
+			},
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'w' looking for beginning of value",
+		},
+		{
+			name: "Using env var - invalid input 2",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+			}
+			`,
+			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `controllers = ["127.0.0.1"]`) },
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'c' looking for beginning of value",
+		},
+		{
+			name: "Unsupported object",
+			in: `
+			worker {
+				name = "test"
+				controllers = {
+					ip = "127.0.0.1"
+					ip = "127.0.0.2"
+				}
+			}
+			`,
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrStr:            "Failed to parse worker controllers: unexpected type \"[]map[string]interface {}\"",
+		},
+		{
+			name: "worker controllers set to invalid url",
+			in: `
+			worker {
+				name = "test"
+				controllers = "env://\x00"
+			}`,
+			expWorkerControllers: nil,
+			expErr:               true,
+			expErrIs:             parseutil.ErrNotAUrl,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t)
+			}
+
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				if tt.expErrIs != nil {
+					require.ErrorIs(t, err, tt.expErrIs)
+				} else {
+					require.EqualError(t, err, tt.expErrStr)
+				}
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Worker)
+			require.EqualValues(t, tt.expWorkerControllers, c.Worker.Controllers)
+		})
+	}
+}
+
+func TestControllerDescription(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envDescription string
+		expDescription string
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid controller description from env var",
+			in: `
+			controller {
+				description = "env://CONTROLLER_DESCRIPTION"
+			}`,
+			envDescription: "Test controller description",
+			expDescription: "Test controller description",
+			expErr:         false,
+		}, {
+			name: "Invalid controller description from env var",
+			in: `
+			controller {
+				description = "\uTest controller description"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:22: illegal char escape",
+		}, {
+			name: "Not a URL, non-printable description",
+			in: `
+			controller {
+				description = "\x00" 
+			}`,
+			expErr:    true,
+			expErrStr: "Controller description contains non-printable characters",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("CONTROLLER_DESCRIPTION", tt.envDescription)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expDescription, c.Controller.Description)
+		})
+	}
+}
+
+func TestWorkerDescription(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envDescription string
+		expDescription string
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid worker description from env var",
+			in: `
+			worker {
+				description = "env://WORKER_DESCRIPTION"
+			}`,
+			envDescription: "Test worker description",
+			expDescription: "Test worker description",
+			expErr:         false,
+		}, {
+			name: "Invalid worker description",
+			in: `
+			worker {
+				description = "\uTest worker description"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:22: illegal char escape",
+		}, {
+			name: "Not a URL, non-printable description",
+			in: `
+			worker {
+				description = "\x00"
+			}`,
+			expErr:    true,
+			expErrStr: "Worker description contains non-printable characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("WORKER_DESCRIPTION", tt.envDescription)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Worker)
+			require.Equal(t, tt.expDescription, c.Worker.Description)
+		})
+	}
+}
+
+func TestPluginExecutionDir(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envPluginExecutionDir string
+		expPluginExecutionDir string
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid plugin execution dir from env var",
+			in: `
+			plugins {
+  				execution_dir = "env://PLUGIN_EXEC_DIR"
+			}`,
+			envPluginExecutionDir: `/var/run/boundary/plugin-exec`,
+			expPluginExecutionDir: `/var/run/boundary/plugin-exec`,
+			expErr:                false,
+		}, {
+			name: "Invalid plugin execution dir  from env var",
+			in: `
+			plugins {
+  				execution_dir ="\ubad plugin directory"
+			}`,
+			expErr:    true,
+			expErrStr: "At 3:28: illegal char escape",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLUGIN_EXEC_DIR", tt.envPluginExecutionDir)
+			p, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, p)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, p)
+			require.NotNil(t, p.Plugins)
+			require.Equal(t, tt.expPluginExecutionDir, p.Plugins.ExecutionDir)
+		})
+	}
+}
+
+func TestDatabaseMaxConnections(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envMaxOpenConnections string
+		expMaxOpenConnections int
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = 5
+			  	}
+			}`,
+			expMaxOpenConnections: 5,
+			expErr:                false,
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "string bad"
+				}
+			}`,
+			expErr: true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = false
+				}
+			}`,
+			expErr:    true,
+			expErrStr: "Database max open connections: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			expMaxOpenConnections: 8,
+			envMaxOpenConnections: "8",
+			expErr:                false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "env://ENV_MAX_CONN"
+			  	}
+			}`,
+			envMaxOpenConnections: "bogus value",
+			expErr:                true,
+			expErrStr: "Database max open connections value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_CONN", tt.envMaxOpenConnections)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expMaxOpenConnections, c.Controller.Database.MaxOpenConnections)
 		})
 	}
 }

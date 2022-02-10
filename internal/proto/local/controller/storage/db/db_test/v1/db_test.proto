@@ -119,3 +119,26 @@ message StoreTestScooter {
   // @inject_tag: `gorm:"default:null"`
   int32 mpg = 7;
 }
+
+// StoreTestAccessory used in the db tests only and provides a gorm resource with
+// an id that's not a private or public id
+message StoreTestAccessory {
+  // @inject_tag: gorm:"primary_key"
+  uint32 accessory_id = 1;
+
+  // @inject_tag: `gorm:"default:not_null"`
+  string description = 2;
+}
+
+// StoreTestScooterAccessory used in the db tests only and provides a gorm
+// resource with multiple pks
+message StoreTestScooterAccessory {
+  // @inject_tag: gorm:"primary_key"
+  uint32 accessory_id = 1;
+
+  // @inject_tag: gorm:"primary_key"
+  uint32 scooter_id = 2;
+
+  // @inject_tag: `gorm:"default:null"`
+  string review = 3;
+}

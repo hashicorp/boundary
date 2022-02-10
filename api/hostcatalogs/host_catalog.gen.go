@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
 )
 
@@ -16,6 +17,8 @@ type HostCatalog struct {
 	Id                          string                 `json:"id,omitempty"`
 	ScopeId                     string                 `json:"scope_id,omitempty"`
 	Scope                       *scopes.ScopeInfo      `json:"scope,omitempty"`
+	PluginId                    string                 `json:"plugin_id,omitempty"`
+	Plugin                      *plugins.PluginInfo    `json:"plugin,omitempty"`
 	Name                        string                 `json:"name,omitempty"`
 	Description                 string                 `json:"description,omitempty"`
 	CreatedTime                 time.Time              `json:"created_time,omitempty"`
@@ -23,6 +26,8 @@ type HostCatalog struct {
 	Version                     uint32                 `json:"version,omitempty"`
 	Type                        string                 `json:"type,omitempty"`
 	Attributes                  map[string]interface{} `json:"attributes,omitempty"`
+	Secrets                     map[string]interface{} `json:"secrets,omitempty"`
+	SecretsHmac                 string                 `json:"secrets_hmac,omitempty"`
 	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
 
@@ -42,10 +47,8 @@ func (n HostCatalogReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	HostCatalogCreateResult = HostCatalogReadResult
-	HostCatalogUpdateResult = HostCatalogReadResult
-)
+type HostCatalogCreateResult = HostCatalogReadResult
+type HostCatalogUpdateResult = HostCatalogReadResult
 
 type HostCatalogDeleteResult struct {
 	response *api.Response

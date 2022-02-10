@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/jackc/pgconn"
 )
@@ -210,7 +211,7 @@ func Convert(e error) *Err {
 		}
 		switch pgxError.Code {
 		case "42P01":
-			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pgxError.Message)).(*Err)
+			return E(ctx, WithoutEvent(), WithCode(MissingTable), WithMsg(pgxError.Message), WithWrap(e)).(*Err)
 		case "42703":
 			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":
@@ -264,6 +265,49 @@ func (e *Err) Error() string {
 		join(&s, ": ", e.Wrapped.Error())
 	}
 	return s.String()
+}
+
+// ToPbErrors will convert to an Err protobuf
+func ToPbErrors(err *Err) *pberrors.Err {
+	pbErr := &pberrors.Err{
+		Code: uint32(err.Code),
+		Msg:  err.Msg,
+		Op:   string(err.Op),
+	}
+
+	var wrappedErr *Err
+	isWrappedErr := As(err.Wrapped, &wrappedErr)
+	switch {
+	case err.Wrapped == nil:
+		pbErr.Wrapped = &pberrors.Err_None{
+			None: false,
+		}
+	case isWrappedErr:
+		pbErr.Wrapped = &pberrors.Err_Err{
+			Err: ToPbErrors(wrappedErr),
+		}
+	default:
+		pbErr.Wrapped = &pberrors.Err_StdError{
+			StdError: err.Wrapped.Error(),
+		}
+	}
+	return pbErr
+}
+
+// FromPbErrors will convert from Err protobuf
+func FromPbErrors(pbErr *pberrors.Err) *Err {
+	err := &Err{
+		Code: Code(pbErr.Code),
+		Msg:  pbErr.Msg,
+		Op:   Op(pbErr.Op),
+	}
+	switch w := pbErr.Wrapped.(type) {
+	case *pberrors.Err_Err:
+		err.Wrapped = FromPbErrors(w.Err)
+	case *pberrors.Err_StdError:
+		err.Wrapped = errors.New(w.StdError)
+	}
+	return err
 }
 
 func join(str *strings.Builder, delim string, s string) {

@@ -215,6 +215,11 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.SyncIntervalSeconds != 0 {
+			output = append(output,
+				fmt.Sprintf("    Sync Interval:       %d seconds", item.SyncIntervalSeconds),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -253,6 +258,12 @@ func printItemTable(result api.GenericResult) string {
 	if item.HostCatalogId != "" {
 		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
 	}
+	if item.PreferredEndpoints != nil {
+		nonAttributeMap["Preferred Endpoints"] = item.PreferredEndpoints
+	}
+	if item.SyncIntervalSeconds != 0 {
+		nonAttributeMap["Sync Interval"] = fmt.Sprintf("%d seconds", item.SyncIntervalSeconds)
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
@@ -270,6 +281,22 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if item.Plugin != nil {
+		ret = append(ret,
+			"",
+			"  Plugin:",
+			base.PluginInfoForOutput(item.Plugin, maxLength),
+		)
+	}
+
+	if len(item.Attributes) > 0 {
+		ret = append(ret,
+			"",
+			"  Attributes:",
+			base.WrapMap(4, maxLength, item.Attributes),
+		)
+	}
+
 	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
@@ -283,14 +310,6 @@ func printItemTable(result api.GenericResult) string {
 			"",
 			"  Host IDs:",
 			base.WrapSlice(4, item.HostIds),
-		)
-	}
-
-	if len(item.Attributes) > 0 {
-		ret = append(ret,
-			"",
-			"  Attributes:",
-			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 

@@ -42,10 +42,8 @@ func (n ManagedGroupReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	ManagedGroupCreateResult = ManagedGroupReadResult
-	ManagedGroupUpdateResult = ManagedGroupReadResult
-)
+type ManagedGroupCreateResult = ManagedGroupReadResult
+type ManagedGroupUpdateResult = ManagedGroupReadResult
 
 type ManagedGroupDeleteResult struct {
 	response *api.Response

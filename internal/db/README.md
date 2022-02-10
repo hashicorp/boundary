@@ -7,9 +7,7 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
     dialect = postgres.New(postgres.Config{
 			DSN: connectionUrl},
 		)
-    conn, _ := gorm.Open(dialect, &gorm.Config{
-		ConvertNullToZeroValues: true,
-	})
+    conn, _ := gorm.Open(dialect, &gorm.Config{})
     
     // Db implements both the Reader and Writer interfaces
     rw := Db{Tx: conn}

@@ -12,7 +12,7 @@ func TestClosedWith_validate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
-	sessionConnection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+	sessionConnection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 	type fields struct {
 		ConnectionId string
 		BytesUp      uint64

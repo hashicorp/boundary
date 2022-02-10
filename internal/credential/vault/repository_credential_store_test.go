@@ -30,16 +30,18 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		v := NewTestVaultServer(t)
 		_, token := v.CreateToken(t)
@@ -68,11 +70,12 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		v := NewTestVaultServer(t)
 
@@ -123,6 +126,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	tests := []struct {
 		name      string
@@ -168,11 +172,12 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 			_, token := v.CreateToken(t, tt.tokenOpts...)
@@ -211,11 +216,11 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			outToken := allocToken()
-			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", got.PublicId))
+			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", []interface{}{got.PublicId}))
 
 			if tt.tls == TestClientTLS {
 				outClientCert := allocClientCertificate()
-				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", got.PublicId))
+				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", []interface{}{got.PublicId}))
 			}
 		})
 	}
@@ -226,6 +231,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	stores := TestCredentialStores(t, conn, wrapper, prj.PublicId, 2)
@@ -278,10 +284,11 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			got, err := repo.LookupCredentialStore(ctx, tt.id)
 			if tt.wantErr != 0 {
@@ -314,6 +321,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	changeNamespace := func(n string) func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
@@ -716,10 +724,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			tt.orig.ScopeId = prj.GetPublicId()
@@ -796,10 +805,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		vs := NewTestVaultServer(t)
 		_, token := vs.CreateToken(t)
@@ -847,10 +857,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		vs := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 
@@ -896,10 +907,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		name := "test-dup-name"
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -926,10 +938,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		vs := NewTestVaultServer(t)
 
@@ -975,10 +988,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		sche := scheduler.TestScheduler(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
+		err = RegisterJobs(ctx, sche, rw, rw, kms)
+		require.NoError(err)
 
 		iamRepo := iam.TestRepo(t, conn, wrapper)
 		_, prj1 := iam.TestScopes(t, iamRepo)
@@ -1004,6 +1018,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	tests := []struct {
 		name               string
@@ -1044,11 +1059,12 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t)
 			_, origToken := v.CreateToken(t)
@@ -1100,6 +1116,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	existingClientCert := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
 		clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
@@ -1176,11 +1193,12 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			sche := scheduler.TestScheduler(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+			err = RegisterJobs(ctx, sche, rw, rw, kms)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 
@@ -1244,6 +1262,8 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
+	err = RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(err)
 
 	const numPerScope = 10
 	var prjs []string
@@ -1279,6 +1299,8 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(t, err)
 		require.NotNil(t, repo)
+		err = RegisterJobs(context.Background(), sche, rw, rw, kms)
+		require.NoError(t, err)
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		scopeId = prj.GetPublicId()

@@ -176,7 +176,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_role_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "bad-user-id",
@@ -190,7 +190,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "missing-role-id",
@@ -206,7 +206,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(UserRole).VetForWrite: missing role id: parameter violation: error #100",
+			wantErrMsg: "iam.(UserRole).VetForWrite: missing role id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -223,7 +223,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(UserRole).VetForWrite: missing user id: parameter violation: error #100",
+			wantErrMsg: "iam.(UserRole).VetForWrite: missing user id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -239,7 +239,7 @@ func TestUserRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint "iam_user_role_pkey"`,
+			wantErrMsg: `db.Create: duplicate key value violates unique constraint "iam_user_role_pkey": unique constraint violation`,
 		},
 	}
 
@@ -263,7 +263,7 @@ func TestUserRole_Create(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocUserRole()
-			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", r.RoleId, r.PrincipalId)
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
 			assert.Equal(r, &found)
 		})
@@ -341,7 +341,7 @@ func TestUserRole_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocUserRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})
@@ -537,7 +537,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_role_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "bad-user-id",
@@ -551,7 +551,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: create failed: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_principal_id_fkey\"",
+			wantErrMsg: "integrity violation: error #1003",
 		},
 		{
 			name: "missing-role-id",
@@ -567,7 +567,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing role id: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -584,7 +584,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing group id: parameter violation: error #100",
+			wantErrMsg: "parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
@@ -600,7 +600,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint`,
+			wantErrMsg: `unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "dup-at-proj",
@@ -615,7 +615,7 @@ func TestGroupRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `db.Create: create failed: duplicate key value violates unique constraint`,
+			wantErrMsg: `unique constraint violation: integrity violation: error #1002`,
 		},
 	}
 
@@ -639,7 +639,7 @@ func TestGroupRole_Create(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocGroupRole()
-			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", r.RoleId, r.PrincipalId)
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
 			assert.Equal(r, &found)
 		})
@@ -722,7 +722,7 @@ func TestGroupRole_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocGroupRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{tt.role.GetRoleId(), tt.role.GetPrincipalId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

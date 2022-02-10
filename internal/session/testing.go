@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
@@ -23,11 +24,11 @@ import (
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32) *Connection {
+func TestConnection(t *testing.T, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort)
+	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort, userClientIp)
 	require.NoError(err)
 	id, err := newConnectionId()
 	require.NoError(err)
@@ -132,7 +133,7 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
 
-	tcpTarget := target.TestTcpTarget(t, conn, proj.PublicId, "test target")
+	tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target")
 
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
@@ -154,10 +155,10 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	return ComposedOf{
 		UserId:          user.PublicId,
 		HostId:          hosts[0].PublicId,
-		TargetId:        tcpTarget.PublicId,
+		TargetId:        tcpTarget.GetPublicId(),
 		HostSetId:       sets[0].PublicId,
 		AuthTokenId:     at.PublicId,
-		ScopeId:         tcpTarget.ScopeId,
+		ScopeId:         tcpTarget.GetScopeId(),
 		Endpoint:        "tcp://127.0.0.1:22",
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),

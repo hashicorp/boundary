@@ -22,6 +22,7 @@ func TestState_Create(t *testing.T) {
 		sessionId string
 		status    Status
 	}
+
 	tests := []struct {
 		name          string
 		args          args
@@ -35,11 +36,11 @@ func TestState_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				sessionId: session.PublicId,
-				status:    StatusPending,
+				status:    StatusActive,
 			},
 			want: &State{
 				SessionId: session.PublicId,
-				Status:    StatusPending,
+				Status:    StatusActive,
 			},
 			create: true,
 		},
@@ -124,7 +125,7 @@ func TestState_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var initialState State
-			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", tt.state.SessionId, tt.state.Status)
+			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", []interface{}{tt.state.SessionId, tt.state.Status})
 			require.NoError(err)
 
 			deleteState := allocState()
@@ -146,7 +147,7 @@ func TestState_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocState()
-			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", tt.state.SessionId, initialState.StartTime)
+			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", []interface{}{tt.state.SessionId, initialState.StartTime})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})
@@ -161,7 +162,7 @@ func TestState_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		state := TestState(t, conn, s.PublicId, StatusPending)
+		state := TestState(t, conn, s.PublicId, StatusActive)
 		cp := state.Clone()
 		assert.Equal(cp.(*State), state)
 	})
@@ -169,8 +170,8 @@ func TestState_Clone(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s2 := TestDefaultSession(t, conn, wrapper, iamRepo)
-		state := TestState(t, conn, s.PublicId, StatusPending)
-		state2 := TestState(t, conn, s2.PublicId, StatusPending)
+		state := TestState(t, conn, s.PublicId, StatusActive)
+		state2 := TestState(t, conn, s2.PublicId, StatusActive)
 
 		cp := state.Clone()
 		assert.NotEqual(cp.(*State), state2)

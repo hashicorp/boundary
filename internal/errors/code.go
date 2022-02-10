@@ -66,9 +66,11 @@ const (
 	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
 	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
 
-	// General system errors are reserved Codes 400-599 and align with http client and server error codes
-	Forbidden Code = 403 // Forbidden represents the operation is forbidden
-	Internal  Code = 500 // InternalError represents the system encountered an unexpected condition.
+	// General system errors are reserved Codes 400-599 and align with http
+	// client and server error codes
+	Unauthorized Code = 401 // Unauthorized represents the operation is unauthorized
+	Forbidden    Code = 403 // Forbidden represents the operation is forbidden
+	Internal     Code = 500 // InternalError represents the system encountered an unexpected condition.
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
@@ -87,6 +89,10 @@ const (
 	// reasons related to the state of the DDL and/or inputs (such as we're
 	// already in the right state and don't want to end up writing oplogs).
 	GracefullyAborted Code = 1106
+	// UnexpectedRowsAffected indicates that an action expected to operate on a
+	// specific number of records returned a different count, e.g. if you
+	// expected to delete three items and only one was deleted.
+	UnexpectedRowsAffected Code = 1107
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
@@ -101,6 +107,9 @@ const (
 	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
 	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
 	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
+	VaultEmptySecret              Code = 3015 // VaultEmptySecret represents a empty secret was returned from Vault without error
+	VaultInvalidMappingOverride   Code = 3016 // VaultInvalidMappingOverride represents an error returned when a credential mapping is unknown or does not match a credential type
+	VaultInvalidCredentialMapping Code = 3017 // VaultInvalidCredentialMapping represents an error returned when a Vault secret failed to be mapped to a specific credential type
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint

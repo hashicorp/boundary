@@ -1,6 +1,8 @@
 package host
 
-import "github.com/hashicorp/boundary/internal/types/subtypes"
+import (
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+)
 
 var registry = subtypes.NewRegistry()
 

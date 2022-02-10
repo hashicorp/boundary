@@ -2,10 +2,6 @@ package oidc
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"sort"
@@ -13,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/structwrapping"
@@ -240,17 +236,14 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
+	// this operation currently uses the legacy WithEd25519 option for hmac'ing.
+	// we should likely deprecate this and introduce a new "crypto version" of
+	// this attribute.
+	hm, err := crypto.HmacSha256(ctx, []byte(a.ClientSecret), cipher, []byte(a.PublicId), nil, crypto.WithBase64Encoding(), crypto.WithEd25519())
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
-	key, _, err := ed25519.GenerateKey(reader)
-	if err != nil {
-		return errors.New(ctx, errors.Encrypt, op, "unable to generate derived key")
-	}
-	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write([]byte(a.ClientSecret))
-	a.ClientSecretHmac = base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	a.ClientSecretHmac = hm
 	return nil
 }
 

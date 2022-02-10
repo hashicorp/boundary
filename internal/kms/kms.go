@@ -2,9 +2,9 @@ package kms
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,7 +13,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	"golang.org/x/crypto/hkdf"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
@@ -167,7 +166,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc:
+	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc, KeyPurposeAudit:
 	case KeyPurposeUnknown:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key purpose")
 	default:
@@ -289,6 +288,48 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	return multi, rootKeyId, nil
 }
 
+// ReconcileKeys will reconcile the keys in the kms against known possible issues.
+func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader) error {
+	const op = "kms.ReconcileKeys"
+	if isNil(randomReader) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing rand reader")
+	}
+
+	// it's possible that the global audit key was created after this instance's
+	// database was initialized... so check if the audit wrapper is available
+	// for the global scope and if not, then add one to the global scope
+	if _, err := k.GetWrapper(ctx, scope.Global.String(), KeyPurposeAudit); err != nil {
+		switch {
+		case errors.Match(errors.T(errors.KeyNotFound), err):
+			globalRootWrapper, _, err := k.loadRoot(ctx, scope.Global.String())
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			key, err := generateKey(ctx, randomReader)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scope.Global.String())))
+			}
+			if _, _, err := k.repo.CreateAuditKey(ctx, globalRootWrapper, key); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
+			}
+		default:
+			errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
+}
+
 // Dek is an interface wrapping dek types to allow a lot less switching in loadDek
 type Dek interface {
 	GetRootKeyId() string
@@ -329,6 +370,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListSessionKeys(ctx)
 	case KeyPurposeOidc:
 		keys, err = repo.ListOidcKeys(ctx)
+	case KeyPurposeAudit:
+		keys, err = repo.ListAuditKeys(ctx)
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -358,6 +401,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeOidc:
 		keyVersions, err = repo.ListOidcKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
+	case KeyPurposeAudit:
+		keyVersions, err = repo.ListAuditKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -392,42 +437,4 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	}
 
 	return multi, nil
-}
-
-// DerivedReader returns a reader from which keys can be read, using the
-// given wrapper, reader length limit, salt and context info. Salt and info can
-// be nil.
-//
-// Example:
-//	reader, _ := NewDerivedReader(wrapper, userId, jobId)
-// 	key := ed25519.GenerateKey(reader)
-func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byte) (*io.LimitedReader, error) {
-	const op = "kms.NewDerivedReader"
-	if wrapper == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
-	}
-	if lenLimit < 20 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "lenLimit must be >= 20")
-	}
-	var aeadWrapper *aead.Wrapper
-	switch w := wrapper.(type) {
-	case *multiwrapper.MultiWrapper:
-		raw := w.WrapperForKeyId("__base__")
-		var ok bool
-		if aeadWrapper, ok = raw.(*aead.Wrapper); !ok {
-			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unexpected wrapper type from multiwrapper base")
-		}
-	case *aead.Wrapper:
-		if w.GetKeyBytes() == nil {
-			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "aead wrapper missing bytes")
-		}
-		aeadWrapper = w
-	default:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown wrapper type")
-	}
-	reader := hkdf.New(sha256.New, aeadWrapper.GetKeyBytes(), salt, info)
-	return &io.LimitedReader{
-		R: reader,
-		N: lenLimit,
-	}, nil
 }

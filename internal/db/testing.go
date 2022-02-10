@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,13 +15,16 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm/logger"
+	"github.com/stretchr/testify/require"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
+// setup the tests (initialize the database one-time and intialized
+// testDatabaseURL). Do not close the returned db. Supported options:
+// WithTestLogLevel, WithTestDatabaseUrl
 func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	var cleanup func() error
 	var url string
@@ -42,7 +46,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 		url = opts.withTestDatabaseUrl
 	}
 
-	_, err = schema.MigrateStore(ctx, dialect, url)
+	_, err = schema.MigrateStore(ctx, schema.Dialect(dialect), url)
 	if err != nil {
 		t.Fatalf("Couldn't init store on existing db: %v", err)
 	}
@@ -54,7 +58,12 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db.Logger.LogMode(logger.Error)
+	switch {
+	case opts.withLogLevel != DefaultTestLogLevel:
+		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
+	default:
+		db.wrapped.LogLevel(dbw.Error)
+	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
 		assert.NoError(t, err)
@@ -92,6 +101,20 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 	parts := strings.Split(actual, "_")
 	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+}
+
+// TestDeleteWhere allows you to easily delete resources for testing purposes
+// including all the current resources.
+func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+	tabler, ok := i.(interface {
+		TableName() string
+	})
+	require.True(ok)
+	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	require.NoError(err)
 }
 
 // TestVerifyOplog will verify that there is an oplog entry that matches the provided resourceId.
@@ -148,12 +171,12 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var metadata store.Metadata
-	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
+	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs); err != nil {
 		return err
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil
@@ -178,6 +201,7 @@ type testOptions struct {
 	withTestDatabaseUrl   string
 	withResourcePrivateId bool
 	withTemplate          string
+	withLogLevel          TestLogLevel
 }
 
 func getDefaultTestOptions() testOptions {
@@ -225,3 +249,275 @@ func WithTemplate(template string) TestOption {
 		o.withTemplate = template
 	}
 }
+
+// TestLogLevel defines a test log level for the underlying db package (if applicable)
+type TestLogLevel int
+
+const (
+	// See WithTestLogLevel(...) test only option
+	DefaultTestLogLevel TestLogLevel = iota
+	SilentTestLogLevel
+	ErrorTestLogLevel
+	WarnTestLogLevel
+	InfoTestLogLevel
+)
+
+// WithTestLogLevel provides a way to specify a test log level for the
+// underlying database package (if applicable).
+func WithTestLogLevel(_ *testing.T, l TestLogLevel) TestOption {
+	return func(o *testOptions) {
+		o.withLogLevel = l
+	}
+}
+
+// TestCreateTables will create the test tables for the db pkg
+func TestCreateTables(t *testing.T, conn *DB) {
+	t.Helper()
+	t.Cleanup(func() { testDropTables(t, conn) })
+	require := require.New(t)
+	testCtx := context.Background()
+	rw := New(conn)
+	_, err := rw.Exec(testCtx, testQueryCreateTables, nil)
+	require.NoError(err)
+	_, err = rw.Exec(testCtx, testQueryAddOplogEntries, nil)
+	require.NoError(err)
+}
+
+func testDropTables(t *testing.T, conn *DB) {
+	t.Helper()
+	require := require.New(t)
+	testCtx := context.Background()
+	rw := New(conn)
+	_, err := rw.Exec(testCtx, testQueryDropTables, nil)
+	require.NoError(err)
+	_, err = rw.Exec(testCtx, testQueryDeleteOplogEntries, nil)
+	require.NoError(err)
+}
+
+const (
+	testQueryCreateTables = `	
+begin;
+
+-- create test tables used in the unit tests for the internal/db package 
+-- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
+-- not part of the boundary domain model... they are simply used for testing
+-- the internal/db package 
+create table if not exists db_test_user (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  phone_number text,
+  email text,
+  version wt_version
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_user 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_user
+create trigger 
+  immutable_columns
+before
+update on db_test_user
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_user 
+  for each row execute procedure default_create_time();
+
+create trigger 
+  update_version_column
+after update on db_test_user
+  for each row execute procedure update_version_column();
+  
+create table if not exists db_test_car (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  model text,
+  mpg smallint
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_car 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_car
+create trigger 
+  immutable_columns
+before
+update on db_test_car
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_car
+  for each row execute procedure default_create_time();
+
+create table if not exists db_test_rental (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  public_id text not null unique,
+  name text unique,
+  user_id bigint not null references db_test_user(id),
+  car_id bigint not null references db_test_car(id)
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_rental 
+  for each row execute procedure update_time_column();
+
+-- define the immutable fields for db_test_rental
+create trigger 
+  immutable_columns
+before
+update on db_test_rental
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_rental
+  for each row execute procedure default_create_time();
+
+
+create table if not exists db_test_scooter (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  private_id text not null unique,
+  name text unique,
+  model text,
+  mpg smallint
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_scooter 
+  for each row execute procedure update_time_column();
+
+
+-- define the immutable fields for db_test_scooter
+create trigger 
+  immutable_columns
+before
+update on db_test_scooter
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_scooter
+  for each row execute procedure default_create_time();
+
+create table if not exists db_test_accessory (
+  accessory_id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  description text not null
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_accessory 
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  immutable_columns
+before
+update on db_test_accessory
+  for each row execute procedure immutable_columns('create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on db_test_accessory
+  for each row execute procedure default_create_time();
+  
+  
+create table if not exists db_test_scooter_accessory (
+  accessory_id bigint references db_test_accessory(accessory_id),
+  scooter_id bigint references db_test_scooter(id),
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  review text,
+  primary key(accessory_id, scooter_id)
+);
+  
+create trigger 
+  update_time_column 
+before 
+update on db_test_scooter_accessory 
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  immutable_columns
+before
+update on db_test_scooter_accessory
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_scooter_accessory
+  for each row execute procedure default_create_time();
+  
+commit;
+`
+	testQueryDropTables = `
+begin;
+drop table if exists db_test_user cascade;
+drop table if exists db_test_car cascade;
+drop table if exists db_test_rental cascade;
+drop table if exists db_test_scooter cascade;
+drop table if exists db_test_accessory cascade;
+drop table if exists db_test_scooter_accessory cascade;
+commit;
+`
+
+	testQueryAddOplogEntries = `
+begin;
+
+insert into oplog_ticket (name, version)
+values
+  ('db_test_user', 1),
+  ('db_test_car', 1),
+  ('db_test_rental', 1),
+  ('db_test_scooter', 1),
+  ('db_test_accessory', 1),
+  ('db_test_scooter_accessory', 1);
+commit;
+`
+	testQueryDeleteOplogEntries = `
+begin;
+
+delete from oplog_ticket where name in
+(
+  'db_test_user',
+  'db_test_car',
+  'db_test_rental',
+  'db_test_scooter',
+  'db_test_accessory',
+  'db_test_scooter_accessory'
+);
+
+commit;
+`
+)

@@ -112,7 +112,7 @@ func (r *Repository) LookupOidcKey(ctx context.Context, privateId string, _ ...O
 // repository returning a count of the number of records deleted.  All options
 // are ignored.
 func (r *Repository) DeleteOidcKey(ctx context.Context, privateId string, _ ...Option) (int, error) {
-	const op = "kms.(Repository).LookupOidcKey"
+	const op = "kms.(Repository).DeleteOidcKey"
 	if privateId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing private id")
 	}

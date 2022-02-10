@@ -144,6 +144,15 @@ $ make test-database-up
 $ make test
 ```
 
+By default the container name is `boundary-sql-tests`.
+This can be changed in the same way as the port:
+
+```
+$ export TEST_CONTAINER_NAME="custom-name"
+$ make test-database-up
+$ docker logs custom-name
+```
+
 The default docker image is built using the `postgres:11` base image.
 The image can be changed using a make option to test against other versions:
 
@@ -183,3 +192,20 @@ Note that if `max_connections` is set too low, it may result in sporadic test
 failures if a connection cannot be established. In this case, reduce the number
 of concurrent tests via `GOMAXPROCS` or selectively run tests.
 
+### SDK and API tests
+
+Tests for the SDK and API modules can also be run. These do not require a test
+database:
+
+```
+$ make test-api
+$ make test-sdk
+```
+
+Or all of the test can be run with a single target:
+
+```
+$ make test-all
+```
+
+## [Adding additional field to an existing API (or new API)](internal/adding-a-new-field-readme.md)

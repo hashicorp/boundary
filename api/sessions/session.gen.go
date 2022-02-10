@@ -32,6 +32,7 @@ type Session struct {
 	Certificate       []byte            `json:"certificate,omitempty"`
 	TerminationReason string            `json:"termination_reason,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
+	Connections       []*Connection     `json:"connections,omitempty"`
 
 	response *api.Response
 }
@@ -49,10 +50,8 @@ func (n SessionReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	SessionCreateResult = SessionReadResult
-	SessionUpdateResult = SessionReadResult
-)
+type SessionCreateResult = SessionReadResult
+type SessionUpdateResult = SessionReadResult
 
 type SessionDeleteResult struct {
 	response *api.Response

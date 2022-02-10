@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ func TestDeriveED25519Key(t *testing.T) {
 				jobId:   "jobId",
 			},
 			want: func() keys {
-				reader, err := kms.NewDerivedReader(wrapper, 32, []byte("userId"), []byte("jobId"))
+				reader, err := crypto.NewDerivedReader(wrapper, 32, []byte("userId"), []byte("jobId"))
 				require.NoError(t, err)
 				pub, priv, err := ed25519.GenerateKey(reader)
 				require.NoError(t, err)

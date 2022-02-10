@@ -2,7 +2,6 @@ package servers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -138,7 +137,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 
 	opts := getOpts(opt...)
 
-	var rowsUpdated int
+	var rowsUpdated int64
 	var controllers []*Server
 	_, err := r.writer.DoTx(
 		ctx,
@@ -146,14 +145,11 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Exec(ctx,
-				serverUpsertQuery,
-				[]interface{}{
-					sql.Named("private_id", server.PrivateId),
-					sql.Named("type", server.Type),
-					sql.Named("description", server.Description),
-					sql.Named("address", server.Address),
-				})
+			onConflict := &db.OnConflict{
+				Target: db.Constraint("server_pkey"),
+				Action: append(db.SetColumns([]string{"type", "description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			}
+			err = w.Create(ctx, server, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")
 			}
@@ -208,21 +204,41 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		return nil, db.NoRowsAffected, err
 	}
 
-	return controllers, rowsUpdated, nil
+	return controllers, int(rowsUpdated), nil
 }
 
-type RecoveryNonce struct {
-	Nonce string
+type Nonce struct {
+	Nonce   string
+	Purpose string
 }
 
-// AddRecoveryNonce adds a nonce
-func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
-	const op = "servers.AddRecoveryNonce"
+// TableName returns the table name.
+func (n *Nonce) TableName() string {
+	return "nonce"
+}
+
+const (
+	NoncePurposeRecovery   = "recovery"
+	NoncePurposeWorkerAuth = "worker-auth"
+)
+
+// AddNonce adds a nonce
+func (r *Repository) AddNonce(ctx context.Context, nonce, purpose string, opt ...Option) error {
+	const op = "servers.AddNonce"
 	if nonce == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "empty nonce")
 	}
-	rn := &RecoveryNonce{Nonce: nonce}
-	if err := r.writer.Create(ctx, rn); err != nil {
+	switch purpose {
+	case NoncePurposeRecovery, NoncePurposeWorkerAuth:
+	case "":
+		return errors.New(ctx, errors.InvalidParameter, op, "empty nonce purpose")
+	default:
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown nonce purpose %q", purpose))
+	}
+	if err := r.writer.Create(ctx, &Nonce{
+		Nonce:   nonce,
+		Purpose: purpose,
+	}); err != nil {
 		return errors.Wrap(ctx, err, op+":Insertion")
 	}
 	return nil
@@ -230,10 +246,15 @@ func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...
 
 // CleanupNonces removes nonces that no longer need to be stored
 func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, error) {
+	// Use the largest validity period out of the various nonces we're looking at
+	maxDuration := globals.RecoveryTokenValidityPeriod
+	if globals.WorkerAuthNonceValidityPeriod > maxDuration {
+		maxDuration = globals.WorkerAuthNonceValidityPeriod
+	}
 	// If something was inserted before 3x the actual validity period, clean it out
-	endTime := time.Now().Add(-3 * globals.RecoveryTokenValidityPeriod)
+	endTime := time.Now().Add(-3 * maxDuration)
 
-	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
+	rows, err := r.writer.Delete(ctx, &Nonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, "servers.CleanupNonces")
 	}
@@ -241,9 +262,9 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 }
 
 // ListNonces lists nonces. Used only for tests at the moment.
-func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]*RecoveryNonce, error) {
-	var nonces []*RecoveryNonce
-	if err := r.reader.SearchWhere(ctx, &nonces, "", nil, db.WithLimit(-1)); err != nil {
+func (r *Repository) ListNonces(ctx context.Context, purpose string, opt ...Option) ([]*Nonce, error) {
+	var nonces []*Nonce
+	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []interface{}{purpose}, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, "servers.ListNonces")
 	}
 	return nonces, nil

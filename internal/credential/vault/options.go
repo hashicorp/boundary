@@ -1,5 +1,7 @@
 package vault
 
+import "github.com/hashicorp/boundary/internal/credential"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,16 +16,21 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName          string
-	withDescription   string
-	withLimit         int
-	withCACert        []byte
-	withNamespace     string
-	withTlsServerName string
-	withTlsSkipVerify bool
-	withClientCert    *ClientCertificate
-	withMethod        Method
-	withRequestBody   []byte
+	withName           string
+	withDescription    string
+	withLimit          int
+	withCACert         []byte
+	withNamespace      string
+	withTlsServerName  string
+	withTlsSkipVerify  bool
+	withClientCert     *ClientCertificate
+	withMethod         Method
+	withRequestBody    []byte
+	withCredentialType credential.Type
+
+	withOverrideUsernameAttribute string
+	withOverridePasswordAttribute string
+	withMappingOverride           MappingOverride
 }
 
 func getDefaultOptions() options {
@@ -107,5 +114,37 @@ func WithMethod(m Method) Option {
 func WithRequestBody(b []byte) Option {
 	return func(o *options) {
 		o.withRequestBody = b
+	}
+}
+
+// WithCredentialType provides an optional credential type to associate
+// with a credential library.
+func WithCredentialType(t credential.Type) Option {
+	return func(o *options) {
+		o.withCredentialType = t
+	}
+}
+
+// WithOverrideUsernameAttribute provides the name of an attribute in the
+// Data field of a Vault api.Secret that maps to a username value.
+func WithOverrideUsernameAttribute(s string) Option {
+	return func(o *options) {
+		o.withOverrideUsernameAttribute = s
+	}
+}
+
+// WithOverridePasswordAttribute provides the name of an attribute in the
+// Data field of a Vault api.Secret that maps to a password value.
+func WithOverridePasswordAttribute(s string) Option {
+	return func(o *options) {
+		o.withOverridePasswordAttribute = s
+	}
+}
+
+// WithMappingOverride provides an optional mapping override to use for
+// mapping the Data fields of a Vault api.Secret to a credential.
+func WithMappingOverride(m MappingOverride) Option {
+	return func(o *options) {
+		o.withMappingOverride = m
 	}
 }

@@ -8,27 +8,31 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
-	"github.com/hashicorp/boundary/internal/credential"
+	cred "github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/target"
-	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/jackc/pgconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
+	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_ListSession(t *testing.T) {
@@ -47,11 +51,12 @@ func TestRepository_ListSession(t *testing.T) {
 		opt []Option
 	}
 	tests := []struct {
-		name      string
-		createCnt int
-		args      args
-		wantCnt   int
-		wantErr   bool
+		name            string
+		createCnt       int
+		args            args
+		wantCnt         int
+		wantErr         bool
+		withConnections int
 	}{
 		{
 			name:      "no-limit",
@@ -96,16 +101,27 @@ func TestRepository_ListSession(t *testing.T) {
 			wantCnt: 0,
 			wantErr: false,
 		},
+		{
+			name:            "multiple-connections",
+			createCnt:       repo.defaultLimit + 1,
+			args:            args{},
+			wantCnt:         repo.defaultLimit,
+			wantErr:         false,
+			withConnections: 3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
 				_ = TestState(t, conn, s.PublicId, StatusActive)
 				testSessions = append(testSessions, s)
+				for i := 0; i < tt.withConnections; i++ {
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
+				}
 			}
 			assert.Equal(tt.createCnt, len(testSessions))
 			got, err := repo.ListSessions(context.Background(), tt.args.opt...)
@@ -115,6 +131,15 @@ func TestRepository_ListSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			for i := 0; i < len(got); i++ {
+				assert.Equal(tt.withConnections, len(got[i].Connections))
+				for _, c := range got[i].Connections {
+					assert.Equal("127.0.0.1", c.ClientTcpAddress)
+					assert.Equal(uint32(22), c.ClientTcpPort)
+					assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+					assert.Equal(uint32(23), c.EndpointTcpPort)
+				}
+			}
 			if tt.wantCnt > 0 {
 				assert.Equal(StatusActive, got[0].States[0].Status)
 				assert.Equal(StatusPending, got[0].States[1].Status)
@@ -123,7 +148,7 @@ func TestRepository_ListSession(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -140,7 +165,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withUserId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -153,7 +178,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			// Scope 1 User 1
@@ -176,7 +201,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		testSessions := []*Session{}
 		for i := 0; i < 10; i++ {
 			s := TestSession(t, conn, wrapper, composedOf)
@@ -193,7 +218,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("withServerId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 		for i := 0; i < 6; i++ {
 			if i%2 == 0 {
 				TestWorker(t, conn, wrapper, WithServerId(fmt.Sprintf("server-%d", i/2)))
@@ -229,7 +254,7 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	require.NoError(t, conn.Where("1=1").Delete(AllocSession()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var projs []string
@@ -578,7 +603,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 			name: "exceeded-connection-limit",
 			session: func() *Session {
 				session := setupFn(nil)
-				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 				return session
 			}(),
 			wantErr: true,
@@ -634,13 +659,14 @@ func TestRepository_ConnectConnection(t *testing.T) {
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return ConnectWith{
 			ConnectionId:       c.PublicId,
 			ClientTcpAddress:   "127.0.0.1",
 			ClientTcpPort:      22,
 			EndpointTcpAddress: "127.0.0.1",
 			EndpointTcpPort:    2222,
+			UserClientIp:       "127.0.0.1",
 		}
 	}
 	tests := []struct {
@@ -703,6 +729,16 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 		},
+		{
+			name: "empty-UserClientIp",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.UserClientIp = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -718,6 +754,14 @@ func TestRepository_ConnectConnection(t *testing.T) {
 			require.NotNil(c)
 			require.NotNil(cs)
 			assert.Equal(StatusConnected, cs[0].Status)
+			gotConn, _, err := repo.LookupConnection(context.Background(), c.PublicId)
+			require.NoError(err)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.ClientTcpPort, gotConn.ClientTcpPort)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpAddress, gotConn.EndpointTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpPort, gotConn.EndpointTcpPort)
+			assert.Equal(tt.connectWith.UserClientIp, gotConn.UserClientIp)
 		})
 	}
 }
@@ -783,7 +827,7 @@ func TestRepository_TerminateSession(t *testing.T) {
 			name: "open-connection",
 			session: func() *Session {
 				s := setupFn()
-				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+				_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 				return s
 			}(),
 			reason:  ClosedByUser,
@@ -828,7 +872,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		tofu := TestTofu(t)
 		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
-		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 		if !leaveOpen {
 			cw := CloseWith{
 				ConnectionId: c.PublicId,
@@ -882,7 +926,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				for i := 0; i < cnt; i++ {
 					// make one with closed connections
 					s := setupFn(2, time.Hour+1, false)
-					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222)
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 					sessions = append(sessions, s)
 					wantTermed[s.PublicId] = ConnectionLimit
 				}
@@ -994,7 +1038,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 			args := tt.setup()
 
 			got, err := repo.TerminateCompletedSessions(context.Background())
@@ -1062,7 +1106,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 		require.NoError(t, err)
 		cw := make([]CloseWith, 0, cnt)
 		for i := 0; i < cnt; i++ {
-			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+			c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 			require.NoError(t, err)
 			cw = append(cw, CloseWith{
 				ConnectionId: c.PublicId,
@@ -1135,7 +1179,7 @@ func TestRepository_CancelSession(t *testing.T) {
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
-		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return session
 	}
 	tests := []struct {
@@ -1156,7 +1200,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			name: "already-terminated",
 			session: func() *Session {
 				session := TestDefaultSession(t, conn, wrapper, iamRepo)
-				c := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+				c := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 				cw := CloseWith{
 					ConnectionId: c.PublicId,
 					BytesUp:      1,
@@ -1269,7 +1313,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
-		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222)
+		_ = TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return session
 	}
 	type cancelFk struct {
@@ -1316,8 +1360,8 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			cancelFk: func() cancelFk {
 				s := setupFn()
 
-				t := &target.TcpTarget{
-					TcpTarget: &targetStore.TcpTarget{
+				t := &tcp.Target{
+					Target: &tcpStore.Target{
 						PublicId: s.TargetId,
 					},
 				}
@@ -1650,21 +1694,26 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	rw := db.New(conn)
 
 	ctx := context.Background()
-	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
-	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	tcpTarget, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
+	tar, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
 	require.NoError(err)
-	require.NotNil(tcpTarget)
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	require.NotNil(tar)
+
+	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
+	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+	libs := []*target.CredentialLibrary{
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), cred.ApplicationPurpose),
+		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), cred.ApplicationPurpose),
+	}
+
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), libs)
 	require.NoError(err)
 	creds := []*DynamicCredential{
-		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
-		NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
-		NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+		NewDynamicCredential(libIds[0].GetPublicId(), cred.ApplicationPurpose),
+		NewDynamicCredential(libIds[1].GetPublicId(), cred.ApplicationPurpose),
 	}
 	params.DynamicCredentials = creds
 	return params

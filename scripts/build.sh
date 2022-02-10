@@ -44,8 +44,8 @@ fi
 
 # Build needed plugins first
 ORIG_PATH=$(pwd);
-echo "==> Building KMS Plugins..."
-for PLUGIN_TYPE in kms; do
+for PLUGIN_TYPE in {kms, host}; do
+    echo "==> Building ${PLUGIN_TYPE} Plugins..."
     rm -f $ORIG_PATH/plugins/$PLUGIN_TYPE/assets/boundary-plugin-${PLUGIN_TYPE}*
     for CURR_PLUGIN in $(ls $ORIG_PATH/plugins/$PLUGIN_TYPE/mains); do
         cd $ORIG_PATH/plugins/$PLUGIN_TYPE/mains/$CURR_PLUGIN;
@@ -53,7 +53,7 @@ for PLUGIN_TYPE in kms; do
         cd $ORIG_PATH;
     done;
     cd $ORIG_PATH/plugins/$PLUGIN_TYPE/assets;
-    for CURR_PLUGIN in $(ls); do
+    for CURR_PLUGIN in $(ls boundary-plugin*); do
         gzip -f -9 $CURR_PLUGIN;
     done;
     cd $ORIG_PATH;
@@ -70,10 +70,16 @@ mkdir -p bin/
 
 # Build!
 echo "==> Building..."
+BINARY_NAME="boundary${BINARY_SUFFIX}"
 go build -tags="${BUILD_TAGS}" \
     -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
     -o "bin/${BINARY_NAME}" \
     ./cmd/boundary
+
+
+# Copy binary into gopath
+echo "==> Copying binary into GOPATH"
+cp -f "bin/${BINARY_NAME}" "${GOPATH}/bin/"
 
 # Done!
 echo "==> Done!"

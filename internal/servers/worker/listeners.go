@@ -41,9 +41,12 @@ func (w *Worker) startListeners() error {
 				return fmt.Errorf("unknown listener purpose %q", purpose)
 			}
 
-			handler := w.handler(HandlerProperties{
+			handler, err := w.handler(HandlerProperties{
 				ListenerConfig: ln.Config,
 			})
+			if err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
 
 			cancelCtx := w.baseContext
 

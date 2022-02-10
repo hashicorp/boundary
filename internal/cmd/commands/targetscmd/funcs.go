@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -33,6 +34,7 @@ type extraCmdVars struct {
 	flagHostSources                    []string
 	flagApplicationCredentialLibraries []string
 	flagApplicationCredentialSources   []string
+	flagEgressCredentialSources        []string
 	flagHostId                         string
 	sar                                *targets.SessionAuthorizationResult
 }
@@ -49,9 +51,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-credential-libraries":    {"id", "application-credential-library", "version"},
 		"remove-credential-libraries": {"id", "application-credential-library", "version"},
 		"set-credential-libraries":    {"id", "application-credential-library", "version"},
-		"add-credential-sources":      {"id", "application-credential-source", "version"},
-		"remove-credential-sources":   {"id", "application-credential-source", "version"},
-		"set-credential-sources":      {"id", "application-credential-source", "version"},
+		"add-credential-sources":      {"id", "application-credential-source", "egress-credential-source", "version"},
+		"remove-credential-sources":   {"id", "application-credential-source", "egress-credential-source", "version"},
+		"set-credential-sources":      {"id", "application-credential-source", "egress-credential-source", "version"},
 	}
 }
 
@@ -361,6 +363,12 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagApplicationCredentialSources,
 				Usage:  "The credential source for application purpose to add, set, or remove.  May be specified multiple times.",
 			})
+		case "egress-credential-source":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "egress-credential-source",
+				Target: &c.flagEgressCredentialSources,
+				Usage:  "The credential source for egress purpose to add, set, or remove.  May be specified multiple times.",
+			})
 		}
 	}
 
@@ -460,7 +468,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		}
 
 	case "add-credential-libraries", "remove-credential-libraries":
-		// TODO: As we add other purposes, add them to this check
 		if len(c.flagApplicationCredentialLibraries) == 0 {
 			c.UI.Error("No credential-libraries supplied via -application-credential-library")
 			return false
@@ -469,14 +476,19 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 	case "add-credential-sources", "remove-credential-sources":
 		// TODO: As we add other purposes, add them to this check
-		if len(c.flagApplicationCredentialSources) == 0 {
-			c.UI.Error("No credential sources supplied via -application-credential-source")
+		if len(c.flagApplicationCredentialSources)+len(c.flagEgressCredentialSources) == 0 {
+			c.UI.Error("No credential sources supplied via -application-credential-source or -egress-credential-source")
 			return false
 		}
-		*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+
+		if len(c.flagApplicationCredentialSources) > 0 {
+			*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+		}
+		if len(c.flagEgressCredentialSources) > 0 {
+			*opts = append(*opts, targets.WithEgressCredentialSourceIds(c.flagEgressCredentialSources))
+		}
 
 	case "set-credential-libraries":
-		// TODO: As we add other purposes, add them to this check
 		switch len(c.flagApplicationCredentialLibraries) {
 		case 0:
 			c.UI.Error("No credential-libraries supplied via -application-credential-library")
@@ -493,10 +505,14 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 	case "set-credential-sources":
 		// TODO: As we add other purposes, add them to this check
+		if len(c.flagApplicationCredentialSources)+len(c.flagEgressCredentialSources) == 0 {
+			c.UI.Error("No credential sources supplied via -application-credential-source or -egress-credential-source")
+			return false
+		}
+
 		switch len(c.flagApplicationCredentialSources) {
 		case 0:
-			c.UI.Error("No credential sources supplied via -application-credential-source")
-			return false
+			// do nothing
 		case 1:
 			if c.flagApplicationCredentialSources[0] == "null" {
 				*opts = append(*opts, targets.DefaultApplicationCredentialSourceIds())
@@ -505,6 +521,18 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			fallthrough
 		default:
 			*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+		}
+		switch len(c.flagEgressCredentialSources) {
+		case 0:
+			// do nothing
+		case 1:
+			if c.flagEgressCredentialSources[0] == "null" {
+				*opts = append(*opts, targets.DefaultEgressCredentialSourceIds())
+				break
+			}
+			fallthrough
+		default:
+			*opts = append(*opts, targets.WithEgressCredentialSourceIds(c.flagEgressCredentialSources))
 		}
 
 	case "authorize-session":
@@ -648,7 +676,8 @@ func printItemTable(result api.GenericResult) string {
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	var hostSourceMaps []map[string]interface{}
-	if len(item.HostSources) > 0 {
+	switch {
+	case len(item.HostSources) > 0:
 		for _, set := range item.HostSources {
 			m := map[string]interface{}{
 				"ID":              set.Id,
@@ -659,8 +688,7 @@ func printItemTable(result api.GenericResult) string {
 		if l := len("Host Catalog ID"); l > maxLength {
 			maxLength = l
 		}
-	}
-	if len(item.HostSets) > 0 {
+	case len(item.HostSets) > 0:
 		for _, set := range item.HostSets {
 			m := map[string]interface{}{
 				"ID":              set.Id,
@@ -819,7 +847,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					}
 
 					ret = append(ret,
-						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialSource.CredentialStoreId),
+						fmt.Sprintf("    Credential Store ID:           %s", cred.CredentialSource.CredentialStoreId),
 						fmt.Sprintf("    Credential Source ID:          %s", cred.CredentialSource.Id),
 						fmt.Sprintf("    Credential Source Type:        %s", cred.CredentialSource.Type))
 
@@ -831,26 +859,43 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						ret = append(ret,
 							fmt.Sprintf("    Credential Source Description: %s", cred.CredentialSource.Description))
 					}
+					if cred.CredentialSource.CredentialType != "" {
+						ret = append(ret,
+							fmt.Sprintf("    Credential Type:               %s", cred.CredentialSource.CredentialType))
+					}
+
 					var secretStr []string
 					switch cred.CredentialSource.Type {
 					case "vault":
-						// If it's Vault, the result will be JSON, except in
-						// specific circumstances that aren't used for
-						// credential fetching. So we can take the bytes
-						// as-is (after base64-decoding), but we'll format
-						// it nicely.
-						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret.Raw), `"`))
-						if err != nil {
-							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
-						}
-						dst := new(bytes.Buffer)
-						if err := json.Indent(dst, in, "      ", "  "); err != nil {
-							return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
-						}
-						secretStr = strings.Split(dst.String(), "\n")
-						if len(secretStr) > 0 {
-							// Indent doesn't apply to the first line 🙄
-							secretStr[0] = fmt.Sprintf("      %s", secretStr[0])
+						switch {
+						case cred.Credential != nil:
+							maxLength := 0
+							for k := range cred.Credential {
+								if len(k) > maxLength {
+									maxLength = len(k)
+								}
+							}
+							secretStr = []string{fmt.Sprintf("    %s", base.WrapMap(2, maxLength+2, cred.Credential))}
+
+						default:
+							// If it's Vault, the result will be JSON, except in
+							// specific circumstances that aren't used for
+							// credential fetching. So we can take the bytes
+							// as-is (after base64-decoding), but we'll format
+							// it nicely.
+							in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret.Raw), `"`))
+							if err != nil {
+								return false, fmt.Errorf("Error decoding secret as base64: %w", err)
+							}
+							dst := new(bytes.Buffer)
+							if err := json.Indent(dst, in, "      ", "  "); err != nil {
+								return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
+							}
+							secretStr = strings.Split(dst.String(), "\n")
+							if len(secretStr) > 0 {
+								// Indent doesn't apply to the first line 🙄
+								secretStr[0] = fmt.Sprintf("      %s", secretStr[0])
+							}
 						}
 					default:
 						// If it's not Vault, and not another known type,
@@ -885,9 +930,9 @@ var keySubstMap = map[string]string{
 func exampleOutput() string {
 	item := &targets.Target{
 		Id:      "ttcp_1234567890",
-		ScopeId: "global",
+		ScopeId: scope.Global.String(),
 		Scope: &scopes.ScopeInfo{
-			Id: "global",
+			Id: scope.Global.String(),
 		},
 		Name:        "foo",
 		Description: "The bar of foos",

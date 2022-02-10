@@ -1,10 +1,14 @@
 package oplog
 
+import "github.com/hashicorp/go-dbw"
+
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(opts)
+		if o != nil {
+			o(opts)
+		}
 	}
 	return opts
 }
@@ -17,9 +21,20 @@ type Options map[string]interface{}
 
 func getDefaultOptions() Options {
 	return Options{
-		optionWithFieldMaskPaths: []string{},
-		optionWithSetToNullPaths: []string{},
-		optionWithAggregateNames: false,
+		optionWithFieldMaskPaths:   []string{},
+		optionWithSetToNullPaths:   []string{},
+		optionWithAggregateNames:   false,
+		optionWithOperationOptions: []dbw.Option{},
+	}
+}
+
+const optionWithOperationOptions = "optionWithOptions"
+
+// WithOperationOptions represents an optional set dbw.Options.  (see the dbw
+// package for more info on the options)
+func WithOperationOptions(opt ...dbw.Option) Option {
+	return func(o Options) {
+		o[optionWithOperationOptions] = opt
 	}
 }
 

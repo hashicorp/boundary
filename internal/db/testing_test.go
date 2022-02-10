@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Utils(t *testing.T) {
@@ -21,11 +22,12 @@ func Test_Utils(t *testing.T) {
 }
 
 func TestVerifyOplogEntry(t *testing.T) {
-	db, _ := TestSetup(t, "postgres")
+	d, _ := TestSetup(t, "postgres")
 	assert := assert.New(t)
+	TestCreateTables(t, d)
 
 	t.Run("valid", func(t *testing.T) {
-		rw := Db{underlying: db}
+		rw := New(d)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
@@ -50,14 +52,14 @@ func TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
-		err = TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
+		err = TestVerifyOplog(t, rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
-		rw := Db{underlying: db}
+		rw := New(d)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		err = TestVerifyOplog(t, &rw, id)
+		err = TestVerifyOplog(t, rw, id)
 		assert.Error(err)
 	})
 }
@@ -119,4 +121,22 @@ func TestWithCreateNotBefore(t *testing.T) {
 			assert.Equal(opts, testOpts)
 		})
 	}
+}
+
+func Test_TestDeleteWhere(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	d, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, d)
+	user, err := db_test.NewTestUser()
+	assert.NoError(err)
+	id, err := uuid.GenerateUUID()
+	assert.NoError(err)
+	user.Name = "foo-" + id
+	rw := New(d)
+	err = rw.Create(
+		context.Background(),
+		user,
+	)
+	require.NoError(err)
+	TestDeleteWhere(t, d, user, "1 = ?", 1)
 }

@@ -126,6 +126,7 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "scope"
@@ -208,6 +209,7 @@ func (c *Command) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -215,6 +217,7 @@ func (c *Command) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

@@ -68,7 +68,9 @@ func (j *sessionCleanupJob) Description() string {
 // connections as soon as a worker has not reported in for a long
 // enough time. Only one job will ever run at once, so there is no
 // reason why it cannot run again immediately.
-func (j *sessionCleanupJob) NextRunIn() (time.Duration, error) { return time.Second, nil }
+func (j *sessionCleanupJob) NextRunIn(_ context.Context) (time.Duration, error) {
+	return time.Second, nil
+}
 
 // Status returns the status of the running job.
 func (j *sessionCleanupJob) Status() scheduler.JobStatus {
@@ -95,19 +97,16 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	if len(results) < 1 {
-	} else {
-		for _, result := range results {
-			event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
-				event.WithInfo(
-					"private_id", result.ServerId,
-					"update_time", result.LastUpdateTime,
-					"grace_period_seconds", j.gracePeriod,
-					"number_connections_closed", result.NumberConnectionsClosed,
-				))
+	for _, result := range results {
+		event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
+			event.WithInfo(
+				"private_id", result.ServerId,
+				"update_time", result.LastUpdateTime,
+				"grace_period_seconds", j.gracePeriod,
+				"number_connections_closed", result.NumberConnectionsClosed,
+			))
 
-			j.totalClosed += result.NumberConnectionsClosed
-		}
+		j.totalClosed += result.NumberConnectionsClosed
 	}
 
 	return nil

@@ -59,6 +59,52 @@ func TestList(t *testing.T) {
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
+func TestList_Plugin(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+	catalogClient := hostcatalogs.NewClient(client)
+
+	ul, err := catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.Empty(ul.Items)
+
+	var expected []*hostcatalogs.HostCatalog
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &hostcatalogs.HostCatalog{Name: fmt.Sprint(i)})
+	}
+
+	cr, err := catalogClient.Create(tc.Context(), "plugin", proj.GetPublicId(),
+		hostcatalogs.WithName(expected[0].Name), hostcatalogs.WithPluginId("pl_1234567890"))
+	require.NoError(err)
+	expected[0] = cr.Item
+
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
+
+	for i := 1; i < 10; i++ {
+		cr, err = catalogClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName(expected[i].Name))
+		require.NoError(err)
+		expected[i] = cr.Item
+	}
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
+	require.NoError(err)
+	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId(),
+		hostcatalogs.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
+}
+
 func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {
 	var filtered []hostcatalogs.HostCatalog
 	for _, i := range in {
@@ -103,6 +149,9 @@ func TestCrud(t *testing.T) {
 	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
 	checkCatalog("read", hc.Item, err, "foo", 1)
 
+	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("foo"))
+	checkCatalog("update", hc.Item, err, "foo", 1)
+
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
 	checkCatalog("update", hc.Item, err, "bar", 2)
 
@@ -115,6 +164,41 @@ func TestCrud(t *testing.T) {
 	_, err = hcClient.Delete(tc.Context(), hc.Item.Id)
 	require.Error(err)
 	apiErr := api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+
+	// Plugin catalogs
+	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
+	require.NoError(err)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.WithName("bar"),
+		hostcatalogs.WithAttributes(map[string]interface{}{"key": "val", "foo": nil}),
+		hostcatalogs.WithSecrets(map[string]interface{}{"secretkey": "secretval"}))
+	checkCatalog("update", c.Item, err, "bar", 2)
+	assert.Contains(c.Item.Attributes, "key")
+	assert.NotContains(c.Item.Attributes, "foo")
+	assert.Empty(c.Item.Secrets)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.DefaultName())
+	checkCatalog("update", c.Item, err, "", 3)
+
+	c, err = hcClient.Update(tc.Context(), c.Item.Id, 0, hostcatalogs.WithAutomaticVersioning(true),
+		hostcatalogs.WithSecrets(map[string]interface{}{
+			"key1": "val1",
+			"key2": "val2",
+		}))
+	checkCatalog("update", c.Item, err, "", 4)
+
+	c, err = hcClient.Read(tc.Context(), c.Item.Id)
+	assert.NoError(err)
+
+	_, err = hcClient.Delete(tc.Context(), c.Item.Id)
+	assert.NoError(err)
+
+	_, err = hcClient.Delete(tc.Context(), c.Item.Id)
+	require.Error(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }

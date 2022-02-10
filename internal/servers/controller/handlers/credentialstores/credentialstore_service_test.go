@@ -1,6 +1,7 @@
 package credentialstores
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -52,6 +53,8 @@ func TestList(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -156,6 +159,8 @@ func TestCreate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -655,6 +660,8 @@ func TestDelete(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -674,6 +681,7 @@ func TestDelete(t *testing.T) {
 		name string
 		id   string
 		err  error
+		res  *pbs.DeleteCredentialStoreResponse
 	}{
 		{
 			name: "success",
@@ -693,7 +701,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, gErr := s.DeleteCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.DeleteCredentialStoreRequest{Id: tc.id})
-			assert.Nil(t, got)
+			assert.EqualValuesf(t, tc.res, got, "DeleteCredentialStore got response %q, wanted %q", got, tc.res)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err))
@@ -713,6 +721,8 @@ func TestUpdate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
+	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {

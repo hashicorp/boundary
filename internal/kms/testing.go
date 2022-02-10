@@ -13,8 +13,8 @@ import (
 func TestRootKey(t *testing.T, conn *db.DB, scopeId string) *RootKey {
 	t.Helper()
 	require := require.New(t)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocRootKey(); return &i }(), "scope_id = ?", scopeId)
 	rw := db.New(conn)
-	require.NoError(conn.Where("scope_id = ?", scopeId).Delete(AllocRootKey()).Error)
 	k, err := NewRootKey(scopeId)
 	require.NoError(err)
 	id, err := newRootKeyId()
@@ -62,7 +62,7 @@ func TestDatabaseKey(t *testing.T, conn *db.DB, rootKeyId string) *DatabaseKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocDatabaseKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocDatabaseKey(); return &i }(), "root_key_id = ?", rootKeyId)
 	k, err := NewDatabaseKey(rootKeyId)
 	require.NoError(err)
 	id, err := newDatabaseKeyId()
@@ -98,7 +98,7 @@ func TestOplogKey(t *testing.T, conn *db.DB, rootKeyId string) *OplogKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocOplogKey()).Error)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocOplogKey(); return &i }(), "root_key_id = ?", rootKeyId)
 	k, err := NewOplogKey(rootKeyId)
 	require.NoError(err)
 	id, err := newOplogKeyId()
@@ -133,8 +133,8 @@ func TestOplogKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappi
 func TestTokenKey(t *testing.T, conn *db.DB, rootKeyId string) *TokenKey {
 	t.Helper()
 	require := require.New(t)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocTokenKey(); return &i }(), "root_key_id = ?", rootKeyId)
 	rw := db.New(conn)
-	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocTokenKey()).Error)
 	k, err := NewTokenKey(rootKeyId)
 	require.NoError(err)
 	id, err := newTokenKeyId()
@@ -169,8 +169,8 @@ func TestTokenKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappi
 func TestSessionKey(t *testing.T, conn *db.DB, rootKeyId string) *SessionKey {
 	t.Helper()
 	require := require.New(t)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSessionKey(); return &i }(), "root_key_id = ?", rootKeyId)
 	rw := db.New(conn)
-	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocSessionKey()).Error)
 	k, err := NewSessionKey(rootKeyId)
 	require.NoError(err)
 	id, err := newSessionKeyId()
@@ -205,8 +205,8 @@ func TestSessionKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrap
 func TestOidcKey(t *testing.T, conn *db.DB, rootKeyId string) *OidcKey {
 	t.Helper()
 	require := require.New(t)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocOidcKey(); return &i }(), "root_key_id = ?", rootKeyId)
 	rw := db.New(conn)
-	require.NoError(conn.Where("root_key_id = ?", rootKeyId).Delete(AllocOidcKey()).Error)
 	k, err := NewOidcKey(rootKeyId)
 	require.NoError(err)
 	id, err := newOidcKeyId()
@@ -228,7 +228,43 @@ func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappin
 	require.NotEmpty(rootKeyVersionId)
 	k, err := NewOidcKeyVersion(oidcKeyId, key, rootKeyVersionId)
 	require.NoError(err)
-	id, err := newDatabaseKeyVersionId()
+	id, err := newOidcKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestAuditKey(t *testing.T, conn *db.DB, rootKeyId string) *AuditKey {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocAuditKey(); return &i }(), "root_key_id = ?", rootKeyId)
+	rw := db.New(conn)
+	k, err := NewAuditKey(ctx, rootKeyId)
+	require.NoError(err)
+	id, err := newAuditKeyId(ctx)
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+func TestAuditKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, auditKeyId string, key []byte) *AuditKeyVersion {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+	rootKeyVersionId := rootKeyVersionWrapper.KeyID()
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewAuditKeyVersion(ctx, auditKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newAuditKeyVersionId(ctx)
 	require.NoError(err)
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)

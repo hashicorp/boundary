@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package controller.api.resources.plugins.v1;
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins;plugins";
+
+message PluginInfo {
+  // Output only. The ID of the Plugin.
+  string id = 1;
+
+  // Output only. The name of the plugin resource in boundary, if any.
+  string name = 2;
+
+  // Output only. The description of the plugin in boundary, if any.
+  string description = 3;
+}

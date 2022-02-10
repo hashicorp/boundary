@@ -2,12 +2,15 @@ package kms_test
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -126,6 +129,80 @@ func TestKms(t *testing.T) {
 			})
 			// four purposes x 3 scopes
 			assert.Equal(t, 12, count)
+		})
+	}
+}
+
+func TestKms_ReconcileKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	tests := []struct {
+		name            string
+		kms             *kms.Kms
+		reader          io.Reader
+		setup           func()
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-reader",
+			kms:             kms.TestKms(t, conn, wrapper),
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing rand reader",
+		},
+		{
+			name:            "reader-interface-is-nil",
+			kms:             kms.TestKms(t, conn, wrapper),
+			reader:          func() io.Reader { var sr *strings.Reader; var r io.Reader = sr; return r }(),
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing rand reader",
+		},
+		{
+			name:    "nothing-to-reconcile",
+			kms:     kms.TestKms(t, conn, wrapper),
+			reader:  rand.Reader,
+			wantErr: false,
+		},
+		{
+			name:   "reconcile-audit-key",
+			kms:    kms.TestKms(t, conn, wrapper),
+			reader: rand.Reader,
+			setup: func() {
+				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			// start with no keys...
+			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+			_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
+			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
+
+			err = tt.kms.ReconcileKeys(testCtx, tt.reader)
+			if tt.wantErr {
+				assert.Error(err)
+				if tt.wantErrMatch != nil {
+					assert.Truef(errors.Match(tt.wantErrMatch, err), "expected %q and got err: %+v", tt.wantErrMatch.Code, err)
+				}
+				if tt.wantErrContains != "" {
+					assert.True(strings.Contains(err.Error(), tt.wantErrContains))
+				}
+				return
+			}
+			assert.NoError(err)
 		})
 	}
 }

@@ -10,9 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
@@ -194,7 +197,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if admin {
 			opts = append(opts,
 				iam.WithName("admin"),
-				iam.WithDescription(`Initial admin user within the "global" scope`),
+				iam.WithDescription(fmt.Sprintf(`Initial admin user within the "%s" scope`, scope.Global.String())),
 			)
 		} else {
 			opts = append(opts,
@@ -218,7 +221,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		// Create a role tying them together
 		pr, err := iam.NewRole(scope.Global.String(),
 			iam.WithName("Administration"),
-			iam.WithDescription(`Provides admin grants within the "global" scope to the initial user`),
+			iam.WithDescription(fmt.Sprintf(`Provides admin grants within the "%s" scope to the initial user`, scope.Global.String())),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
@@ -502,7 +505,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 
 	// Host Catalog
 	if b.DevTargetId == "" {
-		b.DevTargetId, err = db.NewPublicId(target.TcpTargetPrefix)
+		b.DevTargetId, err = db.NewPublicId(tcp.TargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial target id: %w", err)
 		}
@@ -514,16 +517,19 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		target.WithName("Generated target"),
 		target.WithDescription("Provides an initial target in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
-		target.WithHostSources([]string{b.DevHostSetId}),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 	}
-	t, err := target.NewTcpTarget(b.DevProjectId, opts...)
+	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}
-	tt, _, _, err := targetRepo.CreateTcpTarget(cancelCtx, t, opts...)
+	tt, _, _, err := targetRepo.CreateTarget(cancelCtx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error saving target to the db: %w", err)
+	}
+	tt, _, _, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
 	if err != nil {
 		return nil, fmt.Errorf("error saving target to the db: %w", err)
 	}
@@ -590,4 +596,65 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 
 	return tt, nil
+}
+
+// RegisterHostPlugin creates a host plugin in the database if not present.
+// It also registers the plugin in the shared map of running plugins.  Since
+// all boundary provided host plugins must have a name, a name is required
+// when calling RegisterHostPlugin and will be used even if WithName is provided.
+func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+	if name == "" {
+		return nil, fmt.Errorf("no name provided when creating plugin.")
+	}
+	rw := db.New(b.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
+	}()
+
+	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
+	}
+
+	plugin, err := hpRepo.LookupPluginByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up host plugin by name: %w", err)
+	}
+
+	if plugin == nil {
+		opt = append(opt, hostplugin.WithName(name))
+		plugin = hostplugin.NewPlugin(opt...)
+		plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating host plugin: %w", err)
+		}
+	}
+
+	if b.HostPlugins == nil {
+		b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
+	}
+	b.HostPlugins[plugin.GetPublicId()] = plg
+
+	return plugin, nil
 }

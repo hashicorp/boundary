@@ -35,9 +35,10 @@ type Server struct {
 	// private ID and name to be identical, and there is currently no reason we
 	// can think of to allow a given server's name to match another within the
 	// same cluster. So we simply use the private ID and deprecate this.
+	// @inject_tag: `gorm:"-"`
 	//
 	// Deprecated: Do not use.
-	Name string `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,30,opt,name=name,proto3" json:"name,omitempty" gorm:"-"`
 	// Description of the resource
 	Description string `protobuf:"bytes,40,opt,name=description,proto3" json:"description,omitempty"`
 	// Address for the server

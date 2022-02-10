@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -129,10 +130,16 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 			for _, f := range got.allow {
 				assert.Contains(tt.wantAllow, f.raw)
 			}
-			assert.Len(got.deny, len(tt.wantDeny))
+			assert.Len(got.deny, len(tt.wantDeny)+1) // +1 since there's always a default deny
+			defs, err := defaultCloudEventsDenyFilters()
+			require.NoError(err)
+			for _, f := range defs {
+				tt.wantDeny = append(tt.wantDeny, f.raw)
+			}
 			for _, f := range got.deny {
 				assert.Contains(tt.wantDeny, f.raw)
 			}
+			assert.Equal([]string{string(AuditType)}, got.SignEventTypes)
 		})
 	}
 }
@@ -340,6 +347,44 @@ func TestNode_Process(t *testing.T) {
 			require.NoError(err)
 			assert.JSONEq(string(wantJSON), string(gotFormatted))
 			t.Log(string(gotFormatted))
+		})
+	}
+}
+
+func Test_cloudEventsFormatter_Rotate(t *testing.T) {
+	tests := []struct {
+		name            string
+		f               *cloudEventsFormatterFilter
+		w               wrapping.Wrapper
+		wantIsError     error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-wrapper",
+			f:               &cloudEventsFormatterFilter{FormatterFilter: &cloudevents.FormatterFilter{}},
+			wantIsError:     ErrInvalidParameter,
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name: "valid",
+			f:    &cloudEventsFormatterFilter{FormatterFilter: &cloudevents.FormatterFilter{}},
+			w:    testWrapper(t),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := tt.f.Rotate(tt.w)
+			if tt.wantIsError != nil {
+				require.Error(err)
+				assert.ErrorIs(err, tt.wantIsError)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			assert.NotNil(tt.f.Signer)
 		})
 	}
 }

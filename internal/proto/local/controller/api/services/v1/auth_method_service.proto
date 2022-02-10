@@ -107,7 +107,7 @@ service AuthMethodService {
 }
 
 message GetAuthMethodRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message GetAuthMethodResponse {
@@ -129,12 +129,12 @@ message CreateAuthMethodRequest {
 }
 
 message CreateAuthMethodResponse {
-  string uri = 1;
+  string uri = 1;  // @gotags: `class:"public"`
   resources.authmethods.v1.AuthMethod item = 2;
 }
 
 message UpdateAuthMethodRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   resources.authmethods.v1.AuthMethod item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -160,7 +160,7 @@ message OidcChangeStateAttributes {
 }
 
 message ChangeStateRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
@@ -203,7 +203,7 @@ message AuthenticateRequest {
   string auth_method_id = 1 [json_name = "auth_method_id"];  // @gotags: `class:"public"`
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
-  string token_type = 2 [json_name = "token_type"];
+  string token_type = 2 [json_name = "token_type"];  // @gotags: `class:"public"`
   // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command to perform.

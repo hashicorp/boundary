@@ -63,6 +63,15 @@ for available options, i.e:
 make PROVE_OPTS='-j9 -v'
 ```
 
+By default the database docker container does not use a host port.
+This can be changed using an environment variable:
+
+```bash
+$ export SQL_TEST_DB_PORT=5433
+$ make database-up
+$ make run-tests
+```
+
 Different versions of postgres can easily be tested:
 
 ```bash

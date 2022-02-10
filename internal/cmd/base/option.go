@@ -1,6 +1,10 @@
 package base
 
-import "github.com/hashicorp/boundary/internal/observability/event"
+import (
+	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+)
 
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) Options {
@@ -31,8 +35,10 @@ type Options struct {
 	withDatabaseTemplate           string
 	withEventerConfig              *event.EventerConfig
 	withEventFlags                 *EventFlags
+	withEventWrapper               wrapping.Wrapper
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
+	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
 }
 
 func getDefaultOptions() Options {
@@ -136,6 +142,12 @@ func WithEventFlags(flags *EventFlags) Option {
 	}
 }
 
+func WithEventAuditWrapper(w wrapping.Wrapper) Option {
+	return func(o *Options) {
+		o.withEventWrapper = w
+	}
+}
+
 // WithAttributeFieldPrefix tells the command what prefix
 // to attach to attribute fields when they are returned as errors.
 func WithAttributeFieldPrefix(p string) Option {
@@ -156,5 +168,15 @@ func WithStatusCode(statusCode int) Option {
 func WithDatabaseTemplate(template string) Option {
 	return func(o *Options) {
 		o.withDatabaseTemplate = template
+	}
+}
+
+// WithHostPlugin allows specifying a plugin ID and implementation to create at
+// startup
+func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option {
+	return func(o *Options) {
+		o.withHostPlugin = func() (string, plugin.HostPluginServiceClient) {
+			return pluginId, plg
+		}
 	}
 }

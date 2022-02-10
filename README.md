@@ -86,8 +86,9 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 ### Build and Start Boundary in Dev Mode
 
 If you have the following requirements met locally:
-- Golang v1.16 or greater
+- Golang v1.17 or greater
 - Docker
+- [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
 
 You can get up and running with Boundary quickly. Simply run:
 
@@ -132,7 +133,7 @@ developing the UI. To make UI development more convenient, the binary supports a
 _passthrough directory_. This is an arbitrary local directory from which UI
 assets are served. Note this option is only available in dev mode. For example:
 
-  ```BOUNDARY_DEV_PASSTHROUGH_DIRECTORY=/boundary-ui/ui/admin/dist ~/go/bin/boundary dev```
+  ```BOUNDARY_DEV_UI_PASSTHROUGH_DIR=/boundary-ui/ui/admin/dist ~/go/bin/boundary dev```
 
 ### Download and Run from Release Page
 

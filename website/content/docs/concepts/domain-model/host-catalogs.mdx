@@ -20,6 +20,19 @@ A host catalog has the following configurable attributes:
 
 - `description` - (optional)
 
+### Plugin Host Catalog Information and Attributes
+
+- `plugin_id` - (required)
+  Must reference an installed plugin.
+
+- `attributes` - (optional)
+  A collection of fields which the plugin uses to interface with the backing
+  service.
+
+- `secrets` - (optional)
+  A collection of sensitive fields, like credentials, which the plugin uses to
+  interface with the backing service.  These fields are write-only.
+
 ## Referenced By
 
 - [Host][]
