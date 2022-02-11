@@ -32,7 +32,7 @@ require (
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220210193829-dd46434ee7d7
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220211130340-5e7528f68437
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 // indirect

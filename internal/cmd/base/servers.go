@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -32,6 +34,7 @@ import (
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/hashicorp/go-multierror"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -41,6 +44,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
 )
@@ -489,13 +493,22 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
-
+			fileSystem := kms_plugin_assets.FileSystem()
+			dirs, _ := fs.ReadDir(fileSystem, ".")
+			log.Println("dirs", pretty.Sprint(dirs))
 			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
 				ctx,
 				kms,
 				&b.InfoKeys,
 				&b.Info,
-				configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+				configutil.WithPluginOptions(
+					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+					pluginutil.WithPluginsMap(map[string]pluginutil.InmemCreationFunc{
+						wrapping.WrapperTypeAead.String(): func() (interface{}, error) {
+							return aead.NewWrapper(), nil
+						},
+					}),
+				),
 				configutil.WithLogger(hclog.NewNullLogger()),
 			)
 			if wrapperConfigError != nil {

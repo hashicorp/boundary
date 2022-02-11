@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io/fs"
+	"log"
 	"strings"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/kr/pretty"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -136,6 +139,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, err
 			}
 		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+			fileSystem := host_plugin_assets.FileSystem()
+			dirs, _ := fs.ReadDir(fileSystem, ".")
+			log.Println("dirs", pretty.Sprint(dirs))
+
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,
