@@ -154,29 +154,29 @@ begin;
       'Not Applicable' as ip4_address,
       'Not Applicable' as ip6_address
     from static_host as sh
-    where wh_try_cast_ip_inet(sh.address) is null
+    where wh_try_cast_inet(sh.address) is null
     union
     select
       sh.public_id as host_id,
-      host(wh_try_cast_ip_inet(sh.address)) as address,
+      host(wh_try_cast_inet(sh.address)) as address,
       'IP Address' as address_type,
       case
-        when family(wh_try_cast_ip_inet(sh.address)) = 4 then 'IPv4'
-        when family(wh_try_cast_ip_inet(sh.address)) = 6 then 'IPv6'
+        when family(wh_try_cast_inet(sh.address)) = 4 then 'IPv4'
+        when family(wh_try_cast_inet(sh.address)) = 6 then 'IPv6'
         else 'Not Applicable'
       end               as ip_address_family,
-      wh_private_address_indicator(wh_try_cast_ip_inet(sh.address)) as private_ip_address_indicator,
+      wh_private_address_indicator(wh_try_cast_inet(sh.address)) as private_ip_address_indicator,
       'Not Applicable' as dns_name,
       case
-        when wh_try_cast_ip_inet(sh.address) is not null and family(wh_try_cast_ip_inet(sh.address)) = 4 then host(wh_try_cast_ip_inet(sh.address))
+        when wh_try_cast_inet(sh.address) is not null and family(wh_try_cast_inet(sh.address)) = 4 then host(wh_try_cast_inet(sh.address))
         else 'Not Applicable'
       end as ip4_address,
       case
-        when wh_try_cast_ip_inet(sh.address) is not null and family(wh_try_cast_ip_inet(sh.address)) = 6 then host(wh_try_cast_ip_inet(sh.address))
+        when wh_try_cast_inet(sh.address) is not null and family(wh_try_cast_inet(sh.address)) = 6 then host(wh_try_cast_inet(sh.address))
         else 'Not Applicable'
       end as ip6_address
     from static_host as sh
-    where wh_try_cast_ip_inet(sh.address) is not null;
+    where wh_try_cast_inet(sh.address) is not null;
 
   alter table wh_host_dimension
     drop column host_address;

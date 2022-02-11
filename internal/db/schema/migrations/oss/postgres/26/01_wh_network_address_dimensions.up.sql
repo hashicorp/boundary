@@ -63,44 +63,12 @@ begin;
   alter table wh_host_dimension
     alter column network_address_group_key drop default;
 
-  -- wh_try_cast_ip_inet returns either the provided text cast into inet or a
-  -- null. This function will return null when the netmask bits are attached
-  -- with the text.
-  create function wh_try_cast_ip_inet(text)
+  -- wh_try_cast_inet returns either the provided text cast into inet or a
+  -- null.
+  create function wh_try_cast_inet(text)
     returns inet
   as $$
   begin
-  -- This regex is meant to filter out text which is obviously not parseable
-  -- it is better for the conditional to filter out to few posibilities than
-  -- to many since we still have the cast and exception block to capture
-  -- ones that can't be cast to an inet.  The regex is here because falling
-  -- into the exception block is expensive.
-  -- Also note that inets permit netmasks to be attached where these regexs
-  -- do not allow netmasks.
-  -- The ipv6 regex was taken from https://stackoverflow.com/a/21943960
-  -- the ipv4 regex was taken from https://ihateregex.io/expr/ip/
-  if
-    not (
-      -- ipv4
-      $1 ~ '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$'
-      -- IPv6 expanded
-      or $1 ~ '^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$'
-      --IPv6 shorthand
-      or (
-        $1 !~ '^(.*?[[:xdigit:]](:|$)){8}'
-        and
-        $1 ~ '^([[:xdigit:]]{1,4}(:[[:xdigit:]]{1,4}){0,6})?::([[:xdigit:]]{1,4}(:[[:xdigit:]]{1,4}){0,6})?$')
-      -- IPv6 dotted-quad notation, expanded
-      or $1 ~ '^[[:xdigit:]]{1,4}(:[[:xdigit:]]{1,4}){5}:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$'
-      -- IPv6 dotted-quad notation, shorthand
-      or (
-        $1 !~ '^(.*?[[:xdigit:]]:){6}'
-        and
-        $1 ~ '^([[:xdigit:]]{1,4}(:[[:xdigit:]]{1,4}){0,4})?::([[:xdigit:]]{1,4}:){0,5}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$'))
-   then
-    return null::inet;
-  end if;
-
     return cast($1 as inet);
   exception when others then
     return null::inet;
@@ -128,9 +96,9 @@ begin;
   -- Migrate all the ip addresses and ignore any addresses which aren't ip.
   with
     ip_addresses(address, inet_address) as (
-      select hd.host_address as address, wh_try_cast_ip_inet(hd.host_address) as inet_address
+      select hd.host_address as address, wh_try_cast_inet(hd.host_address) as inet_address
       from wh_host_dimension as hd
-      where wh_try_cast_ip_inet(hd.host_address) is not null
+      where wh_try_cast_inet(hd.host_address) is not null
     )
   insert into wh_network_address_dimension(
     address,
