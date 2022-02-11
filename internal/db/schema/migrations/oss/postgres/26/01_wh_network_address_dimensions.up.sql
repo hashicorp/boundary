@@ -63,8 +63,7 @@ begin;
   alter table wh_host_dimension
     alter column network_address_group_key drop default;
 
-  -- wh_try_cast_inet returns either the provided text cast into inet or a
-  -- null.
+  -- wh_try_cast_inet returns either the provided text cast into inet or a null.
   create function wh_try_cast_inet(text)
     returns inet
   as $$
