@@ -3,13 +3,13 @@ schema = "1"
 project "boundary" {
   team = "#proj-boundary-release-engineering"
   slack {
-    notification_channel = "C01BWLSMJ03"
+    notification_channel = "C01A3A54G0L"
   }
   github {
     organization = "hashicorp"
     repository = "boundary"
     release_branches = [
-        "main"
+        "yarn-timeout-fix"
     ]
   }
 }

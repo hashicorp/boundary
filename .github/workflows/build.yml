@@ -5,7 +5,8 @@ on:
     # Sequence of patterns matched against refs/heads
     branches:    
       # Push events on main branch
-      - 'main'
+      # - 'main'
+      - 'yarn-timeout-fix'
 
 env:
   PKG_NAME: "boundary"
@@ -110,7 +111,7 @@ jobs:
           cd "$DIR"
           git fetch origin "$SHA"
           git checkout "$SHA"
-          yarn install
+          yarn install --network-concurrency 5
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -173,7 +174,7 @@ jobs:
           cd "$DIR"
           git fetch origin "$SHA"
           git checkout "$SHA"
-          yarn install
+          yarn install --network-concurrency 5
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -263,7 +264,7 @@ jobs:
           cd "$DIR"
           git fetch origin "$SHA"
           git checkout "$SHA"
-          yarn install
+          yarn install --network-concurrency 5
           yarn build:ui:admin
       - name: Go Build
         env:
