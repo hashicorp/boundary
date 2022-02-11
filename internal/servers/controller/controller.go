@@ -4,13 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/fs"
-	"log"
 	"strings"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/kr/pretty"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -38,6 +35,7 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -139,16 +137,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, err
 			}
 		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
-			fileSystem := host_plugin_assets.FileSystem()
-			dirs, _ := fs.ReadDir(fileSystem, ".")
-			log.Println("dirs", pretty.Sprint(dirs))
-
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
+				external_host_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				),
 				external_host_plugins.WithLogger(hclog.NewNullLogger()))
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)

@@ -6,9 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 	"regexp"
@@ -225,10 +223,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if os.Getenv(api.EnvBoundaryMaxRetries) == "" {
 		c.client.SetMaxRetries(0)
 	}
-
-	fileSystem := kms_plugin_assets.FileSystem()
-	dirs, _ := fs.ReadDir(fileSystem, ".")
-	log.Println("dirs", dirs)
 
 	switch {
 	case c.FlagRecoveryConfig != "":

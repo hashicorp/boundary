@@ -35,7 +35,7 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.6 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220211130340-5e7528f68437
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220211155709-39e81875973f
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4
@@ -88,7 +88,6 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210234331-14367b923693
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.5

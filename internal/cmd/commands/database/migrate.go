@@ -137,8 +137,10 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
 		c.Context,
 		"aws",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(c.Config.Plugins.ExecutionDir),
+		external_host_plugins.WithPluginOptions(
+			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+		),
 		external_host_plugins.WithLogger(hclog.NewNullLogger()))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
