@@ -88,7 +88,7 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/boundary/plugins v0.0.0-20220210230258-80b1df83acb0
+	github.com/hashicorp/boundary/plugins v0.0.0-20220210234331-14367b923693
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
 	github.com/hashicorp/go-secure-stdlib/configutil v0.1.5
