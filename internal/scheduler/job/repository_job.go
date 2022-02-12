@@ -11,15 +11,16 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// CreateJob inserts a job into the repository and returns a new *Job.
+// UpsertJob inserts a job into the repository or updates its current description
+// and returns a new *Job.
 //
 // • name must be provided and is the name of the job.
 //
 // • description must be provided and is the user-friendly description of the job.
 //
 // WithNextRunIn is the only valid options.
-func (r *Repository) CreateJob(ctx context.Context, name, description string, opt ...Option) (*Job, error) {
-	const op = "job.(Repository).CreateJob"
+func (r *Repository) UpsertJob(ctx context.Context, name, description string, opt ...Option) (*Job, error) {
+	const op = "job.(Repository).UpsertJob"
 	if name == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
@@ -34,7 +35,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	j := allocJob()
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, createJobQuery, []interface{}{
+			rows, err := r.Query(ctx, upsertJobQuery, []interface{}{
 				sql.Named("plugin_id", defaultId),
 				sql.Named("name", name),
 				sql.Named("description", description),
