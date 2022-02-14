@@ -13,7 +13,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   3 new dimension tables have been added including `wh_network_address_group`
   (which is now referenced by `wh_host_dimension`),
   `wh_network_address_dimension`, and `wh_network_address_group_membership`.
-  ([PR](https://github.com/hashicorp/boundary/pull/TODO))
+  ([PR](https://github.com/hashicorp/boundary/pull/1855))
 
 ### Bug Fixes
 * targets: Specifying a plugin based host id when authorizing a session
