@@ -1,0 +1,20 @@
+---
+description: >
+  Ensure protobuf is installed
+steps:
+  - run:
+      name: "Install protobuf"
+      command: |
+        make tools
+
+        VERSION="3.17.3"
+        PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+        ARCH="$(uname -m)"
+        PACKAGE_NAME=protoc-$VERSION-linux-$ARCH.zip
+        curl -LO $PB_REL/download/v$VERSION/$PACKAGE_NAME
+        unzip $PACKAGE_NAME -d $HOME/.local
+        rm $PACKAGE_NAME
+
+        echo 'export PATH=$HOME/.local/bin:$PATH' >> "$BASH_ENV"
+        echo "$ protoc --version"
+        protoc --version

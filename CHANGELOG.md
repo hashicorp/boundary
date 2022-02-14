@@ -10,6 +10,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   subcommend selection a bit clearer
   ([PR](https://github.com/hashicorp/boundary/pull/1835))
 
+### Bug Fixes
+* targets: Specifying a plugin based host id when authorizing a session
+  now works. ([PR](https://github.com/hashicorp/boundary/pull/1853))
+* targets: DNS names are now properly parsed when selecting an endpoint
+  for authorizing a session.
+  ([PR](https://github.com/hashicorp/boundary/pull/1849))
+
 ## 0.7.4 (2022/01/18)
 
 ### Deprecations/Changes

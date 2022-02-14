@@ -12,7 +12,7 @@ const runJobsQuery = `
 	returning *;
 `
 
-const createJobQuery = `
+const upsertJobQuery = `
 	insert into job (
 	  plugin_id, 
 	  name, 
@@ -24,6 +24,10 @@ const createJobQuery = `
 	  @description, -- description
 	  wt_add_seconds_to_now(@next_scheduled_run) -- next_scheduled_run
 	)
+	on conflict on constraint  
+	  job_pkey
+	do update set 
+	  description = @description
 	returning *;
 `
 

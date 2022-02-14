@@ -11,3 +11,4 @@ jobs:
           branches:
             only:
               - stable-website
+  - make-gen-deltas

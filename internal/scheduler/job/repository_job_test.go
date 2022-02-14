@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestRepository_CreateJob(t *testing.T) {
+func TestRepository_UpsertJob(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -44,7 +44,7 @@ func TestRepository_CreateJob(t *testing.T) {
 				description: "description",
 			},
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJob: missing name: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).UpsertJob: missing name: parameter violation: error #100",
 		},
 		{
 			name: "missing-description",
@@ -53,7 +53,7 @@ func TestRepository_CreateJob(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJob: missing description: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).UpsertJob: missing description: parameter violation: error #100",
 		},
 		{
 			name: "valid",
@@ -77,7 +77,7 @@ func TestRepository_CreateJob(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateJob(context.Background(), tt.in.name, tt.in.description)
+			got, err := repo.UpsertJob(context.Background(), tt.in.name, tt.in.description)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -94,22 +94,23 @@ func TestRepository_CreateJob(t *testing.T) {
 		})
 	}
 
-	t.Run("invalid-duplicate-names", func(t *testing.T) {
+	t.Run("re-register-same-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CreateJob(context.Background(), "test-dup-name", "description")
+		got, err := repo.UpsertJob(context.Background(), "test-dup-name", "description")
 		require.NoError(err)
 		require.NotNil(got)
 		assert.Equal("test-dup-name", got.Name)
 		assert.Equal("description", got.Description)
 
-		got2, err := repo.CreateJob(context.Background(), "test-dup-name", "description")
-		require.Error(err)
-		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
-		assert.Nil(got2)
+		got2, err := repo.UpsertJob(context.Background(), "test-dup-name", "updated description")
+		require.NoError(err)
+		require.NotNil(got2)
+		assert.Equal("test-dup-name", got2.Name)
+		assert.Equal("updated description", got2.Description)
 	})
 }
 
@@ -380,7 +381,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		job, err := repo.CreateJob(context.Background(), "valid", "description", WithNextRunIn(2*time.Hour))
+		job, err := repo.UpsertJob(context.Background(), "valid", "description", WithNextRunIn(2*time.Hour))
 		require.NoError(err)
 
 		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, time.Hour)
@@ -400,7 +401,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
-		job, err := repo.CreateJob(context.Background(), "next-run-already-sooner", "description", WithNextRunIn(time.Hour))
+		job, err := repo.UpsertJob(context.Background(), "next-run-already-sooner", "description", WithNextRunIn(time.Hour))
 		require.NoError(err)
 		previousRunAt := job.NextScheduledRun.AsTime()
 
