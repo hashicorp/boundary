@@ -8,13 +8,13 @@ begin;
   -- The network address group key remains the same for the same set of
   -- addresses.
   with nag (key) as (
-    select wh_upsert_network_address_dimension('h_____wb__01')
+    select wh_upsert_network_address_dimension('h_____wb__03')
   )
-  select is(wh_upsert_network_address_dimension('h_____wb__01'), key) from nag;
+  select is(wh_upsert_network_address_dimension('h_____wb__03'), key) from nag;
   with nag (key) as (
-    select wh_upsert_network_address_dimension('h_____wb__01')
+    select wh_upsert_network_address_dimension('h_____wb__03')
   )
-  select is(wh_upsert_network_address_dimension('h_____wb__01-plgh'), key) from nag;
+  select is(wh_upsert_network_address_dimension('h_____wb__03-plgh'), key) from nag;
 
   -- different set of addresses means a different group key
   with nag (key) as (

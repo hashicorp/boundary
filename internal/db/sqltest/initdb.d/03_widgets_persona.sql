@@ -220,53 +220,6 @@ begin;
       ('c___ws-sthcl', 'h_____ws__08', '8.small.widget'),
       ('c___ws-sthcl', 'h_____ws__09', '9.small.widget');
 
-    insert into host_dns_name
-      (host_id, name)
-    values
-      ('h_____wb__01', '1.big.widget'),
-      ('h_____wb__02', '2.big.widget'),
-      ('h_____wb__03', '3.big.widget'),
-      ('h_____wb__04', '4.big.widget'),
-      ('h_____wb__05', '5.big.widget'),
-      ('h_____wb__06', '6.big.widget'),
-      ('h_____wb__07', '7.big.widget'),
-      ('h_____wb__08', '8.big.widget'),
-      ('h_____wb__09', '9.big.widget'),
-
-      -- note there are no dns names for red 1
-      ('h_____ws__02', '2.small.widget'),
-      ('h_____ws__03', '3.small.widget'),
-      ('h_____ws__04', '4.small.widget'),
-      ('h_____ws__05', '5.small.widget'),
-      ('h_____ws__06', '6.small.widget'),
-      ('h_____ws__07', '7.small.widget'),
-      ('h_____ws__08', '8.small.widget'),
-      ('h_____ws__09', '9.small.widget');
-
-    insert into host_ip_address
-      (host_id, address)
-    values
-      ('h_____wb__01', '1.1.1.1'),
-      ('h_____wb__02', 'fe80::2222:2222:2222:2222'),
-      ('h_____wb__03', '3.3.3.3'),
-      ('h_____wb__04', 'fe80::4444:4444:4444:4444'),
-      ('h_____wb__05', '5.5.5.5'),
-      ('h_____wb__06', 'fe80::6666:6666:6666:6666'),
-      ('h_____wb__07', '7.7.7.7'),
-      ('h_____wb__08', 'fe80::8888:8888:8888:8888'),
-      ('h_____wb__09', '9.9.9.9'),
-
-      -- note there are no addresses for small 1
-      ('h_____ws__02', '22.22.22.22'),
-      ('h_____ws__03', '2001:4860:4860::3333'),
-      ('h_____ws__04', '44.44.44.44'),
-      ('h_____ws__05', '2001:4860:4860::5555'),
-      ('h_____ws__06', '66.66.66.66'),
-      ('h_____ws__07', '2001:4860:4860::7777'),
-      ('h_____ws__08', '88.88.88.88'),
-      ('h_____ws__09', '2001:4860:4860::9999');
-
-
     insert into static_host_set
       (catalog_id, public_id, name)
     values
@@ -322,7 +275,8 @@ begin;
     values
       ('h_____wb__01-plgh', '1.1.1.1'),
       ('h_____wb__02-plgh', 'fe80::2222:2222:2222:2222'),
-      ('h_____wb__03-plgh', '3.3.3.3'),
+      -- host 3 only has a dns name so the set of addresses are the same
+      -- between the static and plugin based host
 
       ('h_____ws__01-plgh', '11.11.11.11'),
       ('h_____ws__02-plgh', '2001:4860:4860::2222'),

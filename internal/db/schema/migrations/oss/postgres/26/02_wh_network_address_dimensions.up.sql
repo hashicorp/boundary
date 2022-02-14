@@ -113,36 +113,70 @@ begin;
 
   create view whx_network_address_dimension_source as
     select
-      hdns.host_id as host_id,
-      hdns.name as address,
-      'DNS Name' as address_type,
+      hdns.host_id     as host_id,
+      hdns.name        as address,
+      'DNS Name'       as address_type,
       'Not Applicable' as ip_address_family,
-      'Not Applicable' private_ip_address_indicator,
-      hdns.name as dns_name,
+      'Not Applicable' as private_ip_address_indicator,
+      hdns.name        as dns_name,
       'Not Applicable' as ip4_address,
       'Not Applicable' as ip6_address
     from host_dns_name as hdns
     union
     select -- id is the first column in the target view
-       hip.host_id as host_id,
+       hip.host_id       as host_id,
        host(hip.address) as address,
-       'IP Address' as address_type,
+       'IP Address'      as address_type,
        case
          when family(hip.address) = 4 then 'IPv4'
          when family(hip.address) = 6 then 'IPv6'
          else 'Not Applicable'
-         end               as ip_address_family,
+       end               as ip_address_family,
        wh_private_address_indicator(hip.address) as private_ip_address_indicator,
-       'Not Applicable' as dns_name,
+       'Not Applicable'  as dns_name,
        case
          when hip.address is not null and family(hip.address) = 4 then host(hip.address)
          else 'Not Applicable'
-         end as ip4_address,
+       end               as ip4_address,
        case
          when hip.address is not null and family(hip.address) = 6 then host(hip.address)
          else 'Not Applicable'
-         end as ip6_address
-    from host_ip_address as hip;
+       end               as ip6_address
+    from host_ip_address as hip
+    union
+    select
+      sh.public_id     as host_id,
+      sh.address       as address,
+      'DNS Name'       as address_type,
+      'Not Applicable' as ip_address_family,
+      'Not Applicable' as private_ip_address_indicator,
+      sh.address       as dns_name,
+      'Not Applicable' as ip4_address,
+      'Not Applicable' as ip6_address
+    from static_host as sh
+    where wh_try_cast_inet(sh.address) is null
+    union
+    select
+      sh.public_id     as host_id,
+      host(wh_try_cast_inet(sh.address)) as address,
+      'IP Address'     as address_type,
+      case
+        when family(wh_try_cast_inet(sh.address)) = 4 then 'IPv4'
+        when family(wh_try_cast_inet(sh.address)) = 6 then 'IPv6'
+        else 'Not Applicable'
+      end              as ip_address_family,
+      wh_private_address_indicator(wh_try_cast_inet(sh.address)) as private_ip_address_indicator,
+      'Not Applicable' as dns_name,
+      case
+        when family(wh_try_cast_inet(sh.address)) = 4 then host(wh_try_cast_inet(sh.address))
+        else 'Not Applicable'
+      end              as ip4_address,
+      case
+        when family(wh_try_cast_inet(sh.address)) = 6 then host(wh_try_cast_inet(sh.address))
+        else 'Not Applicable'
+      end              as ip6_address
+    from static_host as sh
+    where wh_try_cast_inet(sh.address) is not null;
 
   alter table wh_host_dimension
     drop column host_address;
