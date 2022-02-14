@@ -56,7 +56,7 @@ begin;
   ;
 
   -- replaces view from 15/01_wh_rename_key_columns.up.sql
-  -- replaced in 25/02_wh_network_address_dimensions.up.sql
+  -- replaced in 26/02_wh_network_address_dimensions.up.sql
   drop view whx_host_dimension_target;
   create view whx_host_dimension_target as
   select key,
