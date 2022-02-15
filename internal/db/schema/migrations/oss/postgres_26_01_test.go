@@ -185,6 +185,11 @@ values
 			_, err := rw.Exec(ctx, q, []interface{}{a.Address})
 			require.NoError(t, err)
 		}
+		// Duplicate a few records...
+		_, err := rw.Exec(ctx, q, []interface{}{addresses[1].Address})
+		require.NoError(t, err)
+		_, err = rw.Exec(ctx, q, []interface{}{addresses[5].Address})
+		require.NoError(t, err)
 	}
 
 	// now we're ready for the migration we want to test.
