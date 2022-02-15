@@ -264,6 +264,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		if v == "--" {
 			passthroughArgs = args[i+1:]
 			args = args[:i]
+			break // only consider the first instance of '--' in the args list
 		}
 	}
 
