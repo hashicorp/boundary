@@ -108,7 +108,7 @@ begin;
     ip4_address,
     ip6_address
   )
-  select
+  select distinct
     address,
     'IP Address',
     case
@@ -135,7 +135,7 @@ begin;
     dns_name,
     ip4_address,       ip6_address
   )
-  select
+  select distinct
     whd.host_address,  'DNS Name',
     'Not Applicable',  'Not Applicable',
     whd.host_address,
