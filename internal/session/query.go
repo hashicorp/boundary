@@ -57,40 +57,6 @@ where
 			)
 	) 
 `
-
-	terminateSessionCte = `
-insert into session_state
-with terminated as (
-	select s.public_id, 'terminated' as state
-	from 
-		session s
-	where 
-		s.version = @version  and
-		s.public_id in (
-			-- sessions without any connections
-			select s.public_id 
-			from 
-				session s
-			left join session_connection sc on sc.session_id = s.public_id 
-			where 
-				sc.session_id is null
-				and s.public_id = @session_id
-			union
-			-- sessions where all connections are closed
-			select s.public_id 
-			from
-				session s,
-				session_connection c,
-				session_connection_state cs
-			where
-				s.public_id = c.session_id and
-				c.public_id = cs.connection_id and
-				cs.state = 'closed' and 
-				s.public_id = @session_id
-		) 
-)
-select * from terminated;
-`
 	authorizeConnectionCte = `
 insert into session_connection (
 	session_id, 
