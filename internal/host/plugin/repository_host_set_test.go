@@ -1223,6 +1223,50 @@ func TestRepository_UpdateSet(t *testing.T) {
 			assert.Empty(cmp.Diff(gotUpdatedSet, gotLookupSet, protocmp.Transform()))
 		})
 	}
+
+	t.Run("Unset Empty PreferredEndpoint", func(t *testing.T) {
+		var gotOnUpdateCallCount int
+		testPluginMap := map[string]plgpb.HostPluginServiceClient{
+			testPlugin.GetPublicId(): &WrappingPluginClient{
+				Server: &TestPluginServer{
+					OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
+						gotOnUpdateCallCount++
+						for _, check := range []checkPluginReqFunc{
+							checkUpdateSetRequestCurrentPreferredEndpoints(nil),
+							checkUpdateSetRequestNewPreferredEndpointsNil(),
+							checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+								"one": "two",
+							})} {
+							check(t, req)
+						}
+						return &plgpb.OnUpdateSetResponse{}, nil
+					},
+				},
+			},
+		}
+
+		origSet, _ := setupBareHostSet(t, ctx)
+
+		pluginMap := testPluginMap
+		repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
+		require.NoError(t, err)
+		require.NotNil(t, repo)
+
+		workingSet := origSet.clone()
+		workingSet = changePreferredEndpoints(nil)(workingSet)
+
+		gotUpdatedSet, _, _, gotNumUpdated, err := repo.UpdateSet(ctx, testCatalog.ScopeId, workingSet, origSet.Version, []string{"PreferredEndpoints"})
+		t.Cleanup(func() { gotOnUpdateCallCount = 0 })
+
+		require.NoError(t, err)
+		require.Equal(t, 1, gotOnUpdateCallCount)
+		assert.Equal(t, 0, gotNumUpdated)
+		assert.Empty(t, cmp.Diff(gotUpdatedSet, origSet, protocmp.Transform()))
+	})
+}
+
+func TestRepository_UpdateSet_UnsetEmptyPreferredEndpoint(t *testing.T) {
+
 }
 
 func TestRepository_LookupSet(t *testing.T) {
