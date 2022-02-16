@@ -57,6 +57,12 @@ func TestConfigSetAddress(t *testing.T) {
 			"http://127.0.0.1:9200/my-install",
 			"",
 		},
+		{
+			"valid project path containing v1",
+			"http://127.0.0.1:9200/randomPathHasv1InIt",
+			"http://127.0.0.1:9200/randomPathHasv1InIt",
+			"",
+		},
 	}
 
 	for _, v := range tests {
