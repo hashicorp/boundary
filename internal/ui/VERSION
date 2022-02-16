@@ -1,4 +1,4 @@
-30d029a2238f011f1d58731e2140e0332cbb324c Merge pull request #878 from hashicorp/feature-host-catalogs-only-supports-static-type
+eca47f14f90aa14c99afe05b0a57b381c1185249 Merge pull request #978 from hashicorp/fix-hosts-lists-missing-value
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
