@@ -1236,7 +1236,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 							checkUpdateSetRequestNewPreferredEndpointsNil(),
 							checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 								"one": "two",
-							})} {
+							}),
+						} {
 							check(t, req)
 						}
 						return &plgpb.OnUpdateSetResponse{}, nil
@@ -1266,7 +1267,6 @@ func TestRepository_UpdateSet(t *testing.T) {
 }
 
 func TestRepository_UpdateSet_UnsetEmptyPreferredEndpoint(t *testing.T) {
-
 }
 
 func TestRepository_LookupSet(t *testing.T) {
