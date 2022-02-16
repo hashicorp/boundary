@@ -14,6 +14,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   (which is now referenced by `wh_host_dimension`),
   `wh_network_address_dimension`, and `wh_network_address_group_membership`.
   ([PR](https://github.com/hashicorp/boundary/pull/1855))
+* UI: Add support for dynamic host catalog. AWS and Azure plugin-based CRUD operations.
 
 ### Bug Fixes
 * targets: Specifying a plugin based host id when authorizing a session
