@@ -22,6 +22,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * targets: DNS names are now properly parsed when selecting an endpoint
   for authorizing a session.
   ([PR](https://github.com/hashicorp/boundary/pull/1849))
+* hosts: Static hosts now include the host sets they are in.
+  ([PR](https://github.com/hashicorp/boundary/pull/1828))
 
 ## 0.7.4 (2022/01/18)
 
