@@ -1,4 +1,4 @@
-eca47f14f90aa14c99afe05b0a57b381c1185249 Merge pull request #978 from hashicorp/fix-hosts-lists-missing-value
+8496c054888329073c568e9bd4944b209e966923 Merge pull request #980 from hashicorp/chore-radio-card-width
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
