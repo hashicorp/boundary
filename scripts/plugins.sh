@@ -4,7 +4,7 @@
 set -e
 
 BINARY_SUFFIX=""
-if [ "${GOOS}x" == "windowsx" ]; then
+if [ "${GOOS}x" = "windowsx" ]; then
     BINARY_SUFFIX=".exe"
 fi
 
