@@ -23,7 +23,7 @@ func testJob(t *testing.T, conn *db.DB, name, description string, wrapper wrappi
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), name, description, opt...)
+	job, err := repo.UpsertJob(context.Background(), name, description, opt...)
 	require.NoError(err)
 	require.NotNil(job)
 

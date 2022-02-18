@@ -56,6 +56,7 @@ begin;
   ;
 
   -- replaces view from 15/01_wh_rename_key_columns.up.sql
+  -- replaced in 26/02_wh_network_address_dimensions.up.sql
   drop view whx_host_dimension_target;
   create view whx_host_dimension_target as
   select key,
@@ -90,6 +91,7 @@ begin;
   ;
 
   -- replaces function from 15/01_wh_rename_key_columns.up.sql
+  -- replaced in 26/03_wh_network_address_dimensions.up.sql
   drop function wh_upsert_host;
   create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
     returns wh_dim_key

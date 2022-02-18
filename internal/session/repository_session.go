@@ -352,57 +352,6 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	return s, nil
 }
 
-// TerminateSession sets a session's termination reason and it's state to
-// "terminated" Sessions cannot be terminated which still have connections that
-// are not closed.
-func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
-	const op = "session.(Repository).TerminateSession"
-	if sessionId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
-	}
-	if sessionVersion == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session version")
-	}
-
-	updatedSession := AllocSession()
-	updatedSession.PublicId = sessionId
-	updatedSession.TerminationReason = reason.String()
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, terminateSessionCte, []interface{}{
-				sql.Named("version", sessionVersion),
-				sql.Named("session_id", sessionId),
-			})
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to terminate session %s", sessionId)))
-			}
-			if rowsAffected == 0 {
-				return errors.New(ctx, errors.InvalidSessionState, op, fmt.Sprintf("unable to terminate session %s", sessionId))
-			}
-			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated))
-			}
-			states, err := fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			updatedSession.States = states
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return &updatedSession, nil
-}
-
 // TerminateCompletedSessions will terminate sessions in the repo based on:
 //  * sessions that have exhausted their connection limit and all their connections are closed.
 //	* sessions that are expired and all their connections are closed.

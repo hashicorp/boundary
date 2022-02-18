@@ -2102,7 +2102,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	}
 	if req.GetHostId() != "" {
 		switch host.SubtypeFromId(req.GetHostId()) {
-		case static.Subtype:
+		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."
 		}

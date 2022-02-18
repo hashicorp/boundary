@@ -130,6 +130,12 @@ module.exports = [
     permanent: false,
   },
 
+  {
+    source: '/help/admin-ui/host-catalog-set-up-cloud-hosts',
+    destination: 'https://learn.hashicorp.com/tutorials/boundary/cloud-host-catalogs#set-up-cloud-hosts',
+    permanent: false,
+  },
+
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource
   ////////////////////////////////////////////

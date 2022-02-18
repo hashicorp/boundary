@@ -2651,11 +2651,13 @@ func TestAuthorizeSession(t *testing.T) {
 						SetIds:      setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
+						DnsNames:    []string{"example.com"},
 					},
 					{
 						SetIds:      setIds,
 						ExternalId:  "test2",
 						IpAddresses: []string{"10.1.1.1", "192.168.1.1"},
+						DnsNames:    []string{"another-example.com"},
 					},
 				}}, nil
 			},
@@ -2775,6 +2777,12 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
 				"the credentials aren't unique per request authorized session")
+
+			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id:     tar.GetPublicId(),
+				HostId: asRes2.GetItem().GetHostId(),
+			})
+			require.NoError(t, err, "session must authorize with explicit host ID")
 
 			wantedHostId := tc.wantedHostId
 			if tc.wantedHostId == "?" {

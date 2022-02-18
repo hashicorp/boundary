@@ -27,7 +27,7 @@
 //  repo, _ = job.NewRepository(db, db, wrapper)
 //
 //  var j *job.Job
-//  j, _ = repo.CreateJob(context.Background(), j, "name", "description")
+//  j, _ = repo.UpsertJob(context.Background(), j, "name", "description")
 //
 //  var runs []*Run
 //  repo, _ = job.NewRepository(db, db, wrapper)

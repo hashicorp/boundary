@@ -236,7 +236,7 @@ func (c *Config) setAddr(addr string) error {
 
 	// If there is a v1 segment, elide everything after it. Do this only for
 	// the last v1 segment in case it's part of the base path.
-	if lastIndex := strings.LastIndex(u.Path, "v1"); lastIndex != -1 {
+	if lastIndex := strings.LastIndex(u.Path, "v1/"); lastIndex != -1 {
 		u.Path = u.Path[:lastIndex]
 	}
 

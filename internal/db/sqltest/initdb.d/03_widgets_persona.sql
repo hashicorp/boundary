@@ -259,6 +259,29 @@ begin;
       ('c___ws-plghcl', 'h_____ws__02-plgh', '2 small widget'),
       ('c___ws-plghcl', 'h_____ws__03-plgh', '3 small widget');
 
+    insert into host_dns_name
+    (host_id, name)
+    values
+      ('h_____wb__01-plgh', '1.big.widget'),
+      ('h_____wb__02-plgh', '2.big.widget'),
+      ('h_____wb__03-plgh', '3.big.widget'),
+
+      ('h_____ws__01-plgh', '1.small.widget'),
+      ('h_____ws__02-plgh', '2.small.widget'),
+      ('h_____ws__03-plgh', '3.small.widget');
+
+    insert into host_ip_address
+    (host_id, address)
+    values
+      ('h_____wb__01-plgh', '1.1.1.1'),
+      ('h_____wb__02-plgh', 'fe80::2222:2222:2222:2222'),
+      -- host 3 only has a dns name so the set of addresses are the same
+      -- between the static and plugin based host
+
+      ('h_____ws__01-plgh', '11.11.11.11'),
+      ('h_____ws__02-plgh', '2001:4860:4860::2222'),
+      ('h_____ws__03-plgh', '33.33.33.33');
+
     insert into host_plugin_set
       (catalog_id, public_id, name, attributes, need_sync)
     values
