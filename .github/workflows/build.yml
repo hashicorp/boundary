@@ -6,7 +6,6 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
-      - 'remove-set-qemu-job'
 
 env:
   PKG_NAME: "boundary"
