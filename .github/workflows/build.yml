@@ -93,24 +93,27 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Setup Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
           npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install --network-concurrency 5
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -156,24 +159,27 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
           npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install --network-concurrency 5
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -246,24 +252,27 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
-          npm install -g yarn          
+          npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install --network-concurrency 5
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
