@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/eventlogger/sinks/writer"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"go.uber.org/atomic"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -59,8 +60,18 @@ type broker interface {
 	RegisterPipeline(def eventlogger.Pipeline) error
 }
 
+// queuedEvent stores an event and the context that was associated with it when
+// gating
+type queuedEvent struct {
+	ctx   context.Context
+	event interface{}
+}
+
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
+	gated                atomic.Bool
+	gatedQueue           []*queuedEvent
+	gatedQueueLock       *sync.Mutex
 	broker               broker
 	flushableNodes       []flushable
 	conf                 EventerConfig
@@ -189,6 +200,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	}
 
 	e := &Eventer{
+		gatedQueueLock:    new(sync.Mutex),
 		logger:            log,
 		conf:              c,
 		broker:            b,
@@ -197,6 +209,10 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 	if !opts.withNow.IsZero() {
 		e.broker.StopTimeAt(opts.withNow)
+	}
+
+	if opts.withGating {
+		e.gated.Store(true)
 	}
 
 	// serializedStderr will be shared among all StderrSinks so their output is not
@@ -558,13 +574,27 @@ func (e *Eventer) RotateAuditWrapper(ctx context.Context, newWrapper wrapping.Wr
 }
 
 // writeObservation writes/sends an Observation event.
-func (e *Eventer) writeObservation(ctx context.Context, event *observation) error {
+func (e *Eventer) writeObservation(ctx context.Context, event *observation, opt ...Option) error {
 	const op = "event.(Eventer).writeObservation"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	if !e.conf.ObservationsEnabled {
 		return nil
+	}
+	opts := getOpts(opt...)
+	if e.gated.Load() {
+		if !opts.withNoGateLocking {
+			e.gatedQueueLock.Lock()
+			defer e.gatedQueueLock.Unlock()
+		}
+		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
+			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
+				ctx:   ctx,
+				event: event,
+			})
+			return nil
+		}
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		if event.Header != nil {
@@ -584,10 +614,24 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 }
 
 // writeError writes/sends an Err event
-func (e *Eventer) writeError(ctx context.Context, event *err) error {
+func (e *Eventer) writeError(ctx context.Context, event *err, opt ...Option) error {
 	const op = "event.(Eventer).writeError"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	if e.gated.Load() {
+		if !opts.withNoGateLocking {
+			e.gatedQueueLock.Lock()
+			defer e.gatedQueueLock.Unlock()
+		}
+		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
+			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
+				ctx:   ctx,
+				event: event,
+			})
+			return nil
+		}
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
@@ -600,10 +644,24 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 }
 
 // writeSysEvent writes/sends an sysEvent event
-func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent) error {
+func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent, opt ...Option) error {
 	const op = "event.(Eventer).writeSysEvent"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	if e.gated.Load() {
+		if !opts.withNoGateLocking {
+			e.gatedQueueLock.Lock()
+			defer e.gatedQueueLock.Unlock()
+		}
+		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
+			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
+				ctx:   ctx,
+				event: event,
+			})
+			return nil
+		}
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(SystemType), event)
@@ -616,13 +674,27 @@ func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent) error {
 }
 
 // writeAudit writes/send an audit event
-func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
+func (e *Eventer) writeAudit(ctx context.Context, event *audit, opt ...Option) error {
 	const op = "event.(Eventer).writeAudit"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	if !e.conf.AuditEnabled {
 		return nil
+	}
+	opts := getOpts(opt...)
+	if e.gated.Load() {
+		if !opts.withNoGateLocking {
+			e.gatedQueueLock.Lock()
+			defer e.gatedQueueLock.Unlock()
+		}
+		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
+			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
+				ctx:   ctx,
+				event: event,
+			})
+			return nil
+		}
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(AuditType), event)
@@ -652,6 +724,57 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
+	return nil
+}
+
+// ReleaseGate releases queued events. If any event isn't successfully written,
+// it remains in the queue and we could try a flush later.
+func (e *Eventer) ReleaseGate() error {
+	const op = "event.(Eventer).ReleaseGate"
+	e.gatedQueueLock.Lock()
+	defer e.gatedQueueLock.Unlock()
+
+	// Don't do anything if we're not gated and are fully drained
+	if len(e.gatedQueue) == 0 && !e.gated.Load() {
+		return nil
+	}
+
+	clean := true
+	var writeErr error
+	for i, qe := range e.gatedQueue {
+		if qe == nil {
+			continue // we may have already sent this but gotten errors later
+		}
+		var queuedOp string
+		switch t := qe.event.(type) {
+		case *sysEvent:
+			queuedOp = "system"
+			writeErr = e.writeSysEvent(qe.ctx, t, WithNoGateLocking(true))
+		case *observation:
+			queuedOp = "observation"
+			writeErr = e.writeObservation(qe.ctx, t, WithNoGateLocking(true))
+		case *err:
+			queuedOp = "error"
+			writeErr = e.writeError(qe.ctx, t, WithNoGateLocking(true))
+		case *audit:
+			queuedOp = "audit"
+			writeErr = e.writeAudit(qe.ctx, t, WithNoGateLocking(true))
+		}
+		if writeErr == nil {
+			e.gatedQueue[i] = nil // clear this entry, we've sent it
+		} else {
+			writeErr = fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr)
+			clean = false
+			break // stop processing for now but don't clear queue
+		}
+	}
+	switch {
+	case clean:
+		e.gatedQueue = nil
+	case writeErr != nil:
+		return writeErr
+	}
+	e.gated.Store(false) // either way, don't gate anymore
 	return nil
 }
 

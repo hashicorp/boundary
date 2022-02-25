@@ -134,7 +134,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -162,7 +161,11 @@ func (c *Command) Run(args []string) int {
 		serverNames = append(serverNames, c.Config.Worker.Name)
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger,
+		c.StderrLock,
+		strings.Join(serverNames, "/"),
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -171,7 +174,7 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
 
 	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
@@ -380,12 +383,12 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
 
-		if err := c.ConnectToDatabase(ctx, "postgres"); err != nil {
+		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
 
-		underlyingDB, err := c.Database.SqlDB(ctx)
+		underlyingDB, err := c.Database.SqlDB(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
 			return base.CommandCliError
@@ -445,11 +448,14 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	c.PrintInfo(c.UI)
-	c.ReleaseLogGate()
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
+	}
 
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
-		if err := c.StartController(ctx); err != nil {
+		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}

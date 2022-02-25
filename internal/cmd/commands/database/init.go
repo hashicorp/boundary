@@ -168,7 +168,6 @@ func (c *InitCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *InitCommand) Run(args []string) (retCode int) {
-	ctx := context.Background()
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -282,11 +281,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 	// Everything after is done with normal database URL and is affecting actual data
-	if err := c.srv.ConnectToDatabase(ctx, dialect); err != nil {
+	if err := c.srv.ConnectToDatabase(c.Context, dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return base.CommandCliError
 	}
-	if err := c.verifyOplogIsEmpty(ctx); err != nil {
+	if err := c.verifyOplogIsEmpty(c.Context); err != nil {
 		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
 		return base.CommandCliError
 	}
@@ -523,7 +522,9 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 		return r.Err()
 	}
 	var empty bool
-	r.Scan(&empty)
+	if err := r.Scan(&empty); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	if !empty {
 		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
