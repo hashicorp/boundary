@@ -58,43 +58,44 @@ where
 	) 
 `
 	authorizeConnectionCte = `
-insert into session_connection (
-	session_id, 
-	public_id,
-	server_id
-)
-with active_session as ( 
+with connections_available as (
 	select 
-		@session_id as session_id,
+		s.public_id
+ 	from 
+		session s 
+	where 
+		s.public_id = @session_id and 
+ 		(s.connection_limit = -1 or 
+		s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id ))
+),
+unexpired_session as (
+	select 
+		s.public_id 
+	from 
+		session s 
+	where 
+		s.public_id in (select * from  connections_available) and 
+		s.expiration_time > now() 
+),
+active_session as (
+	select 
+		ss.session_id as session_id,
 		@public_id as public_id,
 		@worker_id as server_id
-	from
-		session s
-	where
-		-- check that the session hasn't expired.
-		s.expiration_time > now() and
-		-- check that there are still connections available. connection_limit of -1 equals unlimited connections
-		(
-			s.connection_limit = -1
-				or 
-			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id)
-		) and
-		-- check that there's a state of active
-		s.public_id in (
-			select 
-				ss.session_id 
-			from 
-				session_state ss
-			where 
-				ss.session_id = @session_id and 
-				ss.state = 'active' and
-				-- if there's no end_time, then this is the current state.
-				ss.end_time is null 
-		) 
+	from 
+		session_state ss 
+	where 
+		ss.session_id in (select * from unexpired_session) and 
+		ss.state = 'active' and
+		ss.end_time is null 
+) 
+insert into session_connection (
+  	session_id, 
+ 	public_id, 
+	server_id
 )
 select * from active_session;
 `
-
 	remainingConnectionsCte = `
 with
 session_connection_count(current_connection_count) as (

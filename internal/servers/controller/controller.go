@@ -68,6 +68,7 @@ type Controller struct {
 	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
 	ServersRepoFn         common.ServersRepoFactory
 	SessionRepoFn         common.SessionRepoFactory
+	ConnectionRepoFn      common.ConnectionRepoFactory
 	StaticHostRepoFn      common.StaticRepoFactory
 	PluginHostRepoFn      common.PluginHostRepoFactory
 	HostPluginRepoFn      common.HostPluginRepoFactory
@@ -235,7 +236,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.SessionRepoFn = func() (*session.Repository, error) {
 		return session.NewRepository(dbase, dbase, c.kms)
 	}
-
+	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
+	}
 	return c, nil
 }
 
@@ -290,21 +293,21 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 
-	if err := c.registerSessionCleanupJob(); err != nil {
+	if err := c.registerSessionConnectionCleanupJob(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// registerSessionCleanupJob is a helper method to abstract
-// registering the session cleanup job specifically.
-func (c *Controller) registerSessionCleanupJob() error {
-	sessionCleanupJob, err := newSessionCleanupJob(c.SessionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
+// registerSessionConnectionCleanupJob is a helper method to abstract
+// registering the session connection cleanup job specifically.
+func (c *Controller) registerSessionConnectionCleanupJob() error {
+	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(c.ConnectionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
 	if err != nil {
 		return fmt.Errorf("error creating session cleanup job: %w", err)
 	}
-	if err = c.scheduler.RegisterJob(c.baseContext, sessionCleanupJob); err != nil {
+	if err = c.scheduler.RegisterJob(c.baseContext, sessionConnectionCleanupJob); err != nil {
 		return fmt.Errorf("error registering session cleanup job: %w", err)
 	}
 
