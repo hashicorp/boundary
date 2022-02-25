@@ -163,7 +163,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Connection should fail, and the session should be closed on the DB.
 	sConn.TestSendRecvFail(t)
-	sess.ExpectConnectionStateOnController(ctx, t, controllerCmd.controller.SessionRepoFn, session.StatusClosed)
+	sess.ExpectConnectionStateOnController(ctx, t, controllerCmd.controller.ConnectionRepoFn, session.StatusClosed)
 
 	// We're done! Shutdown the controller, and that's it.
 	close(controllerCmd.ShutdownCh)
