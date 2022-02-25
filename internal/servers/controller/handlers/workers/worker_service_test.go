@@ -37,6 +37,9 @@ func TestLookupSession(t *testing.T) {
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
 	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	uId := at.GetIamUserId()
@@ -97,7 +100,7 @@ func TestLookupSession(t *testing.T) {
 	err = repo.AddSessionCredentials(ctx, egressSess.ScopeId, egressSess.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
-	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, new(sync.Map), kms)
+	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	cases := []struct {

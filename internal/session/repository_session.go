@@ -13,8 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // CreateSession inserts into the repository and returns the new Session with
@@ -138,7 +136,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 // with its states.  Returned States are ordered by start time descending.  If the
 // session is not found, it will return nil, nil, nil. No options are currently
 // supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...Option) (*Session, *ConnectionAuthzSummary, error) {
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...Option) (*Session, *AuthzSummary, error) {
 	const op = "session.(Repository).LookupSession"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
@@ -377,69 +375,13 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 	return rowsAffected, nil
 }
 
-// AuthorizeConnection will check to see if a connection is allowed.  Currently,
-// that authorization checks:
-// * the hasn't expired based on the session.Expiration
-// * number of connections already created is less than session.ConnectionLimit
-// If authorization is success, it creates/stores a new connection in the repo
-// and returns it, along with its states.  If the authorization fails, it
-// an error with Code InvalidSessionState.
-func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId, workerId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
-	const op = "session.(Repository).AuthorizeConnection"
-	if sessionId == "" {
-		return nil, nil, nil, errors.Wrap(ctx, status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
-	}
-	connectionId, err := newConnectionId()
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
-	}
-
-	connection := AllocConnection()
-	connection.PublicId = connectionId
-	var connectionStates []*ConnectionState
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{
-				sql.Named("session_id", sessionId),
-				sql.Named("public_id", connectionId),
-				sql.Named("worker_id", workerId),
-			})
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
-			}
-			if rowsAffected == 0 {
-				return errors.Wrap(ctx, status.Errorf(codes.PermissionDenied, "session %s is not authorized (not active, expired or connection limit reached)", sessionId), op, errors.WithCode(errors.InvalidSessionState))
-			}
-			if err := reader.LookupById(ctx, &connection); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
-			}
-			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
-	}
-	authzSummary, err := r.sessionAuthzSummary(ctx, connection.SessionId)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
-	}
-	return &connection, connectionStates, authzSummary, nil
-}
-
-type ConnectionAuthzSummary struct {
+type AuthzSummary struct {
 	ExpirationTime         *timestamp.Timestamp
 	ConnectionLimit        int32
 	CurrentConnectionCount uint32
 }
 
-func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*ConnectionAuthzSummary, error) {
+func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*AuthzSummary, error) {
 	const op = "session.(Repository).sessionAuthzSummary"
 	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sql.Named("session_id", sessionId)})
 	if err != nil {
@@ -447,12 +389,12 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	}
 	defer rows.Close()
 
-	var info *ConnectionAuthzSummary
+	var info *AuthzSummary
 	for rows.Next() {
 		if info != nil {
 			return nil, errors.New(ctx, errors.MultipleRecords, op, "query returned more than one row")
 		}
-		info = &ConnectionAuthzSummary{}
+		info = &AuthzSummary{}
 		if err := r.reader.ScanRows(ctx, rows, info); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
@@ -462,7 +404,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 
 // ConnectConnection updates a connection in the repo with a state of "connected".
 func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
-	const op = "session.(Repository).ConnectConnection"
+	const op = "session.(ConnectionRepository).ConnectConnection"
 	// ConnectWith.validate will check all the fields...
 	if err := c.validate(); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
@@ -527,7 +469,7 @@ type CloseConnectionResp struct {
 // called by a worker after it's closed a connection between the client and the
 // endpoint
 func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, _ ...Option) ([]CloseConnectionResp, error) {
-	const op = "session.(Repository).CloseConnections"
+	const op = "session.(ConnectionRepository).CloseConnections"
 	if len(closeWith) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connections")
 	}
