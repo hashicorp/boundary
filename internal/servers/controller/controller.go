@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -80,6 +81,10 @@ type Controller struct {
 	kms *kms.Kms
 
 	enabledPlugins []base.EnabledPlugin
+
+	// Used to signal the Health Service to start
+	// replying to queries with "503 Service Unavailable".
+	HealthService *health.Service
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -92,6 +97,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
+		apiListeners:            make([]*base.ServerListener, 0),
 	}
 
 	c.started.Store(false)
