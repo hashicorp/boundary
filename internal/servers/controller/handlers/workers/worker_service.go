@@ -26,22 +26,25 @@ type workerServiceServer struct {
 	pbs.UnimplementedServerCoordinationServiceServer
 	pbs.UnimplementedSessionServiceServer
 
-	serversRepoFn common.ServersRepoFactory
-	sessionRepoFn common.SessionRepoFactory
-	updateTimes   *sync.Map
-	kms           *kms.Kms
+	serversRepoFn    common.ServersRepoFactory
+	sessionRepoFn    common.SessionRepoFactory
+	connectionRepoFn common.ConnectionRepoFactory
+	updateTimes      *sync.Map
+	kms              *kms.Kms
 }
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
+	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms) *workerServiceServer {
 	return &workerServiceServer{
-		serversRepoFn: serversRepoFn,
-		sessionRepoFn: sessionRepoFn,
-		updateTimes:   updateTimes,
-		kms:           kms,
+		serversRepoFn:    serversRepoFn,
+		sessionRepoFn:    sessionRepoFn,
+		connectionRepoFn: connectionRepoFn,
+		updateTimes:      updateTimes,
+		kms:              kms,
 	}
 }
 
@@ -61,6 +64,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 	sessRepo, err := ws.sessionRepoFn()
+	connectionRepo, err := ws.connectionRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
@@ -173,7 +177,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// additive to it, we don't add sessions that have already been
 	// added there as canceling sessions already closes the
 	// connections.
-	shouldCloseConnections, err := sessRepo.ShouldCloseConnectionsOnWorker(ctx, reportedOpenConns, requestedSessionCancelIds)
+	shouldCloseConnections, err := connectionRepo.ShouldCloseConnectionsOnWorker(ctx, reportedOpenConns, requestedSessionCancelIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error fetching connections that should be closed: %v", err)
 	}
@@ -203,7 +207,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	// Run our controller-side cleanup function.
-	closedConns, err := sessRepo.CloseDeadConnectionsForWorker(ctx, req.Worker.PrivateId, reportedOpenConns)
+	closedConns, err := connectionRepo.CloseDeadConnectionsForWorker(ctx, req.Worker.PrivateId, reportedOpenConns)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
 	}
@@ -386,12 +390,17 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 
 func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
 	const op = "workers.(workerServiceServer).AuthorizeConnection"
-	sessRepo, err := ws.sessionRepoFn()
+	connectionRepo, err := ws.connectionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, authzSummary, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId(), req.GetWorkerId())
+	sessionRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+	}
+
+	connectionInfo, connStates, authzSummary, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, req.GetSessionId(), req.GetWorkerId())
 	if err != nil {
 		return nil, err
 	}
