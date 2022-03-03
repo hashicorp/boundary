@@ -214,6 +214,10 @@
             "path": "concepts/filtering/events"
           }
         ]
+      },
+      {
+        "title": "Service Discovery",
+        "path": "service-discovery"
       }
     ]
   },
