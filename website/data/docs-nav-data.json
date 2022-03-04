@@ -217,7 +217,7 @@
       },
       {
         "title": "Service Discovery",
-        "path": "service-discovery"
+        "path": "concepts/service-discovery"
       }
     ]
   },
