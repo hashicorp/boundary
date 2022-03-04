@@ -83,6 +83,12 @@ across scopes. As a result, when not using the target ID, you must use the
 target's name in conjunction with the scope name or scope ID so that Boundary
 can correctly identify the desired target.
 
+Here is an SSH example in dev mode:
+
+```
+$ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
+```
+
 ## Built-In vs. Exec
 
 Boundary comes with built-in wrappers for popular layer 7 connection protocols,
