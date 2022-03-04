@@ -50,8 +50,8 @@ func CreateHostPlugin(
 	pluginMap, err := pluginutil.BuildPluginMap(
 		append(
 			opts.withPluginOptions,
-			pluginutil.WithPluginCreationFunc(
-				func(pluginPath string) (*plugin.Client, error) {
+			pluginutil.WithPluginClientCreationFunc(
+				func(pluginPath string, _ ...pluginutil.Option) (*plugin.Client, error) {
 					return NewHostPluginClient(pluginPath, WithLogger(opts.withLogger))
 				}),
 		)...)

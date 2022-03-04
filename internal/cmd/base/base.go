@@ -230,7 +230,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			c.Context,
 			c.FlagRecoveryConfig,
 			"recovery",
-			configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+			configutil.WithPluginOptions(
+				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+				pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 		)
 		if err != nil {
 			return nil, err

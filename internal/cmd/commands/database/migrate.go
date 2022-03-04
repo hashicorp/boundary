@@ -276,7 +276,9 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 		c.Context,
 		wrapperPath,
 		"config",
-		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+		configutil.WithPluginOptions(
+			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 	)
 	if err != nil {
 		c.UI.Error(err.Error())

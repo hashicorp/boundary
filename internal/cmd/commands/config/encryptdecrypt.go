@@ -149,7 +149,9 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		c.Context,
 		kmsDefFile,
 		"config",
-		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+		configutil.WithPluginOptions(
+			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 	)
 	if err != nil {
 		c.UI.Error(err.Error())
