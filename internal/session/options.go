@@ -1,6 +1,8 @@
 package session
 
 import (
+	"time"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
@@ -29,10 +31,13 @@ type options struct {
 	withSessionIds        []string
 	withServerId          string
 	withDbOpts            []db.Option
+	withWorkerStateDelay  time.Duration
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withWorkerStateDelay: 10 * time.Second,
+	}
 }
 
 // WithLimit provides an option to provide a limit. Intentionally allowing
@@ -106,5 +111,13 @@ func WithServerId(id string) Option {
 func WithDbOpts(opts ...db.Option) Option {
 	return func(o *options) {
 		o.withDbOpts = opts
+	}
+}
+
+// WithWorkerStateDelay is used byt queries to account for a delay in state
+// propagation between worker and controller.
+func WithWorkerStateDelay(d time.Duration) Option {
+	return func(o *options) {
+		o.withWorkerStateDelay = d
 	}
 }
