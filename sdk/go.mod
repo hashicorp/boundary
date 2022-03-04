@@ -7,14 +7,14 @@ require (
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220210224923-dc7130554b6b
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220210190615-b1e6d48e09a7
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220304191528-b8f9bf838e45
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 )
 
-require github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20211004181306-dd5d7c1b481a // indirect
+require github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0 // indirect
 
 require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
@@ -27,10 +27,10 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220210164645-bab1c3a03d9f
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220210164645-bab1c3a03d9f
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220211155709-39e81875973f
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220304191528-b8f9bf838e45
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 // indirect
