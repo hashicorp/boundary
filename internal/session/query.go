@@ -10,15 +10,15 @@ const (
 insert into session_state
 with not_active as (
 	select session_id, 'active' as state
-	from 
+	from
 		session s,
 		session_state ss
-	where 
+	where
 		s.public_id = ss.session_id and
-		ss.state = 'pending' and 
-		ss.session_id = @session_id and 
+		ss.state = 'pending' and
+		ss.session_id = @session_id and
 		s.version = @version and
-		s.public_id not in(select session_id from session_state where session_id = @session_id and state = 'active') 
+		s.public_id not in(select session_id from session_state where session_id = @session_id and state = 'active')
 )
 select * from not_active;
 `
@@ -27,71 +27,71 @@ select * from not_active;
 	// state or it's not already terminated (final state) before inserting a new
 	// state.
 	updateSessionState = `
-insert into session_state(session_id, state) 
+insert into session_state(session_id, state)
 select
-	@session_id, @status 
+	@session_id, @status
 from
 	session s
-where 
+where
 	s.public_id = @session_id and
 	s.public_id not in (
-		select 
-			session_id 
-		from 
-			session_state 
-		where 
+		select
+			session_id
+		from
+			session_state
+		where
 			-- already in the updated state
 			(
-				session_id = @session_id and 
+				session_id = @session_id and
 				state = @status
 			) or
 			-- already terminated
 			session_id in (
-				select 
-					session_id 
-				from 
-					session_state 
-				where 
-					session_id = @session_id and 
+				select
+					session_id
+				from
+					session_state
+				where
+					session_id = @session_id and
 					state = 'terminated'
 			)
-	) 
+	);
 `
 	authorizeConnectionCte = `
 with connections_available as (
-	select 
+	select
 		s.public_id
- 	from 
-		session s 
-	where 
-		s.public_id = @session_id and 
- 		(s.connection_limit = -1 or 
+ 	from
+		session s
+	where
+		s.public_id = @session_id and
+ 		(s.connection_limit = -1 or
 		s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id ))
 ),
 unexpired_session as (
-	select 
-		s.public_id 
-	from 
-		session s 
-	where 
-		s.public_id in (select * from  connections_available) and 
-		s.expiration_time > now() 
+	select
+		s.public_id
+	from
+		session s
+	where
+		s.public_id in (select * from  connections_available) and
+		s.expiration_time > now()
 ),
 active_session as (
-	select 
+	select
 		ss.session_id as session_id,
 		@public_id as public_id,
 		@worker_id as server_id
-	from 
-		session_state ss 
-	where 
-		ss.session_id in (select * from unexpired_session) and 
+	from
+		session_state ss
+	where
+		ss.session_id in (select * from unexpired_session) and
 		ss.state = 'active' and
-		ss.end_time is null 
-) 
+		ss.end_time is null
+)
 insert into session_connection (
-  	session_id, 
- 	public_id, 
+  	session_id,
+ 	public_id,
 	server_id
 )
 select * from active_session;
@@ -99,34 +99,35 @@ select * from active_session;
 	remainingConnectionsCte = `
 with
 session_connection_count(current_connection_count) as (
-	select count(*) 
-	from 
+	select count(*)
+	from
 		session_connection sc
 	where
 		sc.session_id = @session_id
 ),
 session_connection_limit(expiration_time, connection_limit) as (
-	select 
+	select
 		s.expiration_time,
 		s.connection_limit
 	from
 		session s
-	where 
+	where
 		s.public_id = @session_id
 )
-select expiration_time, connection_limit, current_connection_count 
-from  
-	session_connection_limit, session_connection_count;	
+select expiration_time, connection_limit, current_connection_count
+from
+	session_connection_limit, session_connection_count;
 `
 	sessionList = `
-select * 
+select *
 from
 	(select public_id from session %s) s,
 	session_list ss
-where 
-	s.public_id = ss.public_id 
+where
+	s.public_id = ss.public_id
 	%s
 %s
+;
 `
 
 	terminateSessionIfPossible = `
@@ -223,28 +224,28 @@ where
 	termSessionsUpdate = `
 with canceling_session(session_id) as
 (
-	select 
+	select
 		session_id
 	from
 		session_state ss
-	where 
-		ss.state = 'canceling' and 
+	where
+		ss.state = 'canceling' and
 		ss.end_time is null
 )
 update session us
-	set termination_reason = 
-	case 
+	set termination_reason =
+	case
 		-- timed out sessions
 		when now() > us.expiration_time then 'timed out'
 		-- canceling sessions
 		when us.public_id in(
-			select 
-				session_id 
-			from 
-				canceling_session cs 
-			where 
+			select
+				session_id
+			from
+				canceling_session cs
+			where
 				us.public_id = cs.session_id
-			) then 'canceled' 
+			) then 'canceled'
 		-- default: session connection limit reached.
 		else 'connection limit'
 	end
@@ -253,44 +254,44 @@ where
 	-- session expired or connection limit reached
 	(
 		-- expired sessions...
-		now() > us.expiration_time or 
+		now() > us.expiration_time or
 		-- connection limit reached...
 		(
 			-- handle unlimited connections...
 			connection_limit != -1 and
 			(
-			select count (*) 
-				from session_connection sc 
-			where 
+			select count (*)
+				from session_connection sc
+			where
 				sc.session_id = us.public_id
 			) >= connection_limit
-		) or 
+		) or
 		-- canceled sessions
 		us.public_id in (
-			select 
+			select
 				session_id
 			from
 				canceling_session cs
-			where 
-				us.public_id = cs.session_id 
+			where
+				us.public_id = cs.session_id
 		)
-	) and 
+	) and
 	-- make sure there are no existing connections
  	us.public_id not in (
-		select 
-			session_id 
-		from 
+		select
+			session_id
+		from
 		  	session_connection
      	where public_id in (
-			select 
+			select
 				connection_id
-			from 
+			from
 				session_connection_state
-			where 
+			where
 				state != 'closed' and
                	end_time is null
     )
-)
+);
 `
 
 	// closeDeadConnectionsCte finds connections that are:
@@ -335,8 +336,8 @@ with
       closed_reason = 'system error'
     where
       public_id in (select public_id from connections_to_close)
-    returning public_id
-  `
+    returning public_id;
+`
 
 	// closeConnectionsForDeadServersCte finds connections that are:
 	//
@@ -349,7 +350,6 @@ with
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
 	// each.
-
 	closeConnectionsForDeadServersCte = `
    with
    dead_servers (server_id, last_update_time) as (
@@ -396,13 +396,14 @@ with
         and
       connection_id in (%s)
   )
-  select public_id, session_id 
+  select public_id, session_id
     from session_connection
   where
     public_id in (select connection_id from closed_connections)
     -- Below fmt arg is filled in if there are session IDs to filter against
     %s
-  `
+;
+`
 )
 
 const (
@@ -415,7 +416,7 @@ values
   (?, ?, ?)`
 
 	sessionCredentialDynamicBatchInsertReturning = `
-  returning session_id, library_id, credential_id, credential_purpose
+  returning session_id, library_id, credential_id, credential_purpose;
 `
 )
 
