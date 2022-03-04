@@ -35,9 +35,7 @@ within the authorized session. When you are finished making connections, simply
 
 ### Using Connect Helpers
 
-It can be annoying to keep accepting host SSH key prompts as the port changes,
-much less having to keep copying and pasting the current port. To make this
-easier, Boundary includes connect helpers that take care of this work for you.
+Boundary includes connect helpers that automatically accept host SSH key prompts for you.
 These are written as `boundary connect <subcommand>`. In the following example,
 the helper will automatically execute `ssh` for you, filling in the local
 address/port, and setting an expected host ID so that future connections on
@@ -64,7 +62,7 @@ connection information to PuTTY.
 One advantage to styles is that Boundary will provide information to the client
 in the format that makes sense. For example, the `-username` flag is used to
 specify a username other than your currently logged-in user. This ensures that
-regardless of whether you use the default `ssh` style or the `putty` style, the
+regardless of your `-style` choice, the
 username is properly passed to the executed client, and you don't need to figure
 out the syntax yourself.
 
