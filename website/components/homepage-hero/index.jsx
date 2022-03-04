@@ -28,13 +28,13 @@ export default function HomepageHero({
           centered: false,
           videos: [
             {
-              name: 'UI',
-              playbackRate: uiVideo.playbackRate,
-              aspectRatio: uiVideo.aspectRatio,
+              name: 'Desktop',
+              playbackRate: desktopVideo.playbackRate,
+              aspectRatio: desktopVideo.aspectRatio,
               src: [
                 {
-                  srcType: uiVideo.srcType,
-                  url: uiVideo.url,
+                  srcType: desktopVideo.srcType,
+                  url: desktopVideo.url,
                 },
               ],
             },
@@ -50,13 +50,13 @@ export default function HomepageHero({
               ],
             },
             {
-              name: 'Desktop',
-              playbackRate: desktopVideo.playbackRate,
-              aspectRatio: desktopVideo.aspectRatio,
+              name: 'UI',
+              playbackRate: uiVideo.playbackRate,
+              aspectRatio: uiVideo.aspectRatio,
               src: [
                 {
-                  srcType: desktopVideo.srcType,
-                  url: desktopVideo.url,
+                  srcType: uiVideo.srcType,
+                  url: uiVideo.url,
                 },
               ],
             },
