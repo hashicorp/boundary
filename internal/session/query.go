@@ -316,14 +316,14 @@ with
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
       -- 2-3 seconds
-      start_time < wt_sub_seconds_from_now(10)
+      start_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
   ),
   connections_to_close as (
     select public_id
       from session_connection
     where
       -- Related to the worker that just reported to us
-      server_id = ?
+      server_id = @server_id
         and
       -- These are connection IDs that just got reported to us by the given
       -- worker, so they should not be considered closed.

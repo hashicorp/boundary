@@ -24,6 +24,10 @@ type ConnectionRepository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	// workerStateDelay is used by queries to account for a delay in state propagation between
+	// worker and controller
+	workerStateDelay time.Duration
 }
 
 // NewConnectionRepository creates a new session Connection Repository. Supports the options: WithLimit
@@ -45,10 +49,11 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 		opts.withLimit = db.DefaultLimit
 	}
 	return &ConnectionRepository{
-		reader:       r,
-		writer:       w,
-		kms:          kms,
-		defaultLimit: opts.withLimit,
+		reader:           r,
+		writer:           w,
+		kms:              kms,
+		defaultLimit:     opts.withLimit,
+		workerStateDelay: opts.withWorkerStateDelay,
 	}, nil
 }
 
@@ -359,16 +364,17 @@ func (r *ConnectionRepository) CloseDeadConnectionsForWorker(ctx context.Context
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
 	}
 
-	args := make([]interface{}, 0, len(foundConns)+1)
-	args = append(args, serverId)
+	args := make([]interface{}, 0, len(foundConns)+2)
+	args = append(args, sql.Named("server_id", serverId))
+	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
 	var publicIdStr string
 	if len(foundConns) > 0 {
 		publicIdStr = `public_id not in (%s) and`
 		params := make([]string, len(foundConns))
 		for i, connId := range foundConns {
-			params[i] = fmt.Sprintf("@%d", i+2) // Add one for server ID, and offsets start at 1
-			args = append(args, sql.Named(fmt.Sprintf("%d", i+2), connId))
+			params[i] = fmt.Sprintf("@%d", i)
+			args = append(args, sql.Named(fmt.Sprintf("%d", i), connId))
 		}
 		publicIdStr = fmt.Sprintf(publicIdStr, strings.Join(params, ","))
 	}
