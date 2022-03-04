@@ -38,13 +38,6 @@ A target has the following configurable attributes:
 
 TCP targets have the following additional attributes:
 
-- `default_port` - (optional)
-  A TCP port number.
-  Boundary will use the `default_port`
-  when connecting to a host in the target
-  if the user does not specify a different port
-  when establishing the session.
-
 - `session_max_seconds` - (required)
   The maximum duration of an individual session between the user and the target.
   All connections for a session are closed
