@@ -101,6 +101,10 @@
         "path": "concepts"
       },
       {
+        "title": "Service Discovery",
+        "path": "concepts/service-discovery"
+      },
+      {
         "title": "Security",
         "routes": [
           {
@@ -214,10 +218,6 @@
             "path": "concepts/filtering/events"
           }
         ]
-      },
-      {
-        "title": "Service Discovery",
-        "path": "concepts/service-discovery"
       }
     ]
   },
