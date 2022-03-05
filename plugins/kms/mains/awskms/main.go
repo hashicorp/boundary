@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashicorp/go-hclog"
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2"
 )

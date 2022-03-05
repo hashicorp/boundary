@@ -3,9 +3,8 @@ module github.com/hashicorp/boundary/plugins/kms/mains/alicloudkms
 go 1.17
 
 require (
-	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0
-	github.com/hashicorp/go-kms-wrapping/wrappers/alicloudkms/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/wrappers/alicloudkms/v2 v2.0.1
 )
 
 require (
@@ -13,6 +12,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/hashicorp/go-hclog v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
