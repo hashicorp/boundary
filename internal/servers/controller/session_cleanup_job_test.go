@@ -26,6 +26,9 @@ var _ = scheduler.Job(new(sessionConnectionCleanupJob))
 func TestSessionConnectionCleanupJob(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+
+	const gracePeriod = 1 * time.Second
+
 	require, assert := require.New(t), assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -35,7 +38,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	sessionRepo, err := session.NewRepository(rw, rw, kms)
-	connectionRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms)
+	connectionRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithDeadWorkerConnCloseMinGrace(gracePeriod))
 	require.NoError(err)
 
 	numConns := 12
@@ -101,10 +104,11 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		func() (*session.ConnectionRepository, error) { return connectionRepo, nil },
 		session.DeadWorkerConnCloseMinGrace,
 	)
+	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
-	time.Sleep(time.Second * time.Duration(session.DeadWorkerConnCloseMinGrace))
+	time.Sleep(gracePeriod)
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
@@ -160,7 +164,7 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
-		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %d", session.DeadWorkerConnCloseMinGrace)),
+		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %s", session.DeadWorkerConnCloseMinGrace)),
 	))
 	require.Nil(job)
 }

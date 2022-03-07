@@ -446,7 +446,8 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
-	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	deadWorkerConnCloseMinGrace := 1 * time.Second
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithDeadWorkerConnCloseMinGrace(deadWorkerConnCloseMinGrace))
 	require.NoError(err)
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(err)
@@ -548,10 +549,6 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 		}
 	}
 
-	// There is a 15 second delay to account for time for the connections to
-	// transition
-	time.Sleep(15 * time.Second)
-
 	// updateServer is a helper for updating the update time for our
 	// servers. The controller is read back so that we can reference
 	// the most up-to-date fields.
@@ -616,11 +613,11 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	// Now try some scenarios.
 	{
 		// First, test the error/validation case.
-		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, 0)
+		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, -1)
 		require.Equal(err, errors.E(ctx,
 			errors.WithCode(errors.InvalidParameter),
 			errors.WithOp("session.(ConnectionRepository).CloseConnectionsForDeadWorkers"),
-			errors.WithMsg(fmt.Sprintf("gracePeriod must be at least %d seconds", DeadWorkerConnCloseMinGrace)),
+			errors.WithMsg(fmt.Sprintf("gracePeriod must be at least %s", deadWorkerConnCloseMinGrace)),
 		))
 		require.Nil(result)
 	}
@@ -632,7 +629,7 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 		worker3 = updateServer(t, worker3)
 		updateServer(t, worker4) // no re-assignment here because we never reference the server again
 
-		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, DeadWorkerConnCloseMinGrace)
+		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, deadWorkerConnCloseMinGrace)
 		require.NoError(err)
 		require.Empty(result)
 		// Expect appropriate split connection state on worker1
@@ -647,12 +644,12 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 		// Now try a zero case - similar to the basis, but only in that no results
 		// are expected to be returned for workers with no connections, even if
 		// they are dead. Here, the server with no connections is worker #4.
-		time.Sleep(time.Second * time.Duration(DeadWorkerConnCloseMinGrace))
+		time.Sleep(deadWorkerConnCloseMinGrace)
 		worker1 = updateServer(t, worker1)
 		worker2 = updateServer(t, worker2)
 		worker3 = updateServer(t, worker3)
 
-		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, DeadWorkerConnCloseMinGrace)
+		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, deadWorkerConnCloseMinGrace)
 		require.NoError(err)
 		require.Empty(result)
 		// Expect appropriate split connection state on worker1
@@ -666,11 +663,11 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	{
 		// The first induction is letting the first worker "die" by not updating it
 		// too. All of its authorized and connected connections should be dead.
-		time.Sleep(time.Second * time.Duration(DeadWorkerConnCloseMinGrace))
+		time.Sleep(deadWorkerConnCloseMinGrace)
 		worker2 = updateServer(t, worker2)
 		worker3 = updateServer(t, worker3)
 
-		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, DeadWorkerConnCloseMinGrace)
+		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, deadWorkerConnCloseMinGrace)
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and
 		// number of connections closed. Due to how things are
@@ -693,9 +690,9 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 		// The final case is having the other two workers die. After
 		// this, we should have all connections closed with the
 		// appropriate message from the next two servers acted on.
-		time.Sleep(time.Second * time.Duration(DeadWorkerConnCloseMinGrace))
+		time.Sleep(deadWorkerConnCloseMinGrace)
 
-		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, DeadWorkerConnCloseMinGrace)
+		result, err := connRepo.CloseConnectionsForDeadWorkers(ctx, deadWorkerConnCloseMinGrace)
 		require.NoError(err)
 		// Assert that we have one result with the appropriate ID and number of connections closed.
 		require.Equal([]CloseConnectionsForDeadWorkersResult{

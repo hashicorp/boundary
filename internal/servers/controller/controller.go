@@ -303,7 +303,7 @@ func (c *Controller) registerJobs() error {
 // registerSessionConnectionCleanupJob is a helper method to abstract
 // registering the session connection cleanup job specifically.
 func (c *Controller) registerSessionConnectionCleanupJob() error {
-	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(c.ConnectionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
+	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(c.ConnectionRepoFn, c.conf.StatusGracePeriodDuration)
 	if err != nil {
 		return fmt.Errorf("error creating session cleanup job: %w", err)
 	}
