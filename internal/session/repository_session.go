@@ -588,6 +588,59 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 	return &updatedSession, returnedStates, nil
 }
 
+// checkIfNoLongerActive checks the given sessions to see if they are in a
+// non-active state, i.e. "canceling" or "terminated"
+// It returns a []StateReport for each session that is not active, with its current status.
+func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions []string) ([]StateReport, error) {
+	const op = "session.(Repository).checkIfNotActive"
+
+	notActive := make([]StateReport, 0, len(reportedSessions))
+	args := make([]interface{}, 0, len(reportedSessions))
+	var inClause string
+
+	if len(reportedSessions) <= 0 {
+		return notActive, nil
+	}
+
+	inClause = `and session_id in (%s)`
+	params := make([]string, len(reportedSessions))
+	for i, sessId := range reportedSessions {
+		params[i] = fmt.Sprintf("@%d", i)
+		args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
+	}
+	inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
+
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rows, err := r.reader.Query(ctx, fmt.Sprintf(checkIfNotActive, inClause), args)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var sessionId string
+				var status Status
+				if err := rows.Scan(&sessionId, &status); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+				}
+				notActive = append(notActive, StateReport{
+					SessionId: sessionId,
+					Status:    status,
+				})
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error checking if sessions are no longer active"))
+	}
+	return notActive, nil
+}
+
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
 	const op = "session.fetchStates"
 	var states []*State

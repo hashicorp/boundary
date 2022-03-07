@@ -79,45 +79,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 
-	var (
-		// For tracking the reported open connections.
-		reportedOpenConns []string
-		// For tracking the session IDs we've already requested
-		// cancellation for. We won't need to add connection cancel
-		// requests for these because canceling the session terminates the
-		// connections.
-		requestedSessionCancelIds []string
-	)
-
-	// This is a map of all sessions and their statuses. We keep track of
-	// this for easy lookup if we need to make change requests.
-	sessionStatuses := make(map[string]pbs.SESSIONSTATUS)
+	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
-		// Check for session cancellation
 		case pbs.JOBTYPE_JOBTYPE_SESSION:
 			si := jobStatus.GetJob().GetSessionInfo()
 			if si == nil {
 				return nil, status.Error(codes.Internal, "Error getting session info at status time")
-			}
-
-			// Record status.
-			sessionStatuses[si.GetSessionId()] = si.Status
-
-			// Check connections before potentially bypassing the rest of the
-			// logic in the switch on si.Status.
-			sessConns := si.GetConnections()
-			for _, conn := range sessConns {
-				switch conn.Status {
-				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
-					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
-					// If it's active, report it as found. Otherwise don't
-					// report as found, so that we should attempt to close it.
-					// Note that unspecified is the default state for the enum
-					// but it's not ever explicitly set by us.
-					reportedOpenConns = append(reportedOpenConns, conn.GetConnectionId())
-				}
 			}
 
 			switch si.Status {
@@ -127,92 +96,46 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				continue
 			}
 
-			sessionId := si.GetSessionId()
-			sessionInfo, _, err := sessRepo.LookupSession(ctx, sessionId)
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
+			sr := session.StateReport{
+				SessionId:     si.GetSessionId(),
+				ConnectionIds: make([]string, 0, len(si.GetConnections())),
 			}
-			if sessionInfo == nil {
-				return nil, status.Errorf(codes.Internal, "Unknown session ID %s at status time.", sessionId)
-			}
-			if len(sessionInfo.States) == 0 {
-				return nil, status.Error(codes.Internal, "Empty session states during lookup at status time.")
-			}
-			// If the session from the DB is in canceling status, and we're
-			// here, it means the job is in pending or active; cancel it. If
-			// it's in terminated status something went wrong and we're
-			// mismatched, so ensure we cancel it also.
-			currState := sessionInfo.States[0].Status
-			if currState.ProtoVal() != si.Status {
-				switch currState {
-				case session.StatusCanceling,
-					session.StatusTerminated:
-					// If we're here the job is pending or active so we do want
-					// to actually send a change request
-					ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
-						Job: &pbs.Job{
-							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
-							JobInfo: &pbs.Job_SessionInfo{
-								SessionInfo: &pbs.SessionJobInfo{
-									SessionId: sessionId,
-									Status:    currState.ProtoVal(),
-								},
-							},
-						},
-						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
-					})
-					// Log the session ID so we don't add a duplicate change
-					// request on connection normalization.
-					requestedSessionCancelIds = append(requestedSessionCancelIds, sessionId)
+			for _, conn := range si.GetConnections() {
+				switch conn.Status {
+				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+					sr.ConnectionIds = append(sr.ConnectionIds, conn.GetConnectionId())
 				}
 			}
+			stateReport = append(stateReport, sr)
 		}
 	}
 
-	// Normalize the current state of connections on the worker side
-	// with the data from the controller. In other words, if one of our
-	// found connections isn't supposed to be alive still, kill it.
-	//
-	// This is separate from the above session normalization and is
-	// additive to it, we don't add sessions that have already been
-	// added there as canceling sessions already closes the
-	// connections.
-	shouldCloseConnections, err := connectionRepo.ShouldCloseConnectionsOnWorker(ctx, reportedOpenConns, requestedSessionCancelIds)
+	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, req.Worker.PrivateId, stateReport)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error fetching connections that should be closed: %v", err)
+		return nil, status.Errorf(codes.Internal, "Error comparing state of sessions for worker: %s: %v", req.Worker.PrivateId, err)
 	}
-
-	for sessionId, connIds := range shouldCloseConnections {
+	for _, na := range notActive {
 		var connChanges []*pbs.Connection
-		for _, connId := range connIds {
+		for _, connId := range na.ConnectionIds {
 			connChanges = append(connChanges, &pbs.Connection{
 				ConnectionId: connId,
 				Status:       session.StatusClosed.ProtoVal(),
 			})
 		}
-
 		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
 			Job: &pbs.Job{
 				Type: pbs.JOBTYPE_JOBTYPE_SESSION,
 				JobInfo: &pbs.Job_SessionInfo{
 					SessionInfo: &pbs.SessionJobInfo{
-						SessionId:   sessionId,
-						Status:      sessionStatuses[sessionId],
+						SessionId:   na.SessionId,
+						Status:      na.Status.ProtoVal(),
 						Connections: connChanges,
 					},
 				},
 			},
 			RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
 		})
-	}
-
-	// Run our controller-side cleanup function.
-	closedConns, err := connectionRepo.CloseDeadConnectionsForWorker(ctx, req.Worker.PrivateId, reportedOpenConns)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
-	}
-	if closedConns > 0 {
-		event.WriteSysEvent(ctx, op, "marked unclaimed connections as closed", "server_id", req.Worker.PrivateId, "count", closedConns)
 	}
 
 	return ret, nil

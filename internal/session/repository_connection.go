@@ -350,54 +350,6 @@ func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId st
 	return rowsDeleted, nil
 }
 
-// CloseDeadConnectionsForWorker will run closeDeadConnectionsCte to look for
-// connections that should be marked closed because they are no longer claimed
-// by a server.
-//
-// The foundConns input should be the currently-claimed connections; the CTE
-// uses a NOT IN clause to ensure these are excluded. It is not an error for
-// this to be empty as the worker could claim no connections; in that case all
-// connections will immediately transition to closed.
-func (r *ConnectionRepository) CloseDeadConnectionsForWorker(ctx context.Context, serverId string, foundConns []string) (int, error) {
-	const op = "session.(ConnectionRepository).CloseDeadConnectionsForWorker"
-	if serverId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
-	}
-
-	args := make([]interface{}, 0, len(foundConns)+2)
-	args = append(args, sql.Named("server_id", serverId))
-	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
-
-	var publicIdStr string
-	if len(foundConns) > 0 {
-		publicIdStr = `public_id not in (%s) and`
-		params := make([]string, len(foundConns))
-		for i, connId := range foundConns {
-			params[i] = fmt.Sprintf("@%d", i)
-			args = append(args, sql.Named(fmt.Sprintf("%d", i), connId))
-		}
-		publicIdStr = fmt.Sprintf(publicIdStr, strings.Join(params, ","))
-	}
-	var rowsAffected int
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			var err error
-			rowsAffected, err = w.Exec(ctx, fmt.Sprintf(closeDeadConnectionsCte, publicIdStr), args)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
-	}
-	return rowsAffected, nil
-}
-
 type CloseConnectionsForDeadWorkersResult struct {
 	ServerId                string
 	LastUpdateTime          time.Time
@@ -448,67 +400,52 @@ func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Contex
 	return results, nil
 }
 
-// ShouldCloseConnectionsOnWorker will run shouldCloseConnectionsCte to look
-// for connections that the worker should close because they are currently
-// reporting them as open incorrectly.
-//
-// The foundConns input here is used to filter closed connection states. This
-// is further filtered against the filterSessions input, which is expected to
-// be a set of sessions we've already submitted close requests for, so adding
-// them again would be redundant.
-//
-// The returned map[string][]string is indexed by session ID.
-func (r *ConnectionRepository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundConns, filterSessions []string) (map[string][]string, error) {
-	const op = "session.(ConnectionRepository).ShouldCloseConnectionsOnWorker"
-	if len(foundConns) < 1 {
-		return nil, nil // nothing to do
-	}
+// closeOrphanedConnections looks for connections that are still active, but where not reported by the worker.
+func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, workerId string, reportedConnections []string) ([]string, error) {
+	const op = "session.(ConnectionRepository).closeOrphanedConnections"
 
-	args := make([]interface{}, 0, len(foundConns)+len(filterSessions))
+	var orphanedConns []string
 
-	// foundConns first
-	connsParams := make([]string, len(foundConns))
-	for i, connId := range foundConns {
-		connsParams[i] = fmt.Sprintf("@%d", i+1)
-		args = append(args, sql.Named(fmt.Sprintf("%d", i+1), connId))
-	}
-	connsStr := strings.Join(connsParams, ",")
+	args := make([]interface{}, 0, len(reportedConnections)+2)
+	args = append(args, sql.Named("server_id", workerId))
+	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
-	// then filterSessions
-	var sessionsStr string
-	if len(filterSessions) > 0 {
-		offset := len(foundConns) + 1
-		sessionsParams := make([]string, len(filterSessions))
-		for i, sessionId := range filterSessions {
-			sessionsParams[i] = fmt.Sprintf("@%d", i+offset)
-			args = append(args, sql.Named(fmt.Sprintf("%d", i+offset), sessionId))
+	var notInClause string
+	if len(reportedConnections) > 0 {
+		notInClause = `and public_id not in (%s)`
+		params := make([]string, len(reportedConnections))
+		for i, connId := range reportedConnections {
+			params[i] = fmt.Sprintf("@%d", i)
+			args = append(args, sql.Named(fmt.Sprintf("%d", i), connId))
 		}
-
-		const sessionIdFmtStr = `and session_id not in (%s)`
-		sessionsStr = fmt.Sprintf(sessionIdFmtStr, strings.Join(sessionsParams, ","))
+		notInClause = fmt.Sprintf(notInClause, strings.Join(params, ","))
 	}
 
-	rows, err := r.reader.Query(
+	_, err := r.writer.DoTx(
 		ctx,
-		fmt.Sprintf(shouldCloseConnectionsCte, connsStr, sessionsStr),
-		args,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rows, err := r.reader.Query(ctx, fmt.Sprintf(orphanedConnectionsCte, notInClause), args)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var connectionId string
+				if err := rows.Scan(&connectionId); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+				}
+				orphanedConns = append(orphanedConns, connectionId)
+			}
+			return nil
+		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error comparing state"))
 	}
-	defer rows.Close()
-
-	result := make(map[string][]string)
-	for rows.Next() {
-		var connectionId, sessionId string
-		if err := rows.Scan(&connectionId, &sessionId); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
-		result[sessionId] = append(result[sessionId], connectionId)
-	}
-
-	return result, nil
+	return orphanedConns, nil
 }
 
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
