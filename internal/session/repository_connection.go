@@ -16,6 +16,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// DeadWorkerConnCloseMinGrace is the minimum allowable setting for
+// the CloseConnectionsForDeadWorkers method. This is synced with
+// the default server liveness setting.
+var DeadWorkerConnCloseMinGrace = servers.DefaultLiveness
+
 // ConnectionRepository is the session connection database repository.
 type ConnectionRepository struct {
 	reader db.Reader
@@ -28,6 +33,11 @@ type ConnectionRepository struct {
 	// workerStateDelay is used by queries to account for a delay in state propagation between
 	// worker and controller
 	workerStateDelay time.Duration
+
+	// deadWorkerConnCloseMinGrace is the minimum allowable setting for
+	// the CloseConnectionsForDeadWorkers method. This defaults to
+	// the default server liveness setting.
+	deadWorkerConnCloseMinGrace time.Duration
 }
 
 // NewConnectionRepository creates a new session Connection Repository. Supports the options: WithLimit
@@ -48,12 +58,14 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
+
 	return &ConnectionRepository{
-		reader:           r,
-		writer:           w,
-		kms:              kms,
-		defaultLimit:     opts.withLimit,
-		workerStateDelay: opts.withWorkerStateDelay,
+		reader:                      r,
+		writer:                      w,
+		kms:                         kms,
+		defaultLimit:                opts.withLimit,
+		workerStateDelay:            opts.withWorkerStateDelay,
+		deadWorkerConnCloseMinGrace: opts.withDeadWorkerConnCloseMinGrace,
 	}, nil
 }
 
@@ -133,11 +145,6 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 
 	return &connection, connectionStates, nil
 }
-
-// deadWorkerConnCloseMinGrace is the minimum allowable setting for
-// the CloseConnectionsForDeadWorkers method. This is synced with
-// the default server liveness setting.
-var DeadWorkerConnCloseMinGrace = int(servers.DefaultLiveness.Seconds())
 
 // LookupConnection will look up a connection in the repository and return the connection
 // with its states. If the connection is not found, it will return nil, nil, nil.
@@ -362,20 +369,23 @@ type CloseConnectionsForDeadWorkersResult struct {
 // sending status updates to the controller(s).
 //
 // The only input to the method is the grace period, in seconds.
-func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod int) ([]CloseConnectionsForDeadWorkersResult, error) {
+func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod time.Duration) ([]CloseConnectionsForDeadWorkersResult, error) {
 	const op = "session.(ConnectionRepository).CloseConnectionsForDeadWorkers"
-	if gracePeriod < DeadWorkerConnCloseMinGrace {
+	if gracePeriod < r.deadWorkerConnCloseMinGrace {
 		return nil, errors.New(ctx,
-			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %d seconds", DeadWorkerConnCloseMinGrace))
+			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %s", r.deadWorkerConnCloseMinGrace))
 	}
 
+	args := []interface{}{
+		sql.Named("grace_period_seconds", gracePeriod.Seconds()),
+	}
 	results := make([]CloseConnectionsForDeadWorkersResult, 0)
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, closeConnectionsForDeadServersCte, []interface{}{gracePeriod})
+			rows, err := w.Query(ctx, closeConnectionsForDeadServersCte, args)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
