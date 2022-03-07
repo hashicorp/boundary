@@ -294,51 +294,6 @@ where
 );
 `
 
-	// closeDeadConnectionsCte finds connections that are:
-	//
-	// * not closed
-	// * not announced by a given server in its latest update
-	//
-	// and marks them as closed.
-	closeDeadConnectionsCte = `
-with
-  -- Find connections that are not closed so we can reference those IDs
-  unclosed_connections as (
-    select connection_id
-      from session_connection_state
-    where
-      -- It's the current state
-      end_time is null
-        and
-      -- Current state isn't closed state
-      state in ('authorized', 'connected')
-        and
-      -- It's not in limbo between when it moved into this state and when
-      -- it started being reported by the worker, which is roughly every
-      -- 2-3 seconds
-      start_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
-  ),
-  connections_to_close as (
-    select public_id
-      from session_connection
-    where
-      -- Related to the worker that just reported to us
-      server_id = @server_id
-        and
-      -- These are connection IDs that just got reported to us by the given
-      -- worker, so they should not be considered closed.
-        %s
-      -- Only unclosed ones
-      public_id in (select connection_id from unclosed_connections)
-  )
-  update session_connection
-    set
-      closed_reason = 'system error'
-    where
-      public_id in (select public_id from connections_to_close)
-    returning public_id;
-`
-
 	// closeConnectionsForDeadServersCte finds connections that are:
 	//
 	// * not closed
@@ -374,34 +329,48 @@ with
  order by closed_connections.server_id;
 `
 
-	// shouldCloseConnectionsCte finds connections that are marked as closed in
-	// the database given a set of connection IDs. They are returned along with
-	// their associated session ID.
-	//
-	// The second parameter is a set of session IDs that we have already
-	// submitted a session-wide close request for, so sending another change
-	// request for them would be redundant.
-	shouldCloseConnectionsCte = `
+	orphanedConnectionsCte = `
+-- Find connections that are not closed so we can reference those IDs
 with
-  -- Find connections that are closed so we can reference those IDs
-  closed_connections as (
+  unclosed_connections as (
     select connection_id
       from session_connection_state
     where
       -- It's the current state
       end_time is null
-        and
-      -- Current state is closed
-      state = 'closed'
-        and
-      connection_id in (%s)
+      -- Current state isn't closed state
+      and state in ('authorized', 'connected')
+      -- It's not in limbo between when it moved into this state and when
+      -- it started being reported by the worker, which is roughly every
+      -- 2-3 seconds
+      and start_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
+  ),
+  connections_to_close as (
+	select public_id
+	  from session_connection
+	 where
+		   -- Related to the worker that just reported to us
+		   server_id = @server_id
+		   -- Only unclosed ones
+		   and public_id in (select connection_id from unclosed_connections)
+		   -- These are connection IDs that just got reported to us by the given
+		   -- worker, so they should not be considered closed.
+		   %s
   )
-  select public_id, session_id
-    from session_connection
-  where
-    public_id in (select connection_id from closed_connections)
-    -- Below fmt arg is filled in if there are session IDs to filter against
-    %s
+update session_connection
+   set
+	  closed_reason = 'system error'
+ where
+	public_id in (select public_id from connections_to_close)
+returning public_id;
+`
+	checkIfNotActive = `
+select session_id, state
+	from session_state ss
+where
+	(ss.state = 'canceling' or ss.state = 'terminated')
+	and ss.end_time is null
+	%s
 ;
 `
 )
