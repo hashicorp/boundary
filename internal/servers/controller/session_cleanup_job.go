@@ -27,7 +27,7 @@ type sessionConnectionCleanupJob struct {
 
 	// The amount of time to give disconnected workers before marking
 	// their connections as closed.
-	gracePeriod int
+	gracePeriod time.Duration
 
 	// The total number of connections closed in the last run.
 	totalClosed int
@@ -36,7 +36,7 @@ type sessionConnectionCleanupJob struct {
 // newSessionConnectionCleanupJob instantiates the session cleanup job.
 func newSessionConnectionCleanupJob(
 	connectionRepoFn common.ConnectionRepoFactory,
-	gracePeriod int,
+	gracePeriod time.Duration,
 ) (*sessionConnectionCleanupJob, error) {
 	const op = "controller.newNewSessionConnectionCleanupJob"
 	switch {
@@ -44,7 +44,7 @@ func newSessionConnectionCleanupJob(
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing connectionRepoFn")
 	case gracePeriod < session.DeadWorkerConnCloseMinGrace:
 		return nil, errors.NewDeprecated(
-			errors.InvalidParameter, op, fmt.Sprintf("invalid gracePeriod, must be greater than %d", session.DeadWorkerConnCloseMinGrace))
+			errors.InvalidParameter, op, fmt.Sprintf("invalid gracePeriod, must be greater than %s", session.DeadWorkerConnCloseMinGrace))
 	}
 
 	return &sessionConnectionCleanupJob{
@@ -102,7 +102,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 			event.WithInfo(
 				"private_id", result.ServerId,
 				"update_time", result.LastUpdateTime,
-				"grace_period_seconds", j.gracePeriod,
+				"grace_period_seconds", j.gracePeriod.Seconds(),
 				"number_connections_closed", result.NumberConnectionsClosed,
 			))
 
