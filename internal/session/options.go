@@ -21,22 +21,24 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withOrderByCreateTime db.OrderBy
-	withScopeIds          []string
-	withUserId            string
-	withExpirationTime    *timestamp.Timestamp
-	withTestTofu          []byte
-	withListingConvert    bool
-	withSessionIds        []string
-	withServerId          string
-	withDbOpts            []db.Option
-	withWorkerStateDelay  time.Duration
+	withLimit                       int
+	withOrderByCreateTime           db.OrderBy
+	withScopeIds                    []string
+	withUserId                      string
+	withExpirationTime              *timestamp.Timestamp
+	withTestTofu                    []byte
+	withListingConvert              bool
+	withSessionIds                  []string
+	withServerId                    string
+	withDbOpts                      []db.Option
+	withWorkerStateDelay            time.Duration
+	withDeadWorkerConnCloseMinGrace time.Duration
 }
 
 func getDefaultOptions() options {
 	return options{
-		withWorkerStateDelay: 10 * time.Second,
+		withWorkerStateDelay:            10 * time.Second,
+		withDeadWorkerConnCloseMinGrace: DeadWorkerConnCloseMinGrace,
 	}
 }
 
@@ -114,10 +116,19 @@ func WithDbOpts(opts ...db.Option) Option {
 	}
 }
 
-// WithWorkerStateDelay is used byt queries to account for a delay in state
+// WithWorkerStateDelay is used by queries to account for a delay in state
 // propagation between worker and controller.
 func WithWorkerStateDelay(d time.Duration) Option {
 	return func(o *options) {
 		o.withWorkerStateDelay = d
+	}
+}
+
+// WithDeadWorkerConnCloseMinGrace is used to set the minimum allowable setting
+// for the CloseConnectionsForDeadWorkers method. This defaults to the default
+// server liveness setting.
+func WithDeadWorkerConnCloseMinGrace(d time.Duration) Option {
+	return func(o *options) {
+		o.withDeadWorkerConnCloseMinGrace = d
 	}
 }

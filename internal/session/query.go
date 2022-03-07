@@ -310,7 +310,7 @@ where
    dead_servers (server_id, last_update_time) as (
          select private_id, update_time
            from server
-          where update_time < wt_sub_seconds_from_now(?)
+          where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, server_id) as (
          update session_connection
