@@ -177,6 +177,10 @@
             "path": "concepts/domain-model/sessions"
           },
           {
+            "title": "Session Connections",
+            "path": "concepts/domain-model/session-connections"
+          },
+          {
             "title": "Targets",
             "path": "concepts/domain-model/targets"
           },
