@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const permsFile = "website/content/docs/concepts/security/permissions.mdx"
+const permsFile = "website/content/docs/concepts/security/permissions/resource-table.mdx"
 
 var (
 	iamScopes  = []string{"Global", "Org"}
