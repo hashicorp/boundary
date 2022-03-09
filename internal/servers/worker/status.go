@@ -153,7 +153,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		// don't have any sessions to worry about anyway.
 		//
 		// If a length of time has passed since we've been able to communicate, we
-		// want to start terminating all sessions as a "break glass" kind of
+		// want to start terminating all connections as a "break glass" kind of
 		// scenario, as there will be no way we can really tell if these
 		// connections should continue to exist.
 
@@ -163,9 +163,22 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 				event.WithInfo("last_status_time", lastStatusTime.String(), "grace_period", gracePeriod),
 			)
 
-			// Run a "cleanup" for all sessions that will not be caught by
-			// our standard cleanup routine.
-			w.cleanupConnections(cancelCtx, true)
+			// Cancel connections if grace period has expired. These Connections will be closed in the
+			// database on the next successful status report, or via the Controller’s dead Worker cleanup connections job.
+			w.sessionInfoMap.Range(func(key, value interface{}) bool {
+				si := value.(*session.Info)
+				si.Lock()
+				defer si.Unlock()
+
+				closedIds := w.cancelConnections(si.ConnInfoMap, true)
+				for _, connId := range closedIds {
+					event.WriteSysEvent(cancelCtx, op, "terminated connection due to status grace period expiration", "session_id", si.Id, "connection_id", connId)
+				}
+				return true
+			})
+
+			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
+			return
 		}
 	} else {
 		w.updateTags.Store(false)
