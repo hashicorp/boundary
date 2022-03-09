@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -47,7 +46,7 @@ func getWrapper(ctx context.Context, kmses []*configutil.KMS, purpose string, op
 		kms,
 		nil,
 		nil,
-		append(opt, configutil.WithLogger(hclog.NewNullLogger()))...,
+		opt...,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error configuring kms: %w", err)

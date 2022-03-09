@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20220309215318-f3b6d46e87d8
 	github.com/hashicorp/boundary/sdk v0.0.14-0.20220309214551-bb4528aa139b
-	github.com/hashicorp/go-hclog v1.1.0
 )
 
 require (
@@ -29,6 +28,7 @@ require (
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c // indirect
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220309214434-500febbe5843 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-hclog v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
