@@ -33,11 +33,22 @@ dev-no-plugins: export SKIP_PLUGIN_BUILD=1
 dev-no-plugins: dev
 
 .PHONY: dev
-dev: BUILD_TAGS+=dev
-dev: BUILD_TAGS+=ui
-dev: build-ui-ifne
-	@echo "==> Building Boundary with dev and UI features enabled"
+dev:
+	@echo "This command has changed. Please use:"
+	@echo "==> make build"
+	@echo "      to build the binary into the bin/ directory"
+	@echo "==> make install"
+	@echo "      to build the binary and install it into GOPATH/bin"
+
+.PHONY: build
+build: BUILD_TAGS+=ui
+build: build-ui-ifne
+	@echo "==> Building Boundary with UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
+.PHONY: install
+install: export BOUNDARY_INSTALL_BINARY=1
+install: build
 
 .PHONY: fmt
 fmt:

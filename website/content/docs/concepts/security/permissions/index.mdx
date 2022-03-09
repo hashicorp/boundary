@@ -1,0 +1,91 @@
+---
+layout: docs
+page_title: Permissions Index
+description: |-
+  Boundary's permissions model
+---
+
+# Permissions in Boundary
+
+## Overview
+
+Boundary's permissions model is a composable, RBAC, allow-only model that
+attempts to marry flexibility with usability. This page discusses the permission
+model's fundamental concepts, provides examples of the specific forms of allowed
+grants, and contains a table that acts as an easy cheat sheet to help those new
+to its grant syntax with crafting roles.
+
+Boundary's [domain model](/docs/concepts/domain-model) is based on resource
+types. These can be implemented directly, such as with targets, or they can be
+abstract types that are implemented by concrete types within the system. As an
+example of the latter, a host catalog is an abstract type and a Static host
+catalog is a concrete type.
+
+From a permissions standpoint, all actions take place against directly
+implemented or abstract types. There may be actions that are only implemented by
+some concrete types (e.g., not all `auth-method` implementations will support a
+`change-password` action), but the permissions model still defines these
+capabilities at the abstract type level. This helps keep the overall system
+relatively simple and predictable.
+
+At a very high level, permissions within Boundary are declared via grant strings
+and mapped to users via roles.
+
+### Grant Strings
+
+A grant string has a form similar to:
+
+`id=<id>;type=<type>;actions=<action list>;output_fields=<fields list>`
+
+Each grant string is a mapping that describes a resource or set of resources and
+the permissions that should be granted on them.
+
+There are currently two types of selectors:
+
+- An `id` field that indicates a specific resource or a wildcard to match all
+
+- A `type` field that indicates a specific resource type or a wildcard to match
+  all; this might also be used to grant permissions on collections of resources
+
+Selectors are used to indicate which resources on which the grant should apply,
+using specific IDs or wildcard IDs and type selectors. (The acceptable grant
+string formats are detailed later on this page.)
+
+Additionally, there are two types of assigned permissions:
+
+- An `actions` field indicating which actions to allow the client to perform on
+  the resources matched by `id` and `type`
+
+- An `output_fields` field indicating which top-level fields to return in the
+  response (0.2.1+)
+
+Grant strings can be supplied via a human-friendly string syntax or via JSON.
+
+### Roles
+
+Roles map grant strings to _principals_, currently users and groups. Every role
+assigns grants within a specific scope: either the scope in which the role
+exists, or a scope that is a child of the scope in which the role exists,
+controlled by the role's "grant scope ID" value
+
+When a request is made, the scope in which to discover grants is either provided
+by the client (if against a resource collection itself) or is looked up using
+the resource's ID. This scope ID, along with the user's ID and the IDs of the
+groups the user belongs to, controls which roles are fetched to provide grants
+for the request.
+
+A role provides grants for a request if the grant scope ID matches the request's
+scope ID and one or more of the following are true:
+
+- The user's ID is contained in the principal IDs set on the role
+
+- A group the user belongs to is contained in the principal IDs set on the role
+
+- The user is logged in and the `u_auth` user is contained in the principal IDs
+  set on the role
+
+- The role contains the `u_anon` user in the in the principal IDs set on the
+  role
+
+Roles are composable; a user's final set of grants will be composed of grants
+that originate from all matching roles.

@@ -109,7 +109,24 @@
           },
           {
             "title": "Permissions",
-            "path": "concepts/security/permissions"
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "concepts/security/permissions"
+              },
+              {
+                "title": "Assignable Permissions",
+                "path": "concepts/security/permissions/assignable-permissions"
+              },
+              {
+                "title": "Permission Grant Formats",
+                "path": "concepts/security/permissions/permission-grant-formats"
+              },
+              {
+                "title": "Resource Table",
+                "path": "concepts/security/permissions/resource-table"
+              }
+            ]
           },
           {
             "title": "Data Encryption",
