@@ -148,7 +148,7 @@ func (tw *TestWorker) Shutdown() {
 	tw.cancel()
 
 	if tw.w != nil {
-		if err := tw.w.Shutdown(false); err != nil {
+		if err := tw.w.Shutdown(); err != nil {
 			tw.t.Error(err)
 		}
 	}

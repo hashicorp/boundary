@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -94,38 +93,80 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (f
 	return func() { go server.Serve(l) }, nil
 }
 
-func (w *Worker) stopListeners() error {
-	serverWg := new(sync.WaitGroup)
-	for _, ln := range w.conf.Listeners {
-		localLn := ln
-		serverWg.Add(1)
-		go func() {
-			defer serverWg.Done()
-
-			shutdownKill, shutdownKillCancel := context.WithTimeout(w.baseContext, localLn.Config.MaxRequestDuration)
-			defer shutdownKillCancel()
-
-			if localLn.HTTPServer != nil {
-				_ = localLn.HTTPServer.Shutdown(shutdownKill)
-			}
-		}()
+func (w *Worker) stopServersAndListeners() error {
+	var closeErrors *multierror.Error
+	err := w.stopHttpServersAndListeners()
+	if err != nil {
+		closeErrors = multierror.Append(closeErrors, err)
 	}
-	serverWg.Wait()
 
-	var retErr *multierror.Error
-	if !w.conf.RawConfig.DevController {
-		for _, ln := range w.conf.Listeners {
-			if err := ln.Mux.Close(); err != nil {
-				if _, ok := err.(*os.PathError); ok && ln.Config.Type == "unix" {
-					// The rmListener probably tried to remove the file but it
-					// didn't exist, ignore the error; this is a conflict
-					// between rmListener and the default Go behavior of
-					// removing auto-vivified Unix domain sockets.
-				} else {
-					retErr = multierror.Append(retErr, err)
-				}
-			}
+	err = w.stopAnyListeners()
+	if err != nil {
+		closeErrors = multierror.Append(closeErrors, err)
+	}
+
+	return closeErrors.ErrorOrNil()
+}
+
+func (w *Worker) stopHttpServersAndListeners() error {
+	var closeErrors *multierror.Error
+	for i := range w.listeners {
+		ln := w.listeners[i]
+		if ln.HTTPServer == nil {
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(w.baseContext, ln.Config.MaxRequestDuration)
+		ln.HTTPServer.Shutdown(ctx)
+		cancel()
+
+		err := ln.Mux.Close()
+		err = listenerCloseErrorCheck(ln.Config.Type, err)
+		if err != nil {
+			multierror.Append(closeErrors, err)
 		}
 	}
-	return retErr.ErrorOrNil()
+
+	return closeErrors.ErrorOrNil()
+}
+
+// stopAnyListeners does a final once over the known
+// listeners to make sure we didn't miss any;
+// expected to run at the end of stopServersAndListeners.
+func (w *Worker) stopAnyListeners() error {
+	var closeErrors *multierror.Error
+	for _, ln := range w.listeners {
+		if ln == nil || ln.Mux == nil {
+			continue
+		}
+
+		err := ln.Mux.Close()
+		err = listenerCloseErrorCheck(ln.Config.Type, err)
+		if err != nil {
+			multierror.Append(closeErrors, err)
+		}
+	}
+
+	return closeErrors.ErrorOrNil()
+}
+
+// listenerCloseErrorCheck does some validation on an error returned
+// by a net.Listener's Close function, and ignores a few cases
+// where we don't actually want an error to be returned.
+func listenerCloseErrorCheck(lnType string, err error) error {
+	if errors.Is(err, net.ErrClosed) {
+		// Ignore net.ErrClosed - The listener was already closed,
+		// so there's nothing else to do.
+		return nil
+	}
+	if _, ok := err.(*os.PathError); ok && lnType == "unix" {
+		// The underlying rmListener probably tried to remove
+		// the file but it didn't exist, ignore the error;
+		// this is a conflict between rmListener and the
+		// default Go behavior of removing auto-vivified
+		// Unix domain sockets.
+		return nil
+	}
+
+	return err
 }
