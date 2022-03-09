@@ -164,7 +164,7 @@ func (w *Worker) Start() error {
 // listeners, useful for tests if we want to stop and start a worker. In order
 // to create new listeners we'd have to migrate listener setup logic here --
 // doable, but work for later.
-func (w *Worker) Shutdown(skipListeners bool) error {
+func (w *Worker) Shutdown() error {
 	const op = "worker.(Worker).Shutdown"
 	if !w.started.Load() {
 		event.WriteSysEvent(w.baseContext, op, "already shut down, skipping")
@@ -176,10 +176,9 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	defer w.started.Store(false)
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 	w.baseCancel()
-	if !skipListeners {
-		if err := w.stopListeners(); err != nil {
-			return fmt.Errorf("error stopping worker listeners: %w", err)
-		}
+
+	if err := w.stopServersAndListeners(); err != nil {
+		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
 
 	// Shut down all connections.

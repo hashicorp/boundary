@@ -14,12 +14,11 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/go-hclog"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUnixListener(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -53,28 +52,7 @@ func TestUnixListener(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	expectWorkers := func(c *controller.TestController, workers ...*worker.TestWorker) {
-		updateTimes := c.Controller().WorkerStatusUpdateTimes()
-		workerMap := map[string]*worker.TestWorker{}
-		for _, w := range workers {
-			workerMap[w.Name()] = w
-		}
-		updateTimes.Range(func(k, v interface{}) bool {
-			require.NotNil(k)
-			require.NotNil(v)
-			if workerMap[k.(string)] == nil {
-				// We don't remove from updateTimes currently so if we're not
-				// expecting it we'll see an out-of-date entry
-				return true
-			}
-			assert.WithinDuration(time.Now(), v.(time.Time), 60*time.Second)
-			delete(workerMap, k.(string))
-			return true
-		})
-		assert.Empty(workerMap)
-	}
-
-	expectWorkers(c1)
+	expectWorkers(t, c1)
 
 	wconf, err := config.DevWorker()
 	require.NoError(err)
@@ -88,11 +66,11 @@ func TestUnixListener(t *testing.T) {
 	defer w1.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1)
+	expectWorkers(t, c1, w1)
 
-	require.NoError(w1.Worker().Shutdown(true))
+	require.NoError(w1.Worker().Shutdown())
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1)
+	expectWorkers(t, c1)
 
 	require.NoError(c1.Controller().Shutdown())
 	c1 = controller.NewTestController(t, &controller.TestControllerOpts{
@@ -103,7 +81,7 @@ func TestUnixListener(t *testing.T) {
 	defer c1.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1)
+	expectWorkers(t, c1)
 
 	client, err := api.NewClient(nil)
 	require.NoError(err)

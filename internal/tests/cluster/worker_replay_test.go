@@ -46,7 +46,7 @@ func TestWorkerReplay(t *testing.T) {
 
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
-	require.NoError(t, w1.Worker().Shutdown(true))
+	require.NoError(t, w1.Worker().Shutdown())
 
 	// Now, start up again
 	require.NoError(t, w1.Worker().Start())
