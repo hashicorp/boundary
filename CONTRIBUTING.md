@@ -208,4 +208,16 @@ Or all of the test can be run with a single target:
 $ make test-all
 ```
 
-## [Adding additional field to an existing API (or new API)](internal/adding-a-new-field-readme.md)
+## Performance
+### Database Indexes
+
+Most of the indexes in the database are for enforcing data constraints.
+We have not added indexes for improving performance because we do not have a way
+to measure and test these types of indexes.
+We want a way to test and verify that indexes added to improve performance are actually being used by the system.
+And we want these same tests to fail when an index stops being used as we evolve the system.
+This is on our roadmap but we have not started work on it yet.
+
+## Additional docs
+
+* [Adding fields to the API](internal/adding-a-new-field-readme.md)

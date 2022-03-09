@@ -10,7 +10,6 @@ import (
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/boundary/sdk/wrapper"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
@@ -140,8 +139,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		external_host_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
 			pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+		))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
 		c.UI.Warn(base.WrapAtLength(
@@ -276,7 +274,9 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 		c.Context,
 		wrapperPath,
 		"config",
-		configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+		configutil.WithPluginOptions(
+			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 	)
 	if err != nil {
 		c.UI.Error(err.Error())

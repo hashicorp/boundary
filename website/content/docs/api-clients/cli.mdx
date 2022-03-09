@@ -11,6 +11,35 @@ Boundary's CLI has predictable behavior throughout its various commands. This
 page details the common patterns used in order to help users make better use
 of the CLI.
 
+## CLI Command Structure
+
+There are a number of command and subcommand options available.
+To see all available command options, run `boundary -h` 
+and to see all available subcommand options run `boundary <command> -h`.
+
+Below is the typical structure for most Boundary CLI commands:
+
+```text
+boundary <command> <subcommand> [options] [args]
+```
+
+- `options` - [Client](/docs/api-clients/cli#client-options) and [connection](/docs/api-clients/cli#connection-options) options to specify additional settings
+- `args` - API arguments specific to the operation
+
+#### Examples:
+
+The following shows use of the [`-addr`](/docs/api-clients/cli#addr) flag to specify which Boundary controller to send the request to. 
+
+```shell-session
+$ boundary authenticate password \
+    -addr=https://boundary.example.com:9200
+    -auth-method-id=ampw_1234567890 \
+    -login-name=admin \
+    -password=password
+```
+
+Instead of specifying the `-addr` flag for every command, you can set an environment variable `BOUNDARY_ADDR=https://boundary.controller.com:9200`.
+
 ## Completion
 
 Before detailing how parameters work, it's useful to note that Boundary's CLI
@@ -154,7 +183,41 @@ mind that this is not a direct translation to database `NULL` semantics!
 ### Connection Options
 
 Every command that results in an API call contains a set of flags that control
-connection options, which control TLS and other settings for the connection.
+connection options, which control TLS and other settings for the connection. 
+You can also run `boundary dev -h` to see the available connection options.
+
+-  `-addr=<string>`: Address of the Boundary controller, as a complete URL (e.g.
+      https://boundary.example.com:9200). Instead of passing the `-addr` argument with every command,
+      the `BOUNDARY_ADDR` environment variable can be set. In both cases, the value denotes the address
+      of the Boundary environment (specifically the controller) you wish to send CLI commands to.
+
+-  `-ca-cert=<string>`: Path on the local disk to a single PEM-encoded CA certificate to
+      verify the Controller or Worker's server's SSL certificate. This
+      takes precedence over -ca-path. This can also be specified via the
+      `BOUNDARY_CACERT` environment variable.
+
+-  `-ca-path=<string>`: Path on the local disk to a directory of PEM-encoded CA certificates to
+      verify the SSL certificate of the Controller. This can also be specified
+      via the `BOUNDARY_CAPATH` environment variable.
+
+-  `-client-cert=<string>`: Path on the local disk to a single PEM-encoded CA certificate to use
+      for TLS authentication to the Boundary Controller. If this flag is
+      specified, -client-key is also required. This can also be specified via
+      the `BOUNDARY_CLIENT_CERT` environment variable.
+
+-  `-client-key=<string>`: Path on the local disk to a single PEM-encoded private key matching the
+      client certificate from -client-cert. This can also be specified via the
+      `BOUNDARY_CLIENT_KEY` environment variable.
+
+- `-tls-insecure`: Disable verification of TLS certificates. Using this option is highly
+      discouraged as it decreases the security of data transmissions to
+      and from the Boundary server. The default is false. This can also be
+      specified via the `BOUNDARY_TLS_INSECURE` environment variable.
+
+-  `-tls-server-name=<string>`: Name to use as the SNI host when connecting to the Boundary server
+      via TLS. This can also be specified via the `BOUNDARY_TLS_SERVER_NAME`
+      environment variable.
+
 
 ### Client Options
 

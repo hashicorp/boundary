@@ -540,7 +540,9 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 				c.Context,
 				wrapperPath,
 				"config",
-				configutil.WithPluginOptions(pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+				configutil.WithPluginOptions(
+					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
 			)
 			if err != nil {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))

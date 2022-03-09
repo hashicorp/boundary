@@ -25,11 +25,11 @@ Boundary’s vision is to enable an ephemeral access model that follows the prin
 
 For Boundary's upcoming releases, we have a few key product themes that will guide what we'll be delivering:
 
-1. **Just-in-time access and Target Credential Management.**
-   A just-in-time access posture will be enforced at multiple levels within Boundary. Upcoming releases will offer integration with [Vault](https://www.vaultproject.io/) or your preferred secret management solution of choice to generate ephemeral credentials for Boundary sessions.
+1. **Automated Target Discovery:** To manage dynamic infrastructure, users will need a way to discover and add newly provisioned hosts to targets while enforcing existing access policies on new instances. Administrators already have the ability to define dynamic host catalogs to discover new hosts based on predefined rules or tags for [AWS](https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs?in=boundary/configuration) and [Azure](https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs?in=boundary/configuration). Upcoming releases will provide native integrations for [Consul](https://www.consul.io/) and [Kubernetes](https://kubernetes.io/). As Boundary is built to be plugin-friendly, administrators will also be able to write their own custom plugins for additional dynamic host catalogs.
 
-2. **Target discovery.**
-   To manage dynamic infrastructure users will need a way to discover and add newly provisioned hosts to targets while enforcing existing access policies on new instances. With Boundary 0.1, you can provision these targets and access policies dynamically with the [Boundary Terraform provider](https://github.com/hashicorp/terraform-provider-boundary). In the releases following launch we'll give administrators the ability to define dynamic host catalogs to discover new hosts based on predefined rules or tags for [Consul](https://www.consul.io/), each of the major cloud platforms, and Kubernetes.
+2. **Credential Management:** Boundary’s SSH credential brokering integration with [Vault](https://www.vaultproject.io/) enables users to access targets with just-in-time, ephemeral secrets. On the roadmap is support for SSH signed certificates, a more secure method of SSH authentication using certificates. With this feature, Vault acts as the Certificate Authority and issues the signed certificates, which Boundary will broker back to the user and to the target.
+
+3. **Observability:** To measure the health of the internal states of a system by examining the outputs, Boundary will provide a secure method by which Boundary operators and administrators can consume the critical health metrics and export its observability data to Prometheus metrics. 
 
 ## Give Feedback
 
