@@ -34,7 +34,7 @@ dev:
 	@echo "==> make build"
 	@echo "      to build the binary into the bin/ directory"
 	@echo "==> make install"
-	@echo "      to move the built binary into GOPATH/bin"
+	@echo "      to build the binary and install it into GOPATH/bin"
 
 .PHONY: build
 build: BUILD_TAGS+=ui
