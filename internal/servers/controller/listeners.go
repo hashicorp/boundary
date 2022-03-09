@@ -22,150 +22,143 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (c *Controller) startListeners(ctx context.Context) error {
+func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
-	configureForAPI := func(ln *base.ServerListener) error {
-		var err error
-		if c.gatewayServer, c.gatewayTicket, err = newGatewayServer(ctx, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer); err != nil {
-			return err
-		}
-		c.gatewayMux = newGatewayMux()
+	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer)
+	if err != nil {
+		return fmt.Errorf("failed to create new grpc server: %w", err)
+	}
+	c.apiGrpcServer = grpcServer
+	c.apiGrpcGatewayTicket = gwTicket
 
-		handler, err := c.handler(HandlerProperties{
-			ListenerConfig: ln.Config,
-			CancelCtx:      c.baseContext,
-		})
-		if err != nil {
-			return err
-		}
-
-		// Resolve it here to avoid race conditions if the base context is
-		// replaced
-		cancelCtx := c.baseContext
-
-		server := &http.Server{
-			Handler:           handler,
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       30 * time.Second,
-			IdleTimeout:       5 * time.Minute,
-			ErrorLog:          c.logger.StandardLogger(nil),
-			BaseContext: func(net.Listener) context.Context {
-				return cancelCtx
-			},
-		}
-		ln.HTTPServer = server
-
-		if ln.Config.HTTPReadHeaderTimeout > 0 {
-			server.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
-		}
-		if ln.Config.HTTPReadTimeout > 0 {
-			server.ReadTimeout = ln.Config.HTTPReadTimeout
-		}
-		if ln.Config.HTTPWriteTimeout > 0 {
-			server.WriteTimeout = ln.Config.HTTPWriteTimeout
-		}
-		if ln.Config.HTTPIdleTimeout > 0 {
-			server.IdleTimeout = ln.Config.HTTPIdleTimeout
-		}
-
-		switch ln.Config.TLSDisable {
-		case true:
-			l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-			if err != nil {
-				return fmt.Errorf("error getting non-tls listener: %w", err)
-			}
-			if l == nil {
-				return errors.New("could not get non-tls listener")
-			}
-			servers = append(servers, func() {
-				go server.Serve(l)
-			})
-
-		default:
-			protos := []string{"", "http/1.1", "h2"}
-			for _, v := range protos {
-				l := ln.Mux.GetListener(v)
-				if l == nil {
-					return fmt.Errorf("could not get tls proto %q listener", v)
-				}
-				servers = append(servers, func() {
-					go server.Serve(l)
-				})
-			}
-		}
-
-		return nil
+	err = c.registerGrpcServices(c.baseContext, c.apiGrpcServer)
+	if err != nil {
+		return fmt.Errorf("failed to register grpc services: %w", err)
 	}
 
-	configureForCluster := func(ln *base.ServerListener) error {
-		// Clear out in case this is a second start of the controller
-		ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-		l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
-			GetConfigForClient: c.validateWorkerTls,
-		})
-		if err != nil {
-			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
-		}
-
-		workerReqInterceptor, err := workerRequestInfoInterceptor(ctx, c.conf.Eventer)
-		if err != nil {
-			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
-		}
-		workerServer := grpc.NewServer(
-			grpc.MaxRecvMsgSize(math.MaxInt32),
-			grpc.MaxSendMsgSize(math.MaxInt32),
-			grpc.UnaryInterceptor(
-				grpc_middleware.ChainUnaryServer(
-					workerReqInterceptor,
-					auditRequestInterceptor(ctx),  // before we get started, audit the request
-					auditResponseInterceptor(ctx), // as we finish, audit the response
-				),
-			),
-		)
-		workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
-		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
-		pbs.RegisterSessionServiceServer(workerServer, workerService)
-
-		interceptor := newInterceptingListener(c, l)
-		ln.ALPNListener = interceptor
-		ln.GrpcServer = workerServer
-
-		servers = append(servers, func() {
-			go workerServer.Serve(interceptor)
-		})
-		return nil
-	}
-
-	c.gatewayListener, _ = newGatewayListener()
+	c.apiGrpcServerListener = newGrpcServerListener()
 	servers = append(servers, func() {
-		go c.gatewayServer.Serve(c.gatewayListener)
+		go c.apiGrpcServer.Serve(c.apiGrpcServerListener)
 	})
 
-	for _, ln := range c.conf.Listeners {
-		var err error
-		for _, purpose := range ln.Config.Purpose {
-			switch purpose {
-			case "api":
-				err = configureForAPI(ln)
-			case "cluster":
-				err = configureForCluster(ln)
-			case "proxy":
-				// Do nothing, in a dev mode we might see it here
-			default:
-				err = fmt.Errorf("unknown listener purpose %q", purpose)
-			}
-			if err != nil {
-				return err
-			}
+	for i := range c.apiListeners {
+		ln := c.apiListeners[i]
+		apiServers, err := c.configureForAPI(ln)
+		if err != nil {
+			return fmt.Errorf("failed to configure listener for api mode: %w", err)
 		}
+		servers = append(servers, apiServers...)
 	}
+
+	clusterServer, err := c.configureForCluster(c.clusterListener)
+	if err != nil {
+		return fmt.Errorf("failed to configure listener for cluster mode: %w", err)
+	}
+	servers = append(servers, clusterServer)
 
 	for _, s := range servers {
 		s()
 	}
 
 	return nil
+}
+
+func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) {
+	apiServers := make([]func(), 0)
+
+	handler, err := c.apiHandler(HandlerProperties{
+		ListenerConfig: ln.Config,
+		CancelCtx:      c.baseContext,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	cancelCtx := c.baseContext // Resolve to avoid race conditions if the base context is replaced.
+	server := &http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       5 * time.Minute,
+		ErrorLog:          c.logger.StandardLogger(nil),
+		BaseContext:       func(net.Listener) context.Context { return cancelCtx },
+	}
+	ln.HTTPServer = server
+
+	if ln.Config.HTTPReadHeaderTimeout > 0 {
+		server.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
+	}
+	if ln.Config.HTTPReadTimeout > 0 {
+		server.ReadTimeout = ln.Config.HTTPReadTimeout
+	}
+	if ln.Config.HTTPWriteTimeout > 0 {
+		server.WriteTimeout = ln.Config.HTTPWriteTimeout
+	}
+	if ln.Config.HTTPIdleTimeout > 0 {
+		server.IdleTimeout = ln.Config.HTTPIdleTimeout
+	}
+
+	switch ln.Config.TLSDisable {
+	case true:
+		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error getting non-tls listener: %w", err)
+		}
+		if l == nil {
+			return nil, errors.New("could not get non-tls listener")
+		}
+		apiServers = append(apiServers, func() { go server.Serve(l) })
+
+	default:
+		for _, v := range []string{"", "http/1.1", "h2"} {
+			l := ln.Mux.GetListener(v)
+			if l == nil {
+				return nil, fmt.Errorf("could not get tls proto %q listener", v)
+			}
+			apiServers = append(apiServers, func() { go server.Serve(l) })
+		}
+	}
+
+	return apiServers, nil
+}
+
+func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
+	// Clear out in case this is a second start of the controller
+	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
+	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+		GetConfigForClient: c.validateWorkerTls,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
+	}
+
+	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
+	if err != nil {
+		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
+	}
+
+	workerServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(math.MaxInt32),
+		grpc.MaxSendMsgSize(math.MaxInt32),
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				workerReqInterceptor,
+				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
+				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+			),
+		),
+	)
+
+	workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
+	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
+	pbs.RegisterSessionServiceServer(workerServer, workerService)
+
+	interceptor := newInterceptingListener(c, l)
+	ln.ALPNListener = interceptor
+	ln.GrpcServer = workerServer
+
+	return func() { go ln.GrpcServer.Serve(ln.ALPNListener) }, nil
 }
 
 func (c *Controller) stopListeners(serversOnly bool) error {
@@ -193,7 +186,7 @@ func (c *Controller) stopListeners(serversOnly bool) error {
 		}()
 	}
 
-	if c.gatewayServer != nil {
+	if c.apiGrpcServer != nil {
 		serverWg.Add(1)
 		go func() {
 			defer serverWg.Done()
@@ -201,9 +194,9 @@ func (c *Controller) stopListeners(serversOnly bool) error {
 			defer shutdownKillCancel()
 			go func() {
 				<-shutdownKill.Done()
-				c.gatewayServer.Stop()
+				c.apiGrpcServer.Stop()
 			}()
-			c.gatewayServer.GracefulStop()
+			c.apiGrpcServer.GracefulStop()
 		}()
 	}
 

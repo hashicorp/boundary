@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -39,6 +40,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 
@@ -50,17 +52,17 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
-// Handler returns an http.Handler for the services. This can be used on
+// apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
-func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
-	// Create the muxer to handle the actual endpoints
+func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	mux := http.NewServeMux()
 
-	h, err := handleGrpcGateway(c, props)
+	grpcGwMux := newGrpcGatewayMux()
+	err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", h)
+	mux.Handle("/v1/", grpcGwMux)
 	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
@@ -68,99 +70,70 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
 	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
-	if err != nil {
-		return nil, err
-	}
 
-	return eventsHandler, nil
+	return eventsHandler, err
 }
 
-func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {
-	// Register*ServiceHandlerServer methods ignore the passed in ctx. Using it
-	// now however in case this changes in the future.
-	ctx := props.CancelCtx
-	currentServices := c.gatewayServer.GetServiceInfo()
-	dialOptions := gatewayDialOptions(c.gatewayListener)
+func (c *Controller) registerGrpcServices(ctx context.Context, s *grpc.Server) error {
+	// We have to check against the current services because the gRPC lib treats a duplicate
+	// register call as an error and os.Exits.
+	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
 		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.HostPluginRepoFn, c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
-		services.RegisterHostCatalogServiceServer(c.gatewayServer, hcs)
-		if err := services.RegisterHostCatalogServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
-		}
+		services.RegisterHostCatalogServiceServer(s, hcs)
 	}
 	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
 		hss, err := host_sets.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create host set handler service: %w", err)
+			return fmt.Errorf("failed to create host set handler service: %w", err)
 		}
-		services.RegisterHostSetServiceServer(c.gatewayServer, hss)
-		if err := services.RegisterHostSetServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register host set service handler: %w", err)
-		}
+		services.RegisterHostSetServiceServer(s, hss)
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
 		hs, err := hosts.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create host handler service: %w", err)
+			return fmt.Errorf("failed to create host handler service: %w", err)
 		}
-		services.RegisterHostServiceServer(c.gatewayServer, hs)
-		if err := services.RegisterHostServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register host service handler: %w", err)
-		}
+		services.RegisterHostServiceServer(s, hs)
 	}
 	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
 		accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create account handler service: %w", err)
+			return fmt.Errorf("failed to create account handler service: %w", err)
 		}
-		services.RegisterAccountServiceServer(c.gatewayServer, accts)
-		if err := services.RegisterAccountServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register account service handler: %w", err)
-		}
+		services.RegisterAccountServiceServer(s, accts)
 	}
 	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
 		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
+			return fmt.Errorf("failed to create auth method handler service: %w", err)
 		}
-		services.RegisterAuthMethodServiceServer(c.gatewayServer, authMethods)
-		if err := services.RegisterAuthMethodServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
-		}
+		services.RegisterAuthMethodServiceServer(s, authMethods)
 	}
 	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
 		authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+			return fmt.Errorf("failed to create auth token handler service: %w", err)
 		}
-		services.RegisterAuthTokenServiceServer(c.gatewayServer, authtoks)
-		if err := services.RegisterAuthTokenServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
-		}
+		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
 		os, err := scopes.NewService(c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create scope handler service: %w", err)
+			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
-		services.RegisterScopeServiceServer(c.gatewayServer, os)
-		if err := services.RegisterScopeServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register scope service handler: %w", err)
-		}
+		services.RegisterScopeServiceServer(s, os)
 	}
 	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
 		us, err := users.NewService(c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create user handler service: %w", err)
+			return fmt.Errorf("failed to create user handler service: %w", err)
 		}
-		services.RegisterUserServiceServer(c.gatewayServer, us)
-		if err := services.RegisterUserServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register user service handler: %w", err)
-		}
+		services.RegisterUserServiceServer(s, us)
 	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
@@ -174,75 +147,106 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create target handler service: %w", err)
+			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
-		services.RegisterTargetServiceServer(c.gatewayServer, ts)
-		if err := services.RegisterTargetServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register target service handler: %w", err)
-		}
+		services.RegisterTargetServiceServer(s, ts)
 	}
 	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
 		gs, err := groups.NewService(c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create group handler service: %w", err)
+			return fmt.Errorf("failed to create group handler service: %w", err)
 		}
-		services.RegisterGroupServiceServer(c.gatewayServer, gs)
-		if err := services.RegisterGroupServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register group service handler: %w", err)
-		}
+		services.RegisterGroupServiceServer(s, gs)
 	}
 	if _, ok := currentServices[services.RoleService_ServiceDesc.ServiceName]; !ok {
 		rs, err := roles.NewService(c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create role handler service: %w", err)
+			return fmt.Errorf("failed to create role handler service: %w", err)
 		}
-		services.RegisterRoleServiceServer(c.gatewayServer, rs)
-		if err := services.RegisterRoleServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register role service handler: %w", err)
-		}
+		services.RegisterRoleServiceServer(s, rs)
 	}
 	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
 		ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create session handler service: %w", err)
+			return fmt.Errorf("failed to create session handler service: %w", err)
 		}
-		services.RegisterSessionServiceServer(c.gatewayServer, ss)
-		if err := services.RegisterSessionServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register session service handler: %w", err)
-		}
+		services.RegisterSessionServiceServer(s, ss)
 	}
 	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
 		mgs, err := managed_groups.NewService(c.OidcRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create managed groups handler service: %w", err)
+			return fmt.Errorf("failed to create managed groups handler service: %w", err)
 		}
-		services.RegisterManagedGroupServiceServer(c.gatewayServer, mgs)
-		if err := services.RegisterManagedGroupServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register managed groups service handler: %w", err)
-		}
+		services.RegisterManagedGroupServiceServer(s, mgs)
 	}
 	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
 		cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create credential store handler service: %w", err)
+			return fmt.Errorf("failed to create credential store handler service: %w", err)
 		}
-		services.RegisterCredentialStoreServiceServer(c.gatewayServer, cs)
-		if err := services.RegisterCredentialStoreServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register credential store service handler: %w", err)
-		}
+		services.RegisterCredentialStoreServiceServer(s, cs)
 	}
 	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
 		cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create credential library handler service: %w", err)
+			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
-		services.RegisterCredentialLibraryServiceServer(c.gatewayServer, cl)
-		if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, c.gatewayMux, gatewayTarget, dialOptions); err != nil {
-			return nil, fmt.Errorf("failed to register credential library service handler: %w", err)
-		}
+		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
 
-	return c.gatewayMux, nil
+	return nil
+}
+
+func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
+	// Register*ServiceHandlerServer methods ignore the passed in context.
+	// Passing it in anyways in case this changes in the future.
+	if err := services.RegisterHostCatalogServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register host set service handler: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	if err := services.RegisterAccountServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register account service handler: %w", err)
+	}
+	if err := services.RegisterAuthMethodServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register auth method service handler: %w", err)
+	}
+	if err := services.RegisterAuthTokenServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register auth token service handler: %w", err)
+	}
+	if err := services.RegisterScopeServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register scope service handler: %w", err)
+	}
+	if err := services.RegisterUserServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	if err := services.RegisterTargetServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register target service handler: %w", err)
+	}
+	if err := services.RegisterGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register group service handler: %w", err)
+	}
+	if err := services.RegisterRoleServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register role service handler: %w", err)
+	}
+	if err := services.RegisterSessionServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register session service handler: %w", err)
+	}
+	if err := services.RegisterManagedGroupServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register managed groups service handler: %w", err)
+	}
+	if err := services.RegisterCredentialStoreServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register credential store service handler: %w", err)
+	}
+	if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register credential library service handler: %w", err)
+	}
+
+	return nil
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
@@ -301,7 +305,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		// Serialize the request info to send it across the wire to the
 		// grpc-gateway via an http header
-		requestInfo.Ticket = c.gatewayTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
+		requestInfo.Ticket = c.apiGrpcGatewayTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
 		marshalledRequestInfo, err := proto.Marshal(&requestInfo)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marshaling request info"))
@@ -522,93 +526,3 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		h.ServeHTTP(w, req)
 	})
 }
-
-/*
-func WrapForwardedForHandler(h http.Handler, authorizedAddrs []*sockaddr.SockAddrMarshaler, rejectNotPresent, rejectNonAuthz bool, hopSkips int) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		headers, headersOK := r.Header[textproto.CanonicalMIMEHeaderKey("X-Forwarded-For")]
-		if !headersOK || len(headers) == 0 {
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("missing x-forwarded-for header and configured to reject when not present"))
-			return
-		}
-
-		host, port, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			// If not rejecting treat it like we just don't have a valid
-			// header because we can't do a comparison against an address we
-			// can't understand
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client hostport: {{err}}", err))
-			return
-		}
-
-		addr, err := sockaddr.NewIPAddr(host)
-		if err != nil {
-			// We treat this the same as the case above
-			if !rejectNotPresent {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, errwrap.Wrapf("error parsing client address: {{err}}", err))
-			return
-		}
-
-		var found bool
-		for _, authz := range authorizedAddrs {
-			if authz.Contains(addr) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			// If we didn't find it and aren't configured to reject, simply
-			// don't trust it
-			if !rejectNonAuthz {
-				h.ServeHTTP(w, r)
-				return
-			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
-			return
-		}
-
-		// At this point we have at least one value and it's authorized
-
-		// Split comma separated ones, which are common. This brings it in line
-		// to the multiple-header case.
-		var acc []string
-		for _, header := range headers {
-			vals := strings.Split(header, ",")
-			for _, v := range vals {
-				acc = append(acc, strings.TrimSpace(v))
-			}
-		}
-
-		indexToUse := len(acc) - 1 - hopSkips
-		if indexToUse < 0 {
-			// This is likely an error in either configuration or other
-			// infrastructure. We could either deny the request, or we
-			// could simply not trust the value. Denying the request is
-			// "safer" since if this logic is configured at all there may
-			// be an assumption it can always be trusted. Given that we can
-			// deny accepting the request at all if it's not from an
-			// authorized address, if we're at this point the address is
-			// authorized (or we've turned off explicit rejection) and we
-			// should assume that what comes in should be properly
-			// formatted.
-			respondError(w, http.StatusBadRequest, fmt.Errorf("malformed x-forwarded-for configuration or request, hops to skip (%d) would skip before earliest chain link (chain length %d)", hopSkips, len(headers)))
-			return
-		}
-
-		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
-		h.ServeHTTP(w, r)
-		return
-	})
-}
-*/
