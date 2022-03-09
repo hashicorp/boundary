@@ -8,6 +8,7 @@ begin;
   alter table wh_session_connection_accumulating_fact
     alter column credential_group_key drop default;
 
+  -- Updated in 27/01_disable_terminate_session.up.sql
   -- replaces function from 15/01_wh_rename_key_columns.up.sql
   drop trigger wh_insert_session_connection on session_connection;
   drop function wh_insert_session_connection;
