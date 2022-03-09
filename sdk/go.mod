@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220210224923-dc7130554b6b
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0-20220304191528-b8f9bf838e45
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.44.0
@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
 	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0-20220304191528-b8f9bf838e45
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.0
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 // indirect
