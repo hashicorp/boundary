@@ -469,12 +469,17 @@ func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.Clo
 			ClosedReason: session.ClosedReason(v.GetReason()),
 		})
 	}
+	connRepo, err := ws.connectionRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting connection repo: %v", err)
+	}
+
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	closeInfos, err := sessRepo.CloseConnections(ctx, closeWiths)
+	closeInfos, err := session.CloseConnections(ctx, sessRepo, connRepo, closeWiths)
 	if err != nil {
 		return nil, err
 	}
