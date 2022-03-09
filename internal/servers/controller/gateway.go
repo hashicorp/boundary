@@ -19,20 +19,14 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-// newGatewayListener will create an in-memory listener
-func newGatewayListener() (gatewayListener, string) {
-	buffer := globals.DefaultMaxRequestSize // seems like a reasonable size for the ring buffer, but then happily change the size if more info becomes available
-	return bufconn.Listen(int(buffer)), ""
-}
-
 const gatewayTarget = ""
 
-type gatewayListener interface {
+type grpcServerListener interface {
 	net.Listener
 	Dial() (net.Conn, error)
 }
 
-func gatewayDialOptions(lis gatewayListener) []grpc.DialOption {
+func gatewayDialOptions(lis grpcServerListener) []grpc.DialOption {
 	return []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
@@ -41,7 +35,7 @@ func gatewayDialOptions(lis gatewayListener) []grpc.DialOption {
 	}
 }
 
-func newGatewayMux() *runtime.ServeMux {
+func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: handlers.JSONMarshaler(),
@@ -51,7 +45,13 @@ func newGatewayMux() *runtime.ServeMux {
 	)
 }
 
-func newGatewayServer(
+// newGrpcServerListener will create an in-memory listener for the gRPC server.
+func newGrpcServerListener() grpcServerListener {
+	buffer := globals.DefaultMaxRequestSize // seems like a reasonable size for the ring buffer, but then happily change the size if more info becomes available
+	return bufconn.Listen(int(buffer))
+}
+
+func newGrpcServer(
 	ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
@@ -59,7 +59,7 @@ func newGatewayServer(
 	kms *kms.Kms,
 	eventer *event.Eventer,
 ) (*grpc.Server, string, error) {
-	const op = "controller.newGatewayServer"
+	const op = "controller.newGrpcServer"
 	ticket, err := db.NewPrivateId("gwticket")
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
