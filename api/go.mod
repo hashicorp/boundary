@@ -5,8 +5,8 @@ go 1.17
 require (
 	github.com/fatih/structs v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20211004181108-59533a548d29
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20211004181156-d323e1064fea
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1
@@ -20,8 +20,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fatih/color v1.7.0 // indirect
-	github.com/golang/protobuf v1.5.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/go-hclog v0.16.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
@@ -31,7 +30,6 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
-	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )
