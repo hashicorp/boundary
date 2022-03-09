@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -44,6 +45,8 @@ type Worker struct {
 
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
+
+	listeners []*base.ServerListener
 
 	// We store the current set in an atomic value so that we can add
 	// reload-on-sighup behavior later
@@ -103,6 +106,23 @@ func New(conf *Config) (*Worker, error) {
 					"file.",
 				err)
 		}
+	}
+
+	for i := range conf.Listeners {
+		l := conf.Listeners[i]
+		if l == nil || l.Config == nil || l.Config.Purpose == nil {
+			continue
+		}
+		if len(l.Config.Purpose) != 1 {
+			return nil, fmt.Errorf("found listener with multiple purposes %q", strings.Join(l.Config.Purpose, ","))
+		}
+		switch l.Config.Purpose[0] {
+		case "proxy":
+			w.listeners = append(w.listeners, l)
+		}
+	}
+	if len(w.listeners) == 0 {
+		return nil, fmt.Errorf("no proxy listeners found")
 	}
 
 	return w, nil
