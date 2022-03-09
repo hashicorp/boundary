@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -58,11 +57,9 @@ type Controller struct {
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
-	// grpc gateway server
-	gatewayServer   *grpc.Server
-	gatewayTicket   string
-	gatewayListener gatewayListener
-	gatewayMux      *runtime.ServeMux
+	apiGrpcServer         *grpc.Server
+	apiGrpcServerListener grpcServerListener
+	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
 	AuthTokenRepoFn       common.AuthTokenRepoFactory
@@ -293,7 +290,7 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.startListeners(c.baseContext); err != nil {
+	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
