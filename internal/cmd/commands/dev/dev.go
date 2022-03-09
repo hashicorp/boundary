@@ -635,7 +635,7 @@ func (c *Command) Run(args []string) int {
 
 		if err := c.worker.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting worker: %w", err)
-			if err := c.worker.Shutdown(false); err != nil {
+			if err := c.worker.Shutdown(); err != nil {
 				c.UI.Error(retErr.Error())
 				retErr = fmt.Errorf("Error shutting down worker: %w", err)
 			}
@@ -672,7 +672,7 @@ func (c *Command) Run(args []string) int {
 			}()
 
 			if !c.flagControllerOnly {
-				if err := c.worker.Shutdown(false); err != nil {
+				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
