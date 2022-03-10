@@ -21,11 +21,14 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
+
+type randFn func(length int) (string, error)
 
 type Worker struct {
 	conf   *Config
@@ -48,6 +51,9 @@ type Worker struct {
 
 	listeners []*base.ServerListener
 
+	// Used to generate a random nonce for Controller connections
+	nonceFn randFn
+
 	// We store the current set in an atomic value so that we can add
 	// reload-on-sighup behavior later
 	tags *atomic.Value
@@ -55,10 +61,6 @@ type Worker struct {
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
 	updateTags ua.Bool
-
-	// Test-related values
-	testReuseAuthNonces bool
-	testReusedAuthNonce string
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -72,6 +74,7 @@ func New(conf *Config) (*Worker, error) {
 		controllerSessionConn: new(atomic.Value),
 		sessionInfoMap:        new(sync.Map),
 		tags:                  new(atomic.Value),
+		nonceFn:               base62.Random,
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
