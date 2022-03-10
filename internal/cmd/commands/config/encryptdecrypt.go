@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/textproto"
@@ -178,12 +180,12 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	}
 
 	if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-		if err := ifWrapper.Init(c.Context); err != nil {
+		if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 			c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
 			return base.CommandUserError
 		}
 		defer func() {
-			if err := ifWrapper.Finalize(c.Context); err != nil {
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
 			}
 		}()

@@ -567,15 +567,15 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 			}
 		}
 		if ifWrapper != nil {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
 				return nil, base.CommandCliError
 			}
 		}
 		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
 		if ifWrapper != nil {
-			if err := ifWrapper.Finalize(c.Context); err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
 				return nil, base.CommandCliError
 			}
 		}

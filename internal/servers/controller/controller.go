@@ -150,7 +150,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
 						pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
 					),
-					external_host_plugins.WithLogger(pluginLogger.Named(pluginType)))
+					external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				)
 				if err != nil {
 					return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 				}

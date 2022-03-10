@@ -496,12 +496,12 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	if wrapper != nil {
 		c.configWrapperCleanupFunc = cleanupFunc
 		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
 				return base.CommandUserError
 			}
 			c.configWrapperCleanupFunc = func() error {
-				if err := ifWrapper.Finalize(c.Context); err != nil {
+				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 					c.UI.Warn(fmt.Errorf("Could not finalize kms: %w", err).Error())
 				}
 				if cleanupFunc != nil {

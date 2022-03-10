@@ -252,13 +252,13 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			c.WrapperCleanupFunc = cleanupFunc
 		}
 		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				return nil, fmt.Errorf("Error initializing kms: %w", err)
 			}
 
 			currCleanupFunc := c.WrapperCleanupFunc
 			c.WrapperCleanupFunc = func() error {
-				if err := ifWrapper.Finalize(c.Context); err != nil {
+				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 					c.PrintCliError(fmt.Errorf("An error was encountered finalizing the kms: %w", err))
 				}
 				if currCleanupFunc != nil {

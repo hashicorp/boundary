@@ -529,9 +529,12 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 						"After configuration nil KMS returned, KMS type was %s", kms.Type)
 				}
 				if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+					if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+						return fmt.Errorf("Error initializing KMS: %w", err)
+					}
 					// Ensure that the seal finalizer is called, even if using verify-only
 					b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-						if err := ifWrapper.Finalize(context.Background()); err != nil {
+						if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 							return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 						}
 

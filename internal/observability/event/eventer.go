@@ -582,20 +582,6 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation, opt 
 	if !e.conf.ObservationsEnabled {
 		return nil
 	}
-	opts := getOpts(opt...)
-	if e.gated.Load() {
-		if !opts.withNoGateLocking {
-			e.gatedQueueLock.Lock()
-			defer e.gatedQueueLock.Unlock()
-		}
-		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
-			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
-				ctx:   ctx,
-				event: event,
-			})
-			return nil
-		}
-	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		if event.Header != nil {
 			event.Header[RequestInfoField] = event.RequestInfo
@@ -620,11 +606,9 @@ func (e *Eventer) writeError(ctx context.Context, event *err, opt ...Option) err
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	if e.gated.Load() {
-		if !opts.withNoGateLocking {
-			e.gatedQueueLock.Lock()
-			defer e.gatedQueueLock.Unlock()
-		}
+	if e.gated.Load() && !opts.withNoGateLocking {
+		e.gatedQueueLock.Lock()
+		defer e.gatedQueueLock.Unlock()
 		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
 			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
 				ctx:   ctx,
@@ -650,11 +634,9 @@ func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent, opt ...Opt
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	if e.gated.Load() {
-		if !opts.withNoGateLocking {
-			e.gatedQueueLock.Lock()
-			defer e.gatedQueueLock.Unlock()
-		}
+	if e.gated.Load() && !opts.withNoGateLocking {
+		e.gatedQueueLock.Lock()
+		defer e.gatedQueueLock.Unlock()
 		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
 			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
 				ctx:   ctx,
@@ -681,20 +663,6 @@ func (e *Eventer) writeAudit(ctx context.Context, event *audit, opt ...Option) e
 	}
 	if !e.conf.AuditEnabled {
 		return nil
-	}
-	opts := getOpts(opt...)
-	if e.gated.Load() {
-		if !opts.withNoGateLocking {
-			e.gatedQueueLock.Lock()
-			defer e.gatedQueueLock.Unlock()
-		}
-		if e.gated.Load() { // validate that it's still gated and we haven't just drained the queue
-			e.gatedQueue = append(e.gatedQueue, &queuedEvent{
-				ctx:   ctx,
-				event: event,
-			})
-			return nil
-		}
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(AuditType), event)
@@ -738,7 +706,7 @@ func (e *Eventer) ReleaseGate() error {
 	if len(e.gatedQueue) == 0 && !e.gated.Load() {
 		return nil
 	}
-
+	e.gated.Store(false) // Don't gate anymore
 	clean := true
 	var writeErr error
 	for i, qe := range e.gatedQueue {
@@ -750,15 +718,12 @@ func (e *Eventer) ReleaseGate() error {
 		case *sysEvent:
 			queuedOp = "system"
 			writeErr = e.writeSysEvent(qe.ctx, t, WithNoGateLocking(true))
-		case *observation:
-			queuedOp = "observation"
-			writeErr = e.writeObservation(qe.ctx, t, WithNoGateLocking(true))
 		case *err:
 			queuedOp = "error"
 			writeErr = e.writeError(qe.ctx, t, WithNoGateLocking(true))
-		case *audit:
-			queuedOp = "audit"
-			writeErr = e.writeAudit(qe.ctx, t, WithNoGateLocking(true))
+		default:
+			// Have no idea what this is, so just continue and it will be
+			// removed
 		}
 		if writeErr == nil {
 			e.gatedQueue[i] = nil // clear this entry, we've sent it
@@ -774,7 +739,6 @@ func (e *Eventer) ReleaseGate() error {
 	case writeErr != nil:
 		return writeErr
 	}
-	e.gated.Store(false) // either way, don't gate anymore
 	return nil
 }
 
