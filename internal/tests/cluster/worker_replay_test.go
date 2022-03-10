@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/go-hclog"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,24 +40,49 @@ func TestWorkerReplay(t *testing.T) {
 		Config:             conf,
 		WorkerAuthKms:      c1.Config().WorkerAuthKms,
 		InitialControllers: c1.ClusterAddrs(),
-		EnableAuthReplay:   true,
+		NonceFn: func(length int) (string, error) {
+			return "test_noncetest_nonce", nil
+		},
 	})
 
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
+
+	// Assert that the worker has connected
+	logBuf, err := os.ReadFile(ec.AllEvents.Name())
+	require.NoError(t, err)
+	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
+
+	// Assert we have the expected nonce in the DB
+	nonces, err := c1.ServersRepo().ListNonces(c1.Context(), servers.NoncePurposeWorkerAuth)
+	require.NoError(t, err)
+	require.Len(t, nonces, 1)
+	require.Equal(t, &servers.Nonce{Nonce: "test_noncetest_nonce", Purpose: servers.NoncePurposeWorkerAuth}, nonces[0])
+
 	require.NoError(t, w1.Worker().Shutdown())
 
-	// Now, start up again
-	require.NoError(t, w1.Worker().Start())
+	// Now, start up again with the same nonce
+	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		Config:             conf,
+		WorkerAuthKms:      c1.Config().WorkerAuthKms,
+		InitialControllers: c1.ClusterAddrs(),
+		NonceFn: func(length int) (string, error) {
+			return "test_noncetest_nonce", nil
+		},
+	})
+
+	// Give time for it to connect
 	time.Sleep(10 * time.Second)
 
 	// We should find only one nonce, and one successful worker authentication,
 	// both in the output and in the database
 	ec.AllEvents.Close()
-	logBuf, err := os.ReadFile(ec.AllEvents.Name())
+	logBuf, err = os.ReadFile(ec.AllEvents.Name())
 	require.NoError(t, err)
-	assert.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
-	nonces, err := c1.ServersRepo().ListNonces(c1.Context(), servers.NoncePurposeWorkerAuth)
+	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
+
+	nonces, err = c1.ServersRepo().ListNonces(c1.Context(), servers.NoncePurposeWorkerAuth)
 	require.NoError(t, err)
-	assert.Len(t, nonces, 1)
+	require.Len(t, nonces, 1)
+	require.Equal(t, &servers.Nonce{Nonce: "test_noncetest_nonce", Purpose: servers.NoncePurposeWorkerAuth}, nonces[0])
 }

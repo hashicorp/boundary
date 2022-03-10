@@ -183,8 +183,9 @@ type TestWorkerOpts struct {
 	// connection cannot be made back to the controller
 	StatusGracePeriodDuration time.Duration
 
-	// Whether to set the replay value
-	EnableAuthReplay bool
+	// Overrides worker's nonceFn, for cases where we want to have control
+	// over the nonce we send to the Controller
+	NonceFn randFn
 }
 
 func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
@@ -280,8 +281,8 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		t.Fatal(err)
 	}
 
-	if opts.EnableAuthReplay {
-		tw.w.testReuseAuthNonces = true
+	if opts.NonceFn != nil {
+		tw.w.nonceFn = opts.NonceFn
 	}
 
 	if !opts.DisableAutoStart {

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkerNewListenerConfig(t *testing.T) {
+func TestWorkerNew(t *testing.T) {
 	tests := []struct {
 		name       string
 		in         *Config
@@ -74,6 +74,20 @@ func TestWorkerNewListenerConfig(t *testing.T) {
 			expErr: false,
 			assertions: func(t *testing.T, w *Worker) {
 				require.Len(t, w.listeners, 2)
+			},
+		},
+		{
+			name: "worker nonce func is set",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				require.NotNil(t, w.nonceFn)
 			},
 		},
 	}
