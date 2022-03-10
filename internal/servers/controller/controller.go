@@ -125,40 +125,41 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
-	if len(c.enabledPlugins) > 0 {
-		pluginLogger, err := event.HclogLogger(ctx, c.conf.Server.Eventer)
-		if err != nil {
-			return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
+	var pluginLogger hclog.Logger
+	for _, enabledPlugin := range c.enabledPlugins {
+		if pluginLogger == nil {
+			pluginLogger, err = event.HclogLogger(ctx, c.conf.Server.Eventer)
+			if err != nil {
+				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
+			}
 		}
-		for _, enabledPlugin := range c.enabledPlugins {
-			switch enabledPlugin {
-			case base.EnabledPluginHostLoopback:
-				plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
-				opts := []hostplugin.Option{
-					hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-					hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
-				}
-				if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
-					return nil, err
-				}
-			case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
-				pluginType := strings.ToLower(enabledPlugin.String())
-				client, cleanup, err := external_host_plugins.CreateHostPlugin(
-					ctx,
-					pluginType,
-					external_host_plugins.WithPluginOptions(
-						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
-						pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-					),
-					external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
-				)
-				if err != nil {
-					return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
-				}
-				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
-				if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
-					return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
-				}
+		switch enabledPlugin {
+		case base.EnabledPluginHostLoopback:
+			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
+			opts := []hostplugin.Option{
+				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+			}
+			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+				return nil, err
+			}
+		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_host_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+				),
+				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
 		}
 	}
