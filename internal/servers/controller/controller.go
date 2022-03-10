@@ -52,6 +52,9 @@ type Controller struct {
 
 	workerAuthCache *sync.Map
 
+	apiListeners    []*base.ServerListener
+	clusterListener *base.ServerListener
+
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
@@ -123,6 +126,32 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				err)
 		}
 	}
+
+	clusterListeners := make([]*base.ServerListener, 0)
+	for i := range conf.Listeners {
+		l := conf.Listeners[i]
+		if l == nil || l.Config == nil || l.Config.Purpose == nil {
+			continue
+		}
+		if len(l.Config.Purpose) != 1 {
+			return nil, fmt.Errorf("found listener with multiple purposes %q", strings.Join(l.Config.Purpose, ","))
+		}
+		switch l.Config.Purpose[0] {
+		case "api":
+			c.apiListeners = append(c.apiListeners, l)
+		case "cluster":
+			clusterListeners = append(clusterListeners, l)
+		}
+	}
+	if len(c.apiListeners) == 0 {
+		return nil, fmt.Errorf("no api listeners found")
+	}
+	if len(clusterListeners) != 1 {
+		// in the future, we might pick the cluster that is exposed to the outside
+		// instead of limiting it to one.
+		return nil, fmt.Errorf("exactly one cluster listener is required")
+	}
+	c.clusterListener = clusterListeners[0]
 
 	for _, enabledPlugin := range c.enabledPlugins {
 		switch enabledPlugin {
