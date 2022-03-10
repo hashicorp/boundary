@@ -485,87 +485,89 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
-	if len(sharedConfig.Seals) > 0 {
-		pluginLogger, err := event.HclogLogger(b.Context, b.Eventer)
-		if err != nil {
-			return fmt.Errorf("error creating kms plugin logger: %w", err)
-		}
-		for _, kms := range sharedConfig.Seals {
-			for _, purpose := range kms.Purpose {
-				purpose = strings.ToLower(purpose)
-				switch purpose {
-				case "":
-					return errors.New("KMS block missing 'purpose'")
-				case "root", "worker-auth", "config":
-				case "recovery":
-					if config.Controller != nil && config.DevRecoveryKey != "" {
-						kms.Config["key"] = config.DevRecoveryKey
+	var pluginLogger hclog.Logger
+	var err error
+	for _, kms := range sharedConfig.Seals {
+		for _, purpose := range kms.Purpose {
+			purpose = strings.ToLower(purpose)
+			switch purpose {
+			case "":
+				return errors.New("KMS block missing 'purpose'")
+			case "root", "worker-auth", "config":
+			case "recovery":
+				if config.Controller != nil && config.DevRecoveryKey != "" {
+					kms.Config["key"] = config.DevRecoveryKey
+				}
+			default:
+				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
+			}
+
+			if pluginLogger == nil {
+				pluginLogger, err = event.HclogLogger(b.Context, b.Eventer)
+				if err != nil {
+					return fmt.Errorf("error creating kms plugin logger: %w", err)
+				}
+			}
+
+			// This can be modified by configutil so store the original value
+			origPurpose := kms.Purpose
+			kms.Purpose = []string{purpose}
+
+			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
+				ctx,
+				kms,
+				&b.InfoKeys,
+				&b.Info,
+				configutil.WithPluginOptions(
+					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+				),
+				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
+			)
+			if wrapperConfigError != nil {
+				return fmt.Errorf(
+					"Error parsing KMS configuration: %s", wrapperConfigError)
+			}
+			if wrapper == nil {
+				return fmt.Errorf(
+					"After configuration nil KMS returned, KMS type was %s", kms.Type)
+			}
+			if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+				if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+					return fmt.Errorf("Error initializing KMS: %w", err)
+				}
+				// Ensure that the seal finalizer is called, even if using verify-only
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+						return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 					}
-				default:
-					return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
-				}
 
-				// This can be modified by configutil so store the original value
-				origPurpose := kms.Purpose
-				kms.Purpose = []string{purpose}
+					return nil
+				})
+			}
+			if cleanupFunc != nil {
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					return cleanupFunc()
+				})
+			}
 
-				wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
-					ctx,
-					kms,
-					&b.InfoKeys,
-					&b.Info,
-					configutil.WithPluginOptions(
-						pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-						pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
-					),
-					configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
-				)
-				if wrapperConfigError != nil {
-					return fmt.Errorf(
-						"Error parsing KMS configuration: %s", wrapperConfigError)
-				}
-				if wrapper == nil {
-					return fmt.Errorf(
-						"After configuration nil KMS returned, KMS type was %s", kms.Type)
-				}
-				if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-					if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-						return fmt.Errorf("Error initializing KMS: %w", err)
-					}
-					// Ensure that the seal finalizer is called, even if using verify-only
-					b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-						if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-							return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
-						}
-
-						return nil
-					})
-				}
-				if cleanupFunc != nil {
-					b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-						return cleanupFunc()
-					})
-				}
-
-				kms.Purpose = origPurpose
-				switch purpose {
-				case "root":
-					b.RootKms = wrapper
-				case "worker-auth":
-					b.WorkerAuthKms = wrapper
-				case "recovery":
-					b.RecoveryKms = wrapper
-				case "config":
-					// Do nothing, can be set in same file but not needed at runtime
-				default:
-					return fmt.Errorf("KMS purpose of %q is unknown", purpose)
-				}
+			kms.Purpose = origPurpose
+			switch purpose {
+			case "root":
+				b.RootKms = wrapper
+			case "worker-auth":
+				b.WorkerAuthKms = wrapper
+			case "recovery":
+				b.RecoveryKms = wrapper
+			case "config":
+				// Do nothing, can be set in same file but not needed at runtime
+			default:
+				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 		}
 	}
 
 	// prepare a secure random reader
-	var err error
 	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err
