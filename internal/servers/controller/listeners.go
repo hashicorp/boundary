@@ -9,11 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
@@ -161,61 +159,108 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	return func() { go ln.GrpcServer.Serve(ln.ALPNListener) }, nil
 }
 
-func (c *Controller) stopListeners(serversOnly bool) error {
-	serverWg := new(sync.WaitGroup)
-	for _, ln := range c.conf.Listeners {
-		localLn := ln
-		serverWg.Add(1)
-		go func() {
-			defer serverWg.Done()
+func (c *Controller) stopServersAndListeners() error {
+	var mg multierror.Group
+	mg.Go(c.stopClusterGrpcServerAndListener)
+	mg.Go(c.stopHttpServersAndListeners)
+	mg.Go(c.stopApiGrpcServerAndListener)
 
-			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, localLn.Config.MaxRequestDuration)
-			defer shutdownKillCancel()
+	stopErrors := mg.Wait()
 
-			if localLn.GrpcServer != nil {
-				// Deal with the worst case
-				go func() {
-					<-shutdownKill.Done()
-					localLn.GrpcServer.Stop()
-				}()
-				localLn.GrpcServer.GracefulStop()
-			}
-			if localLn.HTTPServer != nil {
-				localLn.HTTPServer.Shutdown(shutdownKill)
-			}
-		}()
+	err := c.stopAnyListeners()
+	if err != nil {
+		stopErrors = multierror.Append(stopErrors, err)
 	}
 
-	if c.apiGrpcServer != nil {
-		serverWg.Add(1)
-		go func() {
-			defer serverWg.Done()
-			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, globals.DefaultMaxRequestDuration)
-			defer shutdownKillCancel()
-			go func() {
-				<-shutdownKill.Done()
-				c.apiGrpcServer.Stop()
-			}()
-			c.apiGrpcServer.GracefulStop()
-		}()
-	}
+	return stopErrors.ErrorOrNil()
+}
 
-	serverWg.Wait()
-	if serversOnly {
+func (c *Controller) stopClusterGrpcServerAndListener() error {
+	if c.clusterListener == nil {
 		return nil
 	}
-	var retErr *multierror.Error
-	for _, ln := range c.conf.Listeners {
-		if err := ln.Mux.Close(); err != nil {
-			if _, ok := err.(*os.PathError); ok && ln.Config.Type == "unix" {
-				// The rmListener probably tried to remove the file but it
-				// didn't exist, ignore the error; this is a conflict
-				// between rmListener and the default Go behavior of
-				// removing auto-vivified Unix domain sockets.
-			} else {
-				retErr = multierror.Append(retErr, err)
-			}
+	if c.clusterListener.GrpcServer == nil {
+		return fmt.Errorf("no cluster grpc server")
+	}
+	if c.clusterListener.Mux == nil {
+		return fmt.Errorf("no cluster listener mux")
+	}
+
+	c.clusterListener.GrpcServer.GracefulStop()
+	err := c.clusterListener.Mux.Close()
+	return listenerCloseErrorCheck(c.clusterListener.Config.Type, err)
+}
+
+func (c *Controller) stopHttpServersAndListeners() error {
+	var closeErrors *multierror.Error
+	for i := range c.apiListeners {
+		ln := c.apiListeners[i]
+		if ln.HTTPServer == nil {
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(c.baseContext, ln.Config.MaxRequestDuration)
+		ln.HTTPServer.Shutdown(ctx)
+		cancel()
+
+		err := ln.Mux.Close() // The HTTP Shutdown call should close this, but just in case.
+		err = listenerCloseErrorCheck(ln.Config.Type, err)
+		if err != nil {
+			multierror.Append(closeErrors, err)
 		}
 	}
-	return retErr.ErrorOrNil()
+
+	return closeErrors.ErrorOrNil()
+}
+
+func (c *Controller) stopApiGrpcServerAndListener() error {
+	if c.apiGrpcServer == nil {
+		return nil
+	}
+
+	c.apiGrpcServer.GracefulStop()
+	err := c.apiGrpcServerListener.Close()
+	return listenerCloseErrorCheck("ch", err) // apiGrpcServerListener is just a channel, so the type here is not important.
+}
+
+// stopAnyListeners does a final once over the known
+// listeners to make sure we didn't miss any;
+// expected to run at the end of stopServersAndListeners.
+func (c *Controller) stopAnyListeners() error {
+	var closeErrors *multierror.Error
+	for i := range c.apiListeners {
+		ln := c.apiListeners[i]
+		if ln == nil || ln.Mux == nil {
+			continue
+		}
+
+		err := ln.Mux.Close()
+		err = listenerCloseErrorCheck(ln.Config.Type, err)
+		if err != nil {
+			multierror.Append(closeErrors, err)
+		}
+	}
+
+	return closeErrors.ErrorOrNil()
+}
+
+// listenerCloseErrorCheck does some validation on an error returned
+// by a net.Listener's Close function, and ignores a few cases
+// where we don't actually want an error to be returned.
+func listenerCloseErrorCheck(lnType string, err error) error {
+	if errors.Is(err, net.ErrClosed) {
+		// Ignore net.ErrClosed - The listener was already closed,
+		// so there's nothing else to do.
+		return nil
+	}
+	if _, ok := err.(*os.PathError); ok && lnType == "unix" {
+		// The underlying rmListener probably tried to remove
+		// the file but it didn't exist, ignore the error;
+		// this is a conflict between rmListener and the
+		// default Go behavior of removing auto-vivified
+		// Unix domain sockets.
+		return nil
+	}
+
+	return err
 }
