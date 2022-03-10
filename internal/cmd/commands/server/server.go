@@ -542,7 +542,14 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 				"config",
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+				),
+				// TODO: How would we want to expose this kind of log to users when
+				// using recovery configs? Generally with normal CLI commands we
+				// don't print out all of these logs. We may want a logger with a
+				// custom writer behind our existing gate where we print nothing
+				// unless there is an error, then dump all of it.
+				configutil.WithLogger(hclog.NewNullLogger()),
 			)
 			if err != nil {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
