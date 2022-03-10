@@ -337,15 +337,15 @@ func (c *Controller) registerSessionCleanupJob() error {
 	return nil
 }
 
-func (c *Controller) Shutdown(serversOnly bool) error {
+func (c *Controller) Shutdown() error {
 	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 	}
 	defer c.started.Store(false)
 	c.baseCancel()
-	if err := c.stopListeners(serversOnly); err != nil {
-		return fmt.Errorf("error stopping controller listeners: %w", err)
+	if err := c.stopServersAndListeners(); err != nil {
+		return fmt.Errorf("error stopping controller servers and listeners: %w", err)
 	}
 	c.schedulerWg.Wait()
 	c.tickerWg.Wait()
