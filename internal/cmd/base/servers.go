@@ -489,6 +489,11 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
+
+			// This can be modified by configutil so store the original value
+			origPurpose := kms.Purpose
+			kms.Purpose = []string{purpose}
+
 			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
 				ctx,
 				kms,
@@ -522,8 +527,6 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				})
 			}
 
-			origPurpose := kms.Purpose
-			kms.Purpose = []string{purpose}
 			kms.Purpose = origPurpose
 			switch purpose {
 			case "root":
