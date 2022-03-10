@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"encoding/base64"
 	"math/rand"
 	"net/url"
@@ -184,14 +185,15 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	if n != 32 {
 		t.Fatal(n)
 	}
-	root := aead.NewWrapper(nil)
+	root := aead.NewWrapper()
 	_, err = root.SetConfig(
-		wrapping.WithKeyid(base64.StdEncoding.EncodeToString(rootKey)),
+		context.Background(),
+		wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+	if err := root.SetAesGcmKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
 	}
 	return root
