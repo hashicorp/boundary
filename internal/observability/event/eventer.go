@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/eventlogger/sinks/writer"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-multierror"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -702,14 +703,21 @@ func (e *Eventer) ReleaseGate() error {
 	e.gatedQueueLock.Lock()
 	defer e.gatedQueueLock.Unlock()
 
+	// Don't gate anymore. By the time we hit this we will have the lock and be
+	// guaranteed that nothing else will add onto the queue while we drain it.
+	// Logic in the functions that add to the queue validate this boolean again
+	// after they acquire the lock so running this function should fully drain
+	// the events except in the case of an error.
+	e.gated.Store(false)
+
 	// Don't do anything if we're not gated and are fully drained
 	if len(e.gatedQueue) == 0 && !e.gated.Load() {
 		return nil
 	}
-	e.gated.Store(false) // Don't gate anymore
-	clean := true
-	var writeErr error
-	for i, qe := range e.gatedQueue {
+
+	var totalErrs *multierror.Error
+	for _, qe := range e.gatedQueue {
+		var writeErr error
 		if qe == nil {
 			continue // we may have already sent this but gotten errors later
 		}
@@ -722,24 +730,16 @@ func (e *Eventer) ReleaseGate() error {
 			queuedOp = "error"
 			writeErr = e.writeError(qe.ctx, t, WithNoGateLocking(true))
 		default:
-			// Have no idea what this is, so just continue and it will be
-			// removed
+			// Have no idea what this is and shouldn't have gotten in here to
+			// begin with, so just continue, and log it
+			writeErr = fmt.Errorf("unknown event type %T", t)
 		}
-		if writeErr == nil {
-			e.gatedQueue[i] = nil // clear this entry, we've sent it
-		} else {
-			writeErr = fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr)
-			clean = false
-			break // stop processing for now but don't clear queue
+		if writeErr != nil {
+			totalErrs = multierror.Append(fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr))
 		}
 	}
-	switch {
-	case clean:
-		e.gatedQueue = nil
-	case writeErr != nil:
-		return writeErr
-	}
-	return nil
+	e.gatedQueue = nil
+	return totalErrs.ErrorOrNil()
 }
 
 // StandardLogger will create *log.Logger that will emit events through this
