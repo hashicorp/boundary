@@ -28,9 +28,9 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
-.PHONY: dev-no-plugins
-dev-no-plugins: export SKIP_PLUGIN_BUILD=1
-dev-no-plugins: dev
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
 
 .PHONY: dev
 dev:
@@ -164,7 +164,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
-	# inject classification tags (see: https://github.com/hashicorp/eventlogger/tree/main/filters/encrypt)
+	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
