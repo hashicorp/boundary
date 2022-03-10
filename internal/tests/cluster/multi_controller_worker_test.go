@@ -64,7 +64,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(t, c1, w1, w2)
 	expectWorkers(t, c2, w1, w2)
 
-	require.NoError(c1.Controller().Shutdown(true))
+	require.NoError(c2.Controller().Shutdown())
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c2, w1, w2)
 

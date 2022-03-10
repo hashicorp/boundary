@@ -77,16 +77,18 @@ func TestIPv6Listener(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	expectWorkers(c1, w1)
 
+	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
+		Logger: c1.Config().Logger.ResetNamed("c2"),
+	})
+	defer c2.Shutdown()
+
+	time.Sleep(10 * time.Second)
+	expectWorkers(c2, w1)
+
 	require.NoError(w1.Worker().Shutdown(true))
 	time.Sleep(10 * time.Second)
 	expectWorkers(c1)
-
-	require.NoError(c1.Controller().Shutdown(true))
-	time.Sleep(10 * time.Second)
-
-	require.NoError(c1.Controller().Start())
-	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1)
+	expectWorkers(c2)
 
 	client, err := api.NewClient(nil)
 	require.NoError(err)
