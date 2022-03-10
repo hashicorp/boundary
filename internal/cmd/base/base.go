@@ -232,7 +232,14 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			"recovery",
 			configutil.WithPluginOptions(
 				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-				pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+				pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+			),
+			// TODO: How would we want to expose this kind of log to users when
+			// using recovery configs? Generally with normal CLI commands we
+			// don't print out all of these logs. We may want a logger with a
+			// custom writer behind our existing gate where we print nothing
+			// unless there is an error, then dump all of it.
+			configutil.WithLogger(hclog.NewNullLogger()),
 		)
 		if err != nil {
 			return nil, err
@@ -244,13 +251,13 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			c.WrapperCleanupFunc = cleanupFunc
 		}
 		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				return nil, fmt.Errorf("Error initializing kms: %w", err)
 			}
 
 			currCleanupFunc := c.WrapperCleanupFunc
 			c.WrapperCleanupFunc = func() error {
-				if err := ifWrapper.Finalize(c.Context); err != nil {
+				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 					c.PrintCliError(fmt.Errorf("An error was encountered finalizing the kms: %w", err))
 				}
 				if currCleanupFunc != nil {

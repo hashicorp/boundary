@@ -189,7 +189,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
 	}
-	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+	if err := c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
 		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {

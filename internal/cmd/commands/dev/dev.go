@@ -337,7 +337,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -507,7 +506,17 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
+
+	if err := c.SetupEventing(
+		c.Logger,
+		c.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventFlags(eventFlags)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
@@ -519,15 +528,6 @@ func (c *Command) Run(args []string) int {
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
-	}
-	if err := c.SetupEventing(
-		c.Logger,
-		c.StderrLock,
-		serverName,
-		base.WithEventerConfig(c.Config.Eventing),
-		base.WithEventFlags(eventFlags)); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
@@ -578,7 +578,9 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagDisableDatabaseDestruction {
-			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(ctx) })
+			// Use background context here so that we don't immediately fail to
+			// cleanup if the command context has already been canceled
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(context.Background()) })
 		}
 	default:
 		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)
@@ -603,7 +605,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(ctx, conf)
+		c.controller, err = controller.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError

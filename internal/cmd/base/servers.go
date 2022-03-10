@@ -200,7 +200,12 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig, event.WithAuditWrapper(opts.withEventWrapper))
+	e, err := event.NewEventer(
+		logger,
+		serializationLock,
+		serverName,
+		*opts.withEventerConfig,
+		event.WithAuditWrapper(opts.withEventWrapper))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
@@ -475,6 +480,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
+	var err error
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
@@ -512,9 +518,12 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
 			if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+				if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+					return fmt.Errorf("Error initializing KMS: %w", err)
+				}
 				// Ensure that the seal finalizer is called, even if using verify-only
 				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-					if err := ifWrapper.Finalize(context.Background()); err != nil {
+					if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 						return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 					}
 
@@ -545,7 +554,6 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	}
 
 	// prepare a secure random reader
-	var err error
 	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err

@@ -151,7 +151,14 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		"config",
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+		),
+		// TODO: How would we want to expose this kind of log to users when
+		// using recovery configs? Generally with normal CLI commands we
+		// don't print out all of these logs. We may want a logger with a
+		// custom writer behind our existing gate where we print nothing
+		// unless there is an error, then dump all of it.
+		configutil.WithLogger(hclog.NewNullLogger()),
 	)
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -170,12 +177,12 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	}
 
 	if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-		if err := ifWrapper.Init(c.Context); err != nil {
+		if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 			c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
 			return base.CommandUserError
 		}
 		defer func() {
-			if err := ifWrapper.Finalize(c.Context); err != nil {
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
 			}
 		}()

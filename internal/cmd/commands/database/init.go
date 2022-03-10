@@ -168,7 +168,6 @@ func (c *InitCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *InitCommand) Run(args []string) (retCode int) {
-	ctx := context.Background()
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -282,11 +281,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 	// Everything after is done with normal database URL and is affecting actual data
-	if err := c.srv.ConnectToDatabase(ctx, dialect); err != nil {
+	if err := c.srv.ConnectToDatabase(c.Context, dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return base.CommandCliError
 	}
-	if err := c.verifyOplogIsEmpty(ctx); err != nil {
+	if err := c.verifyOplogIsEmpty(c.Context); err != nil {
 		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
 		return base.CommandCliError
 	}
@@ -480,7 +479,14 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		"config",
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+		),
+		// TODO: How would we want to expose this kind of log to users when
+		// using recovery configs? Generally with normal CLI commands we
+		// don't print out all of these logs. We may want a logger with a
+		// custom writer behind our existing gate where we print nothing
+		// unless there is an error, then dump all of it.
+		configutil.WithLogger(hclog.NewNullLogger()),
 	)
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -489,12 +495,12 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	if wrapper != nil {
 		c.configWrapperCleanupFunc = cleanupFunc
 		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
 				return base.CommandUserError
 			}
 			c.configWrapperCleanupFunc = func() error {
-				if err := ifWrapper.Finalize(c.Context); err != nil {
+				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 					c.UI.Warn(fmt.Errorf("Could not finalize kms: %w", err).Error())
 				}
 				if cleanupFunc != nil {
@@ -525,7 +531,9 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 		return r.Err()
 	}
 	var empty bool
-	r.Scan(&empty)
+	if err := r.Scan(&empty); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	if !empty {
 		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}

@@ -134,7 +134,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -162,7 +161,10 @@ func (c *Command) Run(args []string) int {
 		serverNames = append(serverNames, c.Config.Worker.Name)
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger,
+		c.StderrLock,
+		strings.Join(serverNames, "/"),
+		base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -171,7 +173,7 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
 
 	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
@@ -380,12 +382,12 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
 
-		if err := c.ConnectToDatabase(ctx, "postgres"); err != nil {
+		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
 
-		underlyingDB, err := c.Database.SqlDB(ctx)
+		underlyingDB, err := c.Database.SqlDB(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
 			return base.CommandCliError
@@ -449,7 +451,7 @@ func (c *Command) Run(args []string) int {
 
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
-		if err := c.StartController(ctx); err != nil {
+		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
@@ -536,7 +538,14 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 				"config",
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+				),
+				// TODO: How would we want to expose this kind of log to users when
+				// using recovery configs? Generally with normal CLI commands we
+				// don't print out all of these logs. We may want a logger with a
+				// custom writer behind our existing gate where we print nothing
+				// unless there is an error, then dump all of it.
+				configutil.WithLogger(hclog.NewNullLogger()),
 			)
 			if err != nil {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
@@ -554,15 +563,15 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 			}
 		}
 		if ifWrapper != nil {
-			if err := ifWrapper.Init(c.Context); err != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
 				return nil, base.CommandCliError
 			}
 		}
 		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
 		if ifWrapper != nil {
-			if err := ifWrapper.Finalize(c.Context); err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
 				return nil, base.CommandCliError
 			}
 		}
