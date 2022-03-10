@@ -402,62 +402,6 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	return info, nil
 }
 
-// ConnectConnection updates a connection in the repo with a state of "connected".
-func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
-	const op = "session.(ConnectionRepository).ConnectConnection"
-	// ConnectWith.validate will check all the fields...
-	if err := c.validate(); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	var connection Connection
-	var connectionStates []*ConnectionState
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			connection = AllocConnection()
-			connection.PublicId = c.ConnectionId
-			connection.ClientTcpAddress = c.ClientTcpAddress
-			connection.ClientTcpPort = c.ClientTcpPort
-			connection.EndpointTcpAddress = c.EndpointTcpAddress
-			connection.EndpointTcpPort = c.EndpointTcpPort
-			connection.UserClientIp = c.UserClientIp
-			fieldMask := []string{
-				"ClientTcpAddress",
-				"ClientTcpPort",
-				"EndpointTcpAddress",
-				"EndpointTcpPort",
-				"UserClientIp",
-			}
-			rowsUpdated, err := w.Update(ctx, &connection, fieldMask, nil)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			if err == nil && rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
-			}
-			newState, err := NewConnectionState(connection.PublicId, StatusConnected)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			if err := w.Create(ctx, newState); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			connectionStates, err = fetchConnectionStates(ctx, reader, c.ConnectionId, db.WithOrder("start_time desc"))
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	return &connection, connectionStates, nil
-}
-
 // CloseConnectionResp is just a wrapper for the response from CloseConnections.
 // It wraps the connection and its states for each connection closed.
 type CloseConnectionResp struct {

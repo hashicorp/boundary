@@ -72,7 +72,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	// This is just to ensure we have a spread when we test it out.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := sessionRepo.ConnectConnection(ctx, session.ConnectWith{
+			_, cs, err := connectionRepo.ConnectConnection(ctx, session.ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,

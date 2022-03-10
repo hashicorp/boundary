@@ -133,6 +133,131 @@ func TestRepository_ListConnection(t *testing.T) {
 	})
 }
 
+func TestRepository_ConnectConnection(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	setupFn := func() ConnectWith {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		srv := TestWorker(t, conn, wrapper)
+		tofu := TestTofu(t)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		require.NoError(t, err)
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+		return ConnectWith{
+			ConnectionId:       c.PublicId,
+			ClientTcpAddress:   "127.0.0.1",
+			ClientTcpPort:      22,
+			EndpointTcpAddress: "127.0.0.1",
+			EndpointTcpPort:    2222,
+			UserClientIp:       "127.0.0.1",
+		}
+	}
+	tests := []struct {
+		name        string
+		connectWith ConnectWith
+		wantErr     bool
+		wantIsError errors.Code
+	}{
+		{
+			name:        "valid",
+			connectWith: setupFn(),
+		},
+		{
+			name: "empty-SessionId",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ConnectionId = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-ClientTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.ClientTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpAddress",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpAddress = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-EndpointTcpPort",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.EndpointTcpPort = 0
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-UserClientIp",
+			connectWith: func() ConnectWith {
+				cw := setupFn()
+				cw.UserClientIp = ""
+				return cw
+			}(),
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c, cs, err := connRepo.ConnectConnection(context.Background(), tt.connectWith)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
+				return
+			}
+			require.NoError(err)
+			require.NotNil(c)
+			require.NotNil(cs)
+			assert.Equal(StatusConnected, cs[0].Status)
+			gotConn, _, err := connRepo.LookupConnection(context.Background(), c.PublicId)
+			require.NoError(err)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.ClientTcpPort, gotConn.ClientTcpPort)
+			assert.Equal(tt.connectWith.ClientTcpAddress, gotConn.ClientTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpAddress, gotConn.EndpointTcpAddress)
+			assert.Equal(tt.connectWith.EndpointTcpPort, gotConn.EndpointTcpPort)
+			assert.Equal(tt.connectWith.UserClientIp, gotConn.UserClientIp)
+		})
+	}
+}
+
 func TestRepository_DeleteConnection(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -261,7 +386,7 @@ func TestRepository_CloseDeadConnectionsOnWorker(t *testing.T) {
 	// This is just to ensure we have a spread when we test it out.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := repo.ConnectConnection(ctx, ConnectWith{
+			_, cs, err := connRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -406,7 +531,7 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 		return s
 	}() {
 		if i%3 == 0 {
-			_, cs, err := repo.ConnectConnection(ctx, ConnectWith{
+			_, cs, err := connRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -662,7 +787,7 @@ func TestRepository_ShouldCloseConnectionsOnWorker(t *testing.T) {
 	// Mark half of the connections connected, close the other half.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := repo.ConnectConnection(ctx, ConnectWith{
+			_, cs, err := connRepo.ConnectConnection(ctx, ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,

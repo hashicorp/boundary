@@ -425,12 +425,12 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
 	const op = "workers.(workerServiceServer).ConnectConnection"
-	sessRepo, err := ws.sessionRepoFn()
+	connRepo, err := ws.connectionRepoFn()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, err := sessRepo.ConnectConnection(ctx, session.ConnectWith{
+	connectionInfo, connStates, err := connRepo.ConnectConnection(ctx, session.ConnectWith{
 		ConnectionId:       req.GetConnectionId(),
 		ClientTcpAddress:   req.GetClientTcpAddress(),
 		ClientTcpPort:      req.GetClientTcpPort(),
