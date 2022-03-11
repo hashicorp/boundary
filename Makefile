@@ -263,7 +263,7 @@ docker-multiarch-build:
 # Builds from the locally generated binary in ./bin/
 docker-build-dev: export GOOS=linux
 docker-build-dev: export GOARCH=amd64
-docker-build-dev: dev
+docker-build-dev: build
 	docker build \
 		--tag $(IMAGE_TAG_DEV) \
 		--target=dev \
