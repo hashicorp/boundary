@@ -270,6 +270,17 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
+		case WriterSink:
+			wsc := s.WriterConfig
+			sinkNode = &writer.Sink{
+				Format: string(s.Format),
+				Writer: wsc.Writer,
+			}
+			id, err := NewId("writer")
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
+			sinkId = eventlogger.NodeID(id)
 		default:
 			return nil, fmt.Errorf("%s: unknown sink type %s", op, s.Type)
 		}

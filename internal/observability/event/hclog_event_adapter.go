@@ -52,13 +52,7 @@ func (h *HclogLoggerAdapter) Log(level hclog.Level, msg string, args ...interfac
 	default:
 		return
 	}
-	h.l.RLock()
-	defer h.l.RUnlock()
-	var allArgs []interface{}
-	if len(h.withArgs)+len(args) > 0 {
-		allArgs = append(h.withArgs, args...)
-	}
-	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
+	h.writeEvent("", msg, args)
 }
 
 // Emit a message and key/value pairs at the TRACE level
@@ -66,13 +60,7 @@ func (h *HclogLoggerAdapter) Trace(msg string, args ...interface{}) {
 	if h.level > hclog.Trace {
 		return
 	}
-	h.l.RLock()
-	defer h.l.RUnlock()
-	var allArgs []interface{}
-	if len(h.withArgs)+len(args) > 0 {
-		allArgs = append(h.withArgs, args...)
-	}
-	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
+	h.writeEvent("", msg, args)
 }
 
 // Emit a message and key/value pairs at the DEBUG level
@@ -80,13 +68,7 @@ func (h *HclogLoggerAdapter) Debug(msg string, args ...interface{}) {
 	if h.level > hclog.Debug {
 		return
 	}
-	h.l.RLock()
-	defer h.l.RUnlock()
-	var allArgs []interface{}
-	if len(h.withArgs)+len(args) > 0 {
-		allArgs = append(h.withArgs, args...)
-	}
-	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
+	h.writeEvent("", msg, args)
 }
 
 // Emit a message and key/value pairs at the INFO level
@@ -94,13 +76,7 @@ func (h *HclogLoggerAdapter) Info(msg string, args ...interface{}) {
 	if h.level > hclog.Info {
 		return
 	}
-	h.l.RLock()
-	defer h.l.RUnlock()
-	var allArgs []interface{}
-	if len(h.withArgs)+len(args) > 0 {
-		allArgs = append(h.withArgs, args...)
-	}
-	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
+	h.writeEvent("", msg, args)
 }
 
 // Emit a message and key/value pairs at the WARN level
@@ -108,13 +84,7 @@ func (h *HclogLoggerAdapter) Warn(msg string, args ...interface{}) {
 	if h.level > hclog.Warn {
 		return
 	}
-	h.l.RLock()
-	defer h.l.RUnlock()
-	var allArgs []interface{}
-	if len(h.withArgs)+len(args) > 0 {
-		allArgs = append(h.withArgs, args...)
-	}
-	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
+	h.writeEvent("", msg, args)
 }
 
 // Emit a message and key/value pairs at the ERROR level
@@ -122,12 +92,20 @@ func (h *HclogLoggerAdapter) Error(msg string, args ...interface{}) {
 	if h.level > hclog.Error {
 		return
 	}
+	h.writeEvent("", msg, args)
+}
+
+func (h *HclogLoggerAdapter) writeEvent(caller Op, msg string, args []interface{}) {
 	h.l.RLock()
 	defer h.l.RUnlock()
 	var allArgs []interface{}
 	if len(h.withArgs)+len(args) > 0 {
 		allArgs = append(h.withArgs, args...)
 	}
+	if h.name != "" {
+		allArgs = append(allArgs, "@original-log-name", h.name)
+	}
+	allArgs = append(allArgs, "@original-log-level", h.level.String())
 	WriteSysEvent(h.eventCtx, "", msg, allArgs...)
 }
 
@@ -166,7 +144,7 @@ func (h *HclogLoggerAdapter) ImpliedArgs() []interface{} {
 func (h *HclogLoggerAdapter) With(args ...interface{}) hclog.Logger {
 	h.l.Lock()
 	defer h.l.Unlock()
-	var newArgs []interface{}
+	newArgs := args
 	if len(h.withArgs) > 0 {
 		newArgs = make([]interface{}, len(h.withArgs), len(h.withArgs)+len(args))
 		copy(newArgs, h.withArgs)
@@ -200,11 +178,17 @@ func (h *HclogLoggerAdapter) Named(name string) hclog.Logger {
 		newArgs = make([]interface{}, len(h.withArgs))
 		copy(newArgs, h.withArgs)
 	}
+
+	newName := name
+	if h.name != "" {
+		newName = fmt.Sprintf("%s.%s", h.name, name)
+	}
+
 	return &HclogLoggerAdapter{
 		eventCtx: h.eventCtx,
 		l:        new(sync.RWMutex),
 		level:    h.level,
-		name:     h.name + name,
+		name:     newName,
 		withArgs: newArgs,
 	}
 }

@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"io"
 	"time"
 )
 
@@ -14,9 +15,10 @@ type SinkConfig struct {
 	AllowFilters   []string              `hcl:"allow_filters"`    // AllowFilters define a set predicates for including an event in the sink. If any filter matches, the event will be included. The filter should be in a format supported by hashicorp/go-bexpr.
 	DenyFilters    []string              `hcl:"deny_filters"`     // DenyFilters define a set predicates for excluding an event in the sink. If any filter matches, the event will be excluded. The filter should be in a format supported by hashicorp/go-bexpr.
 	Format         SinkFormat            `hcl:"format"`           // Format defines the format for the sink (JSONSinkFormat or TextSinkFormat).
-	Type           SinkType              `hcl:"type"`             // Type defines the type of sink (StderrSink or FileSink).
+	Type           SinkType              `hcl:"type"`             // Type defines the type of sink (StderrSink, FileSink, or WriterSink).
 	StderrConfig   *StderrSinkTypeConfig `hcl:"stderr"`           // StderrConfig defines parameters for a stderr output.
 	FileConfig     *FileSinkTypeConfig   `hcl:"file"`             // FileConfig defines parameters for a file output.
+	WriterConfig   *WriterSinkTypeConfig `hcl:"-"`                // WriterConfig defines parameters for an io.Writer output. This is not available via HCL.
 	AuditConfig    *AuditConfig          `hcl:"audit_config"`     // AuditConfig defines optional parameters for audit events (if EventTypes contains audit)
 }
 
@@ -34,6 +36,9 @@ func (sc *SinkConfig) Validate() error {
 		foundSinkTypeConfigs++
 	}
 	if sc.FileConfig != nil {
+		foundSinkTypeConfigs++
+	}
+	if sc.WriterConfig != nil {
 		foundSinkTypeConfigs++
 	}
 	if foundSinkTypeConfigs > 1 {
@@ -55,6 +60,13 @@ func (sc *SinkConfig) Validate() error {
 		}
 		if sc.FileConfig.FileName == "" {
 			return fmt.Errorf("%s: missing file name: %w", op, ErrInvalidParameter)
+		}
+	case WriterSink:
+		if sc.WriterConfig == nil {
+			return fmt.Errorf(`%s: missing writer config: %w`, op, ErrInvalidParameter)
+		}
+		if sc.WriterConfig.Writer == nil {
+			return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
 		}
 	}
 	if sc.Name == "" {
@@ -93,6 +105,11 @@ type FileSinkTypeConfig struct {
 	RotateDuration    time.Duration `mapstructure:"rotate_duration"`                         // RotateDuration defines how often a FileSink should be rotated
 	RotateDurationHCL string        `hcl:"rotate_duration" json:"-"`                         // RotateDurationHCL defines hcl string version of RotateDuration
 	RotateMaxFiles    int           `hcl:"rotate_max_files" mapstructure:"rotate_max_files"` // RotateMaxFiles defines how may historical rotated files should be kept for a FileSink
+}
+
+// WriterSinkTypeConfig contains configuration structures for writer sink types
+type WriterSinkTypeConfig struct {
+	Writer io.Writer `hcl:"-" mapstructure:"-"` // The writer to write to
 }
 
 // FilterType defines a type for filters (allow or deny)
