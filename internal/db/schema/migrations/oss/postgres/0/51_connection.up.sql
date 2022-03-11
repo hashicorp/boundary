@@ -175,6 +175,7 @@ begin;
   after insert on session_connection
     for each row execute procedure insert_new_connection_state();
 
+-- Replaced in 27/01_disable_terminate_session.up.sql
   -- update_connection_state_on_closed_reason() is used in an update trigger on the
   -- session_connection table.  it will insert a state of "closed" in
   -- session_connection_state for the closed session connection. 
@@ -284,6 +285,7 @@ begin;
   create trigger insert_session_connection_state before insert on session_connection_state
     for each row execute procedure insert_session_connection_state();
 
+-- Removed in 27/01_disable_terminate_session.up.sql
 -- terminate_session_if_possible takes a session id and terminates the session
 -- if the following conditions are met:
 --    * the session is expired and all its connections are closed.

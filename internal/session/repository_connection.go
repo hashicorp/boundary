@@ -240,6 +240,71 @@ func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectW
 	return &connection, connectionStates, nil
 }
 
+// closeConnectionResp is just a wrapper for the response from CloseConnections.
+// It wraps the connection and its states for each connection closed.
+type closeConnectionResp struct {
+	Connection       *Connection
+	ConnectionStates []*ConnectionState
+}
+
+// closeConnections set's a connection's state to "closed" in the repo.  It's
+// called by a worker after it's closed a connection between the client and the
+// endpoint
+func (r *ConnectionRepository) closeConnections(ctx context.Context, closeWith []CloseWith, _ ...Option) ([]closeConnectionResp, error) {
+	const op = "session.(ConnectionRepository).closeConnections"
+	if len(closeWith) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connections")
+	}
+	for _, cw := range closeWith {
+		if err := cw.validate(); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s was invalid", cw.ConnectionId)))
+		}
+	}
+	var resp []closeConnectionResp
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			for _, cw := range closeWith {
+				updateConnection := AllocConnection()
+				updateConnection.PublicId = cw.ConnectionId
+				updateConnection.BytesUp = cw.BytesUp
+				updateConnection.BytesDown = cw.BytesDown
+				updateConnection.ClosedReason = cw.ClosedReason.String()
+				// updating the ClosedReason will trigger an insert into the
+				// session_connection_state with a state of closed.
+				rowsUpdated, err := w.Update(
+					ctx,
+					&updateConnection,
+					[]string{"BytesUp", "BytesDown", "ClosedReason"},
+					nil,
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to update connection %s", cw.ConnectionId)))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId))
+				}
+				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				resp = append(resp, closeConnectionResp{
+					Connection:       &updateConnection,
+					ConnectionStates: states,
+				})
+
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return resp, nil
+}
+
 // DeleteConnection will delete a connection from the repository.
 func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "session.(ConnectionRepository).DeleteConnection"

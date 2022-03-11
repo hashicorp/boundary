@@ -129,6 +129,92 @@ where
 %s
 `
 
+	terminateSessionIfPossible = `
+    -- is terminate_session_id in a canceling state
+    with session_version as (
+		select 
+			version
+		from 
+			session
+		where public_id = @public_id
+	),
+    canceling_session(session_id) as
+    (
+      select 
+        session_id
+      from
+        session_state ss
+      where 
+        ss.session_id = @public_id and
+        ss.state = 'canceling' and 
+        ss.end_time is null
+    )
+    update session us
+      set version = version +1,
+	  termination_reason = 
+      case 
+        -- timed out sessions
+        when now() > us.expiration_time then 'timed out'
+        -- canceling sessions
+        when us.public_id in(
+          select 
+            session_id 
+          from 
+            canceling_session cs 
+          where
+            us.public_id = cs.session_id
+          ) then 'canceled' 
+        -- default: session connection limit reached.
+        else 'connection limit'
+      end
+    where
+      -- limit update to just the terminating_session_id
+      us.public_id = @public_id and
+  	  us.version = (select * from session_version) and
+      termination_reason is null and
+      -- session expired or connection limit reached
+      (
+        -- expired sessions...
+        now() > us.expiration_time or 
+        -- connection limit reached...
+        (
+          -- handle unlimited connections...
+          connection_limit != -1 and
+          (
+            select count (*) 
+              from session_connection sc 
+            where 
+              sc.session_id = us.public_id
+          ) >= connection_limit
+        ) or 
+        -- canceled sessions
+        us.public_id in (
+          select 
+            session_id
+          from
+            canceling_session cs
+          where 
+            us.public_id = cs.session_id 
+        )
+      ) and 
+      -- make sure there are no existing connections
+      us.public_id not in (
+        select 
+          session_id 
+        from 
+            session_connection
+          where public_id in (
+          select 
+            connection_id
+          from 
+            session_connection_state
+          where 
+            state != 'closed' and
+            end_time is null
+        )
+    )
+`
+
 	// termSessionUpdate is one stmt that terminates sessions for the following
 	// reasons:
 	//	* sessions that are expired and all their connections are closed.

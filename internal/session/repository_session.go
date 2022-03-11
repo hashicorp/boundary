@@ -375,6 +375,35 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 	return rowsAffected, nil
 }
 
+// terminateSessionIfPossible is called on connection close and will attempt to close the connection's
+// session if the following conditions are met:
+//  * sessions that have exhausted their connection limit and all their connections are closed.
+//	* sessions that are expired and all their connections are closed.
+//	* sessions that are canceling and all their connections are closed
+func (r *Repository) terminateSessionIfPossible(ctx context.Context, sessionId string) (int, error) {
+	const op = "session.(Repository).terminateSessionIfPossible"
+	rowsAffected := 0
+
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(ctx, terminateSessionIfPossible,
+				[]interface{}{sql.Named("public_id", sessionId)})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	return rowsAffected, nil
+}
+
 type AuthzSummary struct {
 	ExpirationTime         *timestamp.Timestamp
 	ConnectionLimit        int32
@@ -400,71 +429,6 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 		}
 	}
 	return info, nil
-}
-
-// CloseConnectionResp is just a wrapper for the response from CloseConnections.
-// It wraps the connection and its states for each connection closed.
-type CloseConnectionResp struct {
-	Connection       *Connection
-	ConnectionStates []*ConnectionState
-}
-
-// CloseConnections set's a connection's state to "closed" in the repo.  It's
-// called by a worker after it's closed a connection between the client and the
-// endpoint
-func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, _ ...Option) ([]CloseConnectionResp, error) {
-	const op = "session.(ConnectionRepository).CloseConnections"
-	if len(closeWith) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connections")
-	}
-	for _, cw := range closeWith {
-		if err := cw.validate(); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s was invalid", cw.ConnectionId)))
-		}
-	}
-	var resp []CloseConnectionResp
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			for _, cw := range closeWith {
-				updateConnection := AllocConnection()
-				updateConnection.PublicId = cw.ConnectionId
-				updateConnection.BytesUp = cw.BytesUp
-				updateConnection.BytesDown = cw.BytesDown
-				updateConnection.ClosedReason = cw.ClosedReason.String()
-				// updating the ClosedReason will trigger an insert into the
-				// session_connection_state with a state of closed.
-				rowsUpdated, err := w.Update(
-					ctx,
-					&updateConnection,
-					[]string{"BytesUp", "BytesDown", "ClosedReason"},
-					nil,
-				)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to update connection %s", cw.ConnectionId)))
-				}
-				if rowsUpdated != 1 {
-					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId))
-				}
-				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				resp = append(resp, CloseConnectionResp{
-					Connection:       &updateConnection,
-					ConnectionStates: states,
-				})
-
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return resp, nil
 }
 
 // ActivateSession will activate the session and is called by a worker after
