@@ -46,7 +46,9 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 	require.NoError(err)
 
 	// This test sends a series of events through the hclog adapter and
-	// validates that we see them on the other side.
+	// validates that we see the ones we expect to see on the other side. It
+	// also tests various features such as Named and With to ensure they turn
+	// into values on the other side.
 	logger, err := HclogLogger(ctx, eventer, WithHclogLevel(hclog.Info))
 	require.NoError(err)
 
