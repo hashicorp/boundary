@@ -9,6 +9,10 @@ const runJobsQuery = `
 	from job_jobs_to_run 
 	order by next_scheduled_run asc
 	limit ?
+	on conflict 
+	  (job_plugin_id, job_name) 
+	    where status = 'running'
+	do nothing
 	returning *;
 `
 
