@@ -9,5 +9,5 @@ binary {
 	go_modules   = true
 	osv          = false
 	oss_index    = true
-	nvd          = true
+	nvd          = false
 }
