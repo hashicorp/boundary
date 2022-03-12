@@ -122,7 +122,14 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 			if !pluginCalledSuccessfully {
 				plgResp, err = plgClient.OnCreateCatalog(ctx, &plgpb.OnCreateCatalogRequest{Catalog: plgHc})
 				if err != nil {
-					if status.Code(err) != codes.Unimplemented {
+					switch {
+					case status.Code(err) == codes.InvalidArgument:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginInvalidParameter))
+					case status.Code(err) == codes.FailedPrecondition:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginFailedPrecondition))
+					case status.Code(err) == codes.Aborted:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginAborted))
+					case status.Code(err) != codes.Unimplemented:
 						return errors.Wrap(ctx, err, op)
 					}
 				}
@@ -380,7 +387,14 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 					Persisted:      currentCatalogPersisted,
 				})
 				if err != nil {
-					if status.Code(err) != codes.Unimplemented {
+					switch {
+					case status.Code(err) == codes.InvalidArgument:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginInvalidParameter))
+					case status.Code(err) == codes.FailedPrecondition:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginFailedPrecondition))
+					case status.Code(err) == codes.Aborted:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginAborted))
+					case status.Code(err) != codes.Unimplemented:
 						return errors.Wrap(ctx, err, op)
 					}
 				}
@@ -685,7 +699,7 @@ func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.P
 	return plg, nil
 }
 
-// toPluginCatalog returns a host catalog, with it's secret if available, in the format expected
+// toPluginCatalog returns a host catalog, with its secret if available, in the format expected
 // by the host plugin system.
 func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, error) {
 	const op = "plugin.toPluginCatalog"

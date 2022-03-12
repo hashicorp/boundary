@@ -29,7 +29,7 @@ const (
 	KeyNotFound              Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
 	TicketAlreadyRedeemed    Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
 	TicketNotFound           Code = 107 // TicketNotFound represents that the ticket was not found
-	Io                       Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
+	Io                       Code = 108 // Io represents that an io error occurred in an underlying call (i.e. binary.Write)
 	InvalidTimeStamp         Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
 	SessionNotFound          Code = 110 // SessionNotFound represents that the session was not found
 	InvalidSessionState      Code = 111 // InvalidSessionState represents that the session was in an invalid state
@@ -44,7 +44,7 @@ const (
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
 
-	// PasswordTooShort results from attempting to set a password which is to short.
+	// PasswordTooShort results from attempting to set a password which is too short.
 	PasswordTooShort Code = 200
 
 	// PasswordUnsupportedConfiguration results from attempting to perform an
@@ -70,7 +70,7 @@ const (
 	// client and server error codes
 	Unauthorized Code = 401 // Unauthorized represents the operation is unauthorized
 	Forbidden    Code = 403 // Forbidden represents the operation is forbidden
-	Internal     Code = 500 // InternalError represents the system encountered an unexpected condition.
+	Internal     Code = 500 // Internal represents the system encountered an unexpected condition.
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
@@ -107,10 +107,15 @@ const (
 	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
 	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
 	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
-	VaultEmptySecret              Code = 3015 // VaultEmptySecret represents a empty secret was returned from Vault without error
+	VaultEmptySecret              Code = 3015 // VaultEmptySecret represents an empty secret was returned from Vault without error
 	VaultInvalidMappingOverride   Code = 3016 // VaultInvalidMappingOverride represents an error returned when a credential mapping is unknown or does not match a credential type
 	VaultInvalidCredentialMapping Code = 3017 // VaultInvalidCredentialMapping represents an error returned when a Vault secret failed to be mapped to a specific credential type
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
+
+	// Plugin specific srrors are codes 5000-5999
+	PluginInvalidParameter   Code = 5000 // PluginInvalidParameter represents a plugin error with an invalid parameter for an operation
+	PluginFailedPrecondition Code = 5001 // PluginFailedPrecondition represents a plugin error where the system is not in the state required for an operation
+	PluginAborted            Code = 5002 // PluginAborted represents a plugin error where a non-native library call was not able to run to completion
 )

@@ -141,7 +141,14 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 			if !calledPluginSuccessfully {
 				if _, err := plgClient.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{Catalog: plgHc, Set: plgHs, Persisted: per}); err != nil {
-					if status.Code(err) != codes.Unimplemented {
+					switch {
+					case status.Code(err) == codes.InvalidArgument:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginInvalidParameter))
+					case status.Code(err) == codes.FailedPrecondition:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginFailedPrecondition))
+					case status.Code(err) == codes.Aborted:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginAborted))
+					case status.Code(err) != codes.Unimplemented:
 						return errors.Wrap(ctx, err, op)
 					}
 				}
@@ -472,7 +479,14 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 					Persisted:  persisted,
 				})
 				if err != nil {
-					if status.Code(err) != codes.Unimplemented {
+					switch {
+					case status.Code(err) == codes.InvalidArgument:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginInvalidParameter))
+					case status.Code(err) == codes.FailedPrecondition:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginFailedPrecondition))
+					case status.Code(err) == codes.Aborted:
+						return errors.Wrap(ctx, err, op, errors.WithCode(errors.PluginAborted))
+					case status.Code(err) != codes.Unimplemented:
 						return errors.Wrap(ctx, err, op)
 					}
 				}
