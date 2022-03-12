@@ -97,8 +97,9 @@ func Test_InitSysEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "success-with-config",
 			want: &Eventer{
-				logger: testLogger,
-				conf:   testConfig.EventerConfig,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
+				conf:           testConfig.EventerConfig,
 			},
 		},
 		{
@@ -108,7 +109,8 @@ func Test_InitSysEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "success-with-default-config",
 			want: &Eventer{
-				logger: testLogger,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
 				conf: EventerConfig{
 					Sinks: []*SinkConfig{
 						{
@@ -435,7 +437,8 @@ func Test_NewEventer(t *testing.T) {
 			logger:     testLogger,
 			serverName: "valid-audit-config-with-wrapper",
 			want: &Eventer{
-				logger: testLogger,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
 				conf: EventerConfig{
 					AuditEnabled: true,
 					Sinks: []*SinkConfig{
@@ -521,7 +524,8 @@ func Test_NewEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "success-with-default-config",
 			want: &Eventer{
-				logger: testLogger,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
 				conf: EventerConfig{
 					Sinks: []*SinkConfig{
 						{
@@ -561,8 +565,9 @@ func Test_NewEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "testSetup",
 			want: &Eventer{
-				logger: testLogger,
-				conf:   testSetup.EventerConfig,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
+				conf:           testSetup.EventerConfig,
 			},
 			wantRegistered: []string{
 				"cloudevents",       // stderr
@@ -603,8 +608,9 @@ func Test_NewEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "testSetup-with-all-opts",
 			want: &Eventer{
-				logger: testLogger,
-				conf:   testSetupWithOpts.EventerConfig,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
+				conf:           testSetupWithOpts.EventerConfig,
 			},
 			wantRegistered: []string{
 				"cloudevents",       // stderr
@@ -657,8 +663,9 @@ func Test_NewEventer(t *testing.T) {
 			lock:       testLock,
 			serverName: "testSetup",
 			want: &Eventer{
-				logger: testLogger,
-				conf:   testHclogSetup.EventerConfig,
+				logger:         testLogger,
+				gatedQueueLock: new(sync.Mutex),
+				conf:           testHclogSetup.EventerConfig,
 			},
 			wantRegistered: []string{
 				"hclog-text",        // stderr
