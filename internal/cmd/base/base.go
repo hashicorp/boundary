@@ -123,6 +123,9 @@ type Command struct {
 
 	client *api.Client
 
+	// This will be intialized, if needed, in Config() when instantiating a
+	// recovery wrapper, if requested. It's then called as a deferred function
+	// on the Run method of the various generated commands.
 	WrapperCleanupFunc func() error
 }
 

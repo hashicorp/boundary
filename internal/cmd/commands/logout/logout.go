@@ -82,6 +82,13 @@ func (c *LogoutCommand) Run(args []string) (ret int) {
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error reading API client: %w", err))
 		return base.CommandCliError

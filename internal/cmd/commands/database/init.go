@@ -35,8 +35,8 @@ type InitCommand struct {
 
 	Config *config.Config
 
-	// This will be intialized, if needed in ParseFlagsAndConfig when
-	// instantiating any possible cleanup wrapper. It's then called as a
+	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// instantiating a config wrapper, if requested. It's then called as a
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 

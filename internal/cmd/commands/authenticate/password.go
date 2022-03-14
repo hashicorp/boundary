@@ -128,12 +128,20 @@ func (c *PasswordCommand) Run(args []string) int {
 	}
 
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 
-	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "login",
+	aClient := authmethods.NewClient(client)
+	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "login",
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,

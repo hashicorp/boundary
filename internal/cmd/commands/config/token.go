@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
@@ -136,6 +138,13 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 		// Fallback to env/CLI but we can only get just the token value this way, at
 		// least for now
 		client, err := c.Client()
+		if c.WrapperCleanupFunc != nil {
+			defer func() {
+				if err := c.WrapperCleanupFunc(); err != nil {
+					c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+				}
+			}()
+		}
 		if err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
