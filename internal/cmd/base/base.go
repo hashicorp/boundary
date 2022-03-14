@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/globals"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -230,7 +231,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 			c.Context,
 			c.FlagRecoveryConfig,
-			"recovery",
+			globals.KmsPurposeRecovery,
 			configutil.WithPluginOptions(
 				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 				pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),

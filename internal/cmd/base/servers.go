@@ -487,8 +487,8 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "root", "worker-auth", "config":
-			case "recovery":
+			case globals.KmsPurposeRoot, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig:
+			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
 				}
@@ -538,13 +538,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
-			case "root":
+			case globals.KmsPurposeRoot:
 				b.RootKms = wrapper
-			case "worker-auth":
+			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
-			case "recovery":
+			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
-			case "config":
+			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)

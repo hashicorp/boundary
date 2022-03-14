@@ -535,7 +535,7 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
 				c.Context,
 				wrapperPath,
-				"config",
+				globals.KmsPurposeConfig,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
