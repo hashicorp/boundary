@@ -59,6 +59,8 @@ func TestServer_SetupKMSes(t *testing.T) {
 			purposes: []string{globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig},
 		},
 	}
+	logger := hclog.Default()
+	serLock := new(sync.Mutex)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
@@ -70,8 +72,9 @@ func TestServer_SetupKMSes(t *testing.T) {
 					},
 				},
 			}
-			s := NewServer(&Command{})
-			err := s.SetupKMSes(context.Background(), cli.NewMockUi(), &config.Config{SharedConfig: conf})
+			s := NewServer(&Command{Context: context.Background()})
+			require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+			err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 
 			if tt.wantErrContains != "" {
 				require.Error(err)
