@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 )
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing

@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/multi"
-	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its

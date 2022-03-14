@@ -6,8 +6,8 @@ import (
 	"io"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/multi"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"golang.org/x/crypto/hkdf"
 )
 
