@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -362,7 +363,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
-			if strutil.StrListContains(kms.Purpose, "worker-auth") {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeWorkerAuth) {
 				kms.Config["key"] = c.flagWorkerAuthKey
 			}
 		}

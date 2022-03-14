@@ -150,7 +150,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				pluginType,
 				external_host_plugins.WithPluginOptions(
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
-					pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
 				),
 				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
 			)

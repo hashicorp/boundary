@@ -49,7 +49,6 @@ func (e *ExternalWrappers) Recovery() wrapping.Wrapper {
 // never change, only be added or (eventually) removed, it opportunistically
 // caches, going to the database as needed.
 type Kms struct {
-
 	// scopePurposeCache holds a per-scope-purpose multiwrapper containing the
 	// current encrypting key and all previous key versions, for decryption
 	scopePurposeCache sync.Map
@@ -275,12 +274,12 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		if i == 0 {
 			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
-				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root multiwrapper for key version 0 in scope %s", scopeId)))
+				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root pooled wrapper for key version 0 in scope %s", scopeId)))
 			}
 		} else {
 			_, err = pooled.AddWrapper(ctx, wrapper)
 			if err != nil {
-				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error adding multiwrapper for key version %d in scope %s", i, scopeId)))
+				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error adding pooled wrapper for key version %d in scope %s", i, scopeId)))
 			}
 		}
 	}
@@ -426,12 +425,12 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		if i == 0 {
 			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version 0 in scope %s", purpose.String(), scopeId)))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s pooled wrapper for key version 0 in scope %s", purpose.String(), scopeId)))
 			}
 		} else {
 			_, err = pooled.AddWrapper(ctx, wrapper)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s multiwrapper for key version %d in scope %s", purpose.String(), i, scopeId)))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s pooled wrapper for key version %d in scope %s", purpose.String(), i, scopeId)))
 			}
 		}
 	}

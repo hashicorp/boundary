@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/globals"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -122,6 +123,9 @@ type Command struct {
 
 	client *api.Client
 
+	// This will be intialized, if needed, in Config() when instantiating a
+	// recovery wrapper, if requested. It's then called as a deferred function
+	// on the Run method of the various generated commands.
 	WrapperCleanupFunc func() error
 }
 
@@ -230,10 +234,10 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 			c.Context,
 			c.FlagRecoveryConfig,
-			"recovery",
+			globals.KmsPurposeRecovery,
 			configutil.WithPluginOptions(
 				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-				pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+				pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 			),
 			// TODO: How would we want to expose this kind of log to users when
 			// using recovery configs? Generally with normal CLI commands we

@@ -46,7 +46,7 @@ func createDatabaseKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapp
 	}
 	rootKeyVersionId, err := rkvWrapper.KeyId(ctx)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get key id"))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup root key id"))
 	}
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):

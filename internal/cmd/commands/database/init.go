@@ -35,6 +35,9 @@ type InitCommand struct {
 
 	Config *config.Config
 
+	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// instantiating a config wrapper, if requested. It's then called as a
+	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
 	flagConfig                       string
@@ -480,7 +483,7 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		"config",
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 		),
 		// TODO: How would we want to expose this kind of log to users when
 		// using recovery configs? Generally with normal CLI commands we

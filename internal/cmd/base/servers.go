@@ -483,6 +483,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
+// SetupKMSes takes in a parsed config, does some minor checking on purposes,
+// and sends each off to configutil to instantiate a wrapper.
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
@@ -493,8 +495,8 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "root", "worker-auth", "config":
-			case "recovery":
+			case globals.KmsPurposeRoot, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig:
+			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
 				}
@@ -520,7 +522,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				&b.Info,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 				),
 				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
 			)
@@ -553,13 +555,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
-			case "root":
+			case globals.KmsPurposeRoot:
 				b.RootKms = wrapper
-			case "worker-auth":
+			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
-			case "recovery":
+			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
-			case "config":
+			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)

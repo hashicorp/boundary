@@ -37,6 +37,9 @@ type MigrateCommand struct {
 
 	Config *config.Config
 
+	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// instantiating a config wrapper, if requested. It's then called as a
+	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
 	flagConfig             string
@@ -175,7 +178,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		"aws",
 		external_host_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
 		),
 		external_host_plugins.WithLogger(pluginLogger.Named("aws")),
 	)
@@ -291,7 +294,7 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 		"config",
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 		),
 		// TODO: How would we want to expose this kind of log to users when
 		// using recovery configs? Generally with normal CLI commands we
