@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )

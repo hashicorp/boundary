@@ -10,7 +10,7 @@ package wrapper
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	wrappingv2 "github.com/hashicorp/go-kms-wrapping/v2"
 	aeadv1 "github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	aeadv2 "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	aeadv2 "github.com/hashicorp/go-kms-wrapping/wrappers/v2/aead"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 */

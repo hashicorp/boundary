@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/multi"
-	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
