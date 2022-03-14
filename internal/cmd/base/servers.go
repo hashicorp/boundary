@@ -478,6 +478,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
+// SetupKMSes takes in a parsed config, does some minor checking on purposes,
+// and sends each off to configutil to instantiate a wrapper.
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
 	var err error
