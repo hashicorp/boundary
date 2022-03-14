@@ -70,9 +70,6 @@ type queuedEvent struct {
 
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
-	gated                atomic.Bool
-	gatedQueue           []*queuedEvent
-	gatedQueueLock       *sync.Mutex
 	broker               broker
 	flushableNodes       []flushable
 	conf                 EventerConfig
@@ -81,6 +78,13 @@ type Eventer struct {
 	observationPipelines []pipeline
 	errPipelines         []pipeline
 	auditWrapperNodes    []interface{}
+
+	// Gating is used to delay output of events until after we have a chance to
+	// render startup info, similar to what was done for hclog before eventing
+	// supplanted it. It affects only error and system events.
+	gated          atomic.Bool
+	gatedQueue     []*queuedEvent
+	gatedQueueLock *sync.Mutex
 }
 
 type pipeline struct {
@@ -586,7 +590,7 @@ func (e *Eventer) RotateAuditWrapper(ctx context.Context, newWrapper wrapping.Wr
 }
 
 // writeObservation writes/sends an Observation event.
-func (e *Eventer) writeObservation(ctx context.Context, event *observation, opt ...Option) error {
+func (e *Eventer) writeObservation(ctx context.Context, event *observation, _ ...Option) error {
 	const op = "event.(Eventer).writeObservation"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
@@ -668,7 +672,7 @@ func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent, opt ...Opt
 }
 
 // writeAudit writes/send an audit event
-func (e *Eventer) writeAudit(ctx context.Context, event *audit, opt ...Option) error {
+func (e *Eventer) writeAudit(ctx context.Context, event *audit, _ ...Option) error {
 	const op = "event.(Eventer).writeAudit"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)

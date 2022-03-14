@@ -54,6 +54,7 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		plainLog      bool
 		level         hclog.Level
 		shouldNotLog  bool
 		logOverride   hclog.Logger
@@ -61,10 +62,16 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 		outputSubstrs []string
 	}{
 		{
-			name:          "over-level",
+			name:          "over-level-error",
+			level:         hclog.Error,
+			input:         "over-error",
+			outputSubstrs: []string{"msg=over-error"},
+		},
+		{
+			name:          "over-level-warn",
 			level:         hclog.Warn,
-			input:         "over",
-			outputSubstrs: []string{"msg=over"},
+			input:         "over-warn",
+			outputSubstrs: []string{"msg=over-warn"},
 		},
 		{
 			name:          "at-level",
@@ -73,10 +80,37 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 			outputSubstrs: []string{"msg=at"},
 		},
 		{
-			name:         "under-level",
+			name:         "under-level-debug",
 			level:        hclog.Debug,
-			input:        "under",
+			input:        "under-debug",
 			shouldNotLog: true,
+		},
+		{
+			name:         "under-level-trace",
+			level:        hclog.Trace,
+			input:        "under-trace",
+			shouldNotLog: true,
+		},
+		{
+			name:         "plain-under-trace",
+			plainLog:     true,
+			level:        hclog.Trace,
+			input:        "plain-under-trace",
+			shouldNotLog: true,
+		},
+		{
+			name:          "plain-at",
+			plainLog:      true,
+			level:         hclog.Info,
+			input:         "plain-at",
+			outputSubstrs: []string{"msg=plain-at"},
+		},
+		{
+			name:          "plain-over-warn",
+			plainLog:      true,
+			level:         hclog.Warn,
+			input:         "plain-over-warn",
+			outputSubstrs: []string{"msg=plain-over-warn"},
 		},
 		{
 			name:          "with-named",
@@ -116,16 +150,27 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 				loggerToUse = tt.logOverride
 			}
 
-			switch tt.level {
-			case hclog.Warn:
-				assert.True(loggerToUse.IsWarn() == !tt.shouldNotLog)
-				loggerToUse.Warn(tt.input)
-			case hclog.Info:
-				assert.True(loggerToUse.IsInfo() == !tt.shouldNotLog)
-				loggerToUse.Info(tt.input)
-			case hclog.Debug:
-				assert.True(loggerToUse.IsDebug() == !tt.shouldNotLog)
-				loggerToUse.Debug(tt.input)
+			switch tt.plainLog {
+			case false:
+				switch tt.level {
+				case hclog.Error:
+					assert.True(loggerToUse.IsError() == !tt.shouldNotLog)
+					loggerToUse.Error(tt.input)
+				case hclog.Warn:
+					assert.True(loggerToUse.IsWarn() == !tt.shouldNotLog)
+					loggerToUse.Warn(tt.input)
+				case hclog.Info:
+					assert.True(loggerToUse.IsInfo() == !tt.shouldNotLog)
+					loggerToUse.Info(tt.input)
+				case hclog.Debug:
+					assert.True(loggerToUse.IsDebug() == !tt.shouldNotLog)
+					loggerToUse.Debug(tt.input)
+				case hclog.Trace:
+					assert.True(loggerToUse.IsTrace() == !tt.shouldNotLog)
+					loggerToUse.Trace(tt.input)
+				}
+			default:
+				loggerToUse.Log(tt.level, tt.input)
 			}
 
 			switch tt.shouldNotLog {

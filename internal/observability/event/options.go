@@ -203,7 +203,7 @@ func WithFilterOperations(fop AuditFilterOperations) Option {
 	}
 }
 
-// WithHclogLevel allows an option time.Time to represent now.
+// WithHclogLevel is an option to specify a log level if using the adapter
 func WithHclogLevel(with hclog.Level) Option {
 	return func(o *options) {
 		o.withHclogLevel = with
