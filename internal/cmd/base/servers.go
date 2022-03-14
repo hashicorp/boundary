@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -40,6 +39,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -81,8 +81,7 @@ type Server struct {
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
 
-	InmemSink         *metrics.InmemSink
-	PrometheusEnabled bool
+	MetricRegistry *prometheus.Registry
 
 	ReloadFuncsLock *sync.RWMutex
 	ReloadFuncs     map[string][]reloadutil.ReloadFunc
@@ -141,6 +140,7 @@ func NewServer(cmd *Command) *Server {
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
 		StderrLock:         new(sync.Mutex),
+		MetricRegistry:     prometheus.NewRegistry(),
 	}
 }
 
