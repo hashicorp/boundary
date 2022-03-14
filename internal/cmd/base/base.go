@@ -233,7 +233,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			"recovery",
 			configutil.WithPluginOptions(
 				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-				pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+				pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 			),
 			// TODO: How would we want to expose this kind of log to users when
 			// using recovery configs? Generally with normal CLI commands we

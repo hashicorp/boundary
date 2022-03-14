@@ -140,7 +140,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		"aws",
 		external_host_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
 		))
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
@@ -278,7 +278,7 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 		"config",
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 		),
 		// TODO: How would we want to expose this kind of log to users when
 		// using recovery configs? Generally with normal CLI commands we

@@ -507,7 +507,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				&b.Info,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem("boundary-plugin-kms-", kms_plugin_assets.FileSystem())),
+					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem())),
 			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
