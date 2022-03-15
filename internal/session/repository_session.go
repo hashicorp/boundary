@@ -597,15 +597,18 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 	notActive := make([]StateReport, 0, len(reportedSessions))
 	args := make([]interface{}, 0, len(reportedSessions))
 	var inClause string
-	if len(reportedSessions) > 0 {
-		inClause = `and session_id in (%s)`
-		params := make([]string, len(reportedSessions))
-		for i, sessId := range reportedSessions {
-			params[i] = fmt.Sprintf("@%d", i)
-			args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
-		}
-		inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
+
+	if len(reportedSessions) <= 0 {
+		return notActive, nil
 	}
+
+	inClause = `and session_id in (%s)`
+	params := make([]string, len(reportedSessions))
+	for i, sessId := range reportedSessions {
+		params[i] = fmt.Sprintf("@%d", i)
+		args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
+	}
+	inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
 
 	_, err := r.writer.DoTx(
 		ctx,

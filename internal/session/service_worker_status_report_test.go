@@ -77,6 +77,38 @@ func TestWorkerStatusReport(t *testing.T) {
 			},
 		},
 		{
+			name: "No Sessions already canceled",
+			caseFn: func(t *testing.T) testCase {
+				worker := session.TestWorker(t, conn, wrapper)
+				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+					UserId:          uId,
+					HostId:          h.GetPublicId(),
+					TargetId:        tar.GetPublicId(),
+					HostSetId:       hs.GetPublicId(),
+					AuthTokenId:     at.GetPublicId(),
+					ScopeId:         prj.GetPublicId(),
+					Endpoint:        "tcp://127.0.0.1:22",
+					ConnectionLimit: 10,
+				})
+				tofu := session.TestTofu(t)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				require.NoError(t, err)
+				require.NoError(t, err)
+
+				_, _, err = connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PrivateId)
+				require.NoError(t, err)
+
+				_, err = repo.CancelSession(ctx, sess.PublicId, sess.Version)
+				require.NoError(t, err)
+
+				return testCase{
+					worker: worker,
+					req:    []session.StateReport{},
+					want:   []session.StateReport{},
+				}
+			},
+		},
+		{
 			name: "Still Active",
 			caseFn: func(t *testing.T) testCase {
 				worker := session.TestWorker(t, conn, wrapper)
