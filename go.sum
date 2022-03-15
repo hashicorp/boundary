@@ -381,8 +381,8 @@ github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brv
 github.com/hashicorp/eventlogger v0.1.0/go.mod h1:a3IXf1aEJfpCPzseTOrwKj4fVW/Qn3oEmpQeaIznzH0=
 github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c h1:u1Zq+LfTXaagmJCHK3XH/fi7pk7oRY933VjGNG7/Ynw=
 github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c/go.mod h1:NaXU8p/pl5a2RX/N0/yncinT3Iw5CLkbF4JRxAVnk3c=
-github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220314212837-79020360dda2 h1:yOZR1XbEurKIGIyzOIM7LKB39ZZG8nEC6lysQ00RlbQ=
-github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220314212837-79020360dda2/go.mod h1:UAMVhkvFr8fDZEtJJvzsYfjOKldk0TxH4usZoQlDHNU=
+github.com/hashicorp/eventlogger/filters/encrypt v0.1.6 h1:hWy+dqyKd9Hd8oAof1vrfWNS5pbYGDmh4HzgI490zuw=
+github.com/hashicorp/eventlogger/filters/encrypt v0.1.6/go.mod h1:UAMVhkvFr8fDZEtJJvzsYfjOKldk0TxH4usZoQlDHNU=
 github.com/hashicorp/go-bexpr v0.1.10 h1:9kuI5PFotCboP3dkDYFr/wi0gg0QVbSNz5oFRpxn4uE=
 github.com/hashicorp/go-bexpr v0.1.10/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
 github.com/hashicorp/go-cleanhttp v0.5.0/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
