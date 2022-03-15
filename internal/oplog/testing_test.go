@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-
 	"github.com/hashicorp/boundary/internal/db/common"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

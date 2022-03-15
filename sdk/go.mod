@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220314212837-79020360dda2
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0
