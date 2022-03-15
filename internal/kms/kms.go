@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
-	"github.com/hashicorp/go-kms-wrapping/v2/multi"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its

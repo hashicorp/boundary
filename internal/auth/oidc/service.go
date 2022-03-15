@@ -197,7 +197,7 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	}
 
 	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
-	reader, err := crypto.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
+	reader, err := crypto.NewDerivedReader(ctx, oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

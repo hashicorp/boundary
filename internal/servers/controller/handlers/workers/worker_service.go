@@ -36,7 +36,8 @@ func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
 	updateTimes *sync.Map,
-	kms *kms.Kms) *workerServiceServer {
+	kms *kms.Kms,
+) *workerServiceServer {
 	return &workerServiceServer{
 		serversRepoFn: serversRepoFn,
 		sessionRepoFn: sessionRepoFn,
@@ -323,7 +324,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 
 	// Derive the private key, which should match. Deriving on both ends allows
 	// us to not store it in the DB.
-	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
+	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(ctx, wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}

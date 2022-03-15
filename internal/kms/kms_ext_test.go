@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
-	"github.com/hashicorp/go-kms-wrapping/v2/multi"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,12 +98,16 @@ func TestKms(t *testing.T) {
 					require.True(ok)
 					aeadKeyId, err := aeadWrapper.KeyId(ctx)
 					require.NoError(err)
-					foundKeyBytes := keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())]
+					wrapperBytes, err := aeadWrapper.KeyBytes(ctx)
+					require.NoError(err)
+					foundKeyBytes := keyBytes[base64.StdEncoding.EncodeToString(wrapperBytes)]
 					foundKeyId := keyIds[aeadKeyId]
 					if i == 1 {
 						assert.False(foundKeyBytes)
 						assert.False(foundKeyId)
-						keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())] = true
+						wrapperBytes, err := aeadWrapper.KeyBytes(ctx)
+						require.NoError(err)
+						keyBytes[base64.StdEncoding.EncodeToString(wrapperBytes)] = true
 						keyIds[aeadKeyId] = true
 					} else {
 						assert.True(foundKeyBytes)

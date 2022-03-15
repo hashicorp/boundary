@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.7
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0
@@ -14,7 +14,7 @@ require (
 	google.golang.org/protobuf v1.27.1
 )
 
-require github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.1 // indirect
+require github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
 
 require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
@@ -27,9 +27,9 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.1
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.1
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.2
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 // indirect

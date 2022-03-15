@@ -238,7 +238,9 @@ func Test_requestWrappingWrapper(t *testing.T) {
 			require.NoError(err)
 			assert.Equalf(wantKeyId, keyId, "expected key id %s and got: %s", wantKeyId, keyId)
 			assert.Equalf(wrapping.WrapperTypeAead, wrapperType, "expected type %s and got: %s", wrapping.WrapperTypeAead, wrapperType)
-			assert.NotEmpty(reqWrapper.(*aead.Wrapper).GetKeyBytes())
+			keyBytes, err := reqWrapper.(*aead.Wrapper).KeyBytes(ctx)
+			require.NoError(err)
+			assert.NotEmpty(keyBytes)
 
 			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
 			require.True(found)

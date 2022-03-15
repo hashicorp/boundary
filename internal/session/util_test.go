@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"crypto/ed25519"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 
 func TestDeriveED25519Key(t *testing.T) {
 	wrapper := db.TestWrapper(t)
+	ctx := context.Background()
+
 	type keys struct {
 		pub  ed25519.PublicKey
 		priv ed25519.PrivateKey
@@ -39,7 +42,7 @@ func TestDeriveED25519Key(t *testing.T) {
 				jobId:   "jobId",
 			},
 			want: func() keys {
-				reader, err := crypto.NewDerivedReader(wrapper, 32, []byte("userId"), []byte("jobId"))
+				reader, err := crypto.NewDerivedReader(ctx, wrapper, 32, []byte("userId"), []byte("jobId"))
 				require.NoError(t, err)
 				pub, priv, err := ed25519.GenerateKey(reader)
 				require.NoError(t, err)
@@ -60,7 +63,7 @@ func TestDeriveED25519Key(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotPub, gotPriv, err := DeriveED25519Key(tt.args.wrapper, tt.args.userId, tt.args.jobId)
+			gotPub, gotPriv, err := DeriveED25519Key(ctx, tt.args.wrapper, tt.args.userId, tt.args.jobId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error: %s", err)
