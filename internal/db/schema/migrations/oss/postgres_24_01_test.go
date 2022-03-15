@@ -123,6 +123,7 @@ func TestMigrations_SessionState(t *testing.T) {
 	require.Equal(want, state)
 
 	sessionRepo, err := session.NewRepository(rw, rw, kmsCache)
+	connectionRepo, err := session.NewConnectionRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
 	// Ensure session is cancelled
@@ -138,7 +139,7 @@ func TestMigrations_SessionState(t *testing.T) {
 	require.Equal([]string{"canceled"}, sessionTermReason)
 
 	// Ensure connection is also cancelled
-	connections, err := sessionRepo.ListConnectionsBySessionId(ctx, repoSessionId)
+	connections, err := connectionRepo.ListConnectionsBySessionId(ctx, repoSessionId)
 	require.NoError(err)
 
 	var connTermReason []string
