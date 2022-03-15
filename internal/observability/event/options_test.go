@@ -179,6 +179,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withHclogLevel = hclog.Info
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("withEventGating", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withGating)
+		opts := getOpts(WithGating(true))
+		assert.True(opts.withGating)
+	})
+	t.Run("withNoGateLocking", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withNoGateLocking)
+		opts := getOpts(WithNoGateLocking(true))
+		assert.True(opts.withNoGateLocking)
+	})
 }
 
 // testWrapper initializes an AEAD wrapping.Wrapper for testing.  Note: this

@@ -27,7 +27,9 @@ type HclogLoggerAdapter struct {
 // Ensure that we are implementing Logger
 var _ hclog.Logger = (*HclogLoggerAdapter)(nil)
 
-func HclogLogger(ctx context.Context, e *Eventer, opt ...Option) (hclog.Logger, error) {
+// NewHclogLogger creates a new hclog.Logger-compatible implementation that
+// outputs to events
+func NewHclogLogger(ctx context.Context, e *Eventer, opt ...Option) (hclog.Logger, error) {
 	const op = "event.HclogLogger"
 	eventCtx, err := NewEventerContext(ctx, e)
 	if err != nil {

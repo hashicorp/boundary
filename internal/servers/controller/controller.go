@@ -128,7 +128,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
 		if pluginLogger == nil {
-			pluginLogger, err = event.HclogLogger(ctx, c.conf.Server.Eventer)
+			pluginLogger, err = event.NewHclogLogger(ctx, c.conf.Server.Eventer)
 			if err != nil {
 				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
 			}

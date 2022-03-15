@@ -167,7 +167,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	pluginLogger, err := event.HclogLogger(c.Context, c.srv.Eventer)
+	pluginLogger, err := event.NewHclogLogger(c.Context, c.srv.Eventer)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating host catalog plugin logger: %v", err))
 		return base.CommandCliError

@@ -49,7 +49,7 @@ func TestEventer_HclogLoggerAdapter(t *testing.T) {
 	// validates that we see the ones we expect to see on the other side. It
 	// also tests various features such as Named and With to ensure they turn
 	// into values on the other side.
-	logger, err := HclogLogger(ctx, eventer, WithHclogLevel(hclog.Info))
+	logger, err := NewHclogLogger(ctx, eventer, WithHclogLevel(hclog.Info))
 	require.NoError(err)
 
 	tests := []struct {
