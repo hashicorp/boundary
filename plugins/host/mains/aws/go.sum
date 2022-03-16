@@ -259,6 +259,8 @@ github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB7
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211206232153-e565bad02701 h1:u7uhXKouEi2Do2645NBCOxzqWyUNXPGxebDAKeWaygM=
 github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20211206232153-e565bad02701/go.mod h1:5sbsaBwfSDftXIXLpwU0LvPlhqkXWUFsZn4obxz5Hj8=
+github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20220309191650-d24a1def65f3 h1:sRbTVafG/21uWDJVdOXZlhtrbKz6eLgKMJhMOQbD1oM=
+github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20220309191650-d24a1def65f3/go.mod h1:5sbsaBwfSDftXIXLpwU0LvPlhqkXWUFsZn4obxz5Hj8=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211112235128-46a1edcb3b7b h1:qURjJaF3/TUbDcPCUAg9PG9a95NCgPrrcrOsurBJ7Rc=
 github.com/hashicorp/boundary/sdk v0.0.12-0.20211112235128-46a1edcb3b7b/go.mod h1:Krt7KLGTnDPQTaVlgSygV5SeqWDrOfbYyVBmB0KILD4=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
