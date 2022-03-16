@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20220309215318-f3b6d46e87d8
-	github.com/hashicorp/boundary/sdk v0.0.14-0.20220309214551-bb4528aa139b
+	github.com/hashicorp/boundary/sdk v0.0.14
 )
 
 require (
@@ -26,11 +26,10 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c // indirect
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.6-0.20220309214434-500febbe5843 // indirect
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.7 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
@@ -50,7 +49,7 @@ require (
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
 	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a // indirect
