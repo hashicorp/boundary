@@ -28,6 +28,10 @@ const (
 )
 
 func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
+	// Stops the underlying library from invoking a dbus call that ends up
+	// freezing some systems
+	os.Setenv("DISABLE_KWALLET", "1")
+
 	tokenName := DefaultTokenName
 
 	if c.FlagTokenName != "" {
