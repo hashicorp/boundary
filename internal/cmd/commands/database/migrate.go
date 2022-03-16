@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
@@ -138,13 +139,49 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		}()
 	}
 
+	dialect := "postgres"
+
+	c.srv = base.NewServer(&base.Command{UI: c.UI})
+
+	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-migrate"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
+	}
+	if err := c.srv.SetupEventing(
+		c.srv.Logger,
+		c.srv.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+
+	pluginLogger, err := event.NewHclogLogger(c.Context, c.srv.Eventer)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating host catalog plugin logger: %v", err))
+		return base.CommandCliError
+	}
+
 	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
 		c.Context,
 		"aws",
 		external_host_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
 			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
-		))
+		),
+		external_host_plugins.WithLogger(pluginLogger.Named("aws")),
+	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
 		c.UI.Warn(base.WrapAtLength(
@@ -173,30 +210,6 @@ plugins {
 	}
 	if err := awsCleanup(); err != nil {
 		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
-		return base.CommandCliError
-	}
-
-	dialect := "postgres"
-
-	c.srv = base.NewServer(&base.Command{UI: c.UI})
-
-	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
-	var serverName string
-	switch {
-	case c.Config.Controller == nil:
-		serverName = "boundary-database-migrate"
-	default:
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
-	}
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
-		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
 

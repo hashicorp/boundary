@@ -164,7 +164,8 @@ func (c *Command) Run(args []string) int {
 	if err := c.SetupEventing(c.Logger,
 		c.StderrLock,
 		strings.Join(serverNames, "/"),
-		base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -447,7 +448,10 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	c.PrintInfo(c.UI)
-	c.ReleaseLogGate()
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
+	}
 
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)

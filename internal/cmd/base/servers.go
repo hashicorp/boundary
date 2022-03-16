@@ -205,7 +205,8 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		serializationLock,
 		serverName,
 		*opts.withEventerConfig,
-		event.WithAuditWrapper(opts.withEventWrapper))
+		event.WithAuditWrapper(opts.withEventWrapper),
+		event.WithGating(opts.withEventGating))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
@@ -283,11 +284,15 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	return nil
 }
 
-func (b *Server) ReleaseLogGate() {
+func (b *Server) ReleaseLogGate() error {
 	// Release the log gate.
 	b.Logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
 		Output: b.logOutput,
 	}, b.GatedWriter)
+	if b.Eventer != nil {
+		return b.Eventer.ReleaseGate()
+	}
+	return nil
 }
 
 func (b *Server) StorePidFile(pidPath string) error {
@@ -482,6 +487,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 // and sends each off to configutil to instantiate a wrapper.
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
+	var pluginLogger hclog.Logger
 	var err error
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
@@ -498,6 +504,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
 
+			if pluginLogger == nil {
+				pluginLogger, err = event.NewHclogLogger(b.Context, b.Eventer)
+				if err != nil {
+					return fmt.Errorf("Error creating KMS plugin logger: %w", err)
+				}
+			}
+
 			// This can be modified by configutil so store the original value
 			origPurpose := kms.Purpose
 			kms.Purpose = []string{purpose}
@@ -509,7 +522,9 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				&b.Info,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem())),
+					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+				),
+				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
 			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
@@ -551,7 +566,6 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
-
 		}
 	}
 

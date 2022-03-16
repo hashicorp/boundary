@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -42,6 +43,11 @@ type options struct {
 	withSchema           *url.URL
 	withAuditWrapper     wrapping.Wrapper
 	withFilterOperations AuditFilterOperations
+	withGating           bool
+	withNoGateLocking    bool
+
+	// These options are related to the hclog adapter
+	withHclogLevel hclog.Level
 
 	withBroker          broker     // test only option
 	withAuditSink       bool       // test only option
@@ -194,5 +200,26 @@ func WithAuditWrapper(w wrapping.Wrapper) Option {
 func WithFilterOperations(fop AuditFilterOperations) Option {
 	return func(o *options) {
 		o.withFilterOperations = fop
+	}
+}
+
+// WithHclogLevel is an option to specify a log level if using the adapter
+func WithHclogLevel(with hclog.Level) Option {
+	return func(o *options) {
+		o.withHclogLevel = with
+	}
+}
+
+// WithGating starts the eventer in gated mode
+func WithGating(with bool) Option {
+	return func(o *options) {
+		o.withGating = with
+	}
+}
+
+// WithNoGateLocking is used when trawling through the existing queue to ensure we don't deadlock
+func WithNoGateLocking(with bool) Option {
+	return func(o *options) {
+		o.withNoGateLocking = with
 	}
 }

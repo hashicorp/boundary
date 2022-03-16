@@ -39,6 +39,7 @@ type Options struct {
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
+	withEventGating                bool
 }
 
 func getDefaultOptions() Options {
@@ -178,5 +179,12 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 		o.withHostPlugin = func() (string, plugin.HostPluginServiceClient) {
 			return pluginId, plg
 		}
+	}
+}
+
+// WithEventGating starts the eventer in gated mode
+func WithEventGating(with bool) Option {
+	return func(o *Options) {
+		o.withEventGating = with
 	}
 }

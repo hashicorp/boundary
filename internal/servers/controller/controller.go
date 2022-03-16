@@ -125,7 +125,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
+		if pluginLogger == nil {
+			pluginLogger, err = event.NewHclogLogger(ctx, c.conf.Server.Eventer)
+			if err != nil {
+				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
+			}
+		}
 		switch enabledPlugin {
 		case base.EnabledPluginHostLoopback:
 			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
@@ -145,6 +152,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
 					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
 				),
+				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
