@@ -26,7 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
-	"github.com/hashicorp/boundary/internal/servers/controller/metrics"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metrics"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
