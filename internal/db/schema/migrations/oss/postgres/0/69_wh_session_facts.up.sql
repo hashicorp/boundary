@@ -146,6 +146,7 @@ begin;
     for each row
     execute function wh_insert_session_connection();
 
+  -- Updated in 27/01_disable_terminate_session.up.sql
   -- wh_update_session_connection returns an after update trigger for the
   -- session_connection table which updates a row in
   -- wh_session_connection_accumulating_fact for the session connection.

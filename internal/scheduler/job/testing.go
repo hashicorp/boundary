@@ -36,6 +36,8 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 			job_plugin_id, job_name, server_id
 		)
 		values (?,?,?)
+		on conflict (job_plugin_id, job_name) where status = 'running'
+	    do nothing
 		returning *;
 	`
 	rw := db.New(conn)
@@ -46,7 +48,7 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 		return nil, err
 	}
 	if !rows.Next() {
-		return nil, fmt.Errorf("expected to rows")
+		return nil, nil
 	}
 
 	err = rw.ScanRows(ctx, rows, run)

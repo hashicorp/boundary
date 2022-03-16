@@ -24,5 +24,6 @@ type (
 	PluginHostRepoFactory      func() (*pluginhost.Repository, error)
 	HostPluginRepoFactory      func() (*hostplugin.Repository, error)
 	SessionRepoFactory         func() (*session.Repository, error)
+	ConnectionRepoFactory      func() (*session.ConnectionRepository, error)
 	TargetRepoFactory          func() (*target.Repository, error)
 )

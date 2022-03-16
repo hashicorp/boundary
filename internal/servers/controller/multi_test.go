@@ -3,7 +3,6 @@ package controller_test
 import (
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -38,7 +37,6 @@ func TestAuthenticationMulti(t *testing.T) {
 	require.NoError(json.Unmarshal(token1Result.GetRawAttributes(), token1))
 	require.NotNil(token1)
 
-	time.Sleep(5 * time.Second)
 	auth = authmethods.NewClient(c2.Client())
 	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
 	require.Nil(err)

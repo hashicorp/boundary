@@ -69,17 +69,18 @@ rm -f bin/*
 mkdir -p bin/
 
 # Build!
-echo "==> Building..."
+echo "==> Building into bin/..."
 BINARY_NAME="boundary${BINARY_SUFFIX}"
 go build -tags="${BUILD_TAGS}" \
     -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
     -o "bin/${BINARY_NAME}" \
     ./cmd/boundary
 
-
-# Copy binary into gopath
-echo "==> Copying binary into GOPATH"
-cp -f "bin/${BINARY_NAME}" "${GOPATH}/bin/"
+# Copy binary into gopath if desired
+if [ "${BOUNDARY_INSTALL_BINARY}x" != "x" ]; then
+    echo "==> Moving binary into GOPATH/bin..."
+    mv -f "bin/${BINARY_NAME}" "${GOPATH}/bin/"
+fi
 
 # Done!
 echo "==> Done!"
