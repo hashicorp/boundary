@@ -1,4 +1,4 @@
-8496c054888329073c568e9bd4944b209e966923 Merge pull request #980 from hashicorp/chore-radio-card-width
+772e02a738c5ebeab99a2ca7be62eca0c975d0a2 feat: 🎸 List SSH targets in Admin (#1025)
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
