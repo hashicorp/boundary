@@ -10,15 +10,15 @@ const (
 insert into session_state
 with not_active as (
 	select session_id, 'active' as state
-	from 
+	from
 		session s,
 		session_state ss
-	where 
+	where
 		s.public_id = ss.session_id and
-		ss.state = 'pending' and 
-		ss.session_id = @session_id and 
+		ss.state = 'pending' and
+		ss.session_id = @session_id and
 		s.version = @version and
-		s.public_id not in(select session_id from session_state where session_id = @session_id and state = 'active') 
+		s.public_id not in(select session_id from session_state where session_id = @session_id and state = 'active')
 )
 select * from not_active;
 `
@@ -27,105 +27,193 @@ select * from not_active;
 	// state or it's not already terminated (final state) before inserting a new
 	// state.
 	updateSessionState = `
-insert into session_state(session_id, state) 
+insert into session_state(session_id, state)
 select
-	@session_id, @status 
+	@session_id, @status
 from
 	session s
-where 
+where
 	s.public_id = @session_id and
 	s.public_id not in (
-		select 
-			session_id 
-		from 
-			session_state 
-		where 
+		select
+			session_id
+		from
+			session_state
+		where
 			-- already in the updated state
 			(
-				session_id = @session_id and 
+				session_id = @session_id and
 				state = @status
 			) or
 			-- already terminated
 			session_id in (
-				select 
-					session_id 
-				from 
-					session_state 
-				where 
-					session_id = @session_id and 
+				select
+					session_id
+				from
+					session_state
+				where
+					session_id = @session_id and
 					state = 'terminated'
 			)
-	) 
+	);
 `
 	authorizeConnectionCte = `
-insert into session_connection (
-	session_id, 
-	public_id,
-	server_id
-)
-with active_session as ( 
-	select 
-		@session_id as session_id,
-		@public_id as public_id,
-		@worker_id as server_id
+with connections_available as (
+	select
+		s.public_id
+ 	from
+		session s
+	where
+		s.public_id = @session_id and
+ 		(s.connection_limit = -1 or
+		s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id ))
+),
+unexpired_session as (
+	select
+		s.public_id
 	from
 		session s
 	where
-		-- check that the session hasn't expired.
-		s.expiration_time > now() and
-		-- check that there are still connections available. connection_limit of -1 equals unlimited connections
-		(
-			s.connection_limit = -1
-				or 
-			s.connection_limit > (select count(*) from session_connection sc where sc.session_id = @session_id)
-		) and
-		-- check that there's a state of active
-		s.public_id in (
-			select 
-				ss.session_id 
-			from 
-				session_state ss
-			where 
-				ss.session_id = @session_id and 
-				ss.state = 'active' and
-				-- if there's no end_time, then this is the current state.
-				ss.end_time is null 
-		) 
+		s.public_id in (select * from  connections_available) and
+		s.expiration_time > now()
+),
+active_session as (
+	select
+		ss.session_id as session_id,
+		@public_id as public_id,
+		@worker_id as server_id
+	from
+		session_state ss
+	where
+		ss.session_id in (select * from unexpired_session) and
+		ss.state = 'active' and
+		ss.end_time is null
+)
+insert into session_connection (
+  	session_id,
+ 	public_id,
+	server_id
 )
 select * from active_session;
 `
-
 	remainingConnectionsCte = `
 with
 session_connection_count(current_connection_count) as (
-	select count(*) 
-	from 
+	select count(*)
+	from
 		session_connection sc
 	where
 		sc.session_id = @session_id
 ),
 session_connection_limit(expiration_time, connection_limit) as (
-	select 
+	select
 		s.expiration_time,
 		s.connection_limit
 	from
 		session s
-	where 
+	where
 		s.public_id = @session_id
 )
-select expiration_time, connection_limit, current_connection_count 
-from  
-	session_connection_limit, session_connection_count;	
+select expiration_time, connection_limit, current_connection_count
+from
+	session_connection_limit, session_connection_count;
 `
 	sessionList = `
-select * 
+select *
 from
 	(select public_id from session %s) s,
 	session_list ss
-where 
-	s.public_id = ss.public_id 
+where
+	s.public_id = ss.public_id
 	%s
 %s
+;
+`
+
+	terminateSessionIfPossible = `
+    -- is terminate_session_id in a canceling state
+    with session_version as (
+		select 
+			version
+		from 
+			session
+		where public_id = @public_id
+	),
+    canceling_session(session_id) as
+    (
+      select 
+        session_id
+      from
+        session_state ss
+      where 
+        ss.session_id = @public_id and
+        ss.state = 'canceling' and 
+        ss.end_time is null
+    )
+    update session us
+      set version = version +1,
+	  termination_reason = 
+      case 
+        -- timed out sessions
+        when now() > us.expiration_time then 'timed out'
+        -- canceling sessions
+        when us.public_id in(
+          select 
+            session_id 
+          from 
+            canceling_session cs 
+          where
+            us.public_id = cs.session_id
+          ) then 'canceled' 
+        -- default: session connection limit reached.
+        else 'connection limit'
+      end
+    where
+      -- limit update to just the terminating_session_id
+      us.public_id = @public_id and
+  	  us.version = (select * from session_version) and
+      termination_reason is null and
+      -- session expired or connection limit reached
+      (
+        -- expired sessions...
+        now() > us.expiration_time or 
+        -- connection limit reached...
+        (
+          -- handle unlimited connections...
+          connection_limit != -1 and
+          (
+            select count (*) 
+              from session_connection sc 
+            where 
+              sc.session_id = us.public_id
+          ) >= connection_limit
+        ) or 
+        -- canceled sessions
+        us.public_id in (
+          select 
+            session_id
+          from
+            canceling_session cs
+          where 
+            us.public_id = cs.session_id 
+        )
+      ) and 
+      -- make sure there are no existing connections
+      us.public_id not in (
+        select 
+          session_id 
+        from 
+            session_connection
+          where public_id in (
+          select 
+            connection_id
+          from 
+            session_connection_state
+          where 
+            state != 'closed' and
+            end_time is null
+        )
+    )
 `
 
 	// termSessionUpdate is one stmt that terminates sessions for the following
@@ -136,28 +224,28 @@ where
 	termSessionsUpdate = `
 with canceling_session(session_id) as
 (
-	select 
+	select
 		session_id
 	from
 		session_state ss
-	where 
-		ss.state = 'canceling' and 
+	where
+		ss.state = 'canceling' and
 		ss.end_time is null
 )
 update session us
-	set termination_reason = 
-	case 
+	set termination_reason =
+	case
 		-- timed out sessions
 		when now() > us.expiration_time then 'timed out'
 		-- canceling sessions
 		when us.public_id in(
-			select 
-				session_id 
-			from 
-				canceling_session cs 
-			where 
+			select
+				session_id
+			from
+				canceling_session cs
+			where
 				us.public_id = cs.session_id
-			) then 'canceled' 
+			) then 'canceled'
 		-- default: session connection limit reached.
 		else 'connection limit'
 	end
@@ -166,90 +254,45 @@ where
 	-- session expired or connection limit reached
 	(
 		-- expired sessions...
-		now() > us.expiration_time or 
+		now() > us.expiration_time or
 		-- connection limit reached...
 		(
 			-- handle unlimited connections...
 			connection_limit != -1 and
 			(
-			select count (*) 
-				from session_connection sc 
-			where 
+			select count (*)
+				from session_connection sc
+			where
 				sc.session_id = us.public_id
 			) >= connection_limit
-		) or 
+		) or
 		-- canceled sessions
 		us.public_id in (
-			select 
+			select
 				session_id
 			from
 				canceling_session cs
-			where 
-				us.public_id = cs.session_id 
+			where
+				us.public_id = cs.session_id
 		)
-	) and 
+	) and
 	-- make sure there are no existing connections
  	us.public_id not in (
-		select 
-			session_id 
-		from 
+		select
+			session_id
+		from
 		  	session_connection
      	where public_id in (
-			select 
+			select
 				connection_id
-			from 
+			from
 				session_connection_state
-			where 
+			where
 				state != 'closed' and
                	end_time is null
     )
-)
+);
 `
-
-	// closeDeadConnectionsCte finds connections that are:
-	//
-	// * not closed
-	// * not announced by a given server in its latest update
-	//
-	// and marks them as closed.
-	closeDeadConnectionsCte = `
-with
-  -- Find connections that are not closed so we can reference those IDs
-  unclosed_connections as (
-    select connection_id
-      from session_connection_state
-    where
-      -- It's the current state
-      end_time is null
-        and
-      -- Current state isn't closed state
-      state in ('authorized', 'connected')
-        and
-      -- It's not in limbo between when it moved into this state and when
-      -- it started being reported by the worker, which is roughly every
-      -- 2-3 seconds
-      start_time < wt_sub_seconds_from_now(10)
-  ),
-  connections_to_close as (
-    select public_id
-      from session_connection
-    where
-      -- Related to the worker that just reported to us
-      server_id = ?
-        and
-      -- These are connection IDs that just got reported to us by the given
-      -- worker, so they should not be considered closed.
-        %s
-      -- Only unclosed ones
-      public_id in (select connection_id from unclosed_connections)
-  )
-  update session_connection
-    set
-      closed_reason = 'system error'
-    where
-      public_id in (select public_id from connections_to_close)
-    returning public_id
-  `
 
 	// closeConnectionsForDeadServersCte finds connections that are:
 	//
@@ -262,13 +305,12 @@ with
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
 	// each.
-
 	closeConnectionsForDeadServersCte = `
    with
    dead_servers (server_id, last_update_time) as (
          select private_id, update_time
            from server
-          where update_time < wt_sub_seconds_from_now(?)
+          where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, server_id) as (
          update session_connection
@@ -287,35 +329,50 @@ with
  order by closed_connections.server_id;
 `
 
-	// shouldCloseConnectionsCte finds connections that are marked as closed in
-	// the database given a set of connection IDs. They are returned along with
-	// their associated session ID.
-	//
-	// The second parameter is a set of session IDs that we have already
-	// submitted a session-wide close request for, so sending another change
-	// request for them would be redundant.
-	shouldCloseConnectionsCte = `
+	orphanedConnectionsCte = `
+-- Find connections that are not closed so we can reference those IDs
 with
-  -- Find connections that are closed so we can reference those IDs
-  closed_connections as (
+  unclosed_connections as (
     select connection_id
       from session_connection_state
     where
       -- It's the current state
       end_time is null
-        and
-      -- Current state is closed
-      state = 'closed'
-        and
-      connection_id in (%s)
+      -- Current state isn't closed state
+      and state in ('authorized', 'connected')
+      -- It's not in limbo between when it moved into this state and when
+      -- it started being reported by the worker, which is roughly every
+      -- 2-3 seconds
+      and start_time < wt_sub_seconds_from_now(@worker_state_delay_seconds)
+  ),
+  connections_to_close as (
+	select public_id
+	  from session_connection
+	 where
+		   -- Related to the worker that just reported to us
+		   server_id = @server_id
+		   -- Only unclosed ones
+		   and public_id in (select connection_id from unclosed_connections)
+		   -- These are connection IDs that just got reported to us by the given
+		   -- worker, so they should not be considered closed.
+		   %s
   )
-  select public_id, session_id 
-    from session_connection
-  where
-    public_id in (select connection_id from closed_connections)
-    -- Below fmt arg is filled in if there are session IDs to filter against
-    %s
-  `
+update session_connection
+   set
+	  closed_reason = 'system error'
+ where
+	public_id in (select public_id from connections_to_close)
+returning public_id;
+`
+	checkIfNotActive = `
+select session_id, state
+	from session_state ss
+where
+	(ss.state = 'canceling' or ss.state = 'terminated')
+	and ss.end_time is null
+	%s
+;
+`
 )
 
 const (
@@ -328,7 +385,7 @@ values
   (?, ?, ?)`
 
 	sessionCredentialDynamicBatchInsertReturning = `
-  returning session_id, library_id, credential_id, credential_purpose
+  returning session_id, library_id, credential_id, credential_purpose;
 `
 )
 

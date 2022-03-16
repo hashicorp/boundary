@@ -123,7 +123,8 @@ func (c *Controller) startListeners(ctx context.Context) error {
 				),
 			),
 		)
-		workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.workerStatusUpdateTimes, c.kms)
+		workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
+			c.workerStatusUpdateTimes, c.kms)
 		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 		pbs.RegisterSessionServiceServer(workerServer, workerService)
 

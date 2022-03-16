@@ -16,9 +16,9 @@ Building Boundary from source requires:
 1. `$ git clone https://github.com/hashicorp/boundary` or if you're using SSH auth for
    github, `$ git clone git@github.com:hashicorp/boundary`
 2. `$ cd boundary`
-3. `$ make dev`
+3. `$ make install`
 
-The first time you run `make dev` it will build UI assets, which will take a
+The first time you run `make install` it will build UI assets, which will take a
 long time. After the initial build, you can update those assets to the
 currently-pinned version via `make build-ui`.
 
@@ -28,7 +28,7 @@ binary to somewhere in your `$PATH` such as `/usr/local/bin`.
 ## Cross Platform Build
 
 If you need to cross compile boundary for another OS or architecture, use the [GOOS and GOARCH](https://github.com/hashicorp/boundary/blob/master/scripts/build.sh#L26)
-environment variable to set this. Example: `$ GOOS=linux GOARCH=amd64 make dev`
+environment variable to set this. Example: `$ GOOS=linux GOARCH=amd64 make install`
 
 For more details, please consult the [Boundary project on GitHub](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode).
 

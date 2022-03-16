@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/session"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -110,6 +112,14 @@ func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
 
 func (tc *TestController) ServersRepo() *servers.Repository {
 	repo, err := tc.c.ServersRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) ConnectionsRepo() *session.ConnectionRepository {
+	repo, err := tc.c.ConnectionRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)
 	}
