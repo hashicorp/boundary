@@ -3,7 +3,7 @@ package event
 import (
 	"fmt"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // AuditConfig defines the configuration required for audit events sinks

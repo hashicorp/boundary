@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -216,7 +216,9 @@ func Test_requestWrappingWrapper(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			scopeId, authMethodId := tt.setupFn()
 
-			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+			keyId, err := oidcWrapper.KeyId(ctx)
+			require.NoError(err)
+			wantKeyId := derivedKeyId(derivedKeyPurposeState, keyId, authMethodId)
 			kmsCache.GetDerivedPurposeCache().Delete(wantKeyId)
 
 			reqWrapper, err := requestWrappingWrapper(ctx, repo.kms, scopeId, authMethodId, tt.opt...)
@@ -230,9 +232,15 @@ func Test_requestWrappingWrapper(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(requestWrappingWrapper)
-			assert.Equalf(wantKeyId, reqWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, reqWrapper.KeyID())
-			assert.Equalf(wrapping.AEAD, reqWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, reqWrapper.Type())
-			assert.NotEmpty(reqWrapper.(*aead.Wrapper).GetKeyBytes())
+			keyId, err = reqWrapper.KeyId(ctx)
+			require.NoError(err)
+			wrapperType, err := reqWrapper.Type(ctx)
+			require.NoError(err)
+			assert.Equalf(wantKeyId, keyId, "expected key id %s and got: %s", wantKeyId, keyId)
+			assert.Equalf(wrapping.WrapperTypeAead, wrapperType, "expected type %s and got: %s", wrapping.WrapperTypeAead, wrapperType)
+			keyBytes, err := reqWrapper.(*aead.Wrapper).KeyBytes(ctx)
+			require.NoError(err)
+			assert.NotEmpty(keyBytes)
 
 			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
 			require.True(found)

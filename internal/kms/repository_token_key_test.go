@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -96,9 +96,7 @@ func TestRepository_CreateTokenKey(t *testing.T) {
 				key:     []byte("test key"),
 				keyWrapper: func() wrapping.Wrapper {
 					w := db.TestWrapper(t)
-					_, err = w.(*aead.Wrapper).SetConfig(map[string]string{
-						"key_id": "",
-					})
+					_, err = w.(*aead.Wrapper).SetConfig(context.Background())
 					require.NoError(t, err)
 					return w
 				}(),

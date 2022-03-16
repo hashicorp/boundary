@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-uuid"
 )
 
@@ -108,13 +108,11 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to create root key in scope %s", scopeId)))
 	}
 
-	rkvWrapper := aead.NewWrapper(nil)
-	if _, err := rkvWrapper.SetConfig(map[string]string{
-		"key_id": rootKeyVersion.GetPrivateId(),
-	}); err != nil {
+	rkvWrapper := aead.NewWrapper()
+	if _, err := rkvWrapper.SetConfig(ctx, wrapping.WithKeyId(rootKeyVersion.GetPrivateId())); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
 	}
-	if err := rkvWrapper.SetAESGCMKeyBytes(rootKeyVersion.GetKey()); err != nil {
+	if err := rkvWrapper.SetAesGcmKeyBytes(rootKeyVersion.GetKey()); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
 	}
 

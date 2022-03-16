@@ -806,7 +806,9 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
 			at.Status = string(status)
 			at.AuthAccountId = accts[i].PublicId
-			at.KeyId = databaseWrapper.KeyID()
+			keyId, err := databaseWrapper.KeyId(ctx)
+			require.NoError(t, err)
+			at.KeyId = keyId
 			at.CtToken = []byte(id)
 			err = rw.Create(ctx, at)
 			require.NoError(t, err)

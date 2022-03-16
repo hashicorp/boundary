@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 const msgField = "msg"

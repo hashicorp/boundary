@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -337,7 +338,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -363,7 +363,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
-			if strutil.StrListContains(kms.Purpose, "worker-auth") {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeWorkerAuth) {
 				kms.Config["key"] = c.flagWorkerAuthKey
 			}
 		}
@@ -507,19 +507,8 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
 
-	if c.flagRecoveryKey != "" {
-		c.Config.DevRecoveryKey = c.flagRecoveryKey
-	}
-	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-	if c.RootKms == nil {
-		c.UI.Error("Controller KMS not found after parsing KMS blocks")
-		return base.CommandUserError
-	}
 	if err := c.SetupEventing(
 		c.Logger,
 		c.StderrLock,
@@ -528,6 +517,18 @@ func (c *Command) Run(args []string) int {
 		base.WithEventFlags(eventFlags)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
+	}
+
+	if c.flagRecoveryKey != "" {
+		c.Config.DevRecoveryKey = c.flagRecoveryKey
+	}
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
+	if c.RootKms == nil {
+		c.UI.Error("Controller KMS not found after parsing KMS blocks")
+		return base.CommandUserError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
@@ -578,7 +579,9 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagDisableDatabaseDestruction {
-			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(ctx) })
+			// Use background context here so that we don't immediately fail to
+			// cleanup if the command context has already been canceled
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(context.Background()) })
 		}
 	default:
 		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)
@@ -603,7 +606,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(ctx, conf)
+		c.controller, err = controller.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError

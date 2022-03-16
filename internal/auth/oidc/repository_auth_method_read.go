@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
 // LookupAuthMethod will lookup an auth method in the repo, along with its

@@ -5,12 +5,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +29,69 @@ func Test_NewServer(t *testing.T) {
 		assert.NotNil(s.ReloadFuncs)
 		assert.NotNil(s.StderrLock)
 	})
+}
+
+func TestServer_SetupKMSes(t *testing.T) {
+	tests := []struct {
+		name            string
+		purposes        []string
+		wantErrContains string
+	}{
+		{
+			name: "nil purposes",
+		},
+		{
+			name:            "empty purpose",
+			purposes:        []string{""},
+			wantErrContains: "KMS block missing 'purpose'",
+		},
+		{
+			name:            "unknown purpose",
+			purposes:        []string{"foobar"},
+			wantErrContains: "Unknown KMS purpose",
+		},
+		{
+			name:     "single purpose",
+			purposes: []string{globals.KmsPurposeRoot},
+		},
+		{
+			name:     "multi purpose",
+			purposes: []string{globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			conf := &configutil.SharedConfig{
+				Seals: []*configutil.KMS{
+					{
+						Type:    "aead",
+						Purpose: tt.purposes,
+					},
+				},
+			}
+			s := NewServer(&Command{})
+			err := s.SetupKMSes(context.Background(), cli.NewMockUi(), &config.Config{SharedConfig: conf})
+
+			if tt.wantErrContains != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tt.wantErrContains)
+				return
+			}
+
+			require.NoError(err)
+			for _, purpose := range tt.purposes {
+				switch purpose {
+				case globals.KmsPurposeRoot:
+					assert.NotNil(s.RootKms)
+				case globals.KmsPurposeWorkerAuth:
+					assert.NotNil(s.WorkerAuthKms)
+				case globals.KmsPurposeRecovery:
+					assert.NotNil(s.RecoveryKms)
+				}
+			}
+		})
+	}
 }
 
 func TestServer_SetupEventing(t *testing.T) {

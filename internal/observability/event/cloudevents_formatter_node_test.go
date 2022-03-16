@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

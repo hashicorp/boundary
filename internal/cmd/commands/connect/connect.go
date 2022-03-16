@@ -364,6 +364,13 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	default:
 		client, err := c.Client()
+		if c.WrapperCleanupFunc != nil {
+			defer func() {
+				if err := c.WrapperCleanupFunc(); err != nil {
+					c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+				}
+			}()
+		}
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error creating API client: %s", err))
 			return base.CommandCliError
@@ -680,7 +687,8 @@ func (c *Command) Run(args []string) (retCode int) {
 func (c *Command) getWsConn(
 	ctx context.Context,
 	workerAddr string,
-	transport *http.Transport) (*websocket.Conn, error) {
+	transport *http.Transport,
+) (*websocket.Conn, error) {
 	conn, resp, err := websocket.Dial(
 		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
@@ -718,7 +726,8 @@ func (c *Command) getWsConn(
 func (c *Command) sendSessionTeardown(
 	ctx context.Context,
 	wsConn *websocket.Conn,
-	tofuToken string) error {
+	tofuToken string,
+) error {
 	handshake := proxy.ClientHandshake{
 		TofuToken: tofuToken,
 		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
@@ -733,7 +742,8 @@ func (c *Command) sendSessionTeardown(
 func (c *Command) runTcpProxyV1(
 	wsConn *websocket.Conn,
 	listeningConn *net.TCPConn,
-	tofuToken string) error {
+	tofuToken string,
+) error {
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
 	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)

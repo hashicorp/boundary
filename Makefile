@@ -28,6 +28,10 @@ tools:
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
+
 .PHONY: dev
 dev:
 	@echo "This command has changed. Please use:"
