@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
-	controllerMetrics "github.com/hashicorp/boundary/internal/servers/controller/metrics"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -263,7 +262,6 @@ func (c *Command) Run(args []string) int {
 		}
 		c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
 		c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
-		controllerMetrics.RegisterMetrics(c.Server.MetricRegistry)
 	}
 
 	if c.Config.Worker != nil {

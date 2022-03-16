@@ -145,14 +145,47 @@ type controllerMetrics interface {
 	Register(prometheus.Registerer)
 }
 
+// HttpRequestLatency provides an observer to the http_request_latency metric
+// which can be used to record measurements.
+// Expected usage:
+// http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// ...
+// statusCode := ... get status code
+// var latency float64 := ... calculate latency
+// metrics.HttpRequestLatency(metrics.StatusCode(statusCode), metrics.HttpPath(req.URL.Path),
+//     metrics.HttpMethod(req.Method)).Observe(latency)
+// ...
+// }
 func HttpRequestLatency(c HttpStatusCode, p HttpPath, m HttpMethod) prometheus.Observer {
 	return defaultMetrics.HttpRequestLatency(httpLabels(c, p, m))
 }
 
+// HttpRequestSize provides an observer to the http_request_size_bytes metric
+// which can be used to record measurements.
+// Expected usage:
+// http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// ...
+// statusCode := ... get status code
+// var reqSize float64 := ... calculate size
+// metrics.HttpRequestSize(metrics.StatusCode(statusCode), metrics.HttpPath(req.URL.Path),
+//     metrics.HttpMethod(req.Method)).Observe(reqSize)
+// ...
+// }
 func HttpRequestSize(c HttpStatusCode, p HttpPath, m HttpMethod) prometheus.Observer {
 	return defaultMetrics.HttpRequestSize(httpLabels(c, p, m))
 }
 
+// HttpResponseSize provides an observer to the http_request_size_bytes metric
+// which can be used to record measurements.
+// Expected usage:
+// http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// ...
+// statusCode := ... get status code
+// var respSize float64 := ... calculate size
+// metrics.HttpRequestSize(metrics.StatusCode(statusCode), metrics.HttpPath(req.URL.Path),
+//     metrics.HttpMethod(req.Method)).Observe(respSize)
+// ...
+// }
 func HttpResponseSize(c HttpStatusCode, p HttpPath, m HttpMethod) prometheus.Observer {
 	return defaultMetrics.HttpResponseSize(httpLabels(c, p, m))
 }

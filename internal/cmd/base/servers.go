@@ -39,7 +39,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
-	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -80,8 +79,6 @@ type Server struct {
 	RecoveryKms        wrapping.Wrapper
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
-
-	MetricRegistry *prometheus.Registry
 
 	ReloadFuncsLock *sync.RWMutex
 	ReloadFuncs     map[string][]reloadutil.ReloadFunc
@@ -140,7 +137,6 @@ func NewServer(cmd *Command) *Server {
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
 		StderrLock:         new(sync.Mutex),
-		MetricRegistry:     prometheus.NewRegistry(),
 	}
 }
 

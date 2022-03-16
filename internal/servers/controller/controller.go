@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -27,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/metrics"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -35,6 +35,7 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -82,6 +83,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	metrics.RegisterMetrics(prometheus.DefaultRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),

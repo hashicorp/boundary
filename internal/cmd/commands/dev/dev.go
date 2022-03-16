@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	controllerMetrics "github.com/hashicorp/boundary/internal/servers/controller/metrics"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -597,8 +596,6 @@ func (c *Command) Run(args []string) int {
 	c.ReleaseLogGate()
 
 	{
-		controllerMetrics.RegisterMetrics(c.Server.MetricRegistry)
-
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
 			RawConfig: c.Config,
