@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/structwrapping"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -362,7 +362,7 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 	if jobId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
 	}
-	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
+	pubKey, privKey, err := DeriveED25519Key(ctx, wrapper, userId, jobId)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"crypto/ed25519"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -10,7 +11,7 @@ import (
 
 // DeriveED25519Key generates a key based on the scope's session DEK, the
 // requesting user, and the generated job ID.
-func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+func DeriveED25519Key(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	const op = "session.DeriveED25519Key"
 	var uId, jId []byte
 	if userId != "" {
@@ -23,7 +24,7 @@ func DeriveED25519Key(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.P
 		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
 	}
 
-	reader, err := crypto.NewDerivedReader(wrapper, 32, uId, jId)
+	reader, err := crypto.NewDerivedReader(ctx, wrapper, 32, uId, jId)
 	if err != nil {
 		return nil, nil, errors.WrapDeprecated(err, op)
 	}

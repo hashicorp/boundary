@@ -3,6 +3,17 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
+## 0.7.6 (2022/03/15)
+
+### Bug Fixes
+* sessions: Sessions and session connections have been refactored 
+to better isolate transactions and prevent resource contention that caused deadlocks.
+([Issue](https://github.com/hashicorp/boundary/issues/1812),
+  [PR](https://github.com/hashicorp/boundary/pull/1919))
+* scheduler: Fix bug that causes erroneous logs when racing controllers
+  attempted to run jobs
+  ([Issue](https://github.com/hashicorp/boundary/issues/1903),
+  [PR](https://github.com/hashicorp/boundary/pull/1914)).
 
 ## 0.7.5 (2022/02/17)
 

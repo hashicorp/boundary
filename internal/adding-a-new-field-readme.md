@@ -57,9 +57,4 @@ At this point, the new field is available via Boundary's API.  All that's left i
 
 * Incorporate the new fields to the command's `funcs.go`.  Just a suggestion here: you may want to define a const for the new field name and reuse it everywhere it's required (which is several places)
 
-* Run `make cli` and `make dev`, before attempting to test cli changes
-
-
-
-
-
+* Run `make cli` and `make install`, before attempting to test cli changes

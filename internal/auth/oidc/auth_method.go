@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/structwrapping"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-multierror"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"google.golang.org/protobuf/proto"
