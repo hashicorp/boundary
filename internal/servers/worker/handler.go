@@ -138,6 +138,21 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
+		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
+			_, err := session.Cancel(ctx, sessClient, sessionId)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
+				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+				}
+				return
+			}
+			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil && !errors.Is(err, io.EOF) {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+
 		if tofuToken != "" {
 			if tofuToken != handshake.GetTofuToken() {
 				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
@@ -148,7 +163,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			}
 		} else {
 			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("no tofu token but not in correct session state"))
+				event.WriteError(ctx, op, errors.New("no tofu token but not in correct session state"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusInternalError, "refusing to activate session"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
@@ -164,21 +179,6 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 					return
 				}
 			}
-		}
-
-		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
-			_, err := session.Cancel(ctx, sessClient, sessionId)
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
-				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
-					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-				}
-				return
-			}
-			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil && !errors.Is(err, io.EOF) {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-			}
-			return
 		}
 
 		// Verify the protocol has a supported proxy before calling AuthorizeConnection
