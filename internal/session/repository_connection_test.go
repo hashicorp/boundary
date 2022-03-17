@@ -26,6 +26,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
+	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	session := TestDefaultSession(t, conn, wrapper, iamRepo)
@@ -141,6 +142,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
@@ -351,6 +353,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithWorkerStateDelay(0))
 	require.NoError(err)
 	numConns := 12
@@ -446,6 +449,7 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
 	deadWorkerConnCloseMinGrace := 1 * time.Second
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithDeadWorkerConnCloseMinGrace(deadWorkerConnCloseMinGrace))
 	require.NoError(err)
@@ -725,6 +729,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
