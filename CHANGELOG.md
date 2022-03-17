@@ -3,6 +3,10 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
+### Bug Fixes
+* worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
+with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
+  [PR](https://github.com/hashicorp/boundary/pull/1929))
 ## 0.7.6 (2022/03/15)
 
 ### Bug Fixes
