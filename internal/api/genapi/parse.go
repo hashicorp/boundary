@@ -42,6 +42,11 @@ func parsePBs() {
 		in.generatedStructure.name = string(desc.Name())
 		for i := 0; i < desc.Fields().Len(); i++ {
 			fd := desc.Fields().Get(i)
+			opts := fd.Options().(*descriptorpb.FieldOptions)
+			if subtype := proto.GetExtension(opts, protooptions.E_Subtype).(string); subtype != "" && subtype != "default" {
+				// Skip rendering any fields except the default subtype field.
+				continue
+			}
 			if strutil.StrListContains(in.fieldFilter, string(fd.Name())) {
 				continue
 			}
@@ -55,7 +60,6 @@ func parsePBs() {
 				sliceText = "[]"
 			}
 			// Add generate option info
-			opts := fd.Options().(*descriptorpb.FieldOptions)
 			if proto.GetExtension(opts, protooptions.E_GenerateSdkOption).(bool) {
 				fi.GenerateSdkOption = true
 			}
