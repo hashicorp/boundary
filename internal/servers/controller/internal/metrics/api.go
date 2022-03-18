@@ -7,6 +7,7 @@ package metrics
 import (
 	"fmt"
 	"net/http"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,6 +27,17 @@ var (
 	expectedPathsToMethods map[string][]string
 )
 
+func init() {
+	expectedPathsToMethods = apiPathsAndMethods()
+	pathRegex = make(map[*regexp.Regexp]string)
+	for p := range expectedPathsToMethods {
+		pathRegex[buildRegexFromPath(p)] = p
+	}
+}
+
+// gatherPathInfo populates the provided map with the paths associated with
+// the provided HttpRule proto option as well as the path information contained
+// in any embedded AdditionalBindings in that HttpRule.
 func gatherPathInfo(rule *grpcpb.HttpRule, paths map[string][]string) {
 	switch r := rule.GetPattern().(type) {
 	case *grpcpb.HttpRule_Get:
@@ -62,9 +74,13 @@ func gatherServicePathsAndMethods(fd protoreflect.FileDescriptor, paths map[stri
 	return nil
 }
 
-// TODO: Auto generate the list of file descriptors so new services created
-//  will automatically be covered by the metrics.
+// apiPathsAndMethods provides the pathing information for all services
+// registered to the controller API.  This does not include any paths that are
+// defined outside of the protobufs such as anything using the OPTION method
+// or any other paths registered like the dev UI passthrough path.
 func apiPathsAndMethods() map[string][]string {
+	// TODO: Auto generate the list of file descriptors so new services created
+	//  will automatically be covered by the metrics.
 	fds := []protoreflect.FileDescriptor{
 		services.File_controller_api_services_v1_account_service_proto,
 		services.File_controller_api_services_v1_auth_method_service_proto,
@@ -91,20 +107,22 @@ func apiPathsAndMethods() map[string][]string {
 	return paths
 }
 
-func init() {
-	expectedPathsToMethods = apiPathsAndMethods()
-	pathRegex = make(map[*regexp.Regexp]string)
-	for p := range expectedPathsToMethods {
-		pathRegex[buildRegexFromPath(p)] = p
-	}
-}
-
 func buildRegexFromPath(p string) *regexp.Regexp {
+	// a public id in boundary consists of a some prefix, an underscore and
+	// at least 10 alphanumerical characters like "h_1234567890".
 	const idRegexp = "[[:alnum:]]{1,}_[[:alnum:]]{10,}"
 
-	pWithId := strings.Replace(p, "{id}", idRegexp, 1)
-	escaped := pWithId
-	return regexp.MustCompile(fmt.Sprintf("^%s$", escaped))
+	// Replace any tag in the form of {id} or {auth_method_id} with the above
+	// regex so we can match paths to that when measuring requests.
+	pWithId := string(regexp.MustCompile("\\{[^\\}]*id\\}").ReplaceAll([]byte(p), []byte(idRegexp)))
+
+	// Escape everything except for our id regexp.
+	var seg []string
+	for _, s := range strings.Split(pWithId, idRegexp) {
+		seg = append(seg, regexp.QuoteMeta(s))
+	}
+	escapedPathRegex := strings.Join(seg, idRegexp)
+	return regexp.MustCompile(fmt.Sprintf("^%s$", escapedPathRegex))
 }
 
 const (
@@ -198,6 +216,21 @@ var expectedStatusCodesPerMethod = map[string][]int{
 	},
 }
 
+// pathLabel maps the requested path the the label value recorded for metrics
+func pathLabel(incomingPath string) string {
+	if incomingPath == "" || incomingPath[0] != '/' {
+		incomingPath = fmt.Sprintf("/%s", incomingPath)
+	}
+	incomingPath = path.Clean(incomingPath)
+
+	for r, ep := range pathRegex {
+		if r.Match([]byte(incomingPath)) {
+			return ep
+		}
+	}
+	return invalidPathValue
+}
+
 // ApiMetricHandler provides a metric handler which measures
 // 1. The response size
 // 2. The request size
@@ -206,15 +239,8 @@ var expectedStatusCodesPerMethod = map[string][]int{
 // measurements.
 func ApiMetricHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		p := invalidPathValue
-		for r, ep := range pathRegex {
-			if r.Match([]byte(req.URL.Path)) {
-				p = ep
-				break
-			}
-		}
 		l := prometheus.Labels{
-			labelHttpPath: p,
+			labelHttpPath: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),

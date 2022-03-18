@@ -10,13 +10,116 @@ import (
 )
 
 func TestBuildRegexFromPath(t *testing.T) {
-	p := "/v1/pathsomething/{id}:test-thing"
-	r := buildRegexFromPath(p)
-	assert.True(t, r.Match([]byte("/v1/pathsomething/a4s_aKsdFh723018djsa:test-thing")))
-	assert.False(t, r.Match([]byte("/v1/pathsomething:test-thing")))
-	assert.False(t, r.Match([]byte("/v1/pathsomething/not-an-id:test-thing")))
-	assert.False(t, r.Match([]byte("/v1/pathsomething/a4s_aKsdFh723018djsa:other-thing")))
-	assert.False(t, r.Match([]byte("/v1/pathsomething/a4s_aKsdFh723018djsa:test-thing-suffix")))
+
+	cases := []struct {
+		path  string
+		match []string
+		dont  []string
+	}{
+		{
+			path: "/v1/pathsomething/{id}:test-thing",
+			match: []string{
+				"/v1/pathsomething/a4s_aKsdFh723018djsa:test-thing",
+				"/v1/pathsomething/h_1234567890:test-thing",
+			},
+			dont: []string{
+				"/v1/pathsomething/{id}:test-thing",
+				"/v1/pathsomething/{any_old_id}:test-thing",
+				"/v1/pathsomething:test-thing",
+				"/v1/pathsomething/not-an-id:test-thing",
+				"/v1/pathsomething/a4s_aKsdFh723018djsa:other-thing",
+			},
+		},
+		{
+			path: "/v1/pathsomething/{auth_method_id}:authenticate",
+			match: []string{
+				"/v1/pathsomething/a4s_aKsdFh723018djsa:authenticate",
+				"/v1/pathsomething/am_1234567890:authenticate",
+			},
+			dont: []string{
+				"/v1/pathsomething/{id}:authenticate",
+				"/v1/pathsomething/{auth_method}:authenticate",
+			},
+		},
+		{
+			path: "/v1/pathsomething/{non_id_tag}:test",
+			match: []string{
+				"/v1/pathsomething/{non_id_tag}:test",
+			},
+			dont: []string{
+				"/v1/pathsomething/h_1234567890:test",
+				"/v1/pathsomething/.*:test",
+			},
+		},
+		{
+			path: "/v1/pathsomething/a?",
+			match: []string{
+				"/v1/pathsomething/a?",
+			},
+			dont: []string{
+				"/v1/pathsomething/",
+				"/v1/pathsomething/a",
+				"/v1/pathsomething/aa",
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			r := buildRegexFromPath(tc.path)
+			for _, m := range tc.match {
+				assert.True(t, r.Match([]byte(m)))
+			}
+			for _, d := range tc.dont {
+				assert.False(t, r.Match([]byte(d)))
+			}
+		})
+	}
+}
+
+func TestPathLabel(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{
+			in:   "/v1/accounts",
+			want: "/v1/accounts",
+		},
+		{
+			in:   "v1/accounts",
+			want: "/v1/accounts",
+		},
+		{
+			in:   "/v2/accounts",
+			want: "invalid",
+		},
+		{
+			in:   "/v1/accounts/a_1234567890",
+			want: "/v1/accounts/{id}",
+		},
+		{
+			in:   "v1/accounts/a_1234567890",
+			want: "/v1/accounts/{id}",
+		},
+		{
+			in:   "/v1/accounts/a_1234567890:set-password",
+			want: "/v1/accounts/{id}:set-password",
+		},
+		{
+			in:   "v1/accounts/a_1234567890:set-password",
+			want: "/v1/accounts/{id}:set-password",
+		},
+		{
+			// mistype the custom action
+			in:   "/v1/accounts/a_1234567890:set-passwords",
+			want: "invalid",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			assert.Equal(t, tc.want, pathLabel(tc.in))
+		})
+	}
 }
 
 func TestServicePathsAndMethods(t *testing.T) {
