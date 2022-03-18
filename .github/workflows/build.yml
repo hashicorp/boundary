@@ -79,9 +79,9 @@ jobs:
         id: node-modules-cache
         with:
           path: "internal/ui/.tmp/boundary-ui/node_modules"
-          key: node-modules-${{ hashFiles('internal/ui/.tmp/boundary-ui/yarn.lock') }}
+          key: node-test-modules-${{ hashFiles('internal/ui/.tmp/boundary-ui/yarn.lock') }}
           restore-keys: |
-            node-modules-
+            node-test-modules-
       - uses: actions/setup-node@v2
         with:
           node-version: "16.x"
@@ -134,9 +134,9 @@ jobs:
         id: node-modules-cache
         with:
           path: "internal/ui/.tmp/boundary-ui/node_modules"
-          key: test-modules-${{ hashFiles('internal/ui/.tmp/boundary-ui/yarn.lock') }}
+          key: node-test-modules${{ hashFiles('internal/ui/.tmp/boundary-ui/yarn.lock') }}
           restore-keys: |
-            test-modules-
+            node-test-modules
       # - name: Setup node and yarn
       #   uses: actions/setup-node@v2
       #   with:
