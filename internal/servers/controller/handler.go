@@ -35,6 +35,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metrics"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -72,7 +73,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	return eventsHandler, nil
+	return metrics.ApiMetricHandler(eventsHandler), nil
 }
 
 func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {

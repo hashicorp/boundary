@@ -35,21 +35,14 @@ import (
 // worker is managing the lifecycle of a connection and will properly
 // unclaim it closed once the connection resumes, ensuring the
 // connection is marked as closed on the worker.
-//
-// * controller: Here, the controller is the one doing the work. The
-// connection will be open on the worker until status checks resume
-// from the worker. At this point, the controller will request the
-// status change on the worker, physically closing the connection
-// there.
 type timeoutBurdenType string
 
 const (
-	timeoutBurdenTypeDefault    timeoutBurdenType = "default"
-	timeoutBurdenTypeWorker     timeoutBurdenType = "worker"
-	timeoutBurdenTypeController timeoutBurdenType = "controller"
+	timeoutBurdenTypeDefault timeoutBurdenType = "default"
+	timeoutBurdenTypeWorker  timeoutBurdenType = "worker"
 )
 
-var timeoutBurdenCases = []timeoutBurdenType{timeoutBurdenTypeDefault, timeoutBurdenTypeWorker, timeoutBurdenTypeController}
+var timeoutBurdenCases = []timeoutBurdenType{timeoutBurdenTypeDefault, timeoutBurdenTypeWorker}
 
 func controllerGracePeriod(ty timeoutBurdenType) time.Duration {
 	if ty == timeoutBurdenTypeWorker {
@@ -60,10 +53,6 @@ func controllerGracePeriod(ty timeoutBurdenType) time.Duration {
 }
 
 func workerGracePeriod(ty timeoutBurdenType) time.Duration {
-	if ty == timeoutBurdenTypeController {
-		return helper.DefaultGracePeriod * 10
-	}
-
 	return helper.DefaultGracePeriod
 }
 
@@ -170,30 +159,16 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		case timeoutBurdenTypeWorker:
 			// Wait on worker, then check controller
 			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusConnected)
-
-		case timeoutBurdenTypeController:
-			// Wait on controller, then check worker
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
-			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusConnected)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusConnected)
 
 		default:
 			// Should be closed on both worker and controller. Wait on
 			// worker then check controller.
 			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusClosed)
 		}
 
-		// Run send/receive test again to check expected connection-level
-		// behavior
-		if burdenCase == timeoutBurdenTypeController {
-			// Burden on controller, should be successful until connection
-			// resumes
-			sConn.TestSendRecvAll(t)
-		} else {
-			// Connection should die in other cases
-			sConn.TestSendRecvFail(t)
-		}
+		sConn.TestSendRecvFail(t)
 
 		// Resume the connection, and reconnect.
 		event.WriteSysEvent(ctx, op, "resuming controller/worker link")
@@ -211,13 +186,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			// a connection status, ensure that our old session's
 			// connections are actually closed now that the worker is
 			// properly reporting in again.
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
-
-		case timeoutBurdenTypeController:
-			// If we are expecting the controller to be the source of
-			// truth, the connection should now be forcibly closed after
-			// the worker gets a status change request back.
-			sConn.TestSendRecvFail(t)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusClosed)
 		}
 
 		// Proceed with new connection test
@@ -371,30 +340,18 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		case timeoutBurdenTypeWorker:
 			// Wait on worker, then check controller
 			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusConnected)
-
-		case timeoutBurdenTypeController:
-			// Wait on controller, then check worker
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
-			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusConnected)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusConnected)
 
 		default:
 			// Should be closed on both worker and controller. Wait on
 			// worker then check controller.
 			sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusClosed)
 		}
 
 		// Run send/receive test again to check expected connection-level
 		// behavior
-		if burdenCase == timeoutBurdenTypeController {
-			// Burden on controller, should be successful until connection
-			// resumes
-			sConn.TestSendRecvAll(t)
-		} else {
-			// Connection should die in other cases
-			sConn.TestSendRecvFail(t)
-		}
+		sConn.TestSendRecvFail(t)
 
 		// Finally resume both, try again. Should behave as per normal.
 		event.WriteSysEvent(ctx, op, "resuming connections to both controllers")
@@ -413,13 +370,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			// a connection status, ensure that our old session's
 			// connections are actually closed now that the worker is
 			// properly reporting in again.
-			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().SessionRepoFn, session.StatusClosed)
-
-		case timeoutBurdenTypeController:
-			// If we are expecting the controller to be the source of
-			// truth, the connection should now be forcibly closed after
-			// the worker gets a status change request back.
-			sConn.TestSendRecvFail(t)
+			sess.ExpectConnectionStateOnController(ctx, t, c1.Controller().ConnectionRepoFn, session.StatusClosed)
 		}
 
 		// Proceed with new connection test

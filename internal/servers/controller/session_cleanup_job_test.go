@@ -18,13 +18,17 @@ import (
 )
 
 // assert the interface
-var _ = scheduler.Job(new(sessionCleanupJob))
+var _ = scheduler.Job(new(sessionConnectionCleanupJob))
 
 // This test has been largely adapted from
 // TestRepository_CloseDeadConnectionsOnWorker in
 // internal/session/repository_connection_test.go.
-func TestSessionCleanupJob(t *testing.T) {
+func TestSessionConnectionCleanupJob(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
+
+	const gracePeriod = 1 * time.Second
+
 	require, assert := require.New(t), assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -34,8 +38,9 @@ func TestSessionCleanupJob(t *testing.T) {
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	sessionRepo, err := session.NewRepository(rw, rw, kms)
+	connectionRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithDeadWorkerConnCloseMinGrace(gracePeriod))
 	require.NoError(err)
-	ctx := context.Background()
+
 	numConns := 12
 
 	// Create two "workers". One will remain untouched while the other "goes
@@ -54,7 +59,7 @@ func TestSessionCleanupJob(t *testing.T) {
 		sess := session.TestDefaultSession(t, conn, wrapper, iamRepo, session.WithServerId(serverId), session.WithDbOpts(db.WithSkipVetForWrite(true)))
 		sess, _, err = sessionRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, "worker", []byte("foo"))
 		require.NoError(err)
-		c, cs, _, err := sessionRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
+		c, cs, _, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, sess.GetPublicId(), serverId)
 		require.NoError(err)
 		require.Len(cs, 1)
 		require.Equal(session.StatusAuthorized, cs[0].Status)
@@ -70,7 +75,7 @@ func TestSessionCleanupJob(t *testing.T) {
 	// This is just to ensure we have a spread when we test it out.
 	for i, connId := range connIds {
 		if i%2 == 0 {
-			_, cs, err := sessionRepo.ConnectConnection(ctx, session.ConnectWith{
+			_, cs, err := connectionRepo.ConnectConnection(ctx, session.ConnectWith{
 				ConnectionId:       connId,
 				ClientTcpAddress:   "127.0.0.1",
 				ClientTcpPort:      22,
@@ -95,14 +100,15 @@ func TestSessionCleanupJob(t *testing.T) {
 	}
 
 	// Create the job.
-	job, err := newSessionCleanupJob(
-		func() (*session.Repository, error) { return sessionRepo, nil },
+	job, err := newSessionConnectionCleanupJob(
+		func() (*session.ConnectionRepository, error) { return connectionRepo, nil },
 		session.DeadWorkerConnCloseMinGrace,
 	)
+	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
-	time.Sleep(time.Second * time.Duration(session.DeadWorkerConnCloseMinGrace))
+	time.Sleep(gracePeriod)
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
@@ -119,7 +125,7 @@ func TestSessionCleanupJob(t *testing.T) {
 		require.True(ok)
 		require.Len(connIds, 6)
 		for _, connId := range connIds {
-			_, states, err := sessionRepo.LookupConnection(ctx, connId, nil)
+			_, states, err := connectionRepo.LookupConnection(ctx, connId, nil)
 			require.NoError(err)
 			var foundClosed bool
 			for _, state := range states {
@@ -138,27 +144,27 @@ func TestSessionCleanupJob(t *testing.T) {
 	assertConnections(worker1.PrivateId, false)
 }
 
-func TestSessionCleanupJobNewJobErr(t *testing.T) {
+func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
-	const op = "controller.newNewSessionCleanupJob"
+	const op = "controller.newNewSessionConnectionCleanupJob"
 	require := require.New(t)
 
-	job, err := newSessionCleanupJob(nil, 0)
+	job, err := newSessionConnectionCleanupJob(nil, 0)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
-		errors.WithMsg("missing sessionRepoFn"),
+		errors.WithMsg("missing connectionRepoFn"),
 	))
 	require.Nil(job)
 
-	job, err = newSessionCleanupJob(func() (*session.Repository, error) { return nil, nil }, 0)
+	job, err = newSessionConnectionCleanupJob(func() (*session.ConnectionRepository, error) { return nil, nil }, 0)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
-		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %d", session.DeadWorkerConnCloseMinGrace)),
+		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %s", session.DeadWorkerConnCloseMinGrace)),
 	))
 	require.Nil(job)
 }
