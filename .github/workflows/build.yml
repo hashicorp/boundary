@@ -61,10 +61,27 @@ jobs:
           sha="$(git rev-parse HEAD)"
           echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
 
+  install-ui-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: node-modules-cache
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            node-modules-
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+      - run: yarn install
+
   build-other:
     needs: 
       - get-product-version
       - set-ld-flags
+      - install-ui-dependencies
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -101,19 +118,10 @@ jobs:
           repository: "hashicorp/boundary-ui"
           ref: ${{ steps.set-sha.outputs.sha }}
           path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
       - name: UI Build
+      - uses: actions/setup-node@v2
         working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -136,6 +144,7 @@ jobs:
     needs: 
       - get-product-version
       - set-ld-flags
+      - install-ui-dependencies
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -167,19 +176,10 @@ jobs:
           repository: "hashicorp/boundary-ui"
           ref: ${{ steps.set-sha.outputs.sha }}
           path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
       - name: UI Build
+      - uses: actions/setup-node@v2
         working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -232,6 +232,7 @@ jobs:
     needs: 
       - get-product-version
       - set-ld-flags
+      - install-ui-dependencies
     runs-on: macos-latest
     strategy:
       matrix:
@@ -260,19 +261,10 @@ jobs:
           repository: "hashicorp/boundary-ui"
           ref: ${{ steps.set-sha.outputs.sha }}
           path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
       - name: UI Build
+      - uses: actions/setup-node@v2
         working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
