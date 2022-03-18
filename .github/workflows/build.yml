@@ -148,7 +148,10 @@ jobs:
       #   run: |
       #     npm install -g yarn
 
-      - name: UI Build
+      - uses: actions/setup-node@v2
+        name: UI Build
+        with:
+          node-version: '16.x'
         working-directory: internal/ui/.tmp/boundary-ui
         if: steps.node-modules.outputs.cache-hit != 'true'
         run: yarn build:ui:admin
