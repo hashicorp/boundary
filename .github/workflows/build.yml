@@ -88,11 +88,8 @@ jobs:
           restore-keys: |
             node-modules-
       - uses: actions/setup-node@v2
-        name: Install dependencies
         with:
           node-version: "16.x"
-        working-directory: internal/ui/.tmp/boundary-ui
-        run: yarn install
 
   build-other:
     needs: 
