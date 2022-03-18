@@ -75,6 +75,17 @@ jobs:
       - name: Set sha
         id: set-sha
         run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
+      - name: Checks node modules cache
+        with:
+          path: "internal/ui/.tmp/boundary-ui/node_modules"
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            node-modules-
 
   build-other:
     needs: 
