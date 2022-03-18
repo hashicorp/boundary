@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -11,7 +10,7 @@ import (
 )
 
 func init() {
-	if err := auth.Register(Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
+	if err := subtypes.Register("auth", Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }
