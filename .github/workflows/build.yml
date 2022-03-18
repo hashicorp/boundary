@@ -63,21 +63,18 @@ jobs:
           echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
 
   cache-node-modules:
+  # Setup Git
+  # Set sha
+  # Checkout
+  # cache
+  # install dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v2
-        name: 'Checks cache'
-        id: node-modules-cache
-        with:
-          path: '**/node_modules'
-          key: node-modules-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            node-modules-
-      - uses: actions/setup-node@v2
-        name: Install dependencies
-        with:
-          node-version: '16.x'
-        run: yarn install
+      - name: Setup Git
+        run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
 
   build-other:
     needs: 
