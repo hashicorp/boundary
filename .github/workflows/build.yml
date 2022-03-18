@@ -76,8 +76,8 @@ jobs:
       - name: Install dependencies
         with:
           node-version: '16.x'
-      - run: yarn install
-  
+        run: yarn install
+
   build-other:
     needs: 
       - get-product-version
