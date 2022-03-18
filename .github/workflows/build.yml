@@ -173,6 +173,7 @@ jobs:
     needs: 
       - get-product-version
       - set-ld-flags
+      - cache-node-modules
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -204,20 +205,16 @@ jobs:
           repository: "hashicorp/boundary-ui"
           ref: ${{ steps.set-sha.outputs.sha }}
           path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
+      - uses: actions/cache@v2
+        id: test-modules-cache
         with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
+          path: "internal/ui/.tmp/boundary-ui/node_modules"
+          key: test-modules-${{ hashFiles('internal/ui/.tmp/boundary-ui/yarn.lock') }}
+          restore-keys: |
+            test-modules-
       - name: UI Build
         working-directory: internal/ui/.tmp/boundary-ui
-        run: |
-          yarn install --network-timeout 300000
-          yarn build:ui:admin
+        run: yarn build:ui:admin
       - name: Go Build
         env:
           GOOS: ${{ matrix.goos }}
