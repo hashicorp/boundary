@@ -90,7 +90,9 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: '16.x'
-      - run: ls -la
+        name: Install dependencies
+        working-directory: internal/ui/.tmp/boundary-ui
+        run: yarn install
 
   build-other:
     needs: 
