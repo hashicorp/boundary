@@ -6,6 +6,7 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
+      - 'refactor-ci-ui-dependencies-cache'
 
 env:
   PKG_NAME: "boundary"
@@ -65,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v2
-      - name: 'Checks cache'
+        name: 'Checks cache'
         id: node-modules-cache
         with:
           path: '**/node_modules'
@@ -73,7 +74,7 @@ jobs:
           restore-keys: |
             node-modules-
       - uses: actions/setup-node@v2
-      - name: Install dependencies
+        name: Install dependencies
         with:
           node-version: '16.x'
         run: yarn install
