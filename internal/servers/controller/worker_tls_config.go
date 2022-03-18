@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/servers"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -79,11 +79,11 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	if err != nil {
 		return nil, nil, err
 	}
-	encInfo := new(wrapping.EncryptedBlobInfo)
+	encInfo := new(wrapping.BlobInfo)
 	if err := proto.Unmarshal(marshaledEncInfo, encInfo); err != nil {
 		return nil, nil, err
 	}
-	marshaledInfo, err := c.conf.WorkerAuthKms.Decrypt(context.Background(), encInfo, nil)
+	marshaledInfo, err := c.conf.WorkerAuthKms.Decrypt(context.Background(), encInfo)
 	if err != nil {
 		return nil, nil, err
 	}

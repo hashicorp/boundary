@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
@@ -76,7 +76,11 @@ func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
 		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
-	at.KeyId = cipher.KeyID()
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get cipher key id"))
+	}
+	at.KeyId = keyId
 	return nil
 }
 
@@ -147,7 +151,7 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
-	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
+	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), wrapping.WithAad([]byte(publicId)))
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}

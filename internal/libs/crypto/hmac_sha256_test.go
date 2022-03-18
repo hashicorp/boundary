@@ -9,7 +9,7 @@ import (
 	"io"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,7 +121,7 @@ func Test_HmacSha256(t *testing.T) {
 func testWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, salt, info []byte, opt ...Option) string {
 	t.Helper()
 	require := require.New(t)
-	reader, err := NewDerivedReader(w, 32, salt, info)
+	reader, err := NewDerivedReader(context.Background(), w, 32, salt, info)
 	require.NoError(err)
 	edKey, _, err := ed25519.GenerateKey(reader)
 	require.NoError(err)
@@ -143,7 +143,7 @@ func testWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, salt, info [
 	case opts.withPrk != nil:
 		key = blake2b.Sum256(opts.withPrk)
 	default:
-		reader, err := NewDerivedReader(w, 32, salt, info)
+		reader, err := NewDerivedReader(context.Background(), w, 32, salt, info)
 		require.NoError(err)
 		readerKey := make([]byte, 32)
 		n, err := io.ReadFull(reader, readerKey)

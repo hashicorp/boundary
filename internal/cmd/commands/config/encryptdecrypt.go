@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/textproto"
@@ -8,8 +10,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -142,7 +148,21 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		kmsDefFile = strings.TrimSpace(c.flagConfigKms)
 	}
 
-	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
+		c.Context,
+		kmsDefFile,
+		"config",
+		configutil.WithPluginOptions(
+			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+		),
+		// TODO: How would we want to expose this kind of log to users when
+		// using recovery configs? Generally with normal CLI commands we
+		// don't print out all of these logs. We may want a logger with a
+		// custom writer behind our existing gate where we print nothing
+		// unless there is an error, then dump all of it.
+		configutil.WithLogger(hclog.NewNullLogger()),
+	)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -151,16 +171,25 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		c.UI.Error(`No wrapper with "config" purpose found"`)
 		return base.CommandUserError
 	}
-
-	if err := wrapper.Init(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
-		return base.CommandUserError
+	if cleanupFunc != nil {
+		defer func() {
+			if err := cleanupFunc(); err != nil {
+				c.UI.Warn(fmt.Errorf("Error cleaning up KMS wrapper: %w", err).Error())
+			}
+		}()
 	}
-	defer func() {
-		if err := wrapper.Finalize(c.Context); err != nil {
-			c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
+
+	if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+		if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+			c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
+			return base.CommandUserError
 		}
-	}()
+		defer func() {
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				c.UI.Warn(fmt.Errorf("Error encountered when finalizing KMS: %w", err).Error())
+			}
+		}()
+	}
 
 	d, err := ioutil.ReadFile(c.flagConfig)
 	if err != nil {

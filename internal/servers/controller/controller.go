@@ -34,6 +34,7 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -124,7 +125,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
+		if pluginLogger == nil {
+			pluginLogger, err = event.NewHclogLogger(ctx, c.conf.Server.Eventer)
+			if err != nil {
+				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
+			}
+		}
 		switch enabledPlugin {
 		case base.EnabledPluginHostLoopback:
 			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
@@ -140,9 +148,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+				external_host_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+				),
+				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
@@ -168,6 +179,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := c.kms.AddExternalWrappers(
+		ctx,
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
@@ -185,7 +197,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
 	}
-	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+	if err := c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
 		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {

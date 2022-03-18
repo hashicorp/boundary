@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // CreateAuditKey inserts into the repository and returns the new audit key and
@@ -44,7 +44,10 @@ func createAuditKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 	if len(key) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing key")
 	}
-	rootKeyVersionId := rkvWrapper.KeyID()
+	rootKeyVersionId, err := rkvWrapper.KeyId(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup root key id"))
+	}
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
@@ -53,7 +56,7 @@ func createAuditKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
-	err := r.LookupById(ctx, &rv)
+	err = r.LookupById(ctx, &rv)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
 	}

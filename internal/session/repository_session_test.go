@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -399,11 +399,13 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
 			assert.Equal(ses.States[0].Status, StatusPending)
-			assert.Equal(wrapper.KeyID(), ses.KeyId)
+			keyId, err := wrapper.KeyId(context.Background())
+			require.NoError(err)
+			assert.Equal(keyId, ses.KeyId)
 			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
-			assert.Equal(wrapper.KeyID(), foundSession.KeyId)
+			assert.Equal(keyId, foundSession.KeyId)
 
 			// Account for slight offsets in nanos
 			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)

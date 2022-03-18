@@ -27,16 +27,18 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
@@ -198,7 +200,13 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig, event.WithAuditWrapper(opts.withEventWrapper))
+	e, err := event.NewEventer(
+		logger,
+		serializationLock,
+		serverName,
+		*opts.withEventerConfig,
+		event.WithAuditWrapper(opts.withEventWrapper),
+		event.WithGating(opts.withEventGating))
 	if err != nil {
 		return berrors.WrapDeprecated(err, op, berrors.WithMsg("unable to create eventer"))
 	}
@@ -276,11 +284,15 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	return nil
 }
 
-func (b *Server) ReleaseLogGate() {
+func (b *Server) ReleaseLogGate() error {
 	// Release the log gate.
 	b.Logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
 		Output: b.logOutput,
 	}, b.GatedWriter)
+	if b.Eventer != nil {
+		return b.Eventer.ReleaseGate()
+	}
+	return nil
 }
 
 func (b *Server) StorePidFile(pidPath string) error {
@@ -471,16 +483,20 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
+// SetupKMSes takes in a parsed config, does some minor checking on purposes,
+// and sends each off to configutil to instantiate a wrapper.
+func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
 	sharedConfig := config.SharedConfig
+	var pluginLogger hclog.Logger
+	var err error
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "root", "worker-auth", "config":
-			case "recovery":
+			case globals.KmsPurposeRoot, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig:
+			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
 				}
@@ -488,12 +504,28 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
 
-			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
+			if pluginLogger == nil {
+				pluginLogger, err = event.NewHclogLogger(b.Context, b.Eventer)
+				if err != nil {
+					return fmt.Errorf("Error creating KMS plugin logger: %w", err)
+				}
+			}
 
+			// This can be modified by configutil so store the original value
 			origPurpose := kms.Purpose
 			kms.Purpose = []string{purpose}
-			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
-			kms.Purpose = origPurpose
+
+			wrapper, cleanupFunc, wrapperConfigError := configutil.ConfigureWrapper(
+				ctx,
+				kms,
+				&b.InfoKeys,
+				&b.Info,
+				configutil.WithPluginOptions(
+					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+				),
+				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
+			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
 					"Error parsing KMS configuration: %s", wrapperConfigError)
@@ -502,33 +534,42 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 				return fmt.Errorf(
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
+			if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+				if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+					return fmt.Errorf("Error initializing KMS: %w", err)
+				}
+				// Ensure that the seal finalizer is called, even if using verify-only
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+						return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
+					}
 
+					return nil
+				})
+			}
+			if cleanupFunc != nil {
+				b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+					return cleanupFunc()
+				})
+			}
+
+			kms.Purpose = origPurpose
 			switch purpose {
-			case "root":
+			case globals.KmsPurposeRoot:
 				b.RootKms = wrapper
-			case "worker-auth":
+			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
-			case "recovery":
+			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
-			case "config":
+			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
-
-			// Ensure that the seal finalizer is called, even if using verify-only
-			b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
-				if err := wrapper.Finalize(context.Background()); err != nil {
-					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
-				}
-
-				return nil
-			})
 		}
 	}
 
 	// prepare a secure random reader
-	var err error
 	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, b.RootKms)
 	if err != nil {
 		return err
@@ -585,6 +626,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
