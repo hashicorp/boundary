@@ -42,8 +42,10 @@ func (n CredentialStoreReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type CredentialStoreCreateResult = CredentialStoreReadResult
-type CredentialStoreUpdateResult = CredentialStoreReadResult
+type (
+	CredentialStoreCreateResult = CredentialStoreReadResult
+	CredentialStoreUpdateResult = CredentialStoreReadResult
+)
 
 type CredentialStoreDeleteResult struct {
 	response *api.Response

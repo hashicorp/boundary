@@ -50,8 +50,10 @@ func (n SessionReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type SessionCreateResult = SessionReadResult
-type SessionUpdateResult = SessionReadResult
+type (
+	SessionCreateResult = SessionReadResult
+	SessionUpdateResult = SessionReadResult
+)
 
 type SessionDeleteResult struct {
 	response *api.Response

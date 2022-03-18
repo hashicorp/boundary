@@ -65,11 +65,9 @@ func (c *StaticCommand) Help() string {
 	helpMap := common.HelpMap("host catalog")
 
 	switch c.Func {
-
 	default:
 
 		helpStr = c.extraStaticHelpFunc(helpMap)
-
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -104,7 +102,6 @@ func (c *StaticCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
-
 	}
 
 	c.plural = "static-type host catalog"
@@ -129,13 +126,11 @@ func (c *StaticCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsStaticMap[c.Func], "scope-id") {
 		switch c.Func {
-
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
-
 		}
 	}
 
@@ -174,7 +169,6 @@ func (c *StaticCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
-
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -182,7 +176,6 @@ func (c *StaticCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
-
 	}
 
 	if ok := extraStaticFlagsHandlingFunc(c, f, &opts); !ok {
@@ -224,7 +217,6 @@ func (c *StaticCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
-
 	}
 
 	switch base.Format(c.UI) {
