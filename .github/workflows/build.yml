@@ -80,12 +80,17 @@ jobs:
           repository: "hashicorp/boundary-ui"
           ref: ${{ steps.set-sha.outputs.sha }}
           path: "internal/ui/.tmp/boundary-ui"
-      - name: Checks node modules cache
+      - uses: actions/cache@v2
+        name: Checks node modules cache
         with:
           path: "internal/ui/.tmp/boundary-ui/node_modules"
           key: node-modules-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             node-modules-
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+        run: yarn install
 
   build-other:
     needs: 
