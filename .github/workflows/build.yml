@@ -87,7 +87,7 @@ jobs:
           node-version: "16.x"
       - name: Install dependencies
         working-directory: internal/ui/.tmp/boundary-ui
-        run: ls -la
+        run: yarn install
 
   build-other:
     needs: 
@@ -151,24 +151,24 @@ jobs:
           node-version: '16.x'
       - name: UI Build
         working-directory: internal/ui/.tmp/boundary-ui
-        if: steps.node-modules.outputs.cache-hit != 'true'
+        # if: steps.node-modules.outputs.cache-hit != 'true'
         run: yarn build:ui:admin
-      - name: Go Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir -p dist out
-          unset GOPATH;
-          # Build plugins
-          sh ./scripts/plugins.sh
-          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+      # - name: Go Build
+      #   env:
+      #     GOOS: ${{ matrix.goos }}
+      #     GOARCH: ${{ matrix.goarch }}
+      #     CGO_ENABLED: 0
+      #   run: |
+      #     mkdir -p dist out
+      #     unset GOPATH;
+      #     # Build plugins
+      #     sh ./scripts/plugins.sh
+      #     go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
+      #     zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+      #     path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   # build-linux:
   #   needs: 
