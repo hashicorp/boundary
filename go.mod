@@ -12,7 +12,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.3.0
-	github.com/godbus/dbus/v5 v5.0.6 // indirect
+	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
@@ -68,7 +68,7 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/zalando/go-keyring v0.2.0
+	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000
 	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
@@ -96,7 +96,6 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
-	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
