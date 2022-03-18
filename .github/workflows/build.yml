@@ -87,10 +87,10 @@ jobs:
           key: node-modules-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             node-modules-
-      - uses: actions/setup-node@v2
+      - name: Install dependencies
+        uses: actions/setup-node@v2
         with:
-          node-version: '16.x'
-        name: Install dependencies
+          node-version: "16.x"
         working-directory: internal/ui/.tmp/boundary-ui
         run: yarn install
 
