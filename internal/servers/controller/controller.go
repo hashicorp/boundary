@@ -35,7 +35,6 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -84,7 +83,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
-	metrics.RegisterMetrics(prometheus.DefaultRegisterer)
+	metrics.InitializeApiMetrics()
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),

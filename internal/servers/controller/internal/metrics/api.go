@@ -255,10 +255,10 @@ func ApiMetricHandler(wrapped http.Handler) http.Handler {
 	})
 }
 
-// RegisterMetrics registers the controller metrics and initializes them to 0
-// for all possible label combinations.
-func RegisterMetrics(r prometheus.Registerer) {
-	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
+// InitializeApiMetrics registers the api metrics to the default prometheus
+// register and initializes them to 0 for all possible label combinations.
+func InitializeApiMetrics() {
+	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
 	for p, methods := range expectedPathsToMethods {
 		for _, m := range methods {
