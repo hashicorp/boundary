@@ -18,6 +18,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metrics"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )
@@ -117,6 +118,7 @@ func (c *Controller) startListeners(ctx context.Context) error {
 			grpc.MaxSendMsgSize(math.MaxInt32),
 			grpc.UnaryInterceptor(
 				grpc_middleware.ChainUnaryServer(
+					metrics.ClusterInterceptor(),
 					workerReqInterceptor,
 					auditRequestInterceptor(ctx),  // before we get started, audit the request
 					auditResponseInterceptor(ctx), // as we finish, audit the response
@@ -127,6 +129,7 @@ func (c *Controller) startListeners(ctx context.Context) error {
 			c.workerStatusUpdateTimes, c.kms)
 		pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 		pbs.RegisterSessionServiceServer(workerServer, workerService)
+		metrics.InitializeClusterMetrics(workerServer)
 
 		interceptor := newInterceptingListener(c, l)
 		ln.ALPNListener = interceptor
