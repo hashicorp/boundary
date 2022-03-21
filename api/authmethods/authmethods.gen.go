@@ -43,8 +43,10 @@ func (n AuthMethodReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type AuthMethodCreateResult = AuthMethodReadResult
-type AuthMethodUpdateResult = AuthMethodReadResult
+type (
+	AuthMethodCreateResult = AuthMethodReadResult
+	AuthMethodUpdateResult = AuthMethodReadResult
+)
 
 type AuthMethodDeleteResult struct {
 	response *api.Response

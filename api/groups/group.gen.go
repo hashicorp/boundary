@@ -41,8 +41,10 @@ func (n GroupReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type GroupCreateResult = GroupReadResult
-type GroupUpdateResult = GroupReadResult
+type (
+	GroupCreateResult = GroupReadResult
+	GroupUpdateResult = GroupReadResult
+)
 
 type GroupDeleteResult struct {
 	response *api.Response

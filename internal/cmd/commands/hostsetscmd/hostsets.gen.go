@@ -144,13 +144,11 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "host-catalog-id") {
 		switch c.Func {
-
 		case "list":
 			if c.FlagHostCatalogId == "" {
 				c.PrintCliError(errors.New("HostCatalog ID must be passed in via -host-catalog-id or BOUNDARY_HOST_CATALOG_ID"))
 				return base.CommandUserError
 			}
-
 		}
 	}
 

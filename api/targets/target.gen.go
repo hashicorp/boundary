@@ -54,8 +54,10 @@ func (n TargetReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type TargetCreateResult = TargetReadResult
-type TargetUpdateResult = TargetReadResult
+type (
+	TargetCreateResult = TargetReadResult
+	TargetUpdateResult = TargetReadResult
+)
 
 type TargetDeleteResult struct {
 	response *api.Response

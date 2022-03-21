@@ -142,13 +142,11 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "credential-store-id") {
 		switch c.Func {
-
 		case "list":
 			if c.FlagCredentialStoreId == "" {
 				c.PrintCliError(errors.New("CredentialStore ID must be passed in via -credential-store-id or BOUNDARY_CREDENTIAL_STORE_ID"))
 				return base.CommandUserError
 			}
-
 		}
 	}
 

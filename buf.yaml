@@ -19,7 +19,7 @@ lint:
       - controller/api/view/v1/view.proto
     FIELD_LOWER_SNAKE_CASE:
       - controller/api/v1/error.proto
-      - controller/custom_options/v1/testing.proto
+      - testing/options/v1/mask_mapping.proto
 breaking:
   use:
     - WIRE_JSON
