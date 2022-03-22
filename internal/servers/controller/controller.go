@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -52,14 +51,15 @@ type Controller struct {
 
 	workerAuthCache *sync.Map
 
+	apiListeners    []*base.ServerListener
+	clusterListener *base.ServerListener
+
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
-	// grpc gateway server
-	gatewayServer   *grpc.Server
-	gatewayTicket   string
-	gatewayListener gatewayListener
-	gatewayMux      *runtime.ServeMux
+	apiGrpcServer         *grpc.Server
+	apiGrpcServerListener grpcServerListener
+	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
 	AuthTokenRepoFn       common.AuthTokenRepoFactory
@@ -124,6 +124,32 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				err)
 		}
 	}
+
+	clusterListeners := make([]*base.ServerListener, 0)
+	for i := range conf.Listeners {
+		l := conf.Listeners[i]
+		if l == nil || l.Config == nil || l.Config.Purpose == nil {
+			continue
+		}
+		if len(l.Config.Purpose) != 1 {
+			return nil, fmt.Errorf("found listener with multiple purposes %q", strings.Join(l.Config.Purpose, ","))
+		}
+		switch l.Config.Purpose[0] {
+		case "api":
+			c.apiListeners = append(c.apiListeners, l)
+		case "cluster":
+			clusterListeners = append(clusterListeners, l)
+		}
+	}
+	if len(c.apiListeners) == 0 {
+		return nil, fmt.Errorf("no api listeners found")
+	}
+	if len(clusterListeners) != 1 {
+		// in the future, we might pick the cluster that is exposed to the outside
+		// instead of limiting it to one.
+		return nil, fmt.Errorf("exactly one cluster listener is required")
+	}
+	c.clusterListener = clusterListeners[0]
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
@@ -264,7 +290,7 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.startListeners(c.baseContext); err != nil {
+	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
