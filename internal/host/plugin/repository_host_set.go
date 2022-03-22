@@ -394,28 +394,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 			}
 
 			switch endpointOp {
-			case endpointOpDelete:
-				// Delete all old endpoint entries.
-				var peps []interface{}
-				for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
-					p := host.AllocPreferredEndpoint()
-					p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
-					peps = append(peps, p)
-				}
-				deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
-				_, err := w.DeleteItems(ctx, peps, db.NewOplogMsgs(&deleteOplogMsgs))
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-
-				// Only append the oplog message if an operation was actually
-				// performed.
-				if len(deleteOplogMsgs) > 0 {
-					preferredEndpointsUpdated = true
-					msgs = append(msgs, deleteOplogMsgs...)
-				}
-
-			case endpointOpUpdate:
+			case endpointOpDelete, endpointOpUpdate:
 				if len(currentSet.PreferredEndpoints) > 0 {
 					// Delete all old endpoint entries.
 					var peps []interface{}
@@ -425,18 +404,18 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 						peps = append(peps, p)
 					}
 					deleteOplogMsgs := make([]*oplog.Message, 0, len(peps))
-					_, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs))
-					if err != nil {
+					if _, err := w.DeleteItems(ctx, peps, db.WithDebug(true), db.NewOplogMsgs(&deleteOplogMsgs)); err != nil {
 						return errors.Wrap(ctx, err, op)
 					}
-
 					// Only append the oplog message if an operation was actually
 					// performed.
 					if len(deleteOplogMsgs) > 0 {
+						preferredEndpointsUpdated = true
 						msgs = append(msgs, deleteOplogMsgs...)
 					}
 				}
-
+			}
+			if endpointOp == endpointOpUpdate {
 				// Create the new entries.
 				peCreateOplogMsgs := make([]*oplog.Message, 0, len(preferredEndpoints))
 				if err := w.CreateItems(ctx, preferredEndpoints, db.NewOplogMsgs(&peCreateOplogMsgs)); err != nil {
@@ -816,7 +795,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 				opts = append(opts, endpoint.WithIpAddrs(h.GetIpAddresses()))
 			}
 			if len(h.GetDnsNames()) > 0 {
-				opts = append(opts, endpoint.WithIpAddrs(h.GetDnsNames()))
+				opts = append(opts, endpoint.WithDnsNames(h.GetDnsNames()))
 			}
 			addr, err := pref.Choose(ctx, opts...)
 			if err != nil {

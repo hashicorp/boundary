@@ -130,6 +130,19 @@ module.exports = [
     permanent: false,
   },
 
+  {
+    source: '/help/admin-ui/dynamic-host-catalogs-on-aws',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs',
+    permanent: false,
+  },
+
+  {
+    source: '/help/admin-ui/dynamic-host-catalogs-on-azure',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs',
+    permanent: false,
+  },
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource
   ////////////////////////////////////////////

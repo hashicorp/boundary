@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/session"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -26,7 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/require"
@@ -110,6 +112,14 @@ func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
 
 func (tc *TestController) ServersRepo() *servers.Repository {
 	repo, err := tc.c.ServersRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) ConnectionsRepo() *session.ConnectionRepository {
+	repo, err := tc.c.ConnectionRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)
 	}
@@ -552,7 +562,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		tc.b.RootKms = opts.RootKms
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
 	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(nil, opts.Config); err != nil {
+		if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
 		}
 	default:

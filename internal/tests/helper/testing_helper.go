@@ -168,7 +168,7 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 func (s *TestSession) ExpectConnectionStateOnController(
 	ctx context.Context,
 	t *testing.T,
-	sessionRepoFn common.SessionRepoFactory,
+	connectionRepoFn common.ConnectionRepoFactory,
 	expectState session.ConnectionStatus,
 ) {
 	t.Helper()
@@ -181,10 +181,10 @@ func (s *TestSession) ExpectConnectionStateOnController(
 	// This is just for initialization of the actual state set.
 	const sessionStatusUnknown session.ConnectionStatus = "unknown"
 
-	sessionRepo, err := sessionRepoFn()
+	connectionRepo, err := connectionRepoFn()
 	require.NoError(err)
 
-	conns, err := sessionRepo.ListConnectionsBySessionId(ctx, s.sessionId)
+	conns, err := connectionRepo.ListConnectionsBySessionId(ctx, s.sessionId)
 	require.NoError(err)
 	// To avoid misleading passing tests, we require this test be used
 	// with sessions with connections..
@@ -208,7 +208,7 @@ func (s *TestSession) ExpectConnectionStateOnController(
 		}
 
 		for i, conn := range conns {
-			_, states, err := sessionRepo.LookupConnection(ctx, conn.PublicId, nil)
+			_, states, err := connectionRepo.LookupConnection(ctx, conn.PublicId, nil)
 			require.NoError(err)
 			// Look at the first state in the returned list, which will
 			// be the most recent state.

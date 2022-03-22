@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/libs/crypto"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 type signer func(context.Context, []byte) (string, error)

@@ -593,14 +593,6 @@ group by session_id, status;
 	assert.Equal(1, count)
 	assertCreds(cc)
 
-	// call TerminateSession
-	id = sessionIds[1]
-	_, err = sessionRepo.TerminateSession(ctx, id, 1, session.ClosedByUser)
-	assert.NoError(err)
-	cc[id].revoke = cc[id].active
-	cc[id].active = 0
-	assertCreds(cc)
-
 	count, err = sessionRepo.TerminateCompletedSessions(ctx)
 	assert.NoError(err)
 	assert.Zero(count)

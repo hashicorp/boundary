@@ -3,12 +3,44 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
+### Bug Fixes
+* worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
+with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
+  [PR](https://github.com/hashicorp/boundary/pull/1929))
+## 0.7.6 (2022/03/15)
+
+### Bug Fixes
+* sessions: Sessions and session connections have been refactored 
+to better isolate transactions and prevent resource contention that caused deadlocks.
+([Issue](https://github.com/hashicorp/boundary/issues/1812),
+  [PR](https://github.com/hashicorp/boundary/pull/1919))
+* scheduler: Fix bug that causes erroneous logs when racing controllers
+  attempted to run jobs
+  ([Issue](https://github.com/hashicorp/boundary/issues/1903),
+  [PR](https://github.com/hashicorp/boundary/pull/1914)).
+
+## 0.7.5 (2022/02/17)
 
 ### New and Improved
 
 * cli: Update authentication examples to remove password flag and make
   subcommend selection a bit clearer
   ([PR](https://github.com/hashicorp/boundary/pull/1835))
+* Data Warehouse: Add addresses on plugin based hosts to the database warehouse.
+  3 new dimension tables have been added including `wh_network_address_group`
+  (which is now referenced by `wh_host_dimension`),
+  `wh_network_address_dimension`, and `wh_network_address_group_membership`.
+  ([PR](https://github.com/hashicorp/boundary/pull/1855))
+* ui: Add support for dynamic host catalog. AWS and Azure plugin-based CRUD operations.
+
+### Bug Fixes
+* targets: Specifying a plugin based host id when authorizing a session
+  now works. ([PR](https://github.com/hashicorp/boundary/pull/1853))
+* targets: DNS names are now properly parsed when selecting an endpoint
+  for authorizing a session.
+  ([PR](https://github.com/hashicorp/boundary/pull/1849))
+* hosts: Static hosts now include the host sets they are in.
+  ([PR](https://github.com/hashicorp/boundary/pull/1828))
 
 ## 0.7.4 (2022/01/18)
 

@@ -1,18 +1,23 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -32,7 +37,10 @@ type MigrateCommand struct {
 
 	Config *config.Config
 
-	configWrapper wrapping.Wrapper
+	// This will be intialized, if needed, in ParseFlagsAndConfig when
+	// instantiating a config wrapper, if requested. It's then called as a
+	// deferred function on the Run method.
+	configWrapperCleanupFunc func() error
 
 	flagConfig             string
 	flagConfigKms          string
@@ -123,20 +131,57 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return result
 	}
 
-	if c.configWrapper != nil {
+	if c.configWrapperCleanupFunc != nil {
 		defer func() {
-			if err := c.configWrapper.Finalize(c.Context); err != nil {
-				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
+			if err := c.configWrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error finalizing config kms: %w", err))
 			}
 		}()
+	}
+
+	dialect := "postgres"
+
+	c.srv = base.NewServer(&base.Command{UI: c.UI})
+
+	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-migrate"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
+	}
+	if err := c.srv.SetupEventing(
+		c.srv.Logger,
+		c.srv.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+
+	pluginLogger, err := event.NewHclogLogger(c.Context, c.srv.Eventer)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating host catalog plugin logger: %v", err))
+		return base.CommandCliError
 	}
 
 	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
 		c.Context,
 		"aws",
-		external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-		external_host_plugins.WithHostPluginExecutionDir(c.Config.Plugins.ExecutionDir),
-		external_host_plugins.WithLogger(hclog.NewNullLogger()))
+		external_host_plugins.WithPluginOptions(
+			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
+			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+		),
+		external_host_plugins.WithLogger(pluginLogger.Named("aws")),
+	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())
 		c.UI.Warn(base.WrapAtLength(
@@ -165,30 +210,6 @@ plugins {
 	}
 	if err := awsCleanup(); err != nil {
 		c.UI.Error(fmt.Errorf("Error running plugin cleanup function: %w", err).Error())
-		return base.CommandCliError
-	}
-
-	dialect := "postgres"
-
-	c.srv = base.NewServer(&base.Command{UI: c.UI})
-
-	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
-	}
-	var serverName string
-	switch {
-	case c.Config.Controller == nil:
-		serverName = "boundary-database-migrate"
-	default:
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
-	}
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
-		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
 
@@ -267,16 +288,41 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	if c.flagConfigKms != "" {
 		wrapperPath = c.flagConfigKms
 	}
-	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
+	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
+		c.Context,
+		wrapperPath,
+		"config",
+		configutil.WithPluginOptions(
+			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+		),
+		// TODO: How would we want to expose this kind of log to users when
+		// using recovery configs? Generally with normal CLI commands we
+		// don't print out all of these logs. We may want a logger with a
+		// custom writer behind our existing gate where we print nothing
+		// unless there is an error, then dump all of it.
+		configutil.WithLogger(hclog.NewNullLogger()),
+	)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
 	if wrapper != nil {
-		c.configWrapper = wrapper
-		if err := wrapper.Init(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return base.CommandUserError
+		c.configWrapperCleanupFunc = cleanupFunc
+		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
+				return base.CommandUserError
+			}
+			c.configWrapperCleanupFunc = func() error {
+				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+					c.UI.Warn(fmt.Errorf("Could not finalize kms: %w", err).Error())
+				}
+				if cleanupFunc != nil {
+					return cleanupFunc()
+				}
+				return nil
+			}
 		}
 	}
 

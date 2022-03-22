@@ -1,0 +1,13 @@
+executor: go-machine-medium
+steps:
+- checkout
+- install-go
+- install-protobuf
+- run:
+    name: "Check make gen deltas"
+    command: |
+      make gen
+      echo "Testing git diffs..."
+      git diff --exit-code
+      git status --porcelain
+      test -z "$(git status --porcelain)"

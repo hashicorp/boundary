@@ -5,8 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -73,7 +73,11 @@ func (c *HostCatalogSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper
 	if err := structwrapping.WrapStruct(ctx, cipher, c.HostCatalogSecret, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	c.KeyId = cipher.KeyID()
+	var err error
+	c.KeyId, err = cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to discover wrapper key id"))
+	}
 	c.Secret = nil
 	return nil
 }

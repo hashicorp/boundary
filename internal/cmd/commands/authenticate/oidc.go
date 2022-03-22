@@ -79,12 +79,19 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
-	aClient := authmethods.NewClient(client)
 
+	aClient := authmethods.NewClient(client)
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "start", nil)
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {

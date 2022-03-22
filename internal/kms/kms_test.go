@@ -28,7 +28,7 @@ func TestKms_KeyId(t *testing.T) {
 	// Get the global scope's root wrapper
 	kmsCache, err := NewKms(repo)
 	require.NoError(err)
-	require.NoError(kmsCache.AddExternalWrappers(WithRootWrapper(extWrapper)))
+	require.NoError(kmsCache.AddExternalWrappers(ctx, WithRootWrapper(extWrapper)))
 	globalRootWrapper, _, err := kmsCache.loadRoot(ctx, scope.Global.String())
 	require.NoError(err)
 
@@ -52,15 +52,21 @@ func TestKms_KeyId(t *testing.T) {
 	// First test: just getting the key should return the latest
 	wrapper, err := kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase)
 	require.NoError(err)
-	require.Equal(keyId2, wrapper.KeyID())
+	tKeyId, err := wrapper.KeyId(context.Background())
+	require.NoError(err)
+	require.Equal(keyId2, tKeyId)
 
 	// Second: ask for each in turn
 	wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId(keyId1))
 	require.NoError(err)
-	require.Equal(keyId1, wrapper.KeyID())
+	tKeyId, err = wrapper.KeyId(context.Background())
+	require.NoError(err)
+	require.Equal(keyId1, tKeyId)
 	wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId(keyId2))
 	require.NoError(err)
-	require.Equal(keyId2, wrapper.KeyID())
+	tKeyId, err = wrapper.KeyId(context.Background())
+	require.NoError(err)
+	require.Equal(keyId2, tKeyId)
 
 	// Last: verify something bogus finds nothing
 	_, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId("foo"))

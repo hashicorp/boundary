@@ -119,7 +119,7 @@ main
 /pkg/
 /bin/
 update-ui-assets*
-/plugins/kms/assets/
+/plugins/kms/assets/boundary-plugin*
 /plugins/host/assets/boundary-plugin*
 
 # Test config file

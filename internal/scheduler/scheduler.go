@@ -89,8 +89,8 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 	}
 
 	opts := getOpts(opt...)
-	_, err = repo.CreateJob(ctx, j.Name(), j.Description(), job.WithNextRunIn(opts.withNextRunIn))
-	if err != nil && !errors.IsUniqueError(err) {
+	_, err = repo.UpsertJob(ctx, j.Name(), j.Description(), job.WithNextRunIn(opts.withNextRunIn))
+	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	s.registeredJobs.Store(j.Name(), j)

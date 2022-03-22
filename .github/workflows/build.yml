@@ -93,24 +93,27 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Setup Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
           npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -118,7 +121,10 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir dist out
+          mkdir -p dist out
+          unset GOPATH;
+          # Build plugins
+          sh ./scripts/plugins.sh
           go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
@@ -153,24 +159,27 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
           npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -178,7 +187,10 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir dist out
+          mkdir -p dist out
+          unset GOPATH;
+          # Build plugins
+          sh ./scripts/plugins.sh
           go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
           zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
       - uses: actions/upload-artifact@v2
@@ -240,24 +252,27 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
+      - name: Set sha
+        id: set-sha
+        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+      - uses: actions/checkout@v2
+        with:
+          repository: "hashicorp/boundary-ui"
+          ref: ${{ steps.set-sha.outputs.sha }}
+          path: "internal/ui/.tmp/boundary-ui"
       - name: Setup node and yarn
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-          cache-dependency-path: 'ui/yarn.lock'
+          cache: 'yarn'
+          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
       - name: Install Yarn
         run: |
-          npm install -g yarn          
+          npm install -g yarn
       - name: UI Build
+        working-directory: internal/ui/.tmp/boundary-ui
         run: |
-          SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-          DIR=internal/ui/.tmp/boundary-ui
-          mkdir -p "$(dirname "$DIR")"
-          git clone https://github.com/hashicorp/boundary-ui "$DIR"
-          cd "$DIR"
-          git fetch origin "$SHA"
-          git checkout "$SHA"
-          yarn install
+          yarn install --network-timeout 300000
           yarn build:ui:admin
       - name: Go Build
         env:
@@ -290,23 +305,16 @@ jobs:
       version: ${{ needs.get-product-version.outputs.product-version }}
     steps:
       - uses: actions/checkout@v2
-      - name: Login to Artifactory
-        uses: docker/login-action@v1
-        with:
-          registry: docker.artifactory.hashicorp.engineering
-          username: ${{ secrets.ARTIFACTORY_RO_USER }}
-          password: ${{ secrets.ARTIFACTORY_RO_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-        with:
-          image: docker.artifactory.hashicorp.engineering/prodsec-binfmt:latest
+      - name: Replace + in version
+        run: |
+          echo "dockerversion=$(echo ${{ needs.get-product-version.outputs.product-version }} | sed 's/+ent/-ent/g')" >> $GITHUB_ENV
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
-          version: ${{ env.version }}
+          version: ${{ env.dockerversion }}
           target: default
           arch: ${{ matrix.arch }}
           zip_artifact_name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_linux_${{ matrix.arch }}.zip
           tags: |
-            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
-            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
+            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}

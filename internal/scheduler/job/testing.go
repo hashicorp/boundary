@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func testJob(t *testing.T, conn *db.DB, name, description string, wrapper wrappi
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), name, description, opt...)
+	job, err := repo.UpsertJob(context.Background(), name, description, opt...)
 	require.NoError(err)
 	require.NotNil(job)
 
@@ -36,6 +36,8 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 			job_plugin_id, job_name, server_id
 		)
 		values (?,?,?)
+		on conflict (job_plugin_id, job_name) where status = 'running'
+	    do nothing
 		returning *;
 	`
 	rw := db.New(conn)
@@ -46,7 +48,7 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 		return nil, err
 	}
 	if !rows.Next() {
-		return nil, fmt.Errorf("expected to rows")
+		return nil, nil
 	}
 
 	err = rw.ScanRows(ctx, rows, run)

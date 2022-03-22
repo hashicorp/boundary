@@ -25,6 +25,7 @@ func TestJobRun_ImmutableFields(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	oriRun, err := testRun(conn, job.PluginId, job.Name, server.PrivateId)
 	require.NoError(t, err)
+	require.NotNil(t, oriRun)
 
 	tests := []struct {
 		name      string

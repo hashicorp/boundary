@@ -49,6 +49,47 @@ jobs:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=11-alpine
         name: Run SQL PgTap Tests
+  make-gen-deltas:
+    machine:
+      image: ubuntu-2004:202111-01
+    resource_class: medium
+    working_directory: ~/boundary
+    steps:
+    - checkout
+    - run:
+        command: |
+          make install-go
+          source ~/.bashrc
+          echo 'export GOROOT=$GOROOT' >> "$BASH_ENV"
+          echo 'export GOPATH=$GOPATH' >> "$BASH_ENV"
+          echo 'export PATH=$PATH' >> "$BASH_ENV"
+          echo "$ go version"
+          go version
+        name: Install go
+    - run:
+        command: |-
+          make tools
+
+          VERSION="3.17.3"
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          ARCH="$(uname -m)"
+          PACKAGE_NAME=protoc-$VERSION-linux-$ARCH.zip
+          curl -LO $PB_REL/download/v$VERSION/$PACKAGE_NAME
+          unzip $PACKAGE_NAME -d $HOME/.local
+          rm $PACKAGE_NAME
+
+          echo 'export PATH=$HOME/.local/bin:$PATH' >> "$BASH_ENV"
+          echo "$ protoc --version"
+          protoc --version
+        name: Install protobuf
+    - run:
+        command: |-
+          make gen
+          echo "Testing git diffs..."
+          git diff --exit-code
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+        name: Check make gen deltas
   test-sdk:
     machine:
       image: ubuntu-2004:202111-01
@@ -274,6 +315,7 @@ workflows:
     - test-sql-11-alpine
     - test-sql-12-alpine
     - test-sql-13-alpine
+    - make-gen-deltas
   trigger-merge-to-ent:
     jobs:
     - trigger-merge-to-ent:
@@ -299,6 +341,26 @@ workflows:
 #                     echo \"$ go version\"
 #                     go version
 #                 name: Install go
+#     install-protobuf:
+#         description: |
+#             Ensure protobuf is installed
+#         steps:
+#             - run:
+#                 command: |-
+#                     make tools
+# 
+#                     VERSION=\"3.17.3\"
+#                     PB_REL=\"https://github.com/protocolbuffers/protobuf/releases\"
+#                     ARCH=\"$(uname -m)\"
+#                     PACKAGE_NAME=protoc-$VERSION-linux-$ARCH.zip
+#                     curl -LO $PB_REL/download/v$VERSION/$PACKAGE_NAME
+#                     unzip $PACKAGE_NAME -d $HOME/.local
+#                     rm $PACKAGE_NAME
+# 
+#                     echo 'export PATH=$HOME/.local/bin:$PATH' >> \"$BASH_ENV\"
+#                     echo \"$ protoc --version\"
+#                     protoc --version
+#                 name: Install protobuf
 # executors:
 #     go-machine:
 #         machine:
@@ -347,6 +409,20 @@ workflows:
 #                 fail_only: true
 #                 only_for_branches: master
 #                 webhook: webhook
+#     make-gen-deltas:
+#         executor: go-machine-medium
+#         steps:
+#             - checkout
+#             - install-go
+#             - install-protobuf
+#             - run:
+#                 command: |-
+#                     make gen
+#                     echo \"Testing git diffs...\"
+#                     git diff --exit-code
+#                     git status --porcelain
+#                     test -z \"$(git status --porcelain)\"
+#                 name: Check make gen deltas
 #     test-api:
 #         executor: go-machine-medium
 #         steps:
@@ -408,6 +484,7 @@ workflows:
 #                     branches:
 #                         only:
 #                             - stable-website
+#             - make-gen-deltas
 #     trigger-merge-to-ent:
 #         jobs:
 #             - trigger-merge-to-ent:

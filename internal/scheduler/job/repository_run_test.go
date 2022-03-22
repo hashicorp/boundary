@@ -1094,7 +1094,7 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 
 func TestRepository_DuplicateJobRun(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
@@ -1108,11 +1108,10 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(run)
 
-	// Inserting the same job run should conflict on job name and status
+	// Inserting the same job run should conflict on job name and not create a run
 	run, err = testRun(conn, job1.PluginId, job1.Name, server.PrivateId)
-	require.Error(err)
+	require.Nil(err)
 	require.Nil(run)
-	assert.Contains(err.Error(), "duplicate key value violates unique constraint \"job_run_status_constraint\"")
 
 	// Creating a new job with a different name, the associated run should not conflict with the previous run
 	job2 := testJob(t, conn, "job2", "description", wrapper)
@@ -1135,6 +1134,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	run, err := testRun(conn, job.PluginId, job.Name, server.PrivateId)
 	require.NoError(t, err)
+	require.NotNil(t, run)
 
 	tests := []struct {
 		name        string
@@ -1195,6 +1195,7 @@ func TestRepository_deleteJobRun(t *testing.T) {
 
 	run, err := testRun(conn, job.PluginId, job.Name, server.PrivateId)
 	require.NoError(t, err)
+	require.NotNil(t, run)
 
 	tests := []struct {
 		name        string

@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -236,7 +236,7 @@ func (c *Config) setAddr(addr string) error {
 
 	// If there is a v1 segment, elide everything after it. Do this only for
 	// the last v1 segment in case it's part of the base path.
-	if lastIndex := strings.LastIndex(u.Path, "v1"); lastIndex != -1 {
+	if lastIndex := strings.LastIndex(u.Path, "v1/"); lastIndex != -1 {
 		u.Path = u.Path[:lastIndex]
 	}
 

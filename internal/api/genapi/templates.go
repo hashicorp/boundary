@@ -816,5 +816,8 @@ func removeDups(in []string) []string {
 	for val := range vals {
 		ret = append(ret, val)
 	}
+
+	sort.Strings(ret)
+
 	return ret
 }

@@ -42,7 +42,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -2628,6 +2628,9 @@ func TestAuthorizeSession(t *testing.T) {
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
 	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -2651,11 +2654,13 @@ func TestAuthorizeSession(t *testing.T) {
 						SetIds:      setIds,
 						ExternalId:  "test",
 						IpAddresses: []string{"10.0.0.1", "192.168.0.1"},
+						DnsNames:    []string{"example.com"},
 					},
 					{
 						SetIds:      setIds,
 						ExternalId:  "test2",
 						IpAddresses: []string{"10.1.1.1", "192.168.1.1"},
+						DnsNames:    []string{"another-example.com"},
 					},
 				}}, nil
 			},
@@ -2756,7 +2761,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
 				Worker: &spb.Server{
 					PrivateId: "testworker",
@@ -2775,6 +2780,12 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
 				"the credentials aren't unique per request authorized session")
+
+			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id:     tar.GetPublicId(),
+				HostId: asRes2.GetItem().GetHostId(),
+			})
+			require.NoError(t, err, "session must authorize with explicit host ID")
 
 			wantedHostId := tc.wantedHostId
 			if tc.wantedHostId == "?" {
@@ -2865,6 +2876,9 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -3029,7 +3043,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
 				Worker: &spb.Server{
 					PrivateId: "testworker",
@@ -3118,6 +3132,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
 	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -3157,7 +3174,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
 	workerExists := func(tar target.Target) (version uint32) {
-		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
 			Worker: &spb.Server{
 				PrivateId: "testworker",

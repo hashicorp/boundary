@@ -45,13 +45,13 @@ You can also run individual tests:
 
 ```bash
 # run a single test file
-make TEST=tests/setup/wtt_load.sql
+make TESTS=tests/setup/wtt_load.sql
 
 # run a single test file with the database already created.
-make run-tests TEST=tests/setup/wtt_load.sql
+make run-tests TESTS=tests/setup/wtt_load.sql
 
 # run a directory of tests
-make TEST=tests/setup/*.sql
+make TESTS=tests/setup/*.sql
 ```
 
 You can pass through options to `pg_prove`.
