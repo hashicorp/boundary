@@ -106,28 +106,11 @@ proto: protolint protobuild
 
 .PHONY: protobuild
 protobuild:
-	# To add a new directory containing a proto pass the  proto's root path in
-	# through the --proto_path flag.
-	@bash scripts/protoc_gen_plugin.bash \
-		"--proto_path=internal/proto/local" \
-		"--proto_include_path=internal/proto/third_party" \
-		"--plugin_name=go" \
-		"--plugin_out=${TMP_DIR}"
-	@bash scripts/protoc_gen_plugin.bash \
-		"--proto_path=internal/proto/local" \
-		"--proto_include_path=internal/proto/third_party" \
-		"--plugin_name=go-grpc" \
-		"--plugin_out=${TMP_DIR}"
-	@bash scripts/protoc_gen_plugin.bash \
-		"--proto_path=internal/proto/local/" \
-		"--proto_include_path=internal/proto/third_party" \
-		"--plugin_name=grpc-gateway" \
-		"--plugin_out=logtostderr=true:${TMP_DIR}"
+	@buf generate -o "${TMP_DIR}"
 
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
-	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
@@ -172,8 +155,7 @@ protobuild:
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
-	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=testing:internal/gen/testing/event/. internal/proto/local/testing/event/v1/*.proto
-
+	@buf generate --template buf.testing.gen.yaml --path internal/proto/local/testing/event/v1/
 
 	@rm -R ${TMP_DIR}
 
