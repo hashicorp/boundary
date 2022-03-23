@@ -11,7 +11,7 @@ Once you've figured out that you need an additional field in Boundary's domain m
     * Create a new migration under `internal/db/schema/migrations/oss/postgres`
 
 * Add the new field to the storage protobuf 
-  * storage protobufs are under: `internal/proto/local/controller/storage`
+  * storage protobufs are under: `internal/proto/controller/storage`
 
   * Define a gorm tag for the new field via `@gotags` (`@inject_tag` has been deprecated)
 
@@ -26,7 +26,7 @@ Once you've figured out that you need an additional field in Boundary's domain m
 ## Add new fields to the API/SDK resource protobufs
 Now that the repository supports the new field, you can move on to adding this new field to Boundary's API layer and the generated SDK.  The first step in the process is to add it to the API/SDK protobufs.
 
-* API protobufs are under: `internal/proto/local/controller/api/resources`
+* API protobufs are under: `internal/proto/controller/api/resources`
   
 * Define a `custom_options.v1.mask_mapping` tag for the field which maps the API `this` field to the storage `that` field (yes, it's the opposite of how it's defined for a storage protobuf)
 
