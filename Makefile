@@ -157,7 +157,7 @@ protobuild:
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
-	@buf generate --template buf.testing.gen.yaml --path internal/proto/local/testing/event/v1/
+	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
 
 	@rm -R ${TMP_DIR}
 
