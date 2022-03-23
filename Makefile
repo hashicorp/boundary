@@ -162,7 +162,7 @@ protobuild:
 .PHONY: protolint
 protolint:
 	@buf lint
-	@buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
+	#@buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
 
 .PHONY: website
 # must have nodejs and npm installed
