@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package testing.attribute.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/attribute;attribute";
+
+import "google/protobuf/struct.proto";
+import "controller/custom_options/v1/options.proto";
+
+message TestResource {
+  string id = 1;
+
+  oneof attrs {
+    google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
+    TestSubResourceAttributes sub_resource_attributes = 20 [(controller.custom_options.v1.subtype) = "sub_resource"];
+  }
+}
+
+message TestSubResourceAttributes {
+  string name = 1;
+}
+
+message TestNoAttributes {
+  string id = 1;
+}
