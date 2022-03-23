@@ -4,8 +4,6 @@ syntax = "proto3";
 package controller.storage.plugin.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/plugin/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-
 // This is a typeless plugin.  In practice this should never be used directly.
 // This is included for testing purposes only.
 message Plugin {

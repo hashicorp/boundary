@@ -5,7 +5,6 @@ syntax = "proto3";
 package controller.storage.host.plugin.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/host/plugin/store;store";
 
-import "google/protobuf/struct.proto";
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
 
