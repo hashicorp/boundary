@@ -1,4 +1,8 @@
 version: v1
+name: buf.build/hashicorp/boundary
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
 breaking:
   use:
     - WIRE_JSON
