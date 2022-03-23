@@ -8,7 +8,6 @@ import "google/protobuf/struct.proto";
 
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
 import "controller/api/resources/hostsets/v1/host_set.proto";
-import "controller/api/resources/hosts/v1/host.proto";
 
 // HostPluginService describes the service for host plugins.
 service HostPluginService {
