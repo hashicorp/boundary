@@ -1,0 +1,4 @@
+version: v1
+directories:
+  - internal/proto/local
+  - internal/proto/third_party

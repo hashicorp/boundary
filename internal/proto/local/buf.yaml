@@ -1,0 +1,11 @@
+version: v1
+breaking:
+  use:
+    - WIRE_JSON
+lint:
+  use:
+    - DEFAULT
+  ignore_only:
+    FIELD_LOWER_SNAKE_CASE:
+      - controller/api/v1/error.proto
+      - controller/custom_options/v1/testing.proto
