@@ -1,0 +1,13 @@
+version: v1
+plugins:
+  - name: openapiv2
+    out: ./internal/gen
+    # Necessary for merging services
+    strategy: all
+    opt:
+      - json_names_for_fields=false
+      - disable_default_errors=true
+      - include_package_in_tags=true
+      - fqn_for_openapi_name=true
+      - allow_merge
+      - merge_file_name=controller
