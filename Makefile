@@ -21,7 +21,8 @@ cli:
 .PHONY: tools
 tools:
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.1.1 
+	go install github.com/bufbuild/buf/cmd/buf@v1.1.1
+	go install ./internal/cmd/addattributes
 
 .PHONY: cleangen
 cleangen:
@@ -112,6 +113,7 @@ protobuild:
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
 	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/
+	@addattributes ./internal/gen/controller.swagger.json
 
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
