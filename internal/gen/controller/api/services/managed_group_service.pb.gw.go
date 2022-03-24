@@ -317,12 +317,13 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/GetManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/GetManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ManagedGroupService_GetManagedGroup_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ManagedGroupService_GetManagedGroup_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -340,12 +341,13 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/ListManagedGroups", runtime.WithHTTPPathPattern("/v1/managed-groups"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/ListManagedGroups", runtime.WithHTTPPathPattern("/v1/managed-groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ManagedGroupService_ListManagedGroups_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ManagedGroupService_ListManagedGroups_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -363,12 +365,13 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/CreateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/CreateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ManagedGroupService_CreateManagedGroup_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ManagedGroupService_CreateManagedGroup_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -386,12 +389,13 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/UpdateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/UpdateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ManagedGroupService_UpdateManagedGroup_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ManagedGroupService_UpdateManagedGroup_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -409,12 +413,13 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/DeleteManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/DeleteManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ManagedGroupService_DeleteManagedGroup_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ManagedGroupService_DeleteManagedGroup_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -471,12 +476,13 @@ func RegisterManagedGroupServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/GetManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/GetManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ManagedGroupService_GetManagedGroup_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ManagedGroupService_GetManagedGroup_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -491,12 +497,13 @@ func RegisterManagedGroupServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/ListManagedGroups", runtime.WithHTTPPathPattern("/v1/managed-groups"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/ListManagedGroups", runtime.WithHTTPPathPattern("/v1/managed-groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ManagedGroupService_ListManagedGroups_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ManagedGroupService_ListManagedGroups_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -511,12 +518,13 @@ func RegisterManagedGroupServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/CreateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/CreateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ManagedGroupService_CreateManagedGroup_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ManagedGroupService_CreateManagedGroup_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -531,12 +539,13 @@ func RegisterManagedGroupServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/UpdateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/UpdateManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ManagedGroupService_UpdateManagedGroup_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ManagedGroupService_UpdateManagedGroup_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -551,12 +560,13 @@ func RegisterManagedGroupServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/DeleteManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.ManagedGroupService/DeleteManagedGroup", runtime.WithHTTPPathPattern("/v1/managed-groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ManagedGroupService_DeleteManagedGroup_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ManagedGroupService_DeleteManagedGroup_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
