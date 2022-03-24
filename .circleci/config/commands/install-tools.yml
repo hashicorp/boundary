@@ -1,0 +1,8 @@
+---
+description: >
+  Install tools using the Makefile
+steps:
+  - run:
+      name: "Install tools"
+      command: |
+        make tools

@@ -2,7 +2,7 @@ executor: go-machine-medium
 steps:
 - checkout
 - install-go
-- install-protobuf
+- install-tools
 - run:
     name: "Check make gen deltas"
     command: |
