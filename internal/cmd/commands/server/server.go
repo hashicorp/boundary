@@ -465,7 +465,7 @@ func (c *Command) Run(args []string) int {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
 			if c.controller != nil {
-				if err := c.controller.Shutdown(false); err != nil {
+				if err := c.controller.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 				}
 			}
@@ -601,7 +601,7 @@ func (c *Command) StartController(ctx context.Context) error {
 
 	if err := c.controller.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting controller: %w", err)
-		if err := c.controller.Shutdown(false); err != nil {
+		if err := c.controller.Shutdown(); err != nil {
 			c.UI.Error(retErr.Error())
 			retErr = fmt.Errorf("Error shutting down controller: %w", err)
 		}
@@ -669,7 +669,7 @@ func (c *Command) WaitForInterrupt() int {
 
 			// Do controller shutdown
 			if c.Config.Controller != nil {
-				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
+				if err := c.controller.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 				}
 			}

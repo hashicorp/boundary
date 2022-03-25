@@ -618,7 +618,7 @@ func (c *Command) Run(args []string) int {
 
 		if err := c.controller.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting controller: %w", err)
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(retErr.Error())
 				retErr = fmt.Errorf("Error shutting down controller: %w", err)
 			}
@@ -647,7 +647,7 @@ func (c *Command) Run(args []string) int {
 				retErr = fmt.Errorf("Error shutting down worker: %w", err)
 			}
 			c.UI.Error(retErr.Error())
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 			return base.CommandCliError
@@ -684,7 +684,7 @@ func (c *Command) Run(args []string) int {
 				}
 			}
 
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 			}
 
