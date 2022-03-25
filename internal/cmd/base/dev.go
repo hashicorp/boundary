@@ -337,6 +337,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)

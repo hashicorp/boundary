@@ -94,12 +94,16 @@ func TestUnixListener(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	expectWorkers(c1)
 
-	require.NoError(c1.Controller().Shutdown(true))
-	time.Sleep(10 * time.Second)
+	require.NoError(c1.Controller().Shutdown())
+	c1 = controller.NewTestController(t, &controller.TestControllerOpts{
+		Config:                        conf,
+		Logger:                        logger.Named("c1"),
+		DisableOidcAuthMethodCreation: true,
+	})
+	defer c1.Shutdown()
 
-	require.NoError(c1.Controller().Start())
 	time.Sleep(10 * time.Second)
-	expectWorkers(c1, w1)
+	expectWorkers(c1)
 
 	client, err := api.NewClient(nil)
 	require.NoError(err)

@@ -12,9 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
@@ -62,7 +61,11 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	if wrapper == nil {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
 	}
-	if wrapper.KeyID() == "" {
+	keyId, err := wrapper.KeyId(ctx)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("error fetching wrapper key id"))
+	}
+	if keyId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing wrapper key id")
 	}
 	if am == nil || am.AuthMethod == nil {
@@ -93,7 +96,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
 	}
-	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
+	blobInfo, err := wrapper.Encrypt(ctx, marshaled, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId))))
 	if err != nil {
 		return "", errors.New(ctx, errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
 	}
@@ -104,7 +107,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	wrapped := &request.Wrapper{
 		AuthMethodId: am.PublicId,
 		ScopeId:      am.ScopeId,
-		WrapperKeyId: wrapper.KeyID(),
+		WrapperKeyId: keyId,
 		Ct:           marshaledBlob,
 	}
 	if err := wrapped.Validate(ctx); err != nil {
@@ -128,12 +131,12 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	if wrappingWrapper == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapping wrapper")
 	}
-	var blobInfo wrapping.EncryptedBlobInfo
+	var blobInfo wrapping.BlobInfo
 	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
 		return nil, errors.New(ctx, errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
 	}
 
-	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
+	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId))))
 	if err != nil {
 		return nil, errors.New(ctx, errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
@@ -183,14 +186,18 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	}
 
 	// What derived key are we looking for?
-	keyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+	keyId, err := oidcWrapper.KeyId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oidc wrapper key id"))
+	}
+	keyId = derivedKeyId(derivedKeyPurposeState, keyId, authMethodId)
 	derivedWrapper, ok := k.GetDerivedPurposeCache().Load(keyId)
 	if ok {
 		return derivedWrapper.(*aead.Wrapper), nil
 	}
 
 	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
-	reader, err := crypto.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
+	reader, err := crypto.NewDerivedReader(ctx, oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -198,13 +205,11 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	if err != nil {
 		return nil, errors.New(ctx, errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
 	}
-	wrapper := aead.NewWrapper(nil)
-	if _, err := wrapper.SetConfig(map[string]string{
-		"key_id": keyId,
-	}); err != nil {
+	wrapper := aead.NewWrapper()
+	if _, err := wrapper.SetConfig(ctx, wrapping.WithKeyId(keyId)); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
 	}
-	if err := wrapper.SetAESGCMKeyBytes(privKey); err != nil {
+	if err := wrapper.SetAesGcmKeyBytes(privKey); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
 	}
 	// store the derived key in our cache

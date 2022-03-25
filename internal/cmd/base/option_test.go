@@ -117,4 +117,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDialect = "test-dialect"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("withEventGating", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withEventGating)
+		opts := getOpts(WithEventGating(true))
+		assert.True(opts.withEventGating)
+	})
 }

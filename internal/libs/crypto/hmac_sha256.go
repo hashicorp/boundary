@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
 )
@@ -49,7 +49,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt,
 		key = blake2b.Sum256(opts.withPrk)
 
 	case opts.withEd25519:
-		reader, err := NewDerivedReader(cipher, 32, salt, info)
+		reader, err := NewDerivedReader(ctx, cipher, 32, salt, info)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}
@@ -63,7 +63,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt,
 		}
 
 	default:
-		reader, err := NewDerivedReader(cipher, 32, salt, info)
+		reader, err := NewDerivedReader(ctx, cipher, 32, salt, info)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}

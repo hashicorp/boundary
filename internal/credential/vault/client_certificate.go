@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -80,7 +80,11 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	c.KeyId = cipher.KeyID()
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
+	}
+	c.KeyId = keyId
 	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
 		errors.Wrap(ctx, err, op)
 	}
