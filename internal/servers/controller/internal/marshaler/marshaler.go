@@ -215,9 +215,9 @@ func (am *attrMarshaler) marshal(w io.Writer, v interface{}) error {
 //
 //    message Account {
 //      string type = 80;
-//        oneof {
-//          PasswordAccountAttributes password_attributes = 101;
-//        }
+//      oneof {
+//        PasswordAccountAttributes password_attributes = 101;
+//      }
 //    }
 //
 //    message PasswordAccountAttributes {
