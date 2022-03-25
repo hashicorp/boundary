@@ -96,8 +96,8 @@ type DecoderWrapper struct {
 //    }
 //
 //    message PasswordAccountAttributes {
-//        string login_name = 10;
-//        google.protobuf.StringValue password = 20;
+//      string login_name = 10;
+//      google.protobuf.StringValue password = 20;
 //    }
 func (d DecoderWrapper) Decode(v interface{}) error {
 	var m map[string]interface{}
