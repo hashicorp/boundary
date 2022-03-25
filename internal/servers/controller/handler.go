@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metrics"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -70,8 +71,12 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
 	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	if err != nil {
+		return nil, err
+	}
+	metricsHandler := metrics.ApiMetricHandler(eventsHandler)
 
-	return eventsHandler, err
+	return metricsHandler, nil
 }
 
 func (c *Controller) registerGrpcServices(s *grpc.Server) error {
