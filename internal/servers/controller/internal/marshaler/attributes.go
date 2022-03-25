@@ -84,7 +84,7 @@ func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
 }
 
 // protoAttributeKey retrieved the JSON key that should be used for the
-// subtye's attribute fields. If the protobuf message has not been registered
+// subtype's attribute fields. If the protobuf message has not been registered
 // it will return an error.
 func (ak attributeKeys) protoAttributeKey(d protoreflect.MessageDescriptor, t string) (string, error) {
 	ak.RLock()
@@ -109,7 +109,7 @@ func (ak attributeKeys) protoAttributeKey(d protoreflect.MessageDescriptor, t st
 	return tt, nil
 }
 
-// protoAttributeKey is used by the AttrMarshaler to translate between JSON
+// protoAttributeKey is used by the attrMarshaler to translate between JSON
 // formats for the API and for the protobuf messages. It expects a
 // proto.Message with a OneOf field for the subtype attributes and the subtype
 // string. It returns the string for the JSON key that that should be used for
