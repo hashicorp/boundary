@@ -10,7 +10,6 @@ import (
 )
 
 func TestBuildRegexFromPath(t *testing.T) {
-
 	cases := []struct {
 		path  string
 		match []string
