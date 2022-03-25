@@ -12,13 +12,22 @@ import (
 func TestProtoAttributeKey(t *testing.T) {
 	cases := []struct {
 		name        string
-		msg         proto.Message
+		msg         interface{}
 		subtype     string
 		expectedKey string
 	}{
 		{
 			"TestResource/sub_resource",
 			&attribute.TestResource{},
+			"sub_resource",
+			"sub_resource_attributes",
+		},
+		{
+			"TestResource/sub_resource/doublePointer",
+			func() interface{} {
+				a := &attribute.TestResource{}
+				return &a
+			}(),
 			"sub_resource",
 			"sub_resource_attributes",
 		},
@@ -46,9 +55,10 @@ func TestProtoAttributeKey(t *testing.T) {
 }
 
 func TestProtoAttributeKeyErrors(t *testing.T) {
+	type notproto struct{}
 	cases := []struct {
 		name        string
-		msg         proto.Message
+		msg         interface{}
 		subtype     string
 		expectedErr string
 	}{
@@ -69,6 +79,21 @@ func TestProtoAttributeKeyErrors(t *testing.T) {
 			&attribute.TestNoAttributes{},
 			"unknown",
 			"proto message testing.attribute.v1.TestNoAttributes not registered",
+		},
+		{
+			"TestNotProto",
+			&notproto{},
+			"unknown",
+			"not a proto message: *marshaler.notproto",
+		},
+		{
+			"TestNotProto/doublePointer",
+			func() interface{} {
+				a := &notproto{}
+				return &a
+			}(),
+			"sub_resource",
+			"not a proto message: **marshaler.notproto",
 		},
 	}
 

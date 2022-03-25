@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "id": "one",
+      "type": "sub_resource",
+      "attributes": {
+        "name": "test"
+      }
+    },
+    {
+      "id": "two",
+      "type": "default",
+      "attributes": {
+        "field1": "val1",
+        "field2": "val2"
+      }
+    },
+    {
+      "id": "three",
+      "type": "unknown",
+      "attributes": {
+        "field1": "val1",
+        "field2": "val2"
+      }
+    }
+  ]
+}

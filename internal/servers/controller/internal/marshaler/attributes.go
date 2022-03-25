@@ -79,7 +79,6 @@ func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
 	}
 
 	ak.m[fn] = km
-	fmt.Printf("%#v\n", ak.m)
 
 	return nil
 }
@@ -91,7 +90,6 @@ func (ak attributeKeys) protoAttributeKey(d protoreflect.MessageDescriptor, t st
 	ak.RLock()
 	defer ak.RUnlock()
 
-	fmt.Printf("%#v\n", ak.m)
 	fn := string(d.FullName())
 
 	km, ok := ak.m[fn]
@@ -117,21 +115,22 @@ func (ak attributeKeys) protoAttributeKey(d protoreflect.MessageDescriptor, t st
 // string. It returns the string for the JSON key that that should be used for
 // the subtype's attributes fields.
 func protoAttributeKey(v interface{}, t string) (string, error) {
-	var msg proto.Message
+	var d protoreflect.MessageDescriptor
 
 	switch vv := v.(type) {
+	case protoreflect.MessageDescriptor:
+		d = vv
 	case proto.Message:
-		msg = vv
+		d = vv.ProtoReflect().Descriptor()
 	default:
 		derefed := reflect.ValueOf(v).Elem().Interface()
 		switch vvv := derefed.(type) {
 		case proto.Message:
-			msg = vvv
+			d = vvv.ProtoReflect().Descriptor()
 		default:
 			return "", fmt.Errorf("not a proto message: %T", v)
 		}
 	}
 
-	d := msg.ProtoReflect().Descriptor()
 	return globalAttributeKeys.protoAttributeKey(d, t)
 }

@@ -4,11 +4,14 @@ package testing.attribute.v1;
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/testing/attribute;attribute";
 
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "controller/custom_options/v1/options.proto";
 
 message TestResource {
   string id = 1;
+  string type = 2;
 
   oneof attrs {
     google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
@@ -22,4 +25,47 @@ message TestSubResourceAttributes {
 
 message TestNoAttributes {
   string id = 1;
+  string type = 2;
+}
+
+message TestNoOneOf {
+  string id = 1;
+  string type = 2;
+
+  google.protobuf.Struct attributes = 10;
+}
+
+service TestResourceService {
+  rpc TestListResource(TestListResourceRequest) returns (TestListResourceResponse) {
+    option (google.api.http) = {
+      get: "/v1/test-resources"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test list"
+    };
+  }
+
+  rpc TestGetResource(TestGetResourceRequest) returns (TestGetResourceResponse) {
+    option (google.api.http) = {
+      get: "/v1/test-resources/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test get"
+    };
+  }
+}
+
+message TestListResourceRequest {}
+
+message TestListResourceResponse {
+  repeated TestResource items = 1;
+}
+
+message TestGetResourceRequest {
+  string id = 1;
+}
+
+message TestGetResourceResponse {
+  TestResource item = 1;
 }

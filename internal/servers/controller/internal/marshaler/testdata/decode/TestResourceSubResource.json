@@ -1,0 +1,7 @@
+{
+  "id": "one",
+  "type": "sub_resource",
+  "attributes": {
+    "name": "test"
+  }
+}

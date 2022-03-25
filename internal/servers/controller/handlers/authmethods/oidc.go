@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/marshaler"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
@@ -230,7 +231,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	errResponse := func(err error) (*pbs.AuthenticateResponse, error) {
 		u := make(url.Values)
 		pbErr := handlers.ToApiError(err)
-		out, err := handlers.JSONMarshaler().Marshal(pbErr)
+		out, err := marshaler.New().Marshal(pbErr)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal the error for callback"))
 		}
