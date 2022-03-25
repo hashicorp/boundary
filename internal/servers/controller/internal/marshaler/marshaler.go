@@ -48,7 +48,7 @@ type attrMarshaler struct {
 	runtime.Marshaler
 }
 
-// NewDecoder returns a Decoder which reads byte sequence from "r".
+// NewDecoder returns a Decoder which reads a byte sequence from "r".
 func (am *attrMarshaler) NewDecoder(r io.Reader) runtime.Decoder {
 	d := json.NewDecoder(r)
 	return DecoderWrapper{
@@ -72,7 +72,7 @@ type DecoderWrapper struct {
 //        "type": "password",
 //        "attributes": {
 //            "login_name": "tim",
-//          "password": "secret"
+//            "password": "secret"
 //        }
 //    }
 //
@@ -90,9 +90,9 @@ type DecoderWrapper struct {
 //
 //    message Account {
 //      string type = 80;
-//        oneof {
-//            PasswordAccountAttributes password_attributes = 101;
-//        }
+//      oneof {
+//        PasswordAccountAttributes password_attributes = 101;
+//      }
 //    }
 //
 //    message PasswordAccountAttributes {
@@ -216,13 +216,13 @@ func (am *attrMarshaler) marshal(w io.Writer, v interface{}) error {
 //    message Account {
 //      string type = 80;
 //        oneof {
-//            PasswordAccountAttributes password_attributes = 101;
+//          PasswordAccountAttributes password_attributes = 101;
 //        }
 //    }
 //
 //    message PasswordAccountAttributes {
-//        string login_name = 10;
-//        google.protobuf.StringValue password = 20;
+//      string login_name = 10;
+//      google.protobuf.StringValue password = 20;
 //    }
 //
 // The would otherwise be marshaled into JSON like:
@@ -241,7 +241,7 @@ func (am *attrMarshaler) marshal(w io.Writer, v interface{}) error {
 //        "type": "password",
 //        "attributes": {
 //            "login_name": "tim",
-//          "password": "secret"
+//            "password": "secret"
 //        }
 //    }
 func (am *attrMarshaler) Marshal(v interface{}) ([]byte, error) {
@@ -252,7 +252,7 @@ func (am *attrMarshaler) Marshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// NewEncoder returns an Encoder which writes bytes sequence into "w".
+// NewEncoder returns an Encoder which writes a byte sequence into "w".
 // This does not appear to be used by grpc gateway, but is implemented for
 // completeness.
 func (am *attrMarshaler) NewEncoder(w io.Writer) runtime.Encoder {
