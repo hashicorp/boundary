@@ -6,7 +6,7 @@
   },
   "tags": [
     {
-      "name": "TestAuthMethodService"
+      "name": "testing.event.v1.TestAuthMethodService"
     }
   ],
   "consumes": [
