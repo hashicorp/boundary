@@ -80,7 +80,6 @@ var (
 )
 
 var expectedHttpErrCodes = []int{
-	http.StatusOK,
 	http.StatusUpgradeRequired,
 	http.StatusMethodNotAllowed,
 	http.StatusBadRequest,
