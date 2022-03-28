@@ -1,12 +1,18 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "testing/event/v1/event.proto",
+    "title": "testing/attribute/v1/attribute.proto",
     "version": "version not set"
   },
   "tags": [
     {
+      "name": "testing.attribute.v1.TestResourceService"
+    },
+    {
       "name": "testing.event.v1.TestAuthMethodService"
+    },
+    {
+      "name": "testing.interceptor.v1.GreeterService"
     }
   ],
   "consumes": [
@@ -63,6 +69,48 @@
           "testing.event.v1.TestAuthMethodService"
         ]
       }
+    },
+    "/v1/test-resources": {
+      "get": {
+        "summary": "Test list",
+        "operationId": "TestResourceService_TestListResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/testing.attribute.v1.TestListResourceResponse"
+            }
+          }
+        },
+        "tags": [
+          "testing.attribute.v1.TestResourceService"
+        ]
+      }
+    },
+    "/v1/test-resources/{id}": {
+      "get": {
+        "summary": "Test get",
+        "operationId": "TestResourceService_TestGetResource",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/testing.attribute.v1.TestResource"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "testing.attribute.v1.TestResourceService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -73,6 +121,50 @@
       ],
       "default": "NULL_VALUE",
       "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "testing.attribute.v1.TestGetResourceResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/testing.attribute.v1.TestResource"
+        }
+      }
+    },
+    "testing.attribute.v1.TestListResourceResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testing.attribute.v1.TestResource"
+          }
+        }
+      }
+    },
+    "testing.attribute.v1.TestResource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "object"
+        },
+        "sub_resource_attributes": {
+          "$ref": "#/definitions/testing.attribute.v1.TestSubResourceAttributes"
+        }
+      }
+    },
+    "testing.attribute.v1.TestSubResourceAttributes": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
     },
     "testing.event.v1.TestAuthenticateResponse": {
       "type": "object",
@@ -86,6 +178,15 @@
           "title": "The command that was performed.\n@inject_tag: `class:\"public\"`"
         }
       }
+    },
+    "testing.interceptor.v1.SayHelloResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "The response message containing the greetings"
     }
   }
 }

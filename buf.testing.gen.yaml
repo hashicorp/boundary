@@ -1,7 +1,7 @@
 version: v1
 plugins:
   - name: openapiv2
-    out: internal/gen/testing/event/
+    out: internal/gen/testing/
     # Necessary for merging services
     strategy: all
     opt:

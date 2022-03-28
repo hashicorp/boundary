@@ -158,8 +158,8 @@ protobuild:
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
-	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
-	go run ./internal/cmd/addattributes ./internal/gen/testing/event/testing.swagger.json
+	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing
+	go run ./internal/cmd/addattributes ./internal/gen/testing/testing.swagger.json
 
 	@rm -R ${TMP_DIR}
 
