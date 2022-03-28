@@ -8,12 +8,13 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/servers/worker/internal/metrics"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metrics"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
