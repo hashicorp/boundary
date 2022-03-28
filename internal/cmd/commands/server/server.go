@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -44,6 +45,7 @@ var (
 
 type Command struct {
 	*base.Server
+	opsServer *ops.Server
 
 	SighupCh  chan struct{}
 	SigUSR2Ch chan struct{}
@@ -233,6 +235,7 @@ func (c *Command) Run(args []string) int {
 				if lnConfig.Address == "" {
 					lnConfig.Address = "127.0.0.1:9202"
 				}
+			case "ops":
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return base.CommandUserError
@@ -333,7 +336,7 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -472,6 +475,14 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
+
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+	c.opsServer = opsServer
+	c.opsServer.Start()
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
@@ -660,6 +671,10 @@ func (c *Command) WaitForInterrupt() int {
 				}
 			}()
 
+			if c.Config.Controller != nil {
+				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+			}
+
 			// Do worker shutdown
 			if c.Config.Worker != nil {
 				if err := c.worker.Shutdown(false); err != nil {
@@ -672,6 +687,11 @@ func (c *Command) WaitForInterrupt() int {
 				if err := c.controller.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 				}
+			}
+
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
 			}
 
 			shutdownTriggered = true
