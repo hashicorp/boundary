@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func fieldError(field, details string) string {
@@ -63,9 +62,9 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"full_name": structpb.NewStringValue("something"),
-				}},
+				Attrs: &pb.Account_OidcAccountAttributes{
+					OidcAccountAttributes: &pb.OidcAccountAttributes{FullName: "something"},
+				},
 			},
 			errContains: fieldError(nameClaimField, "This is a read only field."),
 		},
@@ -74,9 +73,9 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"email": structpb.NewStringValue("something"),
-				}},
+				Attrs: &pb.Account_OidcAccountAttributes{
+					OidcAccountAttributes: &pb.OidcAccountAttributes{Email: "something"},
+				},
 			},
 			errContains: fieldError(emailClaimField, "This is a read only field."),
 		},
@@ -89,35 +88,15 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(loginNameKey, "This is a required field for this type."),
 		},
 		{
-			name: "bad pw attributes",
-			item: &pb.Account{
-				Type:         password.Subtype.String(),
-				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"test": structpb.NewStringValue("something"),
-				}},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
-		},
-		{
-			name: "bad oidc attributes",
-			item: &pb.Account{
-				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"test": structpb.NewStringValue("something"),
-				}},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
-		},
-		{
 			name: "no error",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					loginNameKey: structpb.NewStringValue("something"),
-				}},
+				Attrs: &pb.Account_PasswordAccountAttributes{
+					PasswordAccountAttributes: &pb.PasswordAccountAttributes{
+						LoginName: "something",
+					},
+				},
 			},
 		},
 		{
@@ -125,9 +104,9 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"subject": structpb.NewStringValue("no oidc errors"),
-				}},
+				Attrs: &pb.Account_OidcAccountAttributes{
+					OidcAccountAttributes: &pb.OidcAccountAttributes{Subject: "no oidc errors"},
+				},
 			},
 		},
 	}
@@ -182,42 +161,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
-		},
-		{
-			name: "password bad attributes old prefix",
-			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
-				Item: &pb.Account{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"test": structpb.NewStringValue("something"),
-					}},
-				},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
-		},
-		{
-			name: "password bad attributes new prefix",
-			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
-				Item: &pb.Account{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"test": structpb.NewStringValue("something"),
-					}},
-				},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
-		},
-		{
-			name: "oidc bad attributes",
-			req: &pbs.UpdateAccountRequest{
-				Id: oidc.AccountPrefix + "_1234567890",
-				Item: &pb.Account{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"test": structpb.NewStringValue("something"),
-					}},
-				},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
 		},
 		{
 			name: "no error",

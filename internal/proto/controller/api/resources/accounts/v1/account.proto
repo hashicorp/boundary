@@ -40,8 +40,12 @@ message Account {
 	// The ID of the Auth Method that is associated with this Account.
 	string auth_method_id = 90 [json_name="auth_method_id"];
 
-	// The attributes that are applicable for the specific Account type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	oneof attrs {
+		// The attributes that are applicable for the specific Account type.
+		google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];
+		PasswordAccountAttributes password_account_attributes = 101 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "password"];
+		OidcAccountAttributes oidc_account_attributes = 102 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "oidc"];
+	}
 
 	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
 	repeated string managed_group_ids = 110 [json_name="managed_group_ids"];

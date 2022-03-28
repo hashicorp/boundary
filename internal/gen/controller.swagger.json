@@ -3702,6 +3702,12 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific Account type."
         },
+        "password_account_attributes": {
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.PasswordAccountAttributes"
+        },
+        "oidc_account_attributes": {
+          "$ref": "#/definitions/controller.api.resources.accounts.v1.OidcAccountAttributes"
+        },
         "managed_group_ids": {
           "type": "array",
           "items": {
@@ -3720,6 +3726,54 @@
         }
       },
       "title": "Account contains all fields related to an Account resource"
+    },
+    "controller.api.resources.accounts.v1.OidcAccountAttributes": {
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "description": "issuer is a case sensitive URL that maps to the OIDC iss claim.\nThis value is immutable after creation time."
+        },
+        "subject": {
+          "type": "string",
+          "description": "subject is a case sensitive string that maps to the OIDC sub claim.\nThis value is immutable after creation time."
+        },
+        "full_name": {
+          "type": "string",
+          "description": "Output only. full_name is a string that maps to the OIDC name claim.",
+          "readOnly": true
+        },
+        "email": {
+          "type": "string",
+          "description": "Output only. email is a string that maps to the OIDC email claim.",
+          "readOnly": true
+        },
+        "token_claims": {
+          "type": "object",
+          "description": "Output only. token_claims are the marshaled claims from the token.",
+          "readOnly": true
+        },
+        "userinfo_claims": {
+          "type": "object",
+          "description": "Output only. userinfo_claims are the marshaled claims from userinfo.",
+          "readOnly": true
+        }
+      },
+      "description": "Attributes associated only with Accounts with type \"oidc\"."
+    },
+    "controller.api.resources.accounts.v1.PasswordAccountAttributes": {
+      "type": "object",
+      "properties": {
+        "login_name": {
+          "type": "string",
+          "description": "The login name of this Account. This is unique per Auth Method."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password for this Account."
+        }
+      },
+      "description": "Attributes associated only with Accounts with type \"password\"."
     },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
