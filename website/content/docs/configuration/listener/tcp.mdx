@@ -25,8 +25,8 @@ allowed.
 
 ### General
 
-- `purpose` `(string: "")` - Specifies the purpose. Can be `api`, `cluster`, or
-  `proxy`.
+- `purpose` `(string: "")` - Specifies the purpose. Can be `api`, `cluster`,
+  `proxy`, or `ops`.
 
 - `address` `(string: "127.0.0.1:9200")` – Specifies the address to bind to for
   listening.
@@ -86,9 +86,9 @@ allowed.
 
 ### TLS
 
-~> All `tls` parameters are valid only for the `api` listener. `cluster` and
-`proxy` connections use their own ephemeral TLS stacks. For more information,
-see [the connections security concepts
+~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
+and `proxy` connections use their own ephemeral TLS stacks. For more 
+information, see [the connections security concepts
 page](https://www.boundaryproject.io/docs/concepts/security/connections-tls).
 
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. Boundary

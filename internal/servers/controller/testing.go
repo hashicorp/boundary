@@ -576,7 +576,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
+	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
