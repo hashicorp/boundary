@@ -83,7 +83,7 @@ func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
 	return nil
 }
 
-// protoAttributeKey retrieved the JSON key that should be used for the
+// protoAttributeKey retrieves the JSON key that should be used for the
 // subtype's attribute fields. If the protobuf message has not been registered
 // it will return an error.
 func (ak attributeKeys) protoAttributeKey(d protoreflect.MessageDescriptor, t string) (string, error) {
