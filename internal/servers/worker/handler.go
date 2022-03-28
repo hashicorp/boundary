@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/servers/common"
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metrics"
 	proxyHandlers "github.com/hashicorp/boundary/internal/servers/worker/proxy"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -40,8 +41,8 @@ func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
 	mux.Handle("/v1/proxy", h)
 
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)
-
-	return genericWrappedHandler, nil
+	metricsHandler := metrics.ProxyMetricHandler(genericWrappedHandler)
+	return metricsHandler, nil
 }
 
 func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.HandlerFunc, error) {

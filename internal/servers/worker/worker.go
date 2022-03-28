@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metrics"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +60,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
+	metrics.InitializeProxyMetrics()
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),
