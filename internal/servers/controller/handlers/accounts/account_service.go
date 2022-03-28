@@ -437,8 +437,8 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	if item == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
-	pwAttrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+	pwAttrs := item.GetPasswordAccountAttributes()
+	if pwAttrs == nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
@@ -484,8 +484,8 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	if item.GetDescription() != nil {
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
-	attrs := &pb.OidcAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+	attrs := item.GetOidcAccountAttributes()
+	if attrs == nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
@@ -867,11 +867,11 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		out.Attrs = &pb.Account_PasswordAccountAttributes{
+			&pb.PasswordAccountAttributes{
+				LoginName: i.GetLoginName(),
+			},
 		}
-		out.Attributes = st
 	case *oidc.Account:
 		if outputFields.Has(globals.TypeField) {
 			out.Type = oidc.Subtype.String()
@@ -879,11 +879,13 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		attrs := &pb.OidcAccountAttributes{
-			Issuer:   i.GetIssuer(),
-			Subject:  i.GetSubject(),
-			FullName: i.GetFullName(),
-			Email:    i.GetEmail(),
+		attrs := &pb.Account_OidcAccountAttributes{
+			&pb.OidcAccountAttributes{
+				Issuer:   i.GetIssuer(),
+				Subject:  i.GetSubject(),
+				FullName: i.GetFullName(),
+				Email:    i.GetEmail(),
+			},
 		}
 		if s := i.GetTokenClaims(); s != "" {
 			m := make(map[string]interface{})
@@ -891,7 +893,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored token claims"))
 			}
-			if attrs.TokenClaims, err = structpb.NewStruct(m); err != nil {
+			if attrs.OidcAccountAttributes.TokenClaims, err = structpb.NewStruct(m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting stored token claims to protobuf struct"))
 			}
 		}
@@ -901,15 +903,11 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored userinfo claims"))
 			}
-			if attrs.UserinfoClaims, err = structpb.NewStruct(m); err != nil {
+			if attrs.OidcAccountAttributes.UserinfoClaims, err = structpb.NewStruct(m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting stored userinfo claims to protobuf struct"))
 			}
 		}
-		st, err := handlers.ProtoToStruct(attrs)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
-		}
-		out.Attributes = st
+		out.Attrs = attrs
 	}
 	return &out, nil
 }
@@ -931,8 +929,8 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
 
-	attrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+	attrs := item.GetPasswordAccountAttributes()
+	if attrs == nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
@@ -971,8 +969,8 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
-			attrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+			attrs := req.GetItem().GetPasswordAccountAttributes()
+			if attrs == nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if attrs.GetLoginName() == "" {
@@ -982,8 +980,8 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
-			attrs := &pb.OidcAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+			attrs := req.GetItem().GetOidcAccountAttributes()
+			if attrs == nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if attrs.GetSubject() == "" {
@@ -1023,16 +1021,16 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+			attrs := req.GetItem().GetPasswordAccountAttributes()
+			if attrs == nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.OidcAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+			attrs := req.GetItem().GetOidcAccountAttributes()
+			if attrs == nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
