@@ -114,6 +114,7 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "auth token"
@@ -133,11 +134,13 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "list":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 

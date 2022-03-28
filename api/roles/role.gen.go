@@ -44,10 +44,8 @@ func (n RoleReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	RoleCreateResult = RoleReadResult
-	RoleUpdateResult = RoleReadResult
-)
+type RoleCreateResult = RoleReadResult
+type RoleUpdateResult = RoleReadResult
 
 type RoleDeleteResult struct {
 	response *api.Response

@@ -109,6 +109,7 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "session"
@@ -133,11 +134,13 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "list":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
@@ -167,6 +170,7 @@ func (c *Command) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "cancel":
 		switch c.FlagVersion {
 		case 0:
@@ -174,6 +178,7 @@ func (c *Command) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {
@@ -217,6 +222,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
@@ -230,6 +236,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		return base.CommandSuccess
+
 	}
 
 	switch base.Format(c.UI) {

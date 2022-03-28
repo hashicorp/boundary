@@ -45,10 +45,8 @@ func (n UserReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	UserCreateResult = UserReadResult
-	UserUpdateResult = UserReadResult
-)
+type UserCreateResult = UserReadResult
+type UserUpdateResult = UserReadResult
 
 type UserDeleteResult struct {
 	response *api.Response
