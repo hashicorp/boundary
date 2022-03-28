@@ -48,7 +48,6 @@ message Account {
 		PasswordAccountAttributes password_account_attributes = 102 [(custom_options.v1.generate_sdk_option) = true,(custom_options.v1.subtype) = "password"];
 		OidcAccountAttributes oidc_account_attributes = 103 [(custom_options.v1.generate_sdk_option) = true,(custom_options.v1.subtype) = "oidc"];
 	}
-	//google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
 	repeated string managed_group_ids = 110 [json_name="managed_group_ids"];
