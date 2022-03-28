@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -35,7 +34,7 @@ import (
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -53,14 +52,15 @@ type Controller struct {
 
 	workerAuthCache *sync.Map
 
+	apiListeners    []*base.ServerListener
+	clusterListener *base.ServerListener
+
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
-	// grpc gateway server
-	gatewayServer   *grpc.Server
-	gatewayTicket   string
-	gatewayListener gatewayListener
-	gatewayMux      *runtime.ServeMux
+	apiGrpcServer         *grpc.Server
+	apiGrpcServerListener grpcServerListener
+	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
 	AuthTokenRepoFn       common.AuthTokenRepoFactory
@@ -84,7 +84,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
-	metrics.RegisterMetrics(prometheus.DefaultRegisterer)
+	metrics.InitializeApiMetrics()
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -127,7 +127,40 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	clusterListeners := make([]*base.ServerListener, 0)
+	for i := range conf.Listeners {
+		l := conf.Listeners[i]
+		if l == nil || l.Config == nil || l.Config.Purpose == nil {
+			continue
+		}
+		if len(l.Config.Purpose) != 1 {
+			return nil, fmt.Errorf("found listener with multiple purposes %q", strings.Join(l.Config.Purpose, ","))
+		}
+		switch l.Config.Purpose[0] {
+		case "api":
+			c.apiListeners = append(c.apiListeners, l)
+		case "cluster":
+			clusterListeners = append(clusterListeners, l)
+		}
+	}
+	if len(c.apiListeners) == 0 {
+		return nil, fmt.Errorf("no api listeners found")
+	}
+	if len(clusterListeners) != 1 {
+		// in the future, we might pick the cluster that is exposed to the outside
+		// instead of limiting it to one.
+		return nil, fmt.Errorf("exactly one cluster listener is required")
+	}
+	c.clusterListener = clusterListeners[0]
+
+	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
+		if pluginLogger == nil {
+			pluginLogger, err = event.NewHclogLogger(ctx, c.conf.Server.Eventer)
+			if err != nil {
+				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
+			}
+		}
 		switch enabledPlugin {
 		case base.EnabledPluginHostLoopback:
 			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
@@ -143,9 +176,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithHostPluginsFilesystem("boundary-plugin-host-", host_plugin_assets.FileSystem()),
-				external_host_plugins.WithHostPluginExecutionDir(conf.RawConfig.Plugins.ExecutionDir),
-				external_host_plugins.WithLogger(hclog.NewNullLogger()))
+				external_host_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+				),
+				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
@@ -171,6 +207,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := c.kms.AddExternalWrappers(
+		ctx,
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
@@ -188,7 +225,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting audit wrapper from kms: %w", err)
 	}
-	if c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
+	if err := c.conf.Eventer.RotateAuditWrapper(ctx, auditWrapper); err != nil {
 		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {
@@ -255,7 +292,7 @@ func (c *Controller) Start() error {
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
-	if err := c.startListeners(c.baseContext); err != nil {
+	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
@@ -317,15 +354,15 @@ func (c *Controller) registerSessionConnectionCleanupJob() error {
 	return nil
 }
 
-func (c *Controller) Shutdown(serversOnly bool) error {
+func (c *Controller) Shutdown() error {
 	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 	}
 	defer c.started.Store(false)
 	c.baseCancel()
-	if err := c.stopListeners(serversOnly); err != nil {
-		return fmt.Errorf("error stopping controller listeners: %w", err)
+	if err := c.stopServersAndListeners(); err != nil {
+		return fmt.Errorf("error stopping controller servers and listeners: %w", err)
 	}
 	c.schedulerWg.Wait()
 	c.tickerWg.Wait()

@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"

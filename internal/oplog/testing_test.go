@@ -1,9 +1,11 @@
 package oplog
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +53,9 @@ func Test_testInitDbInDocker(t *testing.T) {
 func Test_testWrapper(t *testing.T) {
 	w := testWrapper(t)
 	require.NotNil(t, w)
-	assert.Equal(t, "aead", w.Type())
+	typ, err := w.Type(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, wrapping.WrapperTypeAead, typ)
 }
 
 func Test_testInitStore(t *testing.T) {

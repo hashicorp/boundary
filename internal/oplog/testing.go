@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
@@ -93,8 +93,8 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	n, err := rand.Read(rootKey)
 	require.NoError(t, err)
 	require.Equal(t, n, 32)
-	root := aead.NewWrapper(nil)
-	err = root.SetAESGCMKeyBytes(rootKey)
+	root := aead.NewWrapper()
+	err = root.SetAesGcmKeyBytes(rootKey)
 	require.NoError(t, err)
 	return root
 }

@@ -10,7 +10,7 @@ import (
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 )

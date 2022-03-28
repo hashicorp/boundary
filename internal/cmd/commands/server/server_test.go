@@ -55,7 +55,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 		kmsHcl := fmt.Sprintf(rootKmsConfig, opts.ControllerKey)
 		parsedKmsConfig, err := config.Parse(kmsHcl)
 		require.NoError(err)
-		require.NoError(cmd.SetupKMSes(cmd.UI, parsedKmsConfig))
+		require.NoError(cmd.SetupKMSes(cmd.Context, cmd.UI, parsedKmsConfig))
 
 		if opts.UseDevAuthMethod {
 			cmd.Server.DevPasswordAuthMethodId = controller.DefaultTestPasswordAuthMethodId

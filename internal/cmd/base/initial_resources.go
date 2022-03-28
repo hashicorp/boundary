@@ -31,6 +31,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
@@ -88,6 +89,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
@@ -285,7 +287,10 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
-	if err := kmsCache.AddExternalWrappers(kms.WithRootWrapper(b.RootKms)); err != nil {
+	if err := kmsCache.AddExternalWrappers(
+		b.Context,
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
@@ -366,6 +371,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		return nil, nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
@@ -476,6 +482,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		b.Context,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
@@ -610,6 +617,7 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
+		ctx,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)

@@ -3,7 +3,7 @@ package base
 import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // getOpts - iterate the inbound Options and return a struct.
@@ -39,6 +39,7 @@ type Options struct {
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
+	withEventGating                bool
 }
 
 func getDefaultOptions() Options {
@@ -178,5 +179,12 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 		o.withHostPlugin = func() (string, plugin.HostPluginServiceClient) {
 			return pluginId, plg
 		}
+	}
+}
+
+// WithEventGating starts the eventer in gated mode
+func WithEventGating(with bool) Option {
+	return func(o *Options) {
+		o.withEventGating = with
 	}
 }

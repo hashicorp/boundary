@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )

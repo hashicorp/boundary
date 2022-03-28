@@ -6,8 +6,6 @@ THIS_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
-GENERATED_CODE := $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
-
 CGO_ENABLED?=0
 
 export GEN_BASEPATH := $(shell pwd)
@@ -26,7 +24,11 @@ tools:
 
 .PHONY: cleangen
 cleangen:
-	@rm -f ${GENERATED_CODE}
+	@rm -f $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
+
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
 
 .PHONY: dev
 dev:
@@ -46,9 +48,11 @@ build: build-ui-ifne
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
 
+# Format Go files, ignoring files marked as generated through the header defined at
+# https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
 .PHONY: fmt
 fmt:
-	gofumpt -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
+	grep -L -R "^\/\/ Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" | xargs gofumpt -w
 
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne

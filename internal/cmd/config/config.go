@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"

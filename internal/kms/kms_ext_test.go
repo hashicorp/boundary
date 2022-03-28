@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,17 +90,25 @@ func TestKms(t *testing.T) {
 						continue
 					}
 					require.NoError(err)
-					multi, ok := wrapper.(*multiwrapper.MultiWrapper)
+					multi, ok := wrapper.(*multi.PooledWrapper)
 					require.True(ok)
-					aeadWrapper, ok := multi.WrapperForKeyID(multi.KeyID()).(*aead.Wrapper)
+					mKeyId, err := multi.KeyId(ctx)
+					require.NoError(err)
+					aeadWrapper, ok := multi.WrapperForKeyId(mKeyId).(*aead.Wrapper)
 					require.True(ok)
-					foundKeyBytes := keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())]
-					foundKeyId := keyIds[aeadWrapper.KeyID()]
+					aeadKeyId, err := aeadWrapper.KeyId(ctx)
+					require.NoError(err)
+					wrapperBytes, err := aeadWrapper.KeyBytes(ctx)
+					require.NoError(err)
+					foundKeyBytes := keyBytes[base64.StdEncoding.EncodeToString(wrapperBytes)]
+					foundKeyId := keyIds[aeadKeyId]
 					if i == 1 {
 						assert.False(foundKeyBytes)
 						assert.False(foundKeyId)
-						keyBytes[base64.StdEncoding.EncodeToString(aeadWrapper.GetKeyBytes())] = true
-						keyIds[aeadWrapper.KeyID()] = true
+						wrapperBytes, err := aeadWrapper.KeyBytes(ctx)
+						require.NoError(err)
+						keyBytes[base64.StdEncoding.EncodeToString(wrapperBytes)] = true
+						keyIds[aeadKeyId] = true
 					} else {
 						assert.True(foundKeyBytes)
 						assert.True(foundKeyId)

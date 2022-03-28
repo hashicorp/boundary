@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
