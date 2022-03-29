@@ -4,11 +4,14 @@
 package base
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
 func StartMemProfiler(ctx context.Context) {
