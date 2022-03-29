@@ -70,10 +70,13 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
-	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
-	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	eventInformationHandler := wrapHandlerWithEventInformation(callbackInterceptingHandler)
+	eventsHandler, err := common.WrapWithEventsHandler(eventInformationHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
 
-	return eventsHandler, err
+	// Keep this last as it's security-focused
+	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(eventsHandler, nil)
+
+	return printablePathCheckHandler, err
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the
@@ -434,11 +437,9 @@ type cmdAttrs struct {
 	Attributes interface{} `json:"attributes,omitempty"`
 }
 
-func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
-	logCallbackErrors := os.Getenv("BOUNDARY_LOG_CALLBACK_ERRORS") != ""
-
+func wrapHandlerWithEventInformation(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		const op = "controller.wrapHandlerWithCallbackInterceptor"
+		const op = "controller.wrapHandlerWithEventInformation"
 		ctx := req.Context()
 		var err error
 		id, err := event.NewId(event.IdField)
@@ -460,6 +461,16 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			event.WriteError(req.Context(), op, err, event.WithInfoMsg("unable to create context with request info", "method", req.Method, "url", req.URL.RequestURI()))
 			return
 		}
+
+		h.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
+func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
+	logCallbackErrors := os.Getenv("BOUNDARY_LOG_CALLBACK_ERRORS") != ""
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		const op = "controller.wrapHandlerWithCallbackInterceptor"
 		// If this doesn't have a callback suffix on a supported action, serve
 		// normally
 		if !strings.HasSuffix(req.URL.Path, ":authenticate:callback") {
@@ -467,6 +478,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			return
 		}
 
+		ctx := req.Context()
 		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
 
 		// How we get the parameters changes based on the method. Right now only
