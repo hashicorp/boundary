@@ -5,15 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/intglobals"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 func fieldError(field, details string) string {
