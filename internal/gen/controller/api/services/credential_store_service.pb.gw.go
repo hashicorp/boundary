@@ -317,12 +317,13 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_GetCredentialStore_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_GetCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -340,12 +341,13 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_ListCredentialStores_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_ListCredentialStores_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -363,12 +365,13 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_CreateCredentialStore_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_CreateCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -386,12 +389,13 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_UpdateCredentialStore_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_UpdateCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -409,12 +413,13 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_DeleteCredentialStore_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_DeleteCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -471,12 +476,13 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_GetCredentialStore_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CredentialStoreService_GetCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -491,12 +497,13 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_ListCredentialStores_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CredentialStoreService_ListCredentialStores_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -511,12 +518,13 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_CreateCredentialStore_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CredentialStoreService_CreateCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -531,12 +539,13 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_UpdateCredentialStore_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CredentialStoreService_UpdateCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -551,12 +560,13 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_DeleteCredentialStore_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CredentialStoreService_DeleteCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
