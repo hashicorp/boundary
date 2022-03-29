@@ -21,7 +21,7 @@ cli:
 .PHONY: tools
 tools:
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.1.1 
+	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
 
 .PHONY: cleangen
 cleangen:
