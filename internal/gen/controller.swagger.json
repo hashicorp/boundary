@@ -3698,7 +3698,7 @@
           "type": "string",
           "description": "The ID of the Auth Method that is associated with this Account."
         },
-        "default_attributes": {
+        "attributes": {
           "type": "object"
         },
         "password_account_attributes": {
