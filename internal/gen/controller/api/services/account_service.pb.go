@@ -29,7 +29,7 @@ type GetAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *GetAccountRequest) Reset() {
@@ -123,8 +123,8 @@ type ListAccountsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
-	Filter       string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter       string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"sensitive"`                // @gotags: `class:"sensitive"`
 }
 
 func (x *ListAccountsRequest) Reset() {
@@ -272,7 +272,7 @@ type CreateAccountResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string            `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri  string            `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item *accounts.Account `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -327,7 +327,7 @@ type UpdateAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item       *accounts.Account      `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -437,7 +437,7 @@ type DeleteAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *DeleteAccountRequest) Reset() {
@@ -522,11 +522,11 @@ type SetPasswordRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version  uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	Version  uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`  // @gotags: `class:"public"`
+	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
 func (x *SetPasswordRequest) Reset() {
@@ -634,12 +634,12 @@ type ChangePasswordRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version         uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	CurrentPassword string `protobuf:"bytes,3,opt,name=current_password,proto3" json:"current_password,omitempty"`
-	NewPassword     string `protobuf:"bytes,4,opt,name=new_password,proto3" json:"new_password,omitempty"`
+	Version         uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                  // @gotags: `class:"public"`
+	CurrentPassword string `protobuf:"bytes,3,opt,name=current_password,proto3" json:"current_password,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	NewPassword     string `protobuf:"bytes,4,opt,name=new_password,proto3" json:"new_password,omitempty" class:"secret"`         // @gotags: `class:"secret"`
 }
 
 func (x *ChangePasswordRequest) Reset() {
