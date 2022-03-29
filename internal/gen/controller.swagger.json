@@ -6,49 +6,49 @@
   },
   "tags": [
     {
-      "name": "ScopeService"
+      "name": "controller.api.services.v1.ScopeService"
     },
     {
-      "name": "AccountService"
+      "name": "controller.api.services.v1.AccountService"
     },
     {
-      "name": "AuthMethodService"
+      "name": "controller.api.services.v1.AuthMethodService"
     },
     {
-      "name": "AuthTokenService"
+      "name": "controller.api.services.v1.AuthTokenService"
     },
     {
-      "name": "CredentialLibraryService"
+      "name": "controller.api.services.v1.CredentialLibraryService"
     },
     {
-      "name": "CredentialStoreService"
+      "name": "controller.api.services.v1.CredentialStoreService"
     },
     {
-      "name": "GroupService"
+      "name": "controller.api.services.v1.GroupService"
     },
     {
-      "name": "HostCatalogService"
+      "name": "controller.api.services.v1.HostCatalogService"
     },
     {
-      "name": "HostService"
+      "name": "controller.api.services.v1.HostService"
     },
     {
-      "name": "HostSetService"
+      "name": "controller.api.services.v1.HostSetService"
     },
     {
-      "name": "ManagedGroupService"
+      "name": "controller.api.services.v1.ManagedGroupService"
     },
     {
-      "name": "RoleService"
+      "name": "controller.api.services.v1.RoleService"
     },
     {
-      "name": "SessionService"
+      "name": "controller.api.services.v1.SessionService"
     },
     {
-      "name": "TargetService"
+      "name": "controller.api.services.v1.TargetService"
     },
     {
-      "name": "UserService"
+      "name": "controller.api.services.v1.UserService"
     }
   ],
   "schemes": [
@@ -105,7 +105,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -184,7 +184,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -341,7 +341,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -472,7 +472,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -663,7 +663,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -742,7 +742,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -810,7 +810,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -889,7 +889,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -957,7 +957,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1036,7 +1036,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1242,7 +1242,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1328,7 +1328,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1390,7 +1390,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1469,7 +1469,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1672,7 +1672,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1751,7 +1751,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1813,7 +1813,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1892,7 +1892,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -1960,7 +1960,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -2039,7 +2039,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -2383,7 +2383,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -2474,7 +2474,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -2643,7 +2643,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -2722,7 +2722,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -3414,7 +3414,7 @@
         },
         "parameters": [
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
@@ -3493,7 +3493,7 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "item",
             "in": "body",
             "required": true,
             "schema": {
