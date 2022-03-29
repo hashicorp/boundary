@@ -725,12 +725,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/GetRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/GetRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_GetRole_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_GetRole_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -748,12 +749,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/ListRoles", runtime.WithHTTPPathPattern("/v1/roles"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/ListRoles", runtime.WithHTTPPathPattern("/v1/roles"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_ListRoles_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_ListRoles_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -771,12 +773,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/CreateRole", runtime.WithHTTPPathPattern("/v1/roles"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/CreateRole", runtime.WithHTTPPathPattern("/v1/roles"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_CreateRole_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_CreateRole_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -794,12 +797,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/UpdateRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/UpdateRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_UpdateRole_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_UpdateRole_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -817,12 +821,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/DeleteRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/DeleteRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_DeleteRole_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_DeleteRole_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -840,12 +845,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-principals"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_AddRolePrincipals_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_AddRolePrincipals_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -863,12 +869,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-principals"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_SetRolePrincipals_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_SetRolePrincipals_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -886,12 +893,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-principals"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_RemoveRolePrincipals_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_RemoveRolePrincipals_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -909,12 +917,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-grants"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_AddRoleGrants_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_AddRoleGrants_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -932,12 +941,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-grants"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_SetRoleGrants_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_SetRoleGrants_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -955,12 +965,13 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-grants"))
+		var err error
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RoleService_RemoveRoleGrants_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RoleService_RemoveRoleGrants_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -1017,12 +1028,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/GetRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/GetRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_GetRole_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_GetRole_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1037,12 +1049,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/ListRoles", runtime.WithHTTPPathPattern("/v1/roles"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/ListRoles", runtime.WithHTTPPathPattern("/v1/roles"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_ListRoles_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_ListRoles_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1057,12 +1070,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/CreateRole", runtime.WithHTTPPathPattern("/v1/roles"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/CreateRole", runtime.WithHTTPPathPattern("/v1/roles"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_CreateRole_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_CreateRole_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1077,12 +1091,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/UpdateRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/UpdateRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_UpdateRole_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_UpdateRole_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1097,12 +1112,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/DeleteRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/DeleteRole", runtime.WithHTTPPathPattern("/v1/roles/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_DeleteRole_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_DeleteRole_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1117,12 +1133,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-principals"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_AddRolePrincipals_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_AddRolePrincipals_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1137,12 +1154,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-principals"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_SetRolePrincipals_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_SetRolePrincipals_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1157,12 +1175,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-principals"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRolePrincipals", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-principals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_RemoveRolePrincipals_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_RemoveRolePrincipals_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1177,12 +1196,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-grants"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/AddRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:add-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_AddRoleGrants_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_AddRoleGrants_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1197,12 +1217,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-grants"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/SetRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:set-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_SetRoleGrants_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_SetRoleGrants_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
@@ -1217,12 +1238,13 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-grants"))
+		var err error
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.RoleService/RemoveRoleGrants", runtime.WithHTTPPathPattern("/v1/roles/{id}:remove-grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RoleService_RemoveRoleGrants_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RoleService_RemoveRoleGrants_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
