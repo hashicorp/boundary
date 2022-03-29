@@ -26,13 +26,6 @@ const (
 	apiSubSystem    = "worker_api"
 )
 
-var expectedPathsToMethods map[string][]string
-
-func init() {
-	// worker only expects the /proxy path
-	expectedPathsToMethods[proxyPathValue] = []string{http.MethodGet}
-}
-
 var (
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
 
@@ -89,12 +82,6 @@ var expectedHttpErrCodes = []int{
 	http.StatusInternalServerError,
 }
 
-var expectedHttpCodes = append(expectedHttpErrCodes, http.StatusOK)
-
-var expectedStatusCodesPerMethod = map[string][]int{
-	http.MethodGet: expectedHttpCodes,
-}
-
 // pathLabel maps the requested path to the label value recorded for metrics
 func pathLabel(incomingPath string) string {
 	if incomingPath == "" || incomingPath[0] != '/' {
@@ -137,26 +124,22 @@ func ProxyMetricHandler(wrapped http.Handler) http.Handler {
 func InitializeProxyMetrics() {
 	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
-	for p, methods := range expectedPathsToMethods {
-		for _, m := range methods {
-			for _, sc := range expectedStatusCodesPerMethod[m] {
-				l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(m)}
-				httpResponseSize.With(l)
-				httpRequestSize.With(l)
-				httpRequestLatency.With(l)
-			}
-		}
+	path := proxyPathValue
+	method := http.MethodGet
+	for _, sc := range expectedHttpErrCodes {
+		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: path, labelHttpMethod: strings.ToLower(method)}
+		httpResponseSize.With(l)
+		httpRequestSize.With(l)
+		httpRequestLatency.With(l)
 	}
 
 	// When an invalid path is found, any method is possible, but we expect
 	// an error response.
-	p := invalidPathValue
-	for m := range expectedStatusCodesPerMethod {
-		for _, sc := range expectedHttpErrCodes {
-			l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(m)}
-			httpResponseSize.With(l)
-			httpRequestSize.With(l)
-			httpRequestLatency.With(l)
-		}
+	path = invalidPathValue
+	for _, sc := range expectedHttpErrCodes {
+		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: path, labelHttpMethod: strings.ToLower(method)}
+		httpResponseSize.With(l)
+		httpRequestSize.With(l)
+		httpRequestLatency.With(l)
 	}
 }
