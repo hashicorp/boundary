@@ -126,6 +126,7 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "role"

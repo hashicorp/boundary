@@ -46,10 +46,8 @@ func (n HostSetReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	HostSetCreateResult = HostSetReadResult
-	HostSetUpdateResult = HostSetReadResult
-)
+type HostSetCreateResult = HostSetReadResult
+type HostSetUpdateResult = HostSetReadResult
 
 type HostSetDeleteResult struct {
 	response *api.Response
