@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -26,8 +27,7 @@ var (
 )
 
 type InitCommand struct {
-	*base.Command
-	srv *base.Server
+	*base.Server
 
 	SighupCh   chan struct{}
 	ReloadedCh chan struct{}
@@ -186,9 +186,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	dialect := "postgres"
 
-	c.srv = base.NewServer(&base.Command{UI: c.UI})
-
-	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
+	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -204,17 +202,17 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		}
 		serverName = c.Config.Controller.Name + "/boundary-database-init"
 	}
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
 
-	if err := c.srv.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
 
-	if c.srv.RootKms == nil {
+	if c.RootKms == nil {
 		c.UI.Error("Root KMS not found after parsing KMS blocks")
 		return base.CommandCliError
 	}
@@ -279,13 +277,13 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(`"url" not specified in "database" config block`)
 		return base.CommandUserError
 	}
-	c.srv.DatabaseUrl, err = parseutil.ParsePath(urlToParse)
+	c.DatabaseUrl, err = parseutil.ParsePath(urlToParse)
 	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 		return base.CommandUserError
 	}
 	// Everything after is done with normal database URL and is affecting actual data
-	if err := c.srv.ConnectToDatabase(c.Context, dialect); err != nil {
+	if err := c.ConnectToDatabase(c.Context, dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return base.CommandCliError
 	}
@@ -293,7 +291,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
 		return base.CommandCliError
 	}
-	if err := c.srv.CreateGlobalKmsKeys(c.Context); err != nil {
+	if err := c.CreateGlobalKmsKeys(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating global-scope KMS keys: %w", err).Error())
 		return base.CommandCliError
 	}
@@ -320,7 +318,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandSuccess
 	}
 
-	role, err := c.srv.CreateInitialLoginRole(c.Context)
+	role, err := c.CreateInitialLoginRole(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial global-scoped login role: %w", err).Error())
 		return base.CommandCliError
@@ -342,18 +340,18 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	// Use an easy name, at least
-	c.srv.DevLoginName = "admin"
-	am, user, err := c.srv.CreateInitialPasswordAuthMethod(c.Context)
+	c.DevLoginName = "admin"
+	am, user, err := c.CreateInitialPasswordAuthMethod(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	authMethodInfo := &AuthInfo{
-		AuthMethodId:   c.srv.DevPasswordAuthMethodId,
+		AuthMethodId:   c.DevPasswordAuthMethodId,
 		AuthMethodName: am.Name,
-		LoginName:      c.srv.DevLoginName,
-		Password:       c.srv.DevPassword,
+		LoginName:      c.DevLoginName,
+		Password:       c.DevPassword,
 		ScopeId:        scope.Global.String(),
 		UserId:         user.PublicId,
 		UserName:       user.Name,
@@ -369,14 +367,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandSuccess
 	}
 
-	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
+	orgScope, projScope, err := c.CreateInitialScopes(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	orgScopeInfo := &ScopeInfo{
-		ScopeId: c.srv.DevOrgId,
+		ScopeId: c.DevOrgId,
 		Type:    scope.Org.String(),
 		Name:    orgScope.Name,
 	}
@@ -388,7 +386,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	projScopeInfo := &ScopeInfo{
-		ScopeId: c.srv.DevProjectId,
+		ScopeId: c.DevProjectId,
 		Type:    scope.Project.String(),
 		Name:    projScope.Name,
 	}
@@ -403,21 +401,21 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandSuccess
 	}
 
-	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
+	hc, hs, h, err := c.CreateInitialHostResources(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	hostInfo := &HostInfo{
-		HostCatalogId:   c.srv.DevHostCatalogId,
+		HostCatalogId:   c.DevHostCatalogId,
 		HostCatalogName: hc.GetName(),
-		HostSetId:       c.srv.DevHostSetId,
+		HostSetId:       c.DevHostSetId,
 		HostSetName:     hs.GetName(),
-		HostId:          c.srv.DevHostId,
+		HostId:          c.DevHostId,
 		HostName:        h.GetName(),
 		Type:            "static",
-		ScopeId:         c.srv.DevProjectId,
+		ScopeId:         c.DevProjectId,
 	}
 	switch base.Format(c.UI) {
 	case "table":
@@ -430,20 +428,20 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandSuccess
 	}
 
-	c.srv.DevTargetSessionConnectionLimit = -1
-	t, err := c.srv.CreateInitialTarget(c.Context)
+	c.DevTargetSessionConnectionLimit = -1
+	t, err := c.CreateInitialTarget(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	targetInfo := &TargetInfo{
-		TargetId:               c.srv.DevTargetId,
+		TargetId:               c.DevTargetId,
 		DefaultPort:            t.GetDefaultPort(),
 		SessionMaxSeconds:      t.GetSessionMaxSeconds(),
 		SessionConnectionLimit: t.GetSessionConnectionLimit(),
 		Type:                   "tcp",
-		ScopeId:                c.srv.DevProjectId,
+		ScopeId:                c.DevProjectId,
 		Name:                   t.GetName(),
 	}
 	switch base.Format(c.UI) {
@@ -480,7 +478,7 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 		c.Context,
 		wrapperPath,
-		"config",
+		globals.KmsPurposeConfig,
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
@@ -526,7 +524,7 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
-	underlyingDB, err := c.srv.Database.SqlDB(ctx)
+	underlyingDB, err := c.Database.SqlDB(ctx)
 	if err != nil {
 		return errors.NewDeprecated(errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
 	}
