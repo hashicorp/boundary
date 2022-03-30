@@ -61,7 +61,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
-	metric.InstrumentProxyHttpCollectors()
+	metric.InstrumentProxyHttpCollectors(conf.PrometheusRegisterer)
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),

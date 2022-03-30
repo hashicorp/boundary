@@ -120,8 +120,11 @@ func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 // InstrumentProxyHttpCollectors registers the proxy collectors to the default
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
-func InstrumentProxyHttpCollectors() {
-	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
+func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
+	if r == nil {
+		return
+	}
+	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
 	p := proxyPathValue
 	method := http.MethodGet
