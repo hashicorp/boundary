@@ -118,6 +118,7 @@ const (
 )
 
 var (
+	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
 
 	// httpRequestLatency collects measurements of how long it takes
@@ -142,8 +143,7 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_request_size_bytes",
 			Help:      "Histogram of request sizes for HTTP requests.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
+			Buckets:   msgSizeBuckets,
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
@@ -156,8 +156,7 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_response_size_bytes",
 			Help:      "Histogram of response sizes for HTTP responses.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
+			Buckets:   msgSizeBuckets,
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
