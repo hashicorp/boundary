@@ -41,6 +41,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -73,8 +74,9 @@ type Server struct {
 	CombineLogs bool
 	LogLevel    hclog.Level
 
-	StderrLock *sync.Mutex
-	Eventer    *event.Eventer
+	StderrLock           *sync.Mutex
+	Eventer              *event.Eventer
+	PrometheusRegisterer prometheus.Registerer
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
@@ -132,13 +134,14 @@ type Server struct {
 
 func NewServer(cmd *Command) *Server {
 	return &Server{
-		Command:            cmd,
-		InfoKeys:           make([]string, 0, 20),
-		Info:               make(map[string]string),
-		SecureRandomReader: rand.Reader,
-		ReloadFuncsLock:    new(sync.RWMutex),
-		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
-		StderrLock:         new(sync.Mutex),
+		Command:              cmd,
+		InfoKeys:             make([]string, 0, 20),
+		Info:                 make(map[string]string),
+		SecureRandomReader:   rand.Reader,
+		ReloadFuncsLock:      new(sync.RWMutex),
+		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
+		StderrLock:           new(sync.Mutex),
+		PrometheusRegisterer: prometheus.DefaultRegisterer,
 	}
 }
 

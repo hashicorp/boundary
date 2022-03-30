@@ -256,8 +256,11 @@ func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 // InitializeApiCollectors registers the api collectors to the default
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
-func InitializeApiCollectors() {
-	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
+func InitializeApiCollectors(r prometheus.Registerer) {
+	if r == nil {
+		return
+	}
+	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
 	for p, methods := range expectedPathsToMethods {
 		for _, m := range methods {

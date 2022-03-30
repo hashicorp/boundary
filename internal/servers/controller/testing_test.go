@@ -10,4 +10,11 @@ func Test_TestController(t *testing.T) {
 		tc := NewTestController(t, nil)
 		defer tc.Shutdown()
 	})
+	t.Run("start 2 controllers", func(t *testing.T) {
+		t.Parallel()
+		tc1 := NewTestController(t, nil)
+		tc2 := NewTestController(t, nil)
+		defer tc1.Shutdown()
+		defer tc2.Shutdown()
+	})
 }
