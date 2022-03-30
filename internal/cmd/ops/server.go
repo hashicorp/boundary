@@ -140,7 +140,7 @@ func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controll
 		mux.Handle("/health", h)
 	}
 
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metric", promhttp.Handler())
 	return cleanhttp.PrintablePathCheckHandler(mux, nil), nil
 }
 

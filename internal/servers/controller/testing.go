@@ -424,7 +424,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		cancel: cancel,
 		opts:   opts,
 	}
-
 	conf := TestControllerConfig(t, ctx, tc, opts)
 	var err error
 	tc.c, err = New(ctx, conf)

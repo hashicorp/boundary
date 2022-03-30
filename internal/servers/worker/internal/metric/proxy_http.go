@@ -1,8 +1,6 @@
-// Package metrics contains the singleton metric vectors and methods to access
-// them through the controller code base.  Only exposing the metrics through
-// their respective functions ensures they remain singletons and allows
-// the code to enforce the appropriate labels are used.
-package metrics
+// Package metric provides functions to initialize the controller specific
+// collectors and hooks to measure metrics and update the relevant collectors.
+package metric
 
 import (
 	"fmt"
@@ -82,7 +80,7 @@ var expectedHttpErrCodes = []int{
 	http.StatusInternalServerError,
 }
 
-// pathLabel maps the requested path to the label value recorded for metrics
+// pathLabel maps the requested path to the label value recorded for metric
 func pathLabel(incomingPath string) string {
 	if incomingPath == "" || incomingPath[0] != '/' {
 		incomingPath = fmt.Sprintf("/%s", incomingPath)
@@ -95,13 +93,13 @@ func pathLabel(incomingPath string) string {
 	return invalidPathValue
 }
 
-// ProxyMetricHandler provides a metric handler which measures
+// InstrumentProxyHttpHandler provides a proxy handler which measures
 // 1. The response size
 // 2. The request size
 // 3. The request latency
 // and attaches status code, method, and path labels for each of these
 // measurements.
-func ProxyMetricHandler(wrapped http.Handler) http.Handler {
+func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
 			labelHttpPath: pathLabel(req.URL.Path),
@@ -119,15 +117,16 @@ func ProxyMetricHandler(wrapped http.Handler) http.Handler {
 	})
 }
 
-// InitializeProxyMetrics registers the controller metrics and initializes them to 0
-// for all possible label combinations.
-func InitializeProxyMetrics() {
+// InstrumentProxyHttpCollectors registers the proxy collectors to the default
+// prometheus register and initializes them to 0 for all possible label
+// combinations.
+func InstrumentProxyHttpCollectors() {
 	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
-	path := proxyPathValue
+	p := proxyPathValue
 	method := http.MethodGet
 	for _, sc := range expectedHttpErrCodes {
-		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: path, labelHttpMethod: strings.ToLower(method)}
+		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
 		httpResponseSize.With(l)
 		httpRequestSize.With(l)
 		httpRequestLatency.With(l)
@@ -135,9 +134,9 @@ func InitializeProxyMetrics() {
 
 	// When an invalid path is found, any method is possible, but we expect
 	// an error response.
-	path = invalidPathValue
-	for _, sc := range expectedHttpErrCodes {
-		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: path, labelHttpMethod: strings.ToLower(method)}
+	p = invalidPathValue
+	for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
+		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
 		httpResponseSize.With(l)
 		httpRequestSize.With(l)
 		httpRequestLatency.With(l)

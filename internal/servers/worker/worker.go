@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers/worker/internal/metrics"
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metric"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -61,7 +61,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
-	metrics.InitializeProxyMetrics()
+	metric.InstrumentProxyHttpCollectors()
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),
