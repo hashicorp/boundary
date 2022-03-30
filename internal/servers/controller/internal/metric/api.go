@@ -1,8 +1,6 @@
-// Package metrics contains the singleton metric vectors and methods to access
-// them through the controller code base.  Only exposing the metrics through
-// their respective functions ensures they remain singletons and allows
-// the code to enforce the appropriate labels are used.
-package metrics
+// Package metric provides functions to initialize the controller specific
+// collectors and hooks to measure metrics and update the relevant collectors.
+package metric
 
 import (
 	"fmt"
@@ -231,13 +229,13 @@ func pathLabel(incomingPath string) string {
 	return invalidPathValue
 }
 
-// ApiMetricHandler provides a metric handler which measures
+// InstrumentApiHandler provides a handler which measures api
 // 1. The response size
 // 2. The request size
 // 3. The request latency
 // and attaches status code, method, and path labels for each of these
 // measurements.
-func ApiMetricHandler(wrapped http.Handler) http.Handler {
+func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
 			labelHttpPath: pathLabel(req.URL.Path),
@@ -255,9 +253,10 @@ func ApiMetricHandler(wrapped http.Handler) http.Handler {
 	})
 }
 
-// InitializeApiMetrics registers the api metrics to the default prometheus
-// register and initializes them to 0 for all possible label combinations.
-func InitializeApiMetrics() {
+// InitializeApiCollectors registers the api collectors to the default
+// prometheus register and initializes them to 0 for all possible label
+// combinations.
+func InitializeApiCollectors() {
 	prometheus.DefaultRegisterer.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
 	for p, methods := range expectedPathsToMethods {
