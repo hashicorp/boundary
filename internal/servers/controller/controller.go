@@ -89,7 +89,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
-	metric.InitializeApiCollectors()
+	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
