@@ -89,6 +89,10 @@ func TestPathLabel(t *testing.T) {
 			want: "/v1/accounts",
 		},
 		{
+			in:   "/v1/hosts",
+			want: "/v1/hosts",
+		},
+		{
 			in:   "/v2/accounts",
 			want: "invalid",
 		},

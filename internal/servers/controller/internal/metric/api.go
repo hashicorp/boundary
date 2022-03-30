@@ -17,6 +17,7 @@ import (
 	grpcpb "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -77,31 +78,15 @@ func gatherServicePathsAndMethods(fd protoreflect.FileDescriptor, paths map[stri
 // defined outside of the protobufs such as anything using the OPTION method
 // or any other paths registered like the dev UI passthrough path.
 func apiPathsAndMethods() map[string][]string {
-	// TODO: Auto generate the list of file descriptors so new services created
-	//  will automatically be covered by the metrics.
-	fds := []protoreflect.FileDescriptor{
-		services.File_controller_api_services_v1_account_service_proto,
-		services.File_controller_api_services_v1_auth_method_service_proto,
-		services.File_controller_api_services_v1_authtokens_service_proto,
-		services.File_controller_api_services_v1_credential_library_service_proto,
-		services.File_controller_api_services_v1_credential_store_service_proto,
-		services.File_controller_api_services_v1_group_service_proto,
-		services.File_controller_api_services_v1_host_catalog_service_proto,
-		services.File_controller_api_services_v1_host_service_proto,
-		services.File_controller_api_services_v1_host_set_service_proto,
-		services.File_controller_api_services_v1_managed_group_service_proto,
-		services.File_controller_api_services_v1_role_service_proto,
-		services.File_controller_api_services_v1_scope_service_proto,
-		services.File_controller_api_services_v1_session_service_proto,
-		services.File_controller_api_services_v1_target_service_proto,
-		services.File_controller_api_services_v1_user_service_proto,
-	}
 	paths := make(map[string][]string)
-	for _, f := range fds {
-		if err := gatherServicePathsAndMethods(f, paths); err != nil {
-			panic(err)
-		}
-	}
+	protoregistry.GlobalFiles.RangeFilesByPackage(
+		services.File_controller_api_services_v1_user_service_proto.Package(),
+		func(f protoreflect.FileDescriptor) bool {
+			if err := gatherServicePathsAndMethods(f, paths); err != nil {
+				panic(err)
+			}
+			return true
+		})
 	return paths
 }
 
