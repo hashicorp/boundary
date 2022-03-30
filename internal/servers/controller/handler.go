@@ -38,7 +38,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
-	"github.com/hashicorp/boundary/internal/servers/controller/internal/metrics"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -76,7 +76,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	metricsHandler := metrics.ApiMetricHandler(eventsHandler)
+	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
 	return metricsHandler, nil
 }

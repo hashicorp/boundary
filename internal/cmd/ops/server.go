@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Server is a collection of all state required to serve
@@ -139,6 +140,7 @@ func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controll
 		mux.Handle("/health", h)
 	}
 
+	mux.Handle("/metrics", promhttp.Handler())
 	return cleanhttp.PrintablePathCheckHandler(mux, nil), nil
 }
 
