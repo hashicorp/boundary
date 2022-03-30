@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package controller.ops.resources.health.v1;
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/ops/resources/health;health";
+
+// Health is the underlying resource used by the Health Service.
+// Empty for now as we don't want to commit to an API yet.
+message Health {}

@@ -67,9 +67,11 @@ func (c *OidcCommand) Help() string {
 	helpMap := common.HelpMap("auth method")
 
 	switch c.Func {
+
 	default:
 
 		helpStr = c.extraOidcHelpFunc(helpMap)
+
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -104,6 +106,7 @@ func (c *OidcCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "oidc-type auth method"
@@ -128,17 +131,26 @@ func (c *OidcCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsOidcMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	authmethodsClient := authmethods.NewClient(client)
@@ -229,6 +241,7 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	}
 
 	switch base.Format(c.UI) {

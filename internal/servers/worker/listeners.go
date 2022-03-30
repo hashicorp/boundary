@@ -30,7 +30,7 @@ func (w *Worker) startListeners() error {
 	for _, ln := range w.conf.Listeners {
 		for _, purpose := range ln.Config.Purpose {
 			switch purpose {
-			case "api", "cluster":
+			case "api", "cluster", "ops":
 				// We may have this in dev mode; ignore
 				continue
 

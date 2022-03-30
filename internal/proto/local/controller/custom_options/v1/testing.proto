@@ -1,0 +1,51 @@
+syntax = "proto3";
+package controller.custom_options.v1;
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/protooptions;protooptions";
+
+import "controller/custom_options/v1/options.proto";
+
+message TestBase {
+	string first_field = 1 [(mask_mapping) = {this: "first_field" that: "OtherFirstField"}];
+	string StrangeFormatField = 2 [(mask_mapping) = {this: "strangly_formatted_field" that: "other_second_field"}];
+	string field_with_different_json_name = 3 [json_name="json_name", (mask_mapping) = {this: "field3" that:"other_field_3"}];
+	string extra_field = 4;
+}
+
+message TestBaseSplit1 {
+	string first_field = 1 [(mask_mapping) = {this: "first_field" that: "OtherFirstField"}];
+	string field_with_different_json_name = 2 [json_name="json_name", (mask_mapping) = {this: "field3" that:"other_field_3"}];
+	string extra_field = 3;
+
+}
+
+message TestBaseSplit2 {
+	string split_field1 = 1 [(mask_mapping) = {this: "strangly_formatted_field" that: "other_second_field"}];
+}
+
+message TestProperlyNamedFields {
+	string other_first_field = 1 [(mask_mapping) = {this: "OtherFirstField" that:"first_field"}];
+	string other_second_field = 2 [(mask_mapping) = {this: "other_second_field" that:"strangly_formatted_field"}];
+	string other_third_field = 3 [json_name="other_third_field", (mask_mapping) = {this: "other_field_3" that: "field3"}];
+	string another_extra_field = 4;
+}
+
+message TestNameDoesntMap {
+	string first_doesnt_map = 1 [(mask_mapping) = {this: "first_doesnt_map" that: "first_field"}];
+	string second_doesnt_map = 2 [(mask_mapping) = {this: "second_doesnt_map" that:"StrangeFormatField"}];
+	string third_doesnt_map = 3 [(mask_mapping) = {this: "third_doesnt_map" that:"field_with_different_json_name"}];
+	string another_extra_field = 4;
+}
+
+message TestNotEnoughFields {
+	string other_first_field = 1 [(mask_mapping) = {this: "OtherFirstField" that:"first_field"}];
+	string other_second_field = 2 [(mask_mapping) = {this: "other_second_field" that:"strangly_formatted_field"}];
+}
+
+message TestManyToOneMappings {
+	string other_first_field = 1 [(mask_mapping) = {this: "OtherFirstField" that:"first_field"}];
+	string other_second_field = 2 [(mask_mapping) = {this: "other_second_field" that:"strangly_formatted_field"}];
+	string other_third_field = 3 [(mask_mapping) = {this: "other_field_3" that: "field3"}];
+	// this field maps to the first_field like 'other_first_field'
+	string extra_field = 4 [(mask_mapping) = {this: "ExtraField" that:"first_field"}];
+}

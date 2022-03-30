@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/dbassert"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

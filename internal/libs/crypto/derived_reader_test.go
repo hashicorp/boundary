@@ -1,12 +1,13 @@
 package crypto
 
 import (
+	"context"
 	"crypto/sha256"
 	"io"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/hkdf"
@@ -14,6 +15,7 @@ import (
 
 func TestNewDerivedReader(t *testing.T) {
 	wrapper := TestWrapper(t)
+	ctx := context.Background()
 
 	type args struct {
 		wrapper  wrapping.Wrapper
@@ -24,7 +26,7 @@ func TestNewDerivedReader(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		want            *io.LimitedReader
+		want            func() *io.LimitedReader
 		wantErr         bool
 		wantErrCode     error
 		wantErrContains string
@@ -37,9 +39,15 @@ func TestNewDerivedReader(t *testing.T) {
 				info:     nil,
 				salt:     []byte("salt"),
 			},
-			want: &io.LimitedReader{
-				R: hkdf.New(sha256.New, wrapper.(*aead.Wrapper).GetKeyBytes(), []byte("salt"), nil),
-				N: 32,
+			want: func() *io.LimitedReader {
+				keyBytes, err := wrapper.(*aead.Wrapper).KeyBytes(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &io.LimitedReader{
+					R: hkdf.New(sha256.New, keyBytes, []byte("salt"), nil),
+					N: 32,
+				}
 			},
 		},
 		{
@@ -50,9 +58,15 @@ func TestNewDerivedReader(t *testing.T) {
 				info:     []byte("info"),
 				salt:     []byte("salt"),
 			},
-			want: &io.LimitedReader{
-				R: hkdf.New(sha256.New, wrapper.(*aead.Wrapper).GetKeyBytes(), []byte("salt"), []byte("info")),
-				N: 32,
+			want: func() *io.LimitedReader {
+				keyBytes, err := wrapper.(*aead.Wrapper).KeyBytes(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &io.LimitedReader{
+					R: hkdf.New(sha256.New, keyBytes, []byte("salt"), []byte("info")),
+					N: 32,
+				}
 			},
 		},
 		{
@@ -88,14 +102,14 @@ func TestNewDerivedReader(t *testing.T) {
 				salt:     []byte("salt"),
 			},
 			wantErr:         true,
-			wantErrCode:     ErrInvalidParameter,
+			wantErrCode:     wrapping.ErrInvalidParameter,
 			wantErrContains: "missing bytes",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewDerivedReader(tt.args.wrapper, tt.args.lenLimit, tt.args.salt, tt.args.info)
+			got, err := NewDerivedReader(ctx, tt.args.wrapper, tt.args.lenLimit, tt.args.salt, tt.args.info)
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorIsf(err, tt.wantErrCode, "unexpected error: %s", err)
@@ -105,7 +119,7 @@ func TestNewDerivedReader(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.want, got)
+			assert.Equal(tt.want(), got)
 		})
 	}
 }

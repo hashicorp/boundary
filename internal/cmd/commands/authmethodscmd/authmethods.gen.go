@@ -142,17 +142,26 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "list":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	authmethodsClient := authmethods.NewClient(client)

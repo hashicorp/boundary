@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
@@ -253,7 +253,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	case opts.WorkerAuthKms != nil:
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
 	default:
-		if err := tw.b.SetupKMSes(nil, opts.Config); err != nil {
+		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
 		}
 	}

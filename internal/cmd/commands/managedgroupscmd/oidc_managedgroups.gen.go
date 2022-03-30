@@ -67,9 +67,11 @@ func (c *OidcCommand) Help() string {
 	helpMap := common.HelpMap("managed group")
 
 	switch c.Func {
+
 	default:
 
 		helpStr = c.extraOidcHelpFunc(helpMap)
+
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -104,6 +106,7 @@ func (c *OidcCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "oidc-type managed group"
@@ -128,17 +131,26 @@ func (c *OidcCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsOidcMap[c.Func], "auth-method-id") {
 		switch c.Func {
+
 		case "create":
 			if c.FlagAuthMethodId == "" {
 				c.PrintCliError(errors.New("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	managedgroupsClient := managedgroups.NewClient(client)
@@ -166,6 +178,7 @@ func (c *OidcCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -173,6 +186,7 @@ func (c *OidcCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if ok := extraOidcFlagsHandlingFunc(c, f, &opts); !ok {
@@ -214,6 +228,7 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	}
 
 	switch base.Format(c.UI) {

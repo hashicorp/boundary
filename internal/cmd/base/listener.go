@@ -128,6 +128,8 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 			l.Address = "127.0.0.1:9201"
 		case "proxy":
 			l.Address = "127.0.0.1:9202"
+		case "ops":
+			l.Address = "127.0.0.1:9203"
 		default:
 			l.Address = "127.0.0.1:9200"
 		}
@@ -141,6 +143,8 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 				port = "9201"
 			case "proxy":
 				port = "9202"
+			case "ops":
+				port = "9203"
 			default:
 				port = "9200"
 			}

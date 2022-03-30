@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,12 +24,15 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -41,6 +45,7 @@ var (
 
 type Command struct {
 	*base.Server
+	opsServer *ops.Server
 
 	SighupCh  chan struct{}
 	SigUSR2Ch chan struct{}
@@ -48,8 +53,6 @@ type Command struct {
 	Config     *config.Config
 	controller *controller.Controller
 	worker     *worker.Worker
-
-	configWrapper wrapping.Wrapper
 
 	flagConfig      string
 	flagConfigKms   string
@@ -133,19 +136,10 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
-	}
-
-	if c.configWrapper != nil {
-		defer func() {
-			if err := c.configWrapper.Finalize(c.Context); err != nil {
-				c.UI.Warn(fmt.Errorf("Error finalizing config kms: %w", err).Error())
-			}
-		}()
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
@@ -169,7 +163,11 @@ func (c *Command) Run(args []string) int {
 		serverNames = append(serverNames, c.Config.Worker.Name)
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, strings.Join(serverNames, "/"), base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger,
+		c.StderrLock,
+		strings.Join(serverNames, "/"),
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -178,9 +176,9 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
 
-	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -237,6 +235,7 @@ func (c *Command) Run(args []string) int {
 				if lnConfig.Address == "" {
 					lnConfig.Address = "127.0.0.1:9202"
 				}
+			case "ops":
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return base.CommandUserError
@@ -337,7 +336,7 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -387,12 +386,12 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
 
-		if err := c.ConnectToDatabase(ctx, "postgres"); err != nil {
+		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
 
-		underlyingDB, err := c.Database.SqlDB(ctx)
+		underlyingDB, err := c.Database.SqlDB(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
 			return base.CommandCliError
@@ -452,11 +451,14 @@ func (c *Command) Run(args []string) int {
 	}()
 
 	c.PrintInfo(c.UI)
-	c.ReleaseLogGate()
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
+	}
 
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
-		if err := c.StartController(ctx); err != nil {
+		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
@@ -466,13 +468,21 @@ func (c *Command) Run(args []string) int {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
 			if c.controller != nil {
-				if err := c.controller.Shutdown(false); err != nil {
+				if err := c.controller.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 				}
 			}
 			return base.CommandCliError
 		}
 	}
+
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+	c.opsServer = opsServer
+	c.opsServer.Start()
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
@@ -497,36 +507,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return base.CommandUserError
 	}
 
-	switch {
-	case c.presetConfig != nil:
-		c.Config, err = config.Parse(c.presetConfig.Load())
-
-	default:
-		wrapperPath := c.flagConfig
-		if c.flagConfigKms != "" {
-			wrapperPath = c.flagConfigKms
-		}
-		var configWrapper wrapping.Wrapper
-		if wrapperPath != "" {
-			configWrapper, err = wrapper.GetWrapperFromPath(wrapperPath, "config")
-			if err != nil {
-				c.UI.Error(err.Error())
-				return base.CommandUserError
-			}
-			if configWrapper != nil {
-				c.configWrapper = configWrapper
-				if err := configWrapper.Init(c.Context); err != nil {
-					c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-					return base.CommandCliError
-				}
-			}
-		}
-		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+	cfg, out := c.reloadConfig()
+	if out > 0 {
+		return out
 	}
-	if err != nil {
-		c.UI.Error("Error parsing config: " + err.Error())
-		return base.CommandUserError
-	}
+	c.Config = cfg
 
 	if c.Config.Controller == nil && c.Config.Worker == nil {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
@@ -544,6 +529,75 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return base.CommandSuccess
 }
 
+func (c *Command) reloadConfig() (*config.Config, int) {
+	const op = "server.(Command).reloadConfig"
+
+	var err error
+	var cfg *config.Config
+	switch {
+	case c.presetConfig != nil:
+		cfg, err = config.Parse(c.presetConfig.Load())
+
+	default:
+		wrapperPath := c.flagConfig
+		if c.flagConfigKms != "" {
+			wrapperPath = c.flagConfigKms
+		}
+		var configWrapper wrapping.Wrapper
+		var ifWrapper wrapping.InitFinalizer
+		var cleanupFunc func() error
+		if wrapperPath != "" {
+			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
+				c.Context,
+				wrapperPath,
+				globals.KmsPurposeConfig,
+				configutil.WithPluginOptions(
+					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+				),
+				// TODO: How would we want to expose this kind of log to users when
+				// using recovery configs? Generally with normal CLI commands we
+				// don't print out all of these logs. We may want a logger with a
+				// custom writer behind our existing gate where we print nothing
+				// unless there is an error, then dump all of it.
+				configutil.WithLogger(hclog.NewNullLogger()),
+			)
+			if err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
+				return nil, base.CommandUserError
+			}
+			if cleanupFunc != nil {
+				defer func() {
+					if err := cleanupFunc(); err != nil {
+						event.WriteError(c.Context, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", c.flagConfig))
+					}
+				}()
+			}
+			if configWrapper != nil {
+				ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
+			}
+		}
+		if ifWrapper != nil {
+			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
+				return nil, base.CommandCliError
+			}
+		}
+		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
+		if ifWrapper != nil {
+			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
+				return nil, base.CommandCliError
+			}
+		}
+	}
+	if err != nil {
+		event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse config", "path", c.flagConfig))
+		return nil, base.CommandUserError
+	}
+	return cfg, 0
+}
+
 func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
@@ -558,7 +612,7 @@ func (c *Command) StartController(ctx context.Context) error {
 
 	if err := c.controller.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting controller: %w", err)
-		if err := c.controller.Shutdown(false); err != nil {
+		if err := c.controller.Shutdown(); err != nil {
 			c.UI.Error(retErr.Error())
 			retErr = fmt.Errorf("Error shutting down controller: %w", err)
 		}
@@ -617,6 +671,10 @@ func (c *Command) WaitForInterrupt() int {
 				}
 			}()
 
+			if c.Config.Controller != nil {
+				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+			}
+
 			// Do worker shutdown
 			if c.Config.Worker != nil {
 				if err := c.worker.Shutdown(false); err != nil {
@@ -626,9 +684,14 @@ func (c *Command) WaitForInterrupt() int {
 
 			// Do controller shutdown
 			if c.Config.Controller != nil {
-				if err := c.controller.Shutdown(c.Config.Worker != nil); err != nil {
+				if err := c.controller.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 				}
+			}
+
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
 			}
 
 			shutdownTriggered = true
@@ -638,20 +701,15 @@ func (c *Command) WaitForInterrupt() int {
 
 			// Check for new log level
 			var level hclog.Level
-			var err error
 			var newConf *config.Config
+			var out int
 
 			if c.flagConfig == "" && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
-			if c.presetConfig != nil {
-				newConf, err = config.Parse(c.presetConfig.Load())
-			} else {
-				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
-			}
-			if err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("could not reload config", "path", c.flagConfig))
+			newConf, out = c.reloadConfig()
+			if out > 0 {
 				goto RUNRELOADFUNCS
 			}
 

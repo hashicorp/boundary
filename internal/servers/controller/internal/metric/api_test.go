@@ -1,4 +1,4 @@
-package metrics
+package metric
 
 import (
 	"net/http"
@@ -10,7 +10,6 @@ import (
 )
 
 func TestBuildRegexFromPath(t *testing.T) {
-
 	cases := []struct {
 		path  string
 		match []string
@@ -88,6 +87,10 @@ func TestPathLabel(t *testing.T) {
 		{
 			in:   "v1/accounts",
 			want: "/v1/accounts",
+		},
+		{
+			in:   "/v1/hosts",
+			want: "/v1/hosts",
 		},
 		{
 			in:   "/v2/accounts",

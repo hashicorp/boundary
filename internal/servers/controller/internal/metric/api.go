@@ -1,8 +1,6 @@
-// Package metrics contains the singleton metric vectors and methods to access
-// them through the controller code base.  Only exposing the metrics through
-// their respective functions ensures they remain singletons and allows
-// the code to enforce the appropriate labels are used.
-package metrics
+// Package metric provides functions to initialize the controller specific
+// collectors and hooks to measure metrics and update the relevant collectors.
+package metric
 
 import (
 	"fmt"
@@ -19,6 +17,7 @@ import (
 	grpcpb "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -79,31 +78,15 @@ func gatherServicePathsAndMethods(fd protoreflect.FileDescriptor, paths map[stri
 // defined outside of the protobufs such as anything using the OPTION method
 // or any other paths registered like the dev UI passthrough path.
 func apiPathsAndMethods() map[string][]string {
-	// TODO: Auto generate the list of file descriptors so new services created
-	//  will automatically be covered by the metrics.
-	fds := []protoreflect.FileDescriptor{
-		services.File_controller_api_services_v1_account_service_proto,
-		services.File_controller_api_services_v1_auth_method_service_proto,
-		services.File_controller_api_services_v1_authtokens_service_proto,
-		services.File_controller_api_services_v1_credential_library_service_proto,
-		services.File_controller_api_services_v1_credential_store_service_proto,
-		services.File_controller_api_services_v1_group_service_proto,
-		services.File_controller_api_services_v1_host_catalog_service_proto,
-		services.File_controller_api_services_v1_host_service_proto,
-		services.File_controller_api_services_v1_host_set_service_proto,
-		services.File_controller_api_services_v1_managed_group_service_proto,
-		services.File_controller_api_services_v1_role_service_proto,
-		services.File_controller_api_services_v1_scope_service_proto,
-		services.File_controller_api_services_v1_session_service_proto,
-		services.File_controller_api_services_v1_target_service_proto,
-		services.File_controller_api_services_v1_user_service_proto,
-	}
 	paths := make(map[string][]string)
-	for _, f := range fds {
-		if err := gatherServicePathsAndMethods(f, paths); err != nil {
-			panic(err)
-		}
-	}
+	protoregistry.GlobalFiles.RangeFilesByPackage(
+		services.File_controller_api_services_v1_user_service_proto.Package(),
+		func(f protoreflect.FileDescriptor) bool {
+			if err := gatherServicePathsAndMethods(f, paths); err != nil {
+				panic(err)
+			}
+			return true
+		})
 	return paths
 }
 
@@ -135,6 +118,7 @@ const (
 )
 
 var (
+	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
 
 	// httpRequestLatency collects measurements of how long it takes
@@ -159,8 +143,7 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_request_size_bytes",
 			Help:      "Histogram of request sizes for HTTP requests.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
+			Buckets:   msgSizeBuckets,
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
@@ -173,8 +156,7 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_response_size_bytes",
 			Help:      "Histogram of response sizes for HTTP responses.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
+			Buckets:   msgSizeBuckets,
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
@@ -231,13 +213,13 @@ func pathLabel(incomingPath string) string {
 	return invalidPathValue
 }
 
-// ApiMetricHandler provides a metric handler which measures
+// InstrumentApiHandler provides a handler which measures api
 // 1. The response size
 // 2. The request size
 // 3. The request latency
 // and attaches status code, method, and path labels for each of these
 // measurements.
-func ApiMetricHandler(wrapped http.Handler) http.Handler {
+func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
 			labelHttpPath: pathLabel(req.URL.Path),
@@ -255,9 +237,13 @@ func ApiMetricHandler(wrapped http.Handler) http.Handler {
 	})
 }
 
-// RegisterMetrics registers the controller metrics and initializes them to 0
-// for all possible label combinations.
-func RegisterMetrics(r prometheus.Registerer) {
+// InitializeApiCollectors registers the api collectors to the default
+// prometheus register and initializes them to 0 for all possible label
+// combinations.
+func InitializeApiCollectors(r prometheus.Registerer) {
+	if r == nil {
+		return
+	}
 	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
 
 	for p, methods := range expectedPathsToMethods {

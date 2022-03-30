@@ -12,7 +12,7 @@ import (
 	"github.com/fatih/structs"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 const (

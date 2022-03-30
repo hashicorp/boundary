@@ -12,10 +12,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -38,6 +40,7 @@ var (
 
 type Command struct {
 	*base.Server
+	opsServer *ops.Server
 
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
@@ -67,6 +70,7 @@ type Command struct {
 	flagWorkerAuthKey                string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
+	flagOpsListenAddr                string
 	flagUiPassthroughDir             string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
@@ -212,6 +216,12 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_PUBLIC_CLUSTER_ADDRESS",
 		Usage:  "Public address at which the controller is reachable for cluster tasks (like worker connections).",
 	})
+	f.StringVar(&base.StringVar{
+		Name:   "ops-listen-address",
+		Target: &c.flagOpsListenAddr,
+		EnvVar: "BOUNDARY_DEV_OPS_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for \"ops\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
+	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "controller-only",
@@ -337,7 +347,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
-	ctx := context.TODO()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -363,7 +372,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagWorkerAuthKey != "" {
 		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
 		for _, kms := range c.Config.Seals {
-			if strutil.StrListContains(kms.Purpose, "worker-auth") {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeWorkerAuth) {
 				kms.Config["key"] = c.flagWorkerAuthKey
 			}
 		}
@@ -449,6 +458,14 @@ func (c *Command) Run(args []string) int {
 				l.Type = "unix"
 			}
 
+		case "ops":
+			if c.flagOpsListenAddr != "" {
+				l.Address = c.flagOpsListenAddr
+			}
+			if strings.HasPrefix(l.Address, "/") {
+				l.Type = "unix"
+			}
+
 		case "proxy":
 			if c.flagWorkerProxyListenAddr != "" {
 				l.Address = c.flagWorkerProxyListenAddr
@@ -507,27 +524,29 @@ func (c *Command) Run(args []string) int {
 	// here)
 	c.SetStatusGracePeriodDuration(0)
 
-	base.StartMemProfiler(ctx)
+	base.StartMemProfiler(c.Context)
+
+	if err := c.SetupEventing(
+		c.Logger,
+		c.StderrLock,
+		serverName,
+		base.WithEventerConfig(c.Config.Eventing),
+		base.WithEventFlags(eventFlags),
+		base.WithEventGating(true)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
-	}
-	if err := c.SetupEventing(
-		c.Logger,
-		c.StderrLock,
-		serverName,
-		base.WithEventerConfig(c.Config.Eventing),
-		base.WithEventFlags(eventFlags)); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
@@ -541,7 +560,7 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -578,7 +597,9 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagDisableDatabaseDestruction {
-			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(ctx) })
+			// Use background context here so that we don't immediately fail to
+			// cleanup if the command context has already been canceled
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return c.DestroyDevDatabase(context.Background()) })
 		}
 	default:
 		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)
@@ -593,7 +614,10 @@ func (c *Command) Run(args []string) int {
 	}
 
 	c.PrintInfo(c.UI)
-	c.ReleaseLogGate()
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
+	}
 
 	{
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
@@ -603,7 +627,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.controller, err = controller.New(ctx, conf)
+		c.controller, err = controller.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 			return base.CommandCliError
@@ -611,7 +635,7 @@ func (c *Command) Run(args []string) int {
 
 		if err := c.controller.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting controller: %w", err)
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(retErr.Error())
 				retErr = fmt.Errorf("Error shutting down controller: %w", err)
 			}
@@ -629,7 +653,7 @@ func (c *Command) Run(args []string) int {
 		var err error
 		c.worker, err = worker.New(conf)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
 		}
 
@@ -640,12 +664,21 @@ func (c *Command) Run(args []string) int {
 				retErr = fmt.Errorf("Error shutting down worker: %w", err)
 			}
 			c.UI.Error(retErr.Error())
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 			return base.CommandCliError
 		}
 	}
+
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
+		return base.CommandCliError
+
+	}
+	c.opsServer = opsServer
+	c.opsServer.Start()
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -671,14 +704,23 @@ func (c *Command) Run(args []string) int {
 				}
 			}()
 
+			if c.Config.Controller != nil {
+				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+			}
+
 			if !c.flagControllerOnly {
 				if err := c.worker.Shutdown(false); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
 
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+			}
+
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
 
 			shutdownTriggered = true

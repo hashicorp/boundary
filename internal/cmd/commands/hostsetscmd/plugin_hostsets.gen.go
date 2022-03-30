@@ -67,9 +67,11 @@ func (c *PluginCommand) Help() string {
 	helpMap := common.HelpMap("host set")
 
 	switch c.Func {
+
 	default:
 
 		helpStr = c.extraPluginHelpFunc(helpMap)
+
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -107,6 +109,7 @@ func (c *PluginCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "plugin-type host set"
@@ -131,17 +134,26 @@ func (c *PluginCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsPluginMap[c.Func], "host-catalog-id") {
 		switch c.Func {
+
 		case "create":
 			if c.FlagHostCatalogId == "" {
 				c.PrintCliError(errors.New("HostCatalog ID must be passed in via -host-catalog-id or BOUNDARY_HOST_CATALOG_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	hostsetsClient := hostsets.NewClient(client)
@@ -169,6 +181,7 @@ func (c *PluginCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -176,6 +189,7 @@ func (c *PluginCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if err := common.HandleAttributeFlags(
@@ -232,6 +246,7 @@ func (c *PluginCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	}
 
 	switch base.Format(c.UI) {

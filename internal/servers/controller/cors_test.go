@@ -20,50 +20,54 @@ const corsTestConfig = `
 disable_mlock = true
 
 telemetry {
-        prometheus_retention_time = "24h"
-        disable_hostname = true
+	prometheus_retention_time = "24h"
+	disable_hostname = true
 }
 
 kms "aead" {
-        purpose = "root"
-        aead_type = "aes-gcm"
-		key = "09iqFxRJNYsl/b8CQxjnGw=="
-		key_id = "global_root"
+	purpose = "root"
+	aead_type = "aes-gcm"
+	key = "09iqFxRJNYsl/b8CQxjnGw=="
+	key_id = "global_root"
 }
 
 kms "aead" {
-        purpose = "worker-auth"
-        aead_type = "aes-gcm"
-		key = "09iqFxRJNYsl/b8CQxjnGw=="
-		key_id = "global_worker-auth"
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "09iqFxRJNYsl/b8CQxjnGw=="
+	key_id = "global_worker-auth"
 }
 
 listener "tcp" {
-        purpose = "api"
-        tls_disable = true
-        cors_enabled = false
+	purpose = "cluster"
 }
 
 listener "tcp" {
-        purpose = "api"
-        tls_disable = true
-        cors_enabled = true
-        cors_allowed_origins = []
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = false
 }
 
 listener "tcp" {
-        purpose = "api"
-        tls_disable = true
-        cors_enabled = true
-        cors_allowed_origins = ["foobar.com", "barfoo.com"]
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = true
+	cors_allowed_origins = []
 }
 
 listener "tcp" {
-        purpose = "api"
-        tls_disable = true
-        cors_enabled = true
-        cors_allowed_origins = ["*"]
-		cors_allowed_headers = ["x-foobar"]
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = true
+	cors_allowed_origins = ["foobar.com", "barfoo.com"]
+}
+
+listener "tcp" {
+	purpose = "api"
+	tls_disable = true
+	cors_enabled = true
+	cors_allowed_origins = ["*"]
+	cors_allowed_headers = ["x-foobar"]
 }
 `
 

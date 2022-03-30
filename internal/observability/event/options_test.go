@@ -1,14 +1,16 @@
 package event
 
 import (
+	"context"
 	"encoding/base64"
 	"math/rand"
 	"net/url"
 	"testing"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -170,6 +172,27 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withFilterOperations = overrides
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithHclogLevel", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithHclogLevel(hclog.Info))
+		testOpts := getDefaultOptions()
+		testOpts.withHclogLevel = hclog.Info
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("withEventGating", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withGating)
+		opts := getOpts(WithGating(true))
+		assert.True(opts.withGating)
+	})
+	t.Run("withNoGateLocking", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withNoGateLocking)
+		opts := getOpts(WithNoGateLocking(true))
+		assert.True(opts.withNoGateLocking)
+	})
 }
 
 // testWrapper initializes an AEAD wrapping.Wrapper for testing.  Note: this
@@ -184,14 +207,15 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 	if n != 32 {
 		t.Fatal(n)
 	}
-	root := aead.NewWrapper(nil)
-	_, err = root.SetConfig(map[string]string{
-		"key_id": base64.StdEncoding.EncodeToString(rootKey),
-	})
+	root := aead.NewWrapper()
+	_, err = root.SetConfig(
+		context.Background(),
+		wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+	if err := root.SetAesGcmKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
 	}
 	return root

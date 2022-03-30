@@ -92,7 +92,7 @@ If you have the following requirements met locally:
 
 You can get up and running with Boundary quickly. Simply run:
 
-  ```make dev```
+  ```make install```
 
 This will build Boundary. (The first time this is run it will fetch and compile
 UI assets; which will take a few extra minutes.) Once complete, run Boundary in
@@ -105,7 +105,7 @@ tools at the versions used by the Boundary team, run:
 
   ```make tools```
 
-Without doing so, you may encounter errors while running `make dev`. It is important
+Without doing so, you may encounter errors while running `make install`. It is important
 to also note that using `make tools` will install various tools used for Boundary
 development to the normal Go binary directory; this may overwrite or take precedence
 over tools that might already be installed on the system.

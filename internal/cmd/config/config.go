@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/go-secure-stdlib/configutil"
+	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
@@ -74,6 +74,11 @@ listener "tcp" {
 listener "tcp" {
 	purpose = "cluster"
 }
+
+listener "tcp" {
+	purpose = "ops"
+	tls_disable = true
+}
 `
 
 	devWorkerExtraConfig = `
@@ -127,6 +132,12 @@ type Controller struct {
 	// denoted by time.Duration
 	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
+
+	// GracefulShutdownWait is the amount of time that we'll wait before actually
+	// starting the Controller shutdown. This allows the health endpoint to
+	// return a status code to indicate that the instance is shutting down.
+	GracefulShutdownWait         interface{} `hcl:"graceful_shutdown_wait_duration"`
+	GracefulShutdownWaitDuration time.Duration
 
 	// StatusGracePeriod represents the period of time (as a duration) that the
 	// controller will wait before marking connections from a disconnected worker
@@ -339,6 +350,14 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.AuthTokenTimeToStaleDuration = t
+		}
+
+		if result.Controller.GracefulShutdownWait != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.GracefulShutdownWait)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.GracefulShutdownWaitDuration = t
 		}
 
 		if result.Controller.Database != nil {

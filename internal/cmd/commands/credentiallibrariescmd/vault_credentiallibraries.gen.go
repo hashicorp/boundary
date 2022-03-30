@@ -67,9 +67,11 @@ func (c *VaultCommand) Help() string {
 	helpMap := common.HelpMap("credential library")
 
 	switch c.Func {
+
 	default:
 
 		helpStr = c.extraVaultHelpFunc(helpMap)
+
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -104,6 +106,7 @@ func (c *VaultCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "vault-type credential library"
@@ -128,17 +131,26 @@ func (c *VaultCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsVaultMap[c.Func], "credential-store-id") {
 		switch c.Func {
+
 		case "create":
 			if c.FlagCredentialStoreId == "" {
 				c.PrintCliError(errors.New("CredentialStore ID must be passed in via -credential-store-id or BOUNDARY_CREDENTIAL_STORE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	credentiallibrariesClient := credentiallibraries.NewClient(client)
@@ -166,6 +178,7 @@ func (c *VaultCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -173,6 +186,7 @@ func (c *VaultCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if ok := extraVaultFlagsHandlingFunc(c, f, &opts); !ok {
@@ -216,6 +230,7 @@ func (c *VaultCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	}
 
 	switch base.Format(c.UI) {

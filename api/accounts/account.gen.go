@@ -42,10 +42,8 @@ func (n AccountReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type (
-	AccountCreateResult = AccountReadResult
-	AccountUpdateResult = AccountReadResult
-)
+type AccountCreateResult = AccountReadResult
+type AccountUpdateResult = AccountReadResult
 
 type AccountDeleteResult struct {
 	response *api.Response

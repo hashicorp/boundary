@@ -25,7 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
@@ -359,14 +359,14 @@ func (v *verifier) decryptToken(ctx context.Context) {
 			return
 		}
 
-		blobInfo := new(wrapping.EncryptedBlobInfo)
+		blobInfo := new(wrapping.BlobInfo)
 		if err := proto.Unmarshal(marshaledToken, blobInfo); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error decoding encrypted token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
 
-		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, []byte(v.requestInfo.PublicId))
+		s1Bytes, err := tokenWrapper.Decrypt(v.ctx, blobInfo, wrapping.WithAad([]byte(v.requestInfo.PublicId)))
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error decrypting encrypted token; continuing as anonymous user"))
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)

@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/session"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -27,10 +25,12 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -279,7 +279,7 @@ func (tc *TestController) Shutdown() {
 	tc.cancel()
 
 	if tc.c != nil {
-		if err := tc.c.Shutdown(false); err != nil {
+		if err := tc.c.Shutdown(); err != nil {
 			tc.t.Error(err)
 		}
 	}
@@ -392,6 +392,10 @@ type TestControllerOpts struct {
 
 	// The logger to use, or one will be created
 	Logger hclog.Logger
+
+	// The registerer to use for registering all the collectors.  Nil means
+	// no metrics are registered.
+	PrometheusRegisterer prometheus.Registerer
 
 	// A cluster address for overriding the advertised controller listener
 	// (overrides address provided in config, if any)
@@ -519,6 +523,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		})
 	}
 
+	tc.b.PrometheusRegisterer = opts.PrometheusRegisterer
 	if opts.Config.Controller == nil {
 		opts.Config.Controller = new(config.Controller)
 	}
@@ -562,7 +567,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 		tc.b.RootKms = opts.RootKms
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
 	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(nil, opts.Config); err != nil {
+		if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
 		}
 	default:
@@ -576,7 +581,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
+	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {

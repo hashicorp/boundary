@@ -67,9 +67,11 @@ func (c *TcpCommand) Help() string {
 	helpMap := common.HelpMap("target")
 
 	switch c.Func {
+
 	default:
 
 		helpStr = c.extraTcpHelpFunc(helpMap)
+
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -104,6 +106,7 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
 	}
 
 	c.plural = "tcp-type target"
@@ -128,17 +131,26 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsTcpMap[c.Func], "scope-id") {
 		switch c.Func {
+
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return base.CommandUserError
 			}
+
 		}
 	}
 
 	client, err := c.Client()
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
 	targetsClient := targets.NewClient(client)
@@ -171,6 +183,7 @@ func (c *TcpCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -178,6 +191,7 @@ func (c *TcpCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
 	}
 
 	if ok := extraTcpFlagsHandlingFunc(c, f, &opts); !ok {
@@ -219,6 +233,7 @@ func (c *TcpCommand) Run(args []string) int {
 	}
 
 	switch c.Func {
+
 	}
 
 	switch base.Format(c.UI) {
