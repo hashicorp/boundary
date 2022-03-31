@@ -5,7 +5,6 @@ package controller.ops.services.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/ops/services;services";
 
 import "google/api/annotations.proto";
-import "controller/ops/resources/health/v1/health.proto";
 
 service HealthService {
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse) {
