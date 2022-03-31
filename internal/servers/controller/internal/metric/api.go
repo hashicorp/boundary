@@ -227,7 +227,7 @@ func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),
 			promhttp.InstrumentHandlerRequestSize(
-				httpResponseSize.MustCurryWith(l),
+				httpRequestSize.MustCurryWith(l),
 				promhttp.InstrumentHandlerResponseSize(
 					httpResponseSize.MustCurryWith(l),
 					wrapped,
