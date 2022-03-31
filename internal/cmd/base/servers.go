@@ -74,15 +74,16 @@ type Server struct {
 	CombineLogs bool
 	LogLevel    hclog.Level
 
-	StderrLock           *sync.Mutex
-	Eventer              *event.Eventer
-	PrometheusRegisterer prometheus.Registerer
+	StderrLock *sync.Mutex
+	Eventer    *event.Eventer
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
 	RecoveryKms        wrapping.Wrapper
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
+
+	PrometheusRegisterer prometheus.Registerer
 
 	ReloadFuncsLock *sync.RWMutex
 	ReloadFuncs     map[string][]reloadutil.ReloadFunc
