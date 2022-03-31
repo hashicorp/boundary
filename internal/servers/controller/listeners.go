@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
@@ -139,11 +140,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	workerServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
-		grpc.ChainUnaryInterceptor(
-			metric.InstrumentClusterInterceptor(),
-			workerReqInterceptor,
-			auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
-			auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				metric.InstrumentClusterInterceptor(),
+				workerReqInterceptor,
+				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
+				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+			),
 		),
 	)
 
