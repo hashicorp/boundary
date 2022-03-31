@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -87,48 +89,57 @@ type requestRecorder struct {
 	labels prometheus.Labels
 
 	// measurements
-	reqSize int
+	reqSize *int
 	start   time.Time
 }
 
-func newRequestRecorder(req interface{}, fullMethodName string) requestRecorder {
-	reqProto, ok := req.(proto.Message)
-	if !ok {
-		// do something
-	}
-	reqSize := proto.Size(reqProto)
+func newRequestRecorder(ctx context.Context, req interface{}, fullMethodName string) requestRecorder {
+	const op = "metric.newRequestRecorder"
 	service, method := splitMethodName(fullMethodName)
-	return requestRecorder{
+	r := requestRecorder{
 		labels: prometheus.Labels{
 			labelGRpcMethod:  method,
 			labelGRpcService: service,
 		},
-		start:   time.Now(),
-		reqSize: reqSize,
+		start: time.Now(),
 	}
+
+	reqProto, ok := req.(proto.Message)
+	switch {
+	case ok:
+		reqSize := proto.Size(reqProto)
+		r.reqSize = &reqSize
+	default:
+		event.WriteError(ctx, op, errors.New(ctx, errors.Internal, op, "unable to cast to proto.Message"))
+	}
+	return r
 }
 
-func (r requestRecorder) record(resp interface{}, err error) {
+func (r requestRecorder) record(ctx context.Context, resp interface{}, err error) {
+	const op = "metric.(requestRecorder).record"
 	st := statusFromError(err)
 	r.labels[labelGRpcCode] = st.Code().String()
 
-	respProto, ok := resp.(proto.Message)
-	if !ok {
-		// do something
-	}
-	respSize := proto.Size(respProto)
-
-	gRpcRequestSize.With(r.labels).Observe(float64(r.reqSize))
-	gRpcResponseSize.With(r.labels).Observe(float64(respSize))
 	gRpcRequestLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+
+	if r.reqSize != nil {
+		gRpcRequestSize.With(r.labels).Observe(float64(*r.reqSize))
+	}
+
+	if respProto, ok := resp.(proto.Message); ok {
+		respSize := proto.Size(respProto)
+		gRpcResponseSize.With(r.labels).Observe(float64(respSize))
+	} else {
+		event.WriteError(ctx, op, errors.New(ctx, errors.Internal, op, "unable to cast to proto.Message"))
+	}
 }
 
 // InstrumentClusterInterceptor wraps a UnaryServerInterceptor and measures
 func InstrumentClusterInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		recorder := newRequestRecorder(req, info.FullMethod)
+		recorder := newRequestRecorder(ctx, req, info.FullMethod)
 		resp, err := handler(ctx, req)
-		recorder.record(resp, err)
+		recorder.record(ctx, resp, err)
 		return resp, err
 	}
 }
