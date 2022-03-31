@@ -38,6 +38,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -72,8 +73,12 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
 	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	if err != nil {
+		return nil, err
+	}
+	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return eventsHandler, err
+	return metricsHandler, nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the

@@ -36,6 +36,10 @@ type testServerCommandOpts struct {
 
 	// Use the well-known dev mode target method id (1234567890)
 	UseDevTarget bool
+
+	// Whether or not to enable metric collection. If enable metrics will use
+	// prometheus' default registerer.
+	EnableMetrics bool
 }
 
 func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
@@ -50,6 +54,10 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))
 	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock, "test-server-command"))
+
+	if !opts.EnableMetrics {
+		cmd.PrometheusRegisterer = nil
+	}
 
 	if opts.CreateDevDatabase {
 		kmsHcl := fmt.Sprintf(rootKmsConfig, opts.ControllerKey)

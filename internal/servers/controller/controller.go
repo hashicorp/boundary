@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -88,6 +89,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
