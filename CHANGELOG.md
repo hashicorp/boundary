@@ -24,13 +24,6 @@ to better isolate transactions and prevent resource contention that caused deadl
   ([Issue](https://github.com/hashicorp/boundary/issues/1903),
   [PR](https://github.com/hashicorp/boundary/pull/1914)).
 
-### Bug Fixes
-
-* scheduler: Fix bug that causes erroneous logs when racing controllers
-  attempted to run jobs
-  ([Issue](https://github.com/hashicorp/boundary/issues/1903),
-  [PR](https://github.com/hashicorp/boundary/pull/1914)).
-
 ## 0.7.5 (2022/02/17)
 
 ### New and Improved

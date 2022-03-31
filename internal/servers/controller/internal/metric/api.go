@@ -118,10 +118,7 @@ const (
 )
 
 var (
-<<<<<<< HEAD
-=======
 	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
->>>>>>> main
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
 
 	// httpRequestLatency collects measurements of how long it takes
@@ -146,21 +143,12 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_request_size_bytes",
 			Help:      "Histogram of request sizes for HTTP requests.",
-<<<<<<< HEAD
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
-=======
 			Buckets:   msgSizeBuckets,
->>>>>>> main
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
 
-<<<<<<< HEAD
-	// httpRequestSize collections measurements of how large each rresponse
-=======
 	// httpRequestSize collections measurements of how large each response
->>>>>>> main
 	// from the boundary controller api is.
 	httpResponseSize prometheus.ObserverVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -168,12 +156,7 @@ var (
 			Subsystem: apiSubSystem,
 			Name:      "http_response_size_bytes",
 			Help:      "Histogram of response sizes for HTTP responses.",
-<<<<<<< HEAD
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
-=======
 			Buckets:   msgSizeBuckets,
->>>>>>> main
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
@@ -215,7 +198,7 @@ var expectedStatusCodesPerMethod = map[string][]int{
 	},
 }
 
-// pathLabel maps the requested path the the label value recorded for metrics
+// pathLabel maps the requested path to the label value recorded for metrics
 func pathLabel(incomingPath string) string {
 	if incomingPath == "" || incomingPath[0] != '/' {
 		incomingPath = fmt.Sprintf("/%s", incomingPath)
