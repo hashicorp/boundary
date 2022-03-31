@@ -14,17 +14,21 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
+
+type randFn func(length int) (string, error)
 
 type Worker struct {
 	conf   *Config
@@ -45,6 +49,11 @@ type Worker struct {
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
 
+	listeners []*base.ServerListener
+
+	// Used to generate a random nonce for Controller connections
+	nonceFn randFn
+
 	// We store the current set in an atomic value so that we can add
 	// reload-on-sighup behavior later
 	tags *atomic.Value
@@ -52,10 +61,6 @@ type Worker struct {
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
 	updateTags ua.Bool
-
-	// Test-related values
-	testReuseAuthNonces bool
-	testReusedAuthNonce string
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -69,6 +74,7 @@ func New(conf *Config) (*Worker, error) {
 		controllerSessionConn: new(atomic.Value),
 		sessionInfoMap:        new(sync.Map),
 		tags:                  new(atomic.Value),
+		nonceFn:               base62.Random,
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -103,6 +109,23 @@ func New(conf *Config) (*Worker, error) {
 					"file.",
 				err)
 		}
+	}
+
+	for i := range conf.Listeners {
+		l := conf.Listeners[i]
+		if l == nil || l.Config == nil || l.Config.Purpose == nil {
+			continue
+		}
+		if len(l.Config.Purpose) != 1 {
+			return nil, fmt.Errorf("found listener with multiple purposes %q", strings.Join(l.Config.Purpose, ","))
+		}
+		switch l.Config.Purpose[0] {
+		case "proxy":
+			w.listeners = append(w.listeners, l)
+		}
+	}
+	if len(w.listeners) == 0 {
+		return nil, fmt.Errorf("no proxy listeners found")
 	}
 
 	return w, nil
@@ -144,7 +167,7 @@ func (w *Worker) Start() error {
 // listeners, useful for tests if we want to stop and start a worker. In order
 // to create new listeners we'd have to migrate listener setup logic here --
 // doable, but work for later.
-func (w *Worker) Shutdown(skipListeners bool) error {
+func (w *Worker) Shutdown() error {
 	const op = "worker.(Worker).Shutdown"
 	if !w.started.Load() {
 		event.WriteSysEvent(w.baseContext, op, "already shut down, skipping")
@@ -156,10 +179,9 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 	defer w.started.Store(false)
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 	w.baseCancel()
-	if !skipListeners {
-		if err := w.stopListeners(); err != nil {
-			return fmt.Errorf("error stopping worker listeners: %w", err)
-		}
+
+	if err := w.stopServersAndListeners(); err != nil {
+		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
 
 	// Shut down all connections.
