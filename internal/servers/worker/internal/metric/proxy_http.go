@@ -1,4 +1,4 @@
-// Package metric provides functions to initialize the controller specific
+// Package metric provides functions to initialize the worker specific
 // collectors and hooks to measure metrics and update the relevant collectors.
 package metric
 
@@ -21,36 +21,20 @@ const (
 	labelHttpCode   = "code"
 	labelHttpPath   = "path"
 	labelHttpMethod = "method"
-	apiSubSystem    = "worker_api"
+	proxySubSystem  = "worker_proxy"
 )
 
 var (
-	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
-
-	// httpRequestLatency collects measurements of how long it takes
-	// the boundary system to reply to a request to the controller api
-	// from the time that boundary received the request.
-	httpRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
+	// httpTimeUntilHeader collects measurements of how long it takes
+	// the boundary system to hijack an HTTP request into a websocket connection
+	// for the proxy worker.
+	httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: globals.MetricNamespace,
-			Subsystem: apiSubSystem,
-			Name:      "http_request_duration_seconds",
-			Help:      "Histogram of latencies for HTTP requests.",
+			Subsystem: proxySubSystem,
+			Name:      "http_write_header_duration_seconds",
+			Help:      "Histogram of latencies for HTTP to websocket conversions.",
 			Buckets:   prometheus.DefBuckets,
-		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
-	)
-
-	// httpRequestSize collections measurements of how large each request
-	// to the boundary controller api is.
-	httpRequestSize prometheus.ObserverVec = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: globals.MetricNamespace,
-			Subsystem: apiSubSystem,
-			Name:      "http_request_size_bytes",
-			Help:      "Histogram of request sizes for HTTP requests.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
@@ -90,12 +74,9 @@ func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 		l := prometheus.Labels{
 			labelHttpPath: pathLabel(req.URL.Path),
 		}
-		promhttp.InstrumentHandlerDuration(
-			httpRequestLatency.MustCurryWith(l),
-			promhttp.InstrumentHandlerRequestSize(
-				httpRequestSize.MustCurryWith(l),
-				wrapped,
-			),
+		promhttp.InstrumentHandlerTimeToWriteHeader(
+			httpTimeUntilHeader.MustCurryWith(l),
+			wrapped,
 		).ServeHTTP(rw, req)
 	})
 }
@@ -107,14 +88,13 @@ func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(httpRequestSize, httpRequestLatency)
+	r.MustRegister(httpTimeUntilHeader)
 
 	p := proxyPathValue
 	method := http.MethodGet
 	for _, sc := range expectedHttpErrCodes {
 		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpRequestSize.With(l)
-		httpRequestLatency.With(l)
+		httpTimeUntilHeader.With(l)
 	}
 
 	// When an invalid path is found, any method is possible, but we expect
@@ -122,7 +102,6 @@ func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
 	p = invalidPathValue
 	for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
 		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpRequestSize.With(l)
-		httpRequestLatency.With(l)
+		httpTimeUntilHeader.With(l)
 	}
 }
