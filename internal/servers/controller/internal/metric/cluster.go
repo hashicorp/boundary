@@ -70,10 +70,22 @@ var (
 	)
 )
 
+// statusFromError retrieves the *status.Status from the provided error.  It'll
+// attempt to unwrap the *status.Error, which is something status.FromError
+// does not do.
 func statusFromError(err error) *status.Status {
 	if s, ok := status.FromError(err); ok {
 		return s
 	}
+
+	type gRPCStatus interface {
+		GRPCStatus() *status.Status
+	}
+	var unwrappedStatus gRPCStatus
+	if ok := errors.As(err, &unwrappedStatus); ok {
+		return unwrappedStatus.GRPCStatus()
+	}
+
 	return status.New(codes.Unknown, "Unknown Code")
 }
 
