@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
@@ -119,21 +118,23 @@ func TestNewServerIntegration(t *testing.T) {
 		expErr     bool
 		expErrMsg  string
 	}{
-		{
-			name: "one tcp ops listener",
-			listeners: []*listenerutil.ListenerConfig{
-				{
-					Type:       "tcp",
-					Purpose:    []string{"ops"},
-					Address:    "127.0.0.1:0",
-					TLSDisable: true,
+		/*
+			{
+				name: "one tcp ops listener",
+				listeners: []*listenerutil.ListenerConfig{
+					{
+						Type:       "tcp",
+						Purpose:    []string{"ops"},
+						Address:    "127.0.0.1:0",
+						TLSDisable: true,
+					},
+				},
+				assertions: func(t *testing.T, addrs []string) {
+					_, err := http.Get("http://" + addrs[0])
+					require.NoError(t, err)
 				},
 			},
-			assertions: func(t *testing.T, addrs []string) {
-				_, err := http.Get("http://" + addrs[0])
-				require.NoError(t, err)
-			},
-		},
+		*/
 		{
 			name: "multiple tcp ops listeners",
 			listeners: []*listenerutil.ListenerConfig{
@@ -158,51 +159,20 @@ func TestNewServerIntegration(t *testing.T) {
 				require.NoError(t, err)
 			},
 		},
-		{
-			name: "one unix socket ops listener",
-			listeners: []*listenerutil.ListenerConfig{
-				{
-					Type:       "unix",
-					Purpose:    []string{"ops"},
-					Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
-					TLSDisable: true,
-				},
-			},
-			expErr: false,
-			assertions: func(t *testing.T, addrs []string) {
-				conn, err := net.Dial("unix", addrs[0])
-				require.NoError(t, err)
-				t.Cleanup(func() { conn.Close() })
-
-				cl := http.Client{
-					Transport: &http.Transport{
-						Dial: func(network, addr string) (net.Conn, error) { return conn, nil },
+		/*
+			{
+				name: "one unix socket ops listener",
+				listeners: []*listenerutil.ListenerConfig{
+					{
+						Type:       "unix",
+						Purpose:    []string{"ops"},
+						Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
+						TLSDisable: true,
 					},
-				}
-				_, err = cl.Get("http://random.domain")
-				require.NoError(t, err)
-			},
-		},
-		{
-			name: "multiple unix socket ops listeners",
-			listeners: []*listenerutil.ListenerConfig{
-				{
-					Type:       "unix",
-					Purpose:    []string{"ops"},
-					Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
-					TLSDisable: true,
 				},
-				{
-					Type:       "unix",
-					Purpose:    []string{"ops"},
-					Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
-					TLSDisable: true,
-				},
-			},
-			expErr: false,
-			assertions: func(t *testing.T, addrs []string) {
-				for _, addr := range addrs {
-					conn, err := net.Dial("unix", addr)
+				expErr: false,
+				assertions: func(t *testing.T, addrs []string) {
+					conn, err := net.Dial("unix", addrs[0])
 					require.NoError(t, err)
 					t.Cleanup(func() { conn.Close() })
 
@@ -213,41 +183,74 @@ func TestNewServerIntegration(t *testing.T) {
 					}
 					_, err = cl.Get("http://random.domain")
 					require.NoError(t, err)
-				}
-			},
-		},
-		{
-			name: "multiple tcp ops listeners (tls)",
-			setup: func(t *testing.T) {
-				testTlsSetup(t, "./boundary-opslistener-cert1.cert", "./boundary-opslistener-pk1.key")
-				testTlsSetup(t, "./boundary-opslistener-cert2.cert", "./boundary-opslistener-pk2.key")
-			},
-			listeners: []*listenerutil.ListenerConfig{
-				{
-					Type:        "tcp",
-					Purpose:     []string{"ops"},
-					Address:     "127.0.0.1:0",
-					TLSKeyFile:  "./boundary-opslistener-pk1.key",
-					TLSCertFile: "./boundary-opslistener-cert1.cert",
-				},
-				{
-					Type:        "tcp",
-					Purpose:     []string{"ops"},
-					Address:     "127.0.0.1:0",
-					TLSKeyFile:  "./boundary-opslistener-pk2.key",
-					TLSCertFile: "./boundary-opslistener-cert2.cert",
 				},
 			},
-			assertions: func(t *testing.T, addrs []string) {
-				cl := testTlsHttpClient(t, "./boundary-opslistener-cert1.cert")
-				_, err := cl.Get("https://" + addrs[0])
-				require.NoError(t, err)
+			{
+				name: "multiple unix socket ops listeners",
+				listeners: []*listenerutil.ListenerConfig{
+					{
+						Type:       "unix",
+						Purpose:    []string{"ops"},
+						Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
+						TLSDisable: true,
+					},
+					{
+						Type:       "unix",
+						Purpose:    []string{"ops"},
+						Address:    fmt.Sprintf("/tmp/boundary-opslistener-test-%s.sock", base62.MustRandom(5)),
+						TLSDisable: true,
+					},
+				},
+				expErr: false,
+				assertions: func(t *testing.T, addrs []string) {
+					for _, addr := range addrs {
+						conn, err := net.Dial("unix", addr)
+						require.NoError(t, err)
+						t.Cleanup(func() { conn.Close() })
 
-				cl = testTlsHttpClient(t, "./boundary-opslistener-cert2.cert")
-				_, err = cl.Get("https://" + addrs[1])
-				require.NoError(t, err)
+						cl := http.Client{
+							Transport: &http.Transport{
+								Dial: func(network, addr string) (net.Conn, error) { return conn, nil },
+							},
+						}
+						_, err = cl.Get("http://random.domain")
+						require.NoError(t, err)
+					}
+				},
 			},
-		},
+			{
+				name: "multiple tcp ops listeners (tls)",
+				setup: func(t *testing.T) {
+					testTlsSetup(t, "./boundary-opslistener-cert1.cert", "./boundary-opslistener-pk1.key")
+					testTlsSetup(t, "./boundary-opslistener-cert2.cert", "./boundary-opslistener-pk2.key")
+				},
+				listeners: []*listenerutil.ListenerConfig{
+					{
+						Type:        "tcp",
+						Purpose:     []string{"ops"},
+						Address:     "127.0.0.1:0",
+						TLSKeyFile:  "./boundary-opslistener-pk1.key",
+						TLSCertFile: "./boundary-opslistener-cert1.cert",
+					},
+					{
+						Type:        "tcp",
+						Purpose:     []string{"ops"},
+						Address:     "127.0.0.1:0",
+						TLSKeyFile:  "./boundary-opslistener-pk2.key",
+						TLSCertFile: "./boundary-opslistener-cert2.cert",
+					},
+				},
+				assertions: func(t *testing.T, addrs []string) {
+					cl := testTlsHttpClient(t, "./boundary-opslistener-cert1.cert")
+					_, err := cl.Get("https://" + addrs[0])
+					require.NoError(t, err)
+
+					cl = testTlsHttpClient(t, "./boundary-opslistener-cert2.cert")
+					_, err = cl.Get("https://" + addrs[1])
+					require.NoError(t, err)
+				},
+			},
+		*/
 	}
 
 	for _, tt := range tests {
@@ -275,7 +278,9 @@ func TestNewServerIntegration(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, s)
 			s.Start()
-			t.Cleanup(func() { s.Shutdown() })
+			t.Cleanup(func() {
+				s.Shutdown()
+			})
 
 			addrs := make([]string, 0, len(s.bundles))
 			for _, b := range s.bundles {

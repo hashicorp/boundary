@@ -8,14 +8,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -25,7 +23,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/kr/pretty"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -268,19 +265,10 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	ctx := w.baseContext
 	var sessionId string
 	switch {
-	case strings.HasPrefix(hello.ServerName, globals.SessionPrefix):
+	case strings.HasPrefix(hello.ServerName, "s_"):
 		sessionId = hello.ServerName
 	default:
-		for _, proto := range hello.SupportedProtos {
-			if strings.HasPrefix(proto, globals.SessionPrefix) {
-				sessionId = proto
-				break
-			}
-		}
-	}
-	log.Println("found session id", sessionId, "server name", hello.ServerName, "protos", hello.SupportedProtos, "hello msg", pretty.Sprint(hello))
-	if sessionId == "" {
-		event.WriteSysEvent(ctx, op, "invalid session in SNI or ALPN", "SNI", hello.ServerName, "protos", hello.SupportedProtos)
+		event.WriteSysEvent(ctx, op, "invalid session in SNI", "session_id", hello.ServerName)
 		return nil, fmt.Errorf("could not find session ID in SNI")
 	}
 
