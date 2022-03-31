@@ -48,9 +48,11 @@ build: build-ui-ifne
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
 
+# Format Go files, ignoring files marked as generated through the header defined at
+# https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
 .PHONY: fmt
 fmt:
-	gofumpt -w $$(find . -name '*.go' | grep -v pb.go | grep -v pb.gw.go)
+	grep -L -R "^\/\/ Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofumpt -w
 
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne

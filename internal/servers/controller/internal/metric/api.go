@@ -148,7 +148,7 @@ var (
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
 
-	// httpRequestSize collections measurements of how large each rresponse
+	// httpRequestSize collections measurements of how large each response
 	// from the boundary controller api is.
 	httpResponseSize prometheus.ObserverVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
