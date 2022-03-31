@@ -72,4 +72,5 @@ const (
 	ConnectionsField                     = "connections"
 	CredentialTypeField                  = "credential_type"
 	CredentialMappingOverridesField      = "credential_mapping_overrides"
+	MetricNamespace                      = "boundary"
 )

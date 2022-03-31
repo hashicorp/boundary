@@ -38,6 +38,11 @@ func TestDevController(t *testing.T) {
 					Type:    "tcp",
 					Purpose: []string{"cluster"},
 				},
+				{
+					Type:       "tcp",
+					Purpose:    []string{"ops"},
+					TLSDisable: true,
+				},
 			},
 			Seals: []*configutil.KMS{
 				{
@@ -75,6 +80,7 @@ func TestDevController(t *testing.T) {
 
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
+	exp.Listeners[2].RawConfig = actual.Listeners[2].RawConfig
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]

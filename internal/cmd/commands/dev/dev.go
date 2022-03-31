@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -39,6 +40,7 @@ var (
 
 type Command struct {
 	*base.Server
+	opsServer *ops.Server
 
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
@@ -68,6 +70,7 @@ type Command struct {
 	flagWorkerAuthKey                string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
+	flagOpsListenAddr                string
 	flagUiPassthroughDir             string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
@@ -212,6 +215,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagControllerPublicClusterAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_PUBLIC_CLUSTER_ADDRESS",
 		Usage:  "Public address at which the controller is reachable for cluster tasks (like worker connections).",
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "ops-listen-address",
+		Target: &c.flagOpsListenAddr,
+		EnvVar: "BOUNDARY_DEV_OPS_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for \"ops\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -449,6 +458,14 @@ func (c *Command) Run(args []string) int {
 				l.Type = "unix"
 			}
 
+		case "ops":
+			if c.flagOpsListenAddr != "" {
+				l.Address = c.flagOpsListenAddr
+			}
+			if strings.HasPrefix(l.Address, "/") {
+				l.Type = "unix"
+			}
+
 		case "proxy":
 			if c.flagWorkerProxyListenAddr != "" {
 				l.Address = c.flagWorkerProxyListenAddr
@@ -543,7 +560,7 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -618,7 +635,7 @@ func (c *Command) Run(args []string) int {
 
 		if err := c.controller.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting controller: %w", err)
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(retErr.Error())
 				retErr = fmt.Errorf("Error shutting down controller: %w", err)
 			}
@@ -636,23 +653,32 @@ func (c *Command) Run(args []string) int {
 		var err error
 		c.worker, err = worker.New(conf)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
 		}
 
 		if err := c.worker.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting worker: %w", err)
-			if err := c.worker.Shutdown(false); err != nil {
+			if err := c.worker.Shutdown(); err != nil {
 				c.UI.Error(retErr.Error())
 				retErr = fmt.Errorf("Error shutting down worker: %w", err)
 			}
 			c.UI.Error(retErr.Error())
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 			return base.CommandCliError
 		}
 	}
+
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
+		return base.CommandCliError
+
+	}
+	c.opsServer = opsServer
+	c.opsServer.Start()
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -678,14 +704,23 @@ func (c *Command) Run(args []string) int {
 				}
 			}()
 
+			if c.Config.Controller != nil {
+				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+			}
+
 			if !c.flagControllerOnly {
-				if err := c.worker.Shutdown(false); err != nil {
+				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
 			}
 
-			if err := c.controller.Shutdown(false); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+			}
+
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
 
 			shutdownTriggered = true

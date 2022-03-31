@@ -138,17 +138,13 @@ func (w *Worker) createClientConn(addr string) error {
 func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
-		Name:            w.conf.RawConfig.Worker.Name,
-		Description:     w.conf.RawConfig.Worker.Description,
-		ConnectionNonce: w.testReusedAuthNonce,
+		Name:        w.conf.RawConfig.Worker.Name,
+		Description: w.conf.RawConfig.Worker.Description,
 	}
-	if info.ConnectionNonce == "" {
-		if info.ConnectionNonce, err = base62.Random(20); err != nil {
-			return nil, nil, err
-		}
-		if w.testReuseAuthNonces {
-			w.testReusedAuthNonce = info.ConnectionNonce
-		}
+
+	info.ConnectionNonce, err = w.nonceFn(20)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)

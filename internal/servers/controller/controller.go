@@ -25,6 +25,8 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -80,9 +82,14 @@ type Controller struct {
 	kms *kms.Kms
 
 	enabledPlugins []base.EnabledPlugin
+
+	// Used to signal the Health Service to start
+	// replying to queries with "503 Service Unavailable".
+	HealthService *health.Service
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -92,6 +99,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerAuthCache:         new(sync.Map),
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
+		apiListeners:            make([]*base.ServerListener, 0),
 	}
 
 	c.started.Store(false)
@@ -352,15 +360,15 @@ func (c *Controller) registerSessionConnectionCleanupJob() error {
 	return nil
 }
 
-func (c *Controller) Shutdown(serversOnly bool) error {
+func (c *Controller) Shutdown() error {
 	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
 		event.WriteSysEvent(context.TODO(), op, "already shut down, skipping")
 	}
 	defer c.started.Store(false)
 	c.baseCancel()
-	if err := c.stopListeners(serversOnly); err != nil {
-		return fmt.Errorf("error stopping controller listeners: %w", err)
+	if err := c.stopServersAndListeners(); err != nil {
+		return fmt.Errorf("error stopping controller servers and listeners: %w", err)
 	}
 	c.schedulerWg.Wait()
 	c.tickerWg.Wait()

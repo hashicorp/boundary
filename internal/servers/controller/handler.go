@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
+	opsservices "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
@@ -27,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/hosts"
@@ -36,6 +38,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -70,8 +73,34 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
 	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	if err != nil {
+		return nil, err
+	}
+	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return eventsHandler, err
+	return metricsHandler, nil
+}
+
+// GetHealthHandler returns a gRPC Gateway mux that is registered against the
+// controller's gRPC health service to make it accessible from an HTTP API.
+func (c *Controller) GetHealthHandler(lcfg *listenerutil.ListenerConfig) (http.Handler, error) {
+	const op = "controller.(Controller).GetHealthHandler"
+	if lcfg == nil {
+		return nil, fmt.Errorf("%s: received nil listener config", op)
+	}
+
+	healthGrpcGwMux := newGrpcGatewayMux()
+	err := registerHealthGrpcGatewayEndpoint(c.baseContext, healthGrpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to register health service handler: %w", op, err)
+	}
+
+	wrapped := wrapHandlerWithCommonFuncs(healthGrpcGwMux, c, HandlerProperties{lcfg, c.baseContext})
+	return common.WrapWithEventsHandler(wrapped, c.conf.Eventer, c.kms, lcfg)
+}
+
+func registerHealthGrpcGatewayEndpoint(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
+	return opsservices.RegisterHealthServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions)
 }
 
 func (c *Controller) registerGrpcServices(s *grpc.Server) error {
@@ -192,6 +221,11 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
 		services.RegisterCredentialLibraryServiceServer(s, cl)
+	}
+	if _, ok := s.GetServiceInfo()[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
+		hs := health.NewService()
+		opsservices.RegisterHealthServiceServer(s, hs)
+		c.HealthService = hs
 	}
 
 	return nil

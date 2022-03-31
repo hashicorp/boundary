@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package testing.options.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/protooptions;protooptions";
+
+import "google/api/annotations.proto";
+
+// The test service definition.  This is just a service that can be used to
+// test options applied to services.
+service TestService {
+  rpc TestMethod(TestMethodRequest) returns (TestMethodResponse) {
+    option (google.api.http) = {
+      get: "/v1/test/{id}"
+      response_body: "item"
+      additional_bindings {
+        get: "/v2/test"
+      }
+    };
+  }
+}
+
+// The request message.
+message TestMethodRequest {
+  string id = 1;
+}
+
+// The response message.
+message TestMethodResponse {
+  string item = 1;
+}
