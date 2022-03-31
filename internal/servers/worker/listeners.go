@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 )
@@ -77,18 +76,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (f
 		server.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	// Clear out in case this is a second start of the controller
-	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-	ln.Mux.UnregisterProto(alpnmux.NoProto)
-	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+	l := tls.NewListener(ln.BaseListener, &tls.Config{
 		GetConfigForClient: w.getSessionTls,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error getting tls listener: %w", err)
-	}
-	if l == nil {
-		return nil, errors.New("could not get tls listener")
-	}
 
 	return func() { go server.Serve(l) }, nil
 }
@@ -120,7 +110,7 @@ func (w *Worker) stopHttpServersAndListeners() error {
 		ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
-		err := ln.Mux.Close()
+		err := ln.BaseListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
@@ -136,11 +126,11 @@ func (w *Worker) stopHttpServersAndListeners() error {
 func (w *Worker) stopAnyListeners() error {
 	var closeErrors *multierror.Error
 	for _, ln := range w.listeners {
-		if ln == nil || ln.Mux == nil {
+		if ln == nil || ln.BaseListener == nil {
 			continue
 		}
 
-		err := ln.Mux.Close()
+		err := ln.BaseListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)

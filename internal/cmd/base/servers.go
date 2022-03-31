@@ -381,7 +381,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	// we ignore errors
 	b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
 		for _, ln := range b.Listeners {
-			ln.Mux.Close()
+			ln.BaseListener.Close()
 		}
 		return nil
 	})
@@ -414,7 +414,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			}
 		}
 
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, ui)
+		ln, props, reloadFunc, err := NewListener(lnConfig, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}
@@ -461,8 +461,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		props["max_request_duration"] = lnConfig.MaxRequestDuration.String()
 
 		b.Listeners = append(b.Listeners, &ServerListener{
-			Mux:    lnMux,
-			Config: lnConfig,
+			BaseListener: ln,
+			Config:       lnConfig,
 		})
 
 		props["purpose"] = strings.Join(lnConfig.Purpose, ",")

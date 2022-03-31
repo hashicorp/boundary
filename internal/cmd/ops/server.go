@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
@@ -32,7 +31,7 @@ type Server struct {
 type opsBundle struct {
 	ln      *base.ServerListener
 	h       http.Handler
-	startFn []func()
+	startFn func()
 }
 
 // NewServer iterates through all the listeners and sets up HTTP Servers for each, along with individual handlers.
@@ -60,11 +59,9 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 		b := &opsBundle{ln: ln, h: h}
 		b.ln.HTTPServer = createHttpServer(l, b.h, b.ln.Config)
 
-		funcs, err := getStartFn(b.ln)
-		if err != nil {
-			return nil, err
+		b.startFn = func() {
+			go ln.HTTPServer.Serve(ln.BaseListener)
 		}
-		b.startFn = funcs
 
 		bundles = append(bundles, b)
 	}
@@ -77,9 +74,7 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 // listeners (as defined by the bundle).
 func (s *Server) Start() {
 	for _, b := range s.bundles {
-		for _, f := range b.startFn {
-			f()
-		}
+		b.startFn()
 	}
 }
 
@@ -89,7 +84,7 @@ func (s *Server) Shutdown() error {
 
 	var closeErrors *multierror.Error
 	for _, b := range s.bundles {
-		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.Mux == nil || b.ln.HTTPServer == nil {
+		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.BaseListener == nil || b.ln.HTTPServer == nil {
 			return fmt.Errorf("%s: missing bundle, listener or its fields", op)
 		}
 
@@ -101,7 +96,7 @@ func (s *Server) Shutdown() error {
 			multierror.Append(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
 		}
 
-		err = b.ln.Mux.Close()
+		err = b.ln.BaseListener.Close()
 		err = listenerCloseErrorCheck(b.ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
@@ -167,34 +162,6 @@ func createHttpServer(l hclog.Logger, h http.Handler, lncfg *listenerutil.Listen
 	}
 
 	return s
-}
-
-func getStartFn(ln *base.ServerListener) ([]func(), error) {
-	const op = "getStartFn()"
-
-	funcs := make([]func(), 0)
-	switch ln.Config.TLSDisable {
-	case true:
-		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-		if err != nil {
-			return nil, fmt.Errorf("%s: error getting non-tls listener: %w", op, err)
-		}
-		if l == nil {
-			return nil, fmt.Errorf("%s: could not get non-tls listener", op)
-		}
-		funcs = append(funcs, func() { go ln.HTTPServer.Serve(l) })
-
-	default:
-		for _, v := range []string{"", "http/1.1", "h2"} {
-			l := ln.Mux.GetListener(v)
-			if l == nil {
-				return nil, fmt.Errorf("%s: could not get tls proto %q listener", op, v)
-			}
-			funcs = append(funcs, func() { go ln.HTTPServer.Serve(l) })
-		}
-	}
-
-	return funcs, nil
 }
 
 func listenerCloseErrorCheck(lnType string, err error) error {

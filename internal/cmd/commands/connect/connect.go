@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -427,6 +428,15 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
 	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
+	workerHost, _, err := net.SplitHostPort(workerAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			workerHost = workerAddr
+		} else {
+			c.PrintCliError(fmt.Errorf("Error splitting worker address to host/port segments: %w", err))
+			return base.CommandUserError
+		}
+	}
 
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
@@ -459,9 +469,12 @@ func (c *Command) Run(args []string) (retCode int) {
 			},
 		},
 		RootCAs:    certPool,
-		ServerName: parsedCert.DNSNames[0],
+		ServerName: workerHost,
 		MinVersion: tls.VersionTLS13,
+		NextProtos: []string{"http/1.1", parsedCert.DNSNames[0]},
 	}
+
+	log.Println("server name", tlsConf.ServerName)
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false

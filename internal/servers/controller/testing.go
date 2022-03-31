@@ -219,7 +219,7 @@ func (tc *TestController) addrs(purpose string) []string {
 	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == purpose {
-			addr := listener.Mux.Addr()
+			addr := listener.BaseListener.Addr()
 			switch {
 			case strings.HasPrefix(addr.String(), "/"):
 				switch purpose {

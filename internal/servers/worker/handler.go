@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -57,6 +58,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 		sessionId := r.TLS.ServerName
+		log.Println("using session id", sessionId)
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {

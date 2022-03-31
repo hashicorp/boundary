@@ -14,7 +14,6 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
@@ -97,39 +96,15 @@ func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) 
 		server.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	switch ln.Config.TLSDisable {
-	case true:
-		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-		if err != nil {
-			return nil, fmt.Errorf("error getting non-tls listener: %w", err)
-		}
-		if l == nil {
-			return nil, errors.New("could not get non-tls listener")
-		}
-		apiServers = append(apiServers, func() { go server.Serve(l) })
-
-	default:
-		for _, v := range []string{"", "http/1.1", "h2"} {
-			l := ln.Mux.GetListener(v)
-			if l == nil {
-				return nil, fmt.Errorf("could not get tls proto %q listener", v)
-			}
-			apiServers = append(apiServers, func() { go server.Serve(l) })
-		}
-	}
+	apiServers = append(apiServers, func() { go server.Serve(ln.BaseListener) })
 
 	return apiServers, nil
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	// Clear out in case this is a second start of the controller
-	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+	l := tls.NewListener(ln.BaseListener, &tls.Config{
 		GetConfigForClient: c.validateWorkerTls,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
-	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
@@ -147,17 +122,14 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			),
 		),
 	)
+	ln.GrpcServer = workerServer
 
 	workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
 
-	interceptor := newInterceptingListener(c, l)
-	ln.ALPNListener = interceptor
-	ln.GrpcServer = workerServer
-
-	return func() { go ln.GrpcServer.Serve(ln.ALPNListener) }, nil
+	return func() { go ln.GrpcServer.Serve(newInterceptingListener(c, l)) }, nil
 }
 
 func (c *Controller) stopServersAndListeners() error {
@@ -183,12 +155,12 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 	if c.clusterListener.GrpcServer == nil {
 		return fmt.Errorf("no cluster grpc server")
 	}
-	if c.clusterListener.Mux == nil {
-		return fmt.Errorf("no cluster listener mux")
+	if c.clusterListener.BaseListener == nil {
+		return fmt.Errorf("no cluster base listener")
 	}
 
 	c.clusterListener.GrpcServer.GracefulStop()
-	err := c.clusterListener.Mux.Close()
+	err := c.clusterListener.BaseListener.Close()
 	return listenerCloseErrorCheck(c.clusterListener.Config.Type, err)
 }
 
@@ -204,7 +176,7 @@ func (c *Controller) stopHttpServersAndListeners() error {
 		ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
-		err := ln.Mux.Close() // The HTTP Shutdown call should close this, but just in case.
+		err := ln.BaseListener.Close() // The HTTP Shutdown call should close this, but just in case.
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
@@ -231,11 +203,11 @@ func (c *Controller) stopAnyListeners() error {
 	var closeErrors *multierror.Error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
-		if ln == nil || ln.Mux == nil {
+		if ln == nil || ln.BaseListener == nil {
 			continue
 		}
 
-		err := ln.Mux.Close()
+		err := ln.BaseListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
