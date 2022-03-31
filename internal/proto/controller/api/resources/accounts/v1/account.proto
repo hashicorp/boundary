@@ -11,6 +11,8 @@ import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
+option (custom_options.v1.domain) = "auth";
+
 // Account contains all fields related to an Account resource
 message Account {
 	// Output only. The ID of the Account.
