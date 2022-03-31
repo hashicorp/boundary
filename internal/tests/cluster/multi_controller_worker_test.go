@@ -54,21 +54,31 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(t, c1, w1, w2)
 	expectWorkers(t, c2, w1, w2)
 
-	require.NoError(w1.Worker().Shutdown(true))
+	require.NoError(w1.Worker().Shutdown())
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w2)
 	expectWorkers(t, c2, w2)
 
-	require.NoError(w1.Worker().Start())
+	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		WorkerAuthKms:      c1.Config().WorkerAuthKms,
+		InitialControllers: c1.ClusterAddrs(),
+		Logger:             logger.Named("w1"),
+	})
+	defer w1.Shutdown()
+
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1, w2)
 	expectWorkers(t, c2, w1, w2)
 
 	require.NoError(c2.Controller().Shutdown())
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c2, w1, w2)
+	expectWorkers(t, c1, w1, w2)
 
-	require.NoError(c1.Controller().Start())
+	c2 = c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
+		Logger: c1.Config().Logger.ResetNamed("c2"),
+	})
+	defer c2.Shutdown()
+
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1, w2)
 	expectWorkers(t, c2, w1, w2)

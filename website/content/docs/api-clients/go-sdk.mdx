@@ -61,7 +61,7 @@ credentials := map[string]interface{}{
 Now let's create an auth method client using the base client from above:
 
 ```go
-amClient := authmethods.NewClient(client))
+amClient := authmethods.NewClient(client)
 ```
 
 ~> This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
@@ -144,7 +144,7 @@ in the Boundary controller config as well.
 ```go
 import "github.com/hashicorp/boundary/sdk/wrapper"
 
-const kmsConfig := `
+const kmsConfig = `
 kms "aead" {
     purpose = "recovery"
     aead_type = "aes-gcm"
@@ -168,3 +168,36 @@ client.SetRecoveryKmsWrapper(w)
 The client will now use the recovery KMS wrapper for all authenticated calls
 (even if you have previously set a token). You can remove it by instantiating a
 new client, or by passing `nil` into `SetRecoveryKmsWrapper`.
+
+Putting this all together:
+
+```go
+import (
+  "context"
+
+  "github.com/hashicorp/boundary/api"
+  "github.com/hashicorp/boundary/sdk/wrapper"
+)
+
+const kmsConfig = `
+kms "aead" {
+    purpose = "recovery"
+    aead_type = "aes-gcm"
+    key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+    key_id = "recovery_kms"
+}
+`
+
+// The default address points to the default dev mode address
+client, err := api.NewClient(nil)
+if err != nil {
+  return err
+}
+
+w, err := wrapper.GetWrapperFromHcl(kmsConfig, "recovery")
+if err != nil {
+  return err
+}
+
+client.SetRecoveryKmsWrapper(w)
+```
