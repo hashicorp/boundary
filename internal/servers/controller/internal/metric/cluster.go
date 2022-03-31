@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	invalidValue = "invalid"
-
 	labelGRpcCode    = "grpc_code"
 	labelGRpcService = "grpc_service"
 	labelGRpcMethod  = "grpc_method"
@@ -146,7 +144,8 @@ func (r requestRecorder) record(ctx context.Context, resp interface{}, err error
 	}
 }
 
-// InstrumentClusterInterceptor wraps a UnaryServerInterceptor and measures
+// InstrumentClusterInterceptor wraps a UnaryServerInterceptor and records
+// observations for the collectors associated with the cluster's grpc service.
 func InstrumentClusterInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		recorder := newRequestRecorder(ctx, req, info.FullMethod)
