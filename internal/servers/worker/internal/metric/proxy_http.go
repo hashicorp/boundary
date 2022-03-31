@@ -24,20 +24,18 @@ const (
 	proxySubSystem  = "worker_proxy"
 )
 
-var (
-	// httpTimeUntilHeader collects measurements of how long it takes
-	// the boundary system to hijack an HTTP request into a websocket connection
-	// for the proxy worker.
-	httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: globals.MetricNamespace,
-			Subsystem: proxySubSystem,
-			Name:      "http_write_header_duration_seconds",
-			Help:      "Histogram of latencies for HTTP to websocket conversions.",
-			Buckets:   prometheus.DefBuckets,
-		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
-	)
+// httpTimeUntilHeader collects measurements of how long it takes
+// the boundary system to hijack an HTTP request into a websocket connection
+// for the proxy worker.
+var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: proxySubSystem,
+		Name:      "http_write_header_duration_seconds",
+		Help:      "Histogram of latencies for HTTP to websocket conversions.",
+		Buckets:   prometheus.DefBuckets,
+	},
+	[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 )
 
 var expectedHttpErrCodes = []int{
