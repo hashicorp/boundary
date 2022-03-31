@@ -54,20 +54,6 @@ var (
 		},
 		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
 	)
-
-	// httpRequestSize collections measurements of how large each response
-	// from the boundary controller api is.
-	httpResponseSize prometheus.ObserverVec = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: globals.MetricNamespace,
-			Subsystem: apiSubSystem,
-			Name:      "http_response_size_bytes",
-			Help:      "Histogram of response sizes for HTTP responses.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: msgSizeBuckets,
-		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
-	)
 )
 
 var expectedHttpErrCodes = []int{
@@ -107,11 +93,8 @@ func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),
 			promhttp.InstrumentHandlerRequestSize(
-				httpResponseSize.MustCurryWith(l),
-				promhttp.InstrumentHandlerResponseSize(
-					httpResponseSize.MustCurryWith(l),
-					wrapped,
-				),
+				httpRequestSize.MustCurryWith(l),
+				wrapped,
 			),
 		).ServeHTTP(rw, req)
 	})
@@ -124,13 +107,12 @@ func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
+	r.MustRegister(httpRequestSize, httpRequestLatency)
 
 	p := proxyPathValue
 	method := http.MethodGet
 	for _, sc := range expectedHttpErrCodes {
 		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpResponseSize.With(l)
 		httpRequestSize.With(l)
 		httpRequestLatency.With(l)
 	}
@@ -140,7 +122,6 @@ func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
 	p = invalidPathValue
 	for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
 		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpResponseSize.With(l)
 		httpRequestSize.With(l)
 		httpRequestLatency.With(l)
 	}
