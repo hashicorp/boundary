@@ -22,6 +22,11 @@ extend google.protobuf.FieldOptions {
 	string subtype = 85555;
 }
 
+extend google.protobuf.FileOptions {
+	// domain is used to associate the messages in a file with a domain package.
+	string domain = 85556;
+}
+
 message MaskMapping {
 	string this = 1;
 	string that = 2;
