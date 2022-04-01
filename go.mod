@@ -70,10 +70,10 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.2.1
 	go.uber.org/atomic v1.9.0
-	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000
-	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
+	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	golang.org/x/tools v0.1.8-0.20211102182255-bb4add04ddef
+	golang.org/x/tools v0.1.10
 	google.golang.org/genproto v0.0.0-20220208230804-65c12eb4c068
 	google.golang.org/grpc v1.44.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
@@ -189,7 +189,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect

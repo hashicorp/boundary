@@ -427,15 +427,19 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
 	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
+	workerHost, _, err := net.SplitHostPort(workerAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			workerHost = workerAddr
+		} else {
+			c.PrintCliError(fmt.Errorf("Error splitting worker adddress host/port: %w", err))
+			return base.CommandUserError
+		}
+	}
 
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
-		return base.CommandUserError
-	}
-
-	if len(parsedCert.DNSNames) != 1 {
-		c.PrintCliError(fmt.Errorf("mTLS certificate has invalid parameters: %w", err))
 		return base.CommandUserError
 	}
 
@@ -459,16 +463,20 @@ func (c *Command) Run(args []string) (retCode int) {
 			},
 		},
 		RootCAs:    certPool,
-		ServerName: parsedCert.DNSNames[0],
+		ServerName: workerHost,
 		MinVersion: tls.VersionTLS13,
+		NextProtos: []string{"http/1.1", c.sessionAuthzData.SessionId},
 	}
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
-	transport.TLSClientConfig = tlsConf
 	// This isn't/shouldn't used anyways really because the connection is
 	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
+	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialer := &tls.Dialer{Config: tlsConf}
+		return dialer.DialContext(ctx, network, addr)
+	}
 
 	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
@@ -691,7 +699,7 @@ func (c *Command) getWsConn(
 ) (*websocket.Conn, error) {
 	conn, resp, err := websocket.Dial(
 		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", workerAddr),
+		fmt.Sprintf("ws://%s/v1/proxy", workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
 				Transport: transport,

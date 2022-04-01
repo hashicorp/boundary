@@ -274,8 +274,10 @@ func TestRepository_CreateSession(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
+	workerAddresses := []string{"1.2.3.4"}
 	type args struct {
-		composedOf ComposedOf
+		composedOf      ComposedOf
+		workerAddresses []string
 	}
 	tests := []struct {
 		name        string
@@ -286,14 +288,16 @@ func TestRepository_CreateSession(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				composedOf: TestSessionParams(t, conn, wrapper, iamRepo),
+				composedOf:      TestSessionParams(t, conn, wrapper, iamRepo),
+				workerAddresses: workerAddresses,
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid-with-credentials",
 			args: args{
-				composedOf: testSessionCredentialParams(t, conn, wrapper, iamRepo),
+				composedOf:      testSessionCredentialParams(t, conn, wrapper, iamRepo),
+				workerAddresses: workerAddresses,
 			},
 			wantErr: false,
 		},
@@ -305,6 +309,7 @@ func TestRepository_CreateSession(t *testing.T) {
 					c.UserId = ""
 					return c
 				}(),
+				workerAddresses: workerAddresses,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -317,6 +322,7 @@ func TestRepository_CreateSession(t *testing.T) {
 					c.HostId = ""
 					return c
 				}(),
+				workerAddresses: workerAddresses,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -329,6 +335,7 @@ func TestRepository_CreateSession(t *testing.T) {
 					c.TargetId = ""
 					return c
 				}(),
+				workerAddresses: workerAddresses,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -341,6 +348,7 @@ func TestRepository_CreateSession(t *testing.T) {
 					c.HostSetId = ""
 					return c
 				}(),
+				workerAddresses: workerAddresses,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -353,6 +361,7 @@ func TestRepository_CreateSession(t *testing.T) {
 					c.AuthTokenId = ""
 					return c
 				}(),
+				workerAddresses: workerAddresses,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -363,6 +372,18 @@ func TestRepository_CreateSession(t *testing.T) {
 				composedOf: func() ComposedOf {
 					c := TestSessionParams(t, conn, wrapper, iamRepo)
 					c.ScopeId = ""
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-worker-addresses",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
 					return c
 				}(),
 			},
@@ -385,7 +406,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 			}
-			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
+			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)

@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"math/big"
 	mathrand "math/rand"
+	"net"
 	"strings"
 	"time"
 
@@ -351,7 +352,8 @@ func contains(ss []string, t string) bool {
 	return false
 }
 
-func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
+// newCert creates a new session certificate. If addresses are supplied, they will be parsed and added to IP or DNS SANs as appropriate.
+func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, addresses []string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
 	if wrapper == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
@@ -361,6 +363,9 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 	}
 	if jobId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
+	}
+	if len(addresses) == 0 {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
 	pubKey, privKey, err := DeriveED25519Key(ctx, wrapper, userId, jobId)
 	if err != nil {
@@ -378,6 +383,27 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 		NotAfter:              exp,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
+	}
+
+	for _, addr := range addresses {
+		// First ensure we aren't looking at ports, regardless of IP or not
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			if strings.Contains(err.Error(), "missing port") {
+				host = addr
+			} else {
+				return nil, nil, errors.Wrap(ctx, err, op)
+			}
+		}
+		// Now figure out if it's an IP address or not. If ParseIP likes it, add
+		// to IP SANs. Otherwise DNS SANs.
+		ip := net.ParseIP(host)
+		switch ip {
+		case nil:
+			template.DNSNames = append(template.DNSNames, host)
+		default:
+			template.IPAddresses = append(template.IPAddresses, ip)
+		}
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
