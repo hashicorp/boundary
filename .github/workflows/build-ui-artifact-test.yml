@@ -95,7 +95,7 @@ jobs:
           workflow: build-admin-ui.yaml
           # commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-         # name: admin-ui-${{ steps.set-sha.outputs.sha }}
+          name: admin-ui
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       # - uses: actions/checkout@v2
       #   with:
