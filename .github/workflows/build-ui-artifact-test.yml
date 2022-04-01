@@ -92,7 +92,7 @@ jobs:
       - name: Download UI artifact
         uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build-admin-ui
+          workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ steps.set-sha.outputs.sha }}
