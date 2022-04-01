@@ -1,4 +1,4 @@
-name: build
+name: test-use-ui-artifact
 
 on:
   push:
