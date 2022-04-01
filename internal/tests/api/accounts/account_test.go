@@ -63,7 +63,7 @@ func TestListPassword(t *testing.T) {
 	ulResult, err = accountClient.List(tc.Context(), am.Id,
 		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/login_name"==%q`, filterItem.Attributes["login_name"])))
 	require.NoError(err)
-	assert.Len(ulResult.Items, 1)
+	require.Len(ulResult.Items, 1)
 	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
 }
 
@@ -120,7 +120,7 @@ func TestListOidc(t *testing.T) {
 	ulResult, err = accountClient.List(tc.Context(), am.Id,
 		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/subject"==%q`, filterItem.Attributes["subject"])))
 	require.NoError(err)
-	assert.Len(ulResult.Items, 1)
+	require.Len(ulResult.Items, 1)
 	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
 }
 
