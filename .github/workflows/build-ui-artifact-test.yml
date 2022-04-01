@@ -93,9 +93,9 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         with:
           workflow: build-admin-ui.yaml
-          commit: ${{ steps.set-sha.outputs.sha }}
+          # commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui-${{ steps.set-sha.outputs.sha }}
+         # name: admin-ui-${{ steps.set-sha.outputs.sha }}
           path: internal/ui/.tmp/boundary-ui/dist
       # - uses: actions/checkout@v2
       #   with:
