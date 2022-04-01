@@ -24,6 +24,7 @@ func TestSession_Create(t *testing.T) {
 	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
+	defaultAddresses := []string{"1.2.3.4", "a.b.c.d"}
 	type args struct {
 		composedOf ComposedOf
 		addresses  []string
@@ -34,6 +35,7 @@ func TestSession_Create(t *testing.T) {
 		args          args
 		want          *Session
 		wantErr       bool
+		wantAddrErr   bool
 		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
@@ -43,7 +45,7 @@ func TestSession_Create(t *testing.T) {
 			args: args{
 				composedOf: composedOf,
 				opt:        []Option{WithExpirationTime(exp)},
-				addresses:  []string{"1.2.3.4", "a.b.c.d"},
+				addresses:  defaultAddresses,
 			},
 			want: &Session{
 				UserId:             composedOf.UserId,
@@ -67,6 +69,7 @@ func TestSession_Create(t *testing.T) {
 					c.UserId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -79,6 +82,7 @@ func TestSession_Create(t *testing.T) {
 					c.HostId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -91,6 +95,7 @@ func TestSession_Create(t *testing.T) {
 					c.TargetId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -103,6 +108,7 @@ func TestSession_Create(t *testing.T) {
 					c.HostSetId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -115,6 +121,7 @@ func TestSession_Create(t *testing.T) {
 					c.AuthTokenId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -127,9 +134,33 @@ func TestSession_Create(t *testing.T) {
 					c.ScopeId = ""
 					return c
 				}(),
+				addresses: defaultAddresses,
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "empty-addresses",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := composedOf
+					return c
+				}(),
+			},
+			want: &Session{
+				UserId:             composedOf.UserId,
+				HostId:             composedOf.HostId,
+				TargetId:           composedOf.TargetId,
+				HostSetId:          composedOf.HostSetId,
+				AuthTokenId:        composedOf.AuthTokenId,
+				ScopeId:            composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     composedOf.ExpirationTime,
+				ConnectionLimit:    composedOf.ConnectionLimit,
+				DynamicCredentials: composedOf.DynamicCredentials,
+			},
+			wantAddrErr: true,
+			wantIsErr:   errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -149,6 +180,11 @@ func TestSession_Create(t *testing.T) {
 				require.NoError(err)
 				got.PublicId = id
 				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
+				if tt.wantAddrErr {
+					require.Error(err)
+					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
+					return
+				}
 				require.NoError(err)
 				got.Certificate = certBytes
 				err = db.New(conn).Create(ctx, got)

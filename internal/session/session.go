@@ -364,6 +364,9 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 	if jobId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
 	}
+	if len(addresses) == 0 {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
+	}
 	pubKey, privKey, err := DeriveED25519Key(ctx, wrapper, userId, jobId)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)

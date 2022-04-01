@@ -1051,7 +1051,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, session.WithWorkerAddresses(workerAddresses))
+	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses)
 	if err != nil {
 		return nil, err
 	}

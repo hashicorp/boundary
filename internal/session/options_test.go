@@ -82,11 +82,4 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withServerId = "worker1"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithWorkerAddresses", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithWorkerAddresses([]string{"1.2.3.4", "a.b.c.d"}))
-		testOpts := getDefaultOptions()
-		testOpts.withWorkerAddresses = []string{"1.2.3.4", "a.b.c.d"}
-		assert.Equal(opts, testOpts)
-	})
 }
