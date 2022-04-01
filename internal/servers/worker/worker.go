@@ -323,7 +323,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		// // h2 doesn't support websockets in Golang currently, see
 		// https://github.com/nhooyr/websocket/issues/4; however in case we
 		// support normal API calls for some reason in the future, keeping h2 in
-		NextProtos: []string{"h2", "http/1.1"},
+		NextProtos: []string{"", "http/1.1", "h2"},
 	}
 
 	si := &session.Info{
