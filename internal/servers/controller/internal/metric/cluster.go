@@ -23,17 +23,18 @@ const (
 )
 
 var (
-	gRpcMsgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
+	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb
+	gRpcMsgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 6)
 
 	// gRpcRequestLatency collects measurements of how long it takes
-	// the boundary system to reply to a request to the controller api
+	// the boundary system to reply to a request to the controller cluster
 	// from the time that boundary received the request.
 	gRpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: globals.MetricNamespace,
 			Subsystem: clusterSubSystem,
 			Name:      "grpc_request_duration_seconds",
-			Help:      "Histogram of latencies for HTTP requests.",
+			Help:      "Histogram of latencies for gRPC requests.",
 			Buckets:   prometheus.DefBuckets,
 		},
 		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
@@ -46,9 +47,8 @@ var (
 			Namespace: globals.MetricNamespace,
 			Subsystem: clusterSubSystem,
 			Name:      "grpc_request_size_bytes",
-			Help:      "Histogram of request sizes for HTTP requests.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: gRpcMsgSizeBuckets,
+			Help:      "Histogram of request sizes for gRPC requests.",
+			Buckets:   gRpcMsgSizeBuckets,
 		},
 		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
 	)
@@ -60,9 +60,8 @@ var (
 			Namespace: globals.MetricNamespace,
 			Subsystem: clusterSubSystem,
 			Name:      "grpc_response_size_bytes",
-			Help:      "Histogram of response sizes for HTTP responses.",
-			// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
-			Buckets: gRpcMsgSizeBuckets,
+			Help:      "Histogram of response sizes for gRPC responses.",
+			Buckets:   gRpcMsgSizeBuckets,
 		},
 		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
 	)
