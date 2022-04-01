@@ -39,7 +39,7 @@ func TestProtoAttributeKey(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			k, err := protoAttributeField(tc.msg, tc.subtype)
+			k, err := attributeField(tc.msg.ProtoReflect().Descriptor(), tc.subtype)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, k.FullName())
 		})
@@ -76,7 +76,7 @@ func TestProtoAttributeKeyErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := protoAttributeField(tc.msg, tc.subtype)
+			_, err := attributeField(tc.msg.ProtoReflect().Descriptor(), tc.subtype)
 			require.EqualError(t, err, tc.expectedErr)
 		})
 	}
@@ -97,14 +97,14 @@ func TestRegisterErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := globalAttributeKeys.register(tc.msg.ProtoReflect().Descriptor())
+			err := globalAttributeRegistry.register(tc.msg.ProtoReflect().Descriptor())
 			require.EqualError(t, err, tc.expectedErr)
 		})
 	}
 }
 
 func TestRegisterNoSubtypes(t *testing.T) {
-	ak := attributeKeys{
+	ak := attributeRegistry{
 		m: make(map[protoreflect.FullName]fieldMap),
 	}
 

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -16,13 +17,13 @@ const (
 )
 
 func init() {
-	globalAttributeKeys = attributeKeys{
+	globalAttributeRegistry = attributeRegistry{
 		m: make(map[protoreflect.FullName]fieldMap),
 	}
 
 	protoregistry.GlobalTypes.RangeMessages(func(m protoreflect.MessageType) bool {
 		d := m.Descriptor()
-		if err := globalAttributeKeys.register(d); err != nil {
+		if err := globalAttributeRegistry.register(d); err != nil {
 			panic(err)
 		}
 		return true
@@ -31,20 +32,21 @@ func init() {
 
 type fieldMap map[Subtype]protoreflect.FieldDescriptor
 
-type attributeKeys struct {
+type attributeRegistry struct {
 	sync.RWMutex
 	m map[protoreflect.FullName]fieldMap
 }
 
-var globalAttributeKeys attributeKeys
+var globalAttributeRegistry attributeRegistry
 
 // register examines the given protobuf MessageDescriptor for fields that have
 // the Subtype protobuf extension. It uses these to build a fieldMap of subtype
 // strings to the protobuf FieldDescriptors. If the message does not have any
 // subtypes it will not be registered, but no error is returned, allowing this
 // to be called on any protobuf message. However, if a message has subtypes but
-// does not provide a field with a subtype of "default" an error is returned.
-func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
+// does not provide a field with a subtype of "default", or if the default
+// field is not a *structpb.Struct type, an error is returned.
+func (ak attributeRegistry) register(d protoreflect.MessageDescriptor) error {
 	ak.Lock()
 	defer ak.Unlock()
 
@@ -77,8 +79,13 @@ func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
 	}
 
 	// If a message has subtypes, it must provide a "default" to support plugins.
-	if _, ok := km[defaultSubtype]; !ok {
+	defSubtype, ok := km[defaultSubtype]
+	if !ok {
 		return fmt.Errorf("proto message %s with subtype attributes but no 'default'", fn)
+	}
+
+	if defSubtype.Message().FullName() != (&structpb.Struct{}).ProtoReflect().Descriptor().FullName() {
+		return fmt.Errorf("proto message %s with 'default' subtype attributes that is not structpb.Struct", fn)
 	}
 
 	ak.m[fn] = km
@@ -86,10 +93,10 @@ func (ak attributeKeys) register(d protoreflect.MessageDescriptor) error {
 	return nil
 }
 
-// protoAttributeField retrieves the FieldDescriptor for a given subtype's
+// attributeField retrieves the FieldDescriptor for a given subtype's
 // attribute fields. If the corresponding protobuf message has not been
 // registered it will return an error.
-func (ak attributeKeys) protoAttributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
+func (ak attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
 	ak.RLock()
 	defer ak.RUnlock()
 
@@ -112,13 +119,8 @@ func (ak attributeKeys) protoAttributeField(d protoreflect.MessageDescriptor, t 
 	return tt, nil
 }
 
-// TODO: fix doc
-// protoAttributeField is used by the attrMarshaler to translate between JSON
-// formats for the API and for the protobuf messages. It expects a
-// proto.Message with a OneOf field for the subtype attributes and the subtype
-// string. It returns the string for the JSON key that that should be used for
-// the subtype's attributes fields.
-func protoAttributeField(msg proto.Message, t Subtype) (protoreflect.FieldDescriptor, error) {
-	d := msg.ProtoReflect().Descriptor()
-	return globalAttributeKeys.protoAttributeField(d, t)
+// attributeField is used by the AttributeTransformInterceptor to retrieve
+// the proto FieldDescriptor for a given subtype.
+func attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
+	return globalAttributeRegistry.attributeField(d, t)
 }
