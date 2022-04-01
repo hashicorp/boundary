@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/health"
 	"github.com/hashicorp/go-hclog"
@@ -280,7 +279,7 @@ func TestNewServerIntegration(t *testing.T) {
 
 			addrs := make([]string, 0, len(s.bundles))
 			for _, b := range s.bundles {
-				addrs = append(addrs, b.ln.Mux.Addr().String())
+				addrs = append(addrs, b.ln.OpsListener.Addr().String())
 			}
 			if tt.assertions != nil {
 				tt.assertions(t, addrs)
@@ -334,7 +333,6 @@ func TestShutdown(t *testing.T) {
 					bundles: []*opsBundle{
 						{
 							ln: &base.ServerListener{
-								Mux:        &alpnmux.ALPNMux{},
 								HTTPServer: &http.Server{},
 							},
 						},
@@ -368,7 +366,6 @@ func TestShutdown(t *testing.T) {
 					bundles: []*opsBundle{
 						{
 							ln: &base.ServerListener{
-								Mux:    &alpnmux.ALPNMux{},
 								Config: &listenerutil.ListenerConfig{},
 							},
 						},
@@ -390,10 +387,9 @@ func TestShutdown(t *testing.T) {
 					bundles: []*opsBundle{
 						{
 							ln: &base.ServerListener{
-								ALPNListener: l1,
-								HTTPServer:   s1,
-								Mux:          alpnmux.New(l1),
-								Config:       &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
+								HTTPServer:  s1,
+								OpsListener: l1,
+								Config:      &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
 							},
 						},
 					},
@@ -401,10 +397,10 @@ func TestShutdown(t *testing.T) {
 			},
 			assertions: func(t *testing.T, s *Server) {
 				// The HTTP Server must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.OpsListener), http.ErrServerClosed)
 
 				// The underlying listener must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, s.bundles[0].ln.OpsListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -426,10 +422,9 @@ func TestShutdown(t *testing.T) {
 					bundles: []*opsBundle{
 						{
 							ln: &base.ServerListener{
-								ALPNListener: l1,
-								HTTPServer:   s1,
-								Mux:          alpnmux.New(l1),
-								Config:       &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
+								OpsListener: l1,
+								HTTPServer:  s1,
+								Config:      &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
 							},
 						},
 					},
@@ -437,10 +432,10 @@ func TestShutdown(t *testing.T) {
 			},
 			assertions: func(t *testing.T, s *Server) {
 				// The HTTP Server must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.OpsListener), http.ErrServerClosed)
 
 				// The underlying listener must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, s.bundles[0].ln.OpsListener.Close(), net.ErrClosed)
 			},
 		},
 		{
@@ -466,18 +461,16 @@ func TestShutdown(t *testing.T) {
 					bundles: []*opsBundle{
 						{
 							ln: &base.ServerListener{
-								ALPNListener: l1,
-								HTTPServer:   s1,
-								Mux:          alpnmux.New(l1),
-								Config:       &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
+								OpsListener: l1,
+								HTTPServer:  s1,
+								Config:      &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
 							},
 						},
 						{
 							ln: &base.ServerListener{
-								ALPNListener: l2,
-								HTTPServer:   s2,
-								Mux:          alpnmux.New(l2),
-								Config:       &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
+								OpsListener: l2,
+								HTTPServer:  s2,
+								Config:      &listenerutil.ListenerConfig{Type: "tcp", Purpose: []string{"ops"}},
 							},
 						},
 					},
@@ -485,12 +478,12 @@ func TestShutdown(t *testing.T) {
 			},
 			assertions: func(t *testing.T, s *Server) {
 				// The HTTP Server must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.ALPNListener), http.ErrServerClosed)
-				require.ErrorIs(t, s.bundles[1].ln.HTTPServer.Serve(s.bundles[1].ln.ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, s.bundles[0].ln.HTTPServer.Serve(s.bundles[0].ln.OpsListener), http.ErrServerClosed)
+				require.ErrorIs(t, s.bundles[1].ln.HTTPServer.Serve(s.bundles[1].ln.OpsListener), http.ErrServerClosed)
 
 				// The underlying listener must be closed.
-				require.ErrorIs(t, s.bundles[0].ln.Mux.Close(), net.ErrClosed)
-				require.ErrorIs(t, s.bundles[1].ln.Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, s.bundles[0].ln.OpsListener.Close(), net.ErrClosed)
+				require.ErrorIs(t, s.bundles[1].ln.OpsListener.Close(), net.ErrClosed)
 			},
 		},
 	}
@@ -556,7 +549,7 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	opsServer.Start()
 
 	// Assert the ops endpoint is up and returning 200 OK.
-	rsp, err := http.Get("http://" + tc.Config().Listeners[0].Mux.Addr().String() + "/health")
+	rsp, err := http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rsp.StatusCode)
 
@@ -564,7 +557,7 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	tc.Controller().HealthService.StartServiceUnavailableReplies()
 
 	// Assert we're receiving 503 Service Unavailable now instead of 200 OK.
-	rsp, err = http.Get("http://" + tc.Config().Listeners[0].Mux.Addr().String() + "/health")
+	rsp, err = http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
 	require.NoError(t, err)
 	require.Equal(t, http.StatusServiceUnavailable, rsp.StatusCode)
 }

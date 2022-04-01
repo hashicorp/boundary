@@ -219,7 +219,15 @@ func (tc *TestController) addrs(purpose string) []string {
 	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == purpose {
-			addr := listener.Mux.Addr()
+			var addr net.Addr
+			switch purpose {
+			case "api":
+				addr = listener.ApiListener.Addr()
+			case "cluster":
+				addr = listener.ClusterListener.Addr()
+			case "ops":
+				addr = listener.OpsListener.Addr()
+			}
 			switch {
 			case strings.HasPrefix(addr.String(), "/"):
 				switch purpose {

@@ -69,7 +69,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 
 	for _, listener := range tw.b.Listeners {
 		if listener.Config.Purpose[0] == "proxy" {
-			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
+			tcpAddr, ok := listener.ProxyListener.Addr().(*net.TCPAddr)
 			if !ok {
 				tw.t.Fatal("could not parse address as a TCP addr")
 			}
