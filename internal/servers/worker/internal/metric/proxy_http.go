@@ -32,7 +32,7 @@ var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Namespace: globals.MetricNamespace,
 		Subsystem: proxySubSystem,
 		Name:      "http_write_header_duration_seconds",
-		Help:      "Histogram of latencies for HTTP to websocket conversions.",
+		Help:      "Histogram of the latency from the time the request is received post TLS handshake to when the first http header is written back from the server.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
@@ -62,11 +62,8 @@ func pathLabel(incomingPath string) string {
 }
 
 // InstrumentProxyHttpHandler provides a proxy handler which measures
-// 1. The response size
-// 2. The request size
-// 3. The request latency
-// and attaches status code, method, and path labels for each of these
-// measurements.
+// time until header is returned form the server and attaches status code,
+// method, and path labels for each of these measurements.
 func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
