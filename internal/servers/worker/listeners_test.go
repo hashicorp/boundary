@@ -17,6 +17,15 @@ import (
 )
 
 func TestStartListeners(t *testing.T) {
+	testNonTlsRejected := func(t *testing.T, resp *http.Response, err error) {
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Client sent an HTTP request to an HTTPS server.\n", string(body))
+	}
+
 	tests := []struct {
 		name       string
 		listeners  []*listenerutil.ListenerConfig
@@ -44,16 +53,16 @@ func TestStartListeners(t *testing.T) {
 			assertions: func(t *testing.T, w *Worker, addrs []string) {
 				require.Len(t, addrs, 2)
 
-				_, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
-				require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
+				resp, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
+				testNonTlsRejected(t, resp, err)
 
 				cl := http.Client{
 					Transport: &http.Transport{
 						Dial: func(network, addr string) (net.Conn, error) { return net.Dial("unix", addrs[1]) },
 					},
 				}
-				_, err = cl.Get("http://anything.domain/v1/proxy/")
-				require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
+				resp, err = cl.Get("http://anything.domain/v1/proxy/")
+				testNonTlsRejected(t, resp, err)
 			},
 		},
 		{
@@ -88,11 +97,11 @@ func TestStartListeners(t *testing.T) {
 			assertions: func(t *testing.T, w *Worker, addrs []string) {
 				require.Len(t, addrs, 4)
 
-				_, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
-				require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
+				resp, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
+				testNonTlsRejected(t, resp, err)
 
-				_, err = http.Get("http://" + addrs[1] + "/v1/proxy/")
-				require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
+				resp, err = http.Get("http://" + addrs[1] + "/v1/proxy/")
+				testNonTlsRejected(t, resp, err)
 
 				for _, proxyAddr := range []string{addrs[2], addrs[3]} {
 					cl := http.Client{
@@ -100,8 +109,8 @@ func TestStartListeners(t *testing.T) {
 							Dial: func(network, addr string) (net.Conn, error) { return net.Dial("unix", proxyAddr) },
 						},
 					}
-					_, err = cl.Get("http://anything.domain/v1/proxy")
-					require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
+					resp, err = cl.Get("http://anything.domain/v1/proxy")
+					testNonTlsRejected(t, resp, err)
 				}
 			},
 		},

@@ -13,7 +13,6 @@ import (
 	_ "crypto/sha512"
 	"crypto/tls"
 
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
@@ -50,57 +49,54 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, net.Listener, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (net.Listener, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
-		return nil, nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
+		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
 	if len(l.Purpose) != 1 {
-		return nil, nil, nil, nil, fmt.Errorf("expected single listener purpose, found %d", len(l.Purpose))
+		return nil, nil, nil, fmt.Errorf("expected single listener purpose, found %d", len(l.Purpose))
 	}
 	purpose := l.Purpose[0]
 
 	finalAddr, ln, err := f(purpose, l, ui)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ln, err = listenerWrapProxy(ln, l)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	props := map[string]string{
 		"addr": finalAddr,
 	}
 
-	var alpnMux *alpnmux.ALPNMux
-
 	switch purpose {
 	case "cluster":
+		// We handle our own cluster authentication
 		l.TLSDisable = true
-		return nil, ln, props, nil, nil
 	case "proxy":
 		// TODO: Eventually we'll support bringing your own cert, and we'd only
 		// want to disable if you aren't actually bringing your own
 		l.TLSDisable = true
-		return nil, ln, props, nil, nil
 	default:
 		switch l.TLSMinVersion {
 		case "", "tls12", "tls13":
 		default:
-			return nil, nil, nil, nil, fmt.Errorf("unsupported minimum tls version %q", l.TLSMinVersion)
+			return nil, nil, nil, fmt.Errorf("unsupported minimum tls version %q", l.TLSMinVersion)
 		}
 		switch l.TLSMaxVersion {
 		case "", "tls12", "tls13":
 		default:
-			return nil, nil, nil, nil, fmt.Errorf("unsupported maximum tls version %q", l.TLSMaxVersion)
+			return nil, nil, nil, fmt.Errorf("unsupported maximum tls version %q", l.TLSMaxVersion)
 		}
 	}
 
 	if l.TLSDisable {
-		return alpnMux, ln, props, nil, nil
+		return ln, props, nil, nil
 	}
 
 	// Don't request a client cert unless they've explicitly configured it to do
@@ -110,15 +106,17 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, n
 	}
 	tlsConfig, reloadFunc, err := listenerutil.TLSConfig(l, props, ui)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return alpnMux, tls.NewListener(ln, tlsConfig), props, reloadFunc, nil
+	return tls.NewListener(ln, tlsConfig), props, reloadFunc, nil
 }
 
 func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {
 	if l.Address == "" {
 		switch purpose {
+		case "api":
+			l.Address = "127.0.0.1:9200"
 		case "cluster":
 			l.Address = "127.0.0.1:9201"
 		case "proxy":
@@ -126,7 +124,7 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 		case "ops":
 			l.Address = "127.0.0.1:9203"
 		default:
-			l.Address = "127.0.0.1:9200"
+			return "", nil, errors.New("no purpose provided for listener and no address given")
 		}
 	}
 
@@ -134,6 +132,8 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 	if err != nil {
 		if strings.Contains(err.Error(), "missing port") {
 			switch purpose {
+			case "api":
+				port = "9200"
 			case "cluster":
 				port = "9201"
 			case "proxy":
@@ -141,7 +141,7 @@ func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.U
 			case "ops":
 				port = "9203"
 			default:
-				port = "9200"
+				return "", nil, errors.New("no purpose provided for listener and no port discoverable")
 			}
 			host = l.Address
 		} else {
