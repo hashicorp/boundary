@@ -438,10 +438,6 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	pwAttrs := item.GetPasswordAccountAttributes()
-	if pwAttrs == nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
 	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -485,10 +481,6 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
 	attrs := item.GetOidcAccountAttributes()
-	if attrs == nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
 	if attrs.GetIssuer() != "" {
 		u, err := url.Parse(attrs.GetIssuer())
 		if err != nil {
@@ -930,11 +922,6 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 	}
 
 	attrs := item.GetPasswordAccountAttributes()
-	if attrs == nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
-
 	if attrs.GetLoginName() != "" {
 		u.LoginName = attrs.GetLoginName()
 	}
@@ -970,9 +957,6 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetPasswordAccountAttributes()
-			if attrs == nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
 			if attrs.GetLoginName() == "" {
 				badFields[loginNameKey] = "This is a required field for this type."
 			}
@@ -981,9 +965,6 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetOidcAccountAttributes()
-			if attrs == nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
 			if attrs.GetSubject() == "" {
 				badFields[subjectField] = "This is a required field for this type."
 			}
@@ -1021,17 +1002,9 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := req.GetItem().GetPasswordAccountAttributes()
-			if attrs == nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
-			}
-			attrs := req.GetItem().GetOidcAccountAttributes()
-			if attrs == nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
 				badFields[subjectField] = "Field cannot be updated."
