@@ -50,6 +50,9 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 		if ln.Config.Purpose[0] != "ops" {
 			continue
 		}
+		if ln.OpsListener == nil {
+			return nil, fmt.Errorf("%s: missing ops listener", op)
+		}
 
 		h, err := createOpsHandler(ln.Config, c)
 		if err != nil {
@@ -59,7 +62,7 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 		b := &opsBundle{ln: ln, h: h}
 		b.ln.HTTPServer = createHttpServer(l, b.h, b.ln.Config)
 
-		b.startFn = []func(){func() { go ln.HTTPServer.Serve(b.ln.OpsListener) }}
+		b.startFn = []func(){func() { go b.ln.HTTPServer.Serve(b.ln.OpsListener) }}
 
 		bundles = append(bundles, b)
 	}
@@ -84,7 +87,7 @@ func (s *Server) Shutdown() error {
 
 	var closeErrors *multierror.Error
 	for _, b := range s.bundles {
-		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.Mux == nil || b.ln.HTTPServer == nil {
+		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.OpsListener == nil || b.ln.HTTPServer == nil {
 			return fmt.Errorf("%s: missing bundle, listener or its fields", op)
 		}
 

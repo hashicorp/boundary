@@ -52,6 +52,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 	return func(wr http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.TLS == nil {
+			panic("")
 			event.WriteError(ctx, op, errors.New("no request TLS information found"))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
@@ -60,6 +61,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
+			panic("")
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to understand remote address", "remote_addr", r.RemoteAddr))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return

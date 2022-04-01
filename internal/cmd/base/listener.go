@@ -22,11 +22,9 @@ import (
 )
 
 type ServerListener struct {
-	Mux             *alpnmux.ALPNMux
 	Config          *listenerutil.ListenerConfig
 	HTTPServer      *http.Server
 	GrpcServer      *grpc.Server
-	ALPNListener    net.Listener
 	ApiListener     net.Listener
 	ClusterListener net.Listener
 	ProxyListener   net.Listener

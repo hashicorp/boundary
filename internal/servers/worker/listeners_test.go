@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
 )
@@ -130,7 +129,7 @@ func TestStartListeners(t *testing.T) {
 
 			addrs := make([]string, 0)
 			for _, l := range w.listeners {
-				addrs = append(addrs, l.Mux.Addr().String())
+				addrs = append(addrs, l.ProxyListener.Addr().String())
 			}
 			if tt.assertions != nil {
 				tt.assertions(t, w, addrs)
@@ -204,28 +203,26 @@ func TestStopHttpServersAndListeners(t *testing.T) {
 					baseContext: context.Background(),
 					listeners: []*base.ServerListener{
 						{
-							ALPNListener: l1,
-							HTTPServer:   s1,
-							Mux:          alpnmux.New(l1),
-							Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+							ProxyListener: l1,
+							HTTPServer:    s1,
+							Config:        &listenerutil.ListenerConfig{Type: "tcp"},
 						},
 						{
-							ALPNListener: l2,
-							HTTPServer:   s2,
-							Mux:          alpnmux.New(l2),
-							Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+							ProxyListener: l2,
+							HTTPServer:    s2,
+							Config:        &listenerutil.ListenerConfig{Type: "tcp"},
 						},
 					},
 				}
 			},
 			assertions: func(t *testing.T, w *Worker) {
 				// Asserts the HTTP Servers are closed.
-				require.ErrorIs(t, w.listeners[0].HTTPServer.Serve(w.listeners[0].ALPNListener), http.ErrServerClosed)
-				require.ErrorIs(t, w.listeners[1].HTTPServer.Serve(w.listeners[1].ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, w.listeners[0].HTTPServer.Serve(w.listeners[0].ProxyListener), http.ErrServerClosed)
+				require.ErrorIs(t, w.listeners[1].HTTPServer.Serve(w.listeners[1].ProxyListener), http.ErrServerClosed)
 
 				// Asserts the underlying listeners are closed.
-				require.ErrorIs(t, w.listeners[0].Mux.Close(), net.ErrClosed)
-				require.ErrorIs(t, w.listeners[1].Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, w.listeners[0].ProxyListener.Close(), net.ErrClosed)
+				require.ErrorIs(t, w.listeners[1].ProxyListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -278,10 +275,10 @@ func TestStopAnyListeners(t *testing.T) {
 			expErr: false,
 		},
 		{
-			name: "listeners with nil mux",
+			name: "non-empty but nil listeners",
 			workerFn: func(t *testing.T) *Worker {
 				return &Worker{listeners: []*base.ServerListener{
-					{Mux: nil}, {Mux: nil}, {Mux: nil},
+					{ProxyListener: nil}, {ProxyListener: nil}, {ProxyListener: nil},
 				}}
 			},
 			expErr: false,
@@ -301,23 +298,23 @@ func TestStopAnyListeners(t *testing.T) {
 
 				return &Worker{listeners: []*base.ServerListener{
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l1),
+						Config:        &listenerutil.ListenerConfig{Type: "tcp"},
+						ProxyListener: l1,
 					},
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l2),
+						Config:        &listenerutil.ListenerConfig{Type: "tcp"},
+						ProxyListener: l2,
 					},
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l3),
+						Config:        &listenerutil.ListenerConfig{Type: "tcp"},
+						ProxyListener: l3,
 					},
 				}}
 			},
 			assertions: func(t *testing.T, w *Worker) {
 				for i := range w.listeners {
 					ln := w.listeners[i]
-					require.ErrorIs(t, ln.Mux.Close(), net.ErrClosed)
+					require.ErrorIs(t, ln.ProxyListener.Close(), net.ErrClosed)
 				}
 			},
 			expErr: false,

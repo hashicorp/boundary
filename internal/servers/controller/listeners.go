@@ -41,7 +41,7 @@ func (c *Controller) startListeners() error {
 
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
-		apiServers, err := c.configureForAPI(ln)
+		apiServers, err := c.configureForApi(ln)
 		if err != nil {
 			return fmt.Errorf("failed to configure listener for api mode: %w", err)
 		}
@@ -61,7 +61,7 @@ func (c *Controller) startListeners() error {
 	return nil
 }
 
-func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) {
+func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) {
 	apiServers := make([]func(), 0)
 
 	handler, err := c.apiHandler(HandlerProperties{
@@ -204,7 +204,7 @@ func (c *Controller) stopAnyListeners() error {
 	var closeErrors *multierror.Error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
-		if ln == nil || ln.Mux == nil {
+		if ln == nil || ln.ApiListener == nil {
 			continue
 		}
 
