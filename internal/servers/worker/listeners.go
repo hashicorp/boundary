@@ -23,7 +23,7 @@ func (w *Worker) startListeners() error {
 	if e == nil {
 		return fmt.Errorf("%s: sys eventer not initialized", op)
 	}
-	logger, err := e.StandardLogger(w.baseContext, "listeners", event.ErrorType)
+	logger, err := e.StandardLogger(w.baseContext, "worker.listeners.", event.ErrorType)
 	if err != nil {
 		return fmt.Errorf("%s: unable to initialize std logger: %w", op, err)
 	}
@@ -77,9 +77,19 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (f
 	}
 
 	l := tls.NewListener(ln.BaseListener, &tls.Config{
-		GetConfigForClient: w.getSessionTls,
+		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			conf, err := w.getSessionTls(hello)
+			if err != nil {
+				return conf, err
+			}
+			if conf == nil {
+				panic("conf is nil")
+			}
+			return conf, err
+		},
 	})
 
+	log.Println("returning tls listener for serving")
 	return func() { go server.Serve(l) }, nil
 }
 

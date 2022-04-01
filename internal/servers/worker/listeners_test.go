@@ -44,7 +44,9 @@ func TestStartListeners(t *testing.T) {
 			assertions: func(t *testing.T, w *Worker, addrs []string) {
 				require.Len(t, addrs, 2)
 
-				_, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
+				resp, err := http.Get("http://" + addrs[0] + "/v1/proxy/")
+				// log.Println(pretty.Sprint(resp))
+				_ = resp
 				require.ErrorIs(t, err, io.EOF) // empty response because of worker tls request validation
 
 				cl := http.Client{

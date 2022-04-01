@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/kr/pretty"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -261,6 +263,7 @@ func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 }
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	log.Println("in getSessionTLS", pretty.Sprint(hello))
 	const op = "worker.(Worker).getSessionTls"
 	ctx := w.baseContext
 	var sessionId string
@@ -275,6 +278,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	conn, err := w.ControllerSessionConn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
+		return nil, fmt.Errorf("could not fetch controller session connection: %w", err)
 	}
 
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
@@ -316,6 +320,10 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 		MinVersion: tls.VersionTLS13,
+		// // h2 doesn't support websockets in Golang currently, see
+		// https://github.com/nhooyr/websocket/issues/4; however in case we
+		// support normal API calls for some reason in the future, keeping h2 in
+		NextProtos: []string{"h2", "http/1.1"},
 	}
 
 	si := &session.Info{
@@ -337,6 +345,8 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		actualSi.LookupSessionResponse = resp
 		actualSi.Unlock()
 	}
+
+	log.Println("returning TLS for connection", pretty.Sprint(tlsConf))
 
 	return tlsConf, nil
 }

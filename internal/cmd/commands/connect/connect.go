@@ -461,6 +461,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		RootCAs:    certPool,
 		ServerName: parsedCert.DNSNames[0],
 		MinVersion: tls.VersionTLS13,
+		// h2 doesn't support websockets in Golang currently, see
+		// https://github.com/nhooyr/websocket/issues/4
+		NextProtos: []string{"http/1.1"},
 	}
 
 	transport := cleanhttp.DefaultTransport()
