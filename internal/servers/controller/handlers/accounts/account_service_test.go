@@ -278,7 +278,7 @@ func TestListPassword(t *testing.T) {
 			Version:      1,
 			Type:         "password",
 			Attrs: &pb.Account_PasswordAccountAttributes{
-				&pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
 			},
 			AuthorizedActions: pwAuthorizedActions,
 		})
@@ -447,7 +447,7 @@ func TestListOidc(t *testing.T) {
 			Type:         oidc.Subtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
 				&pb.OidcAccountAttributes{
-					Issuer:  amSomeAccounts.GetIssuer(),
+					Issuer:  amOtherAccounts.GetIssuer(),
 					Subject: subId,
 				},
 			},
@@ -712,7 +712,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -729,7 +729,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 					AuthorizedActions: pwAuthorizedActions,
@@ -744,7 +744,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -759,7 +759,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 					AuthorizedActions: pwAuthorizedActions,
@@ -793,7 +793,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "haspassword",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 					AuthorizedActions: pwAuthorizedActions,
@@ -809,7 +809,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "nopwprovided",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -827,7 +827,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "cantprovideid",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -845,7 +845,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "nocreatedtime",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -863,7 +863,7 @@ func TestCreatePassword(t *testing.T) {
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
 							LoginName: "noupdatetime",
-							Password:  &wrapperspb.StringValue{Value: ""},
+							Password:  nil,
 						},
 					},
 				},
@@ -890,6 +890,8 @@ func TestCreatePassword(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -1503,6 +1505,8 @@ func TestUpdatePassword(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
 
 			if tc.res == nil {
