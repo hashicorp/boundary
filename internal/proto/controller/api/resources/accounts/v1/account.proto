@@ -11,8 +11,6 @@ import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
-option (custom_options.v1.domain) = "auth";
-
 // Account contains all fields related to an Account resource
 message Account {
 	// Output only. The ID of the Account.
@@ -41,7 +39,7 @@ message Account {
 	string type = 80;  // @gotags: `class:"public"`
 
 	// The ID of the Auth Method that is associated with this Account.
-	string auth_method_id = 90 [json_name="auth_method_id"];  // @gotags: `class:"public"`
+	string auth_method_id = 90 [json_name="auth_method_id", (custom_options.v1.subtype_source_id) = true];  // @gotags: `class:"public"`
 
 	oneof attrs {
 		// The attributes that are applicable for the specific Account type.
