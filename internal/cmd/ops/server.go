@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
@@ -60,11 +59,7 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 		b := &opsBundle{ln: ln, h: h}
 		b.ln.HTTPServer = createHttpServer(l, b.h, b.ln.Config)
 
-		funcs, err := getStartFn(b.ln)
-		if err != nil {
-			return nil, err
-		}
-		b.startFn = funcs
+		b.startFn = []func(){func() { go ln.HTTPServer.Serve(b.ln.OpsListener) }}
 
 		bundles = append(bundles, b)
 	}
@@ -101,7 +96,7 @@ func (s *Server) Shutdown() error {
 			multierror.Append(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
 		}
 
-		err = b.ln.Mux.Close()
+		err = b.ln.OpsListener.Close()
 		err = listenerCloseErrorCheck(b.ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
@@ -167,34 +162,6 @@ func createHttpServer(l hclog.Logger, h http.Handler, lncfg *listenerutil.Listen
 	}
 
 	return s
-}
-
-func getStartFn(ln *base.ServerListener) ([]func(), error) {
-	const op = "getStartFn()"
-
-	funcs := make([]func(), 0)
-	switch ln.Config.TLSDisable {
-	case true:
-		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-		if err != nil {
-			return nil, fmt.Errorf("%s: error getting non-tls listener: %w", op, err)
-		}
-		if l == nil {
-			return nil, fmt.Errorf("%s: could not get non-tls listener", op)
-		}
-		funcs = append(funcs, func() { go ln.HTTPServer.Serve(l) })
-
-	default:
-		for _, v := range []string{"", "http/1.1", "h2"} {
-			l := ln.Mux.GetListener(v)
-			if l == nil {
-				return nil, fmt.Errorf("%s: could not get tls proto %q listener", op, v)
-			}
-			funcs = append(funcs, func() { go ln.HTTPServer.Serve(l) })
-		}
-	}
-
-	return funcs, nil
 }
 
 func listenerCloseErrorCheck(lnType string, err error) error {

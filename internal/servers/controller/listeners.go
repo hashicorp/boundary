@@ -14,7 +14,6 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
@@ -97,26 +96,7 @@ func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) 
 		server.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	switch ln.Config.TLSDisable {
-	case true:
-		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-		if err != nil {
-			return nil, fmt.Errorf("error getting non-tls listener: %w", err)
-		}
-		if l == nil {
-			return nil, errors.New("could not get non-tls listener")
-		}
-		apiServers = append(apiServers, func() { go server.Serve(l) })
-
-	default:
-		for _, v := range []string{"", "http/1.1", "h2"} {
-			l := ln.Mux.GetListener(v)
-			if l == nil {
-				return nil, fmt.Errorf("could not get tls proto %q listener", v)
-			}
-			apiServers = append(apiServers, func() { go server.Serve(l) })
-		}
-	}
+	apiServers = append(apiServers, func() { go server.Serve(ln.ApiListener) })
 
 	return apiServers, nil
 }
@@ -197,7 +177,7 @@ func (c *Controller) stopHttpServersAndListeners() error {
 		ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
-		err := ln.Mux.Close() // The HTTP Shutdown call should close this, but just in case.
+		err := ln.ApiListener.Close() // The HTTP Shutdown call should close this, but just in case.
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
@@ -228,7 +208,7 @@ func (c *Controller) stopAnyListeners() error {
 			continue
 		}
 
-		err := ln.Mux.Close()
+		err := ln.ApiListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)

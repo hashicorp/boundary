@@ -11,6 +11,7 @@ import (
 	// We must import sha512 so that it registers with the runtime so that
 	// certificates that use it can be parsed.
 	_ "crypto/sha512"
+	"crypto/tls"
 
 	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -29,6 +30,7 @@ type ServerListener struct {
 	ApiListener     net.Listener
 	ClusterListener net.Listener
 	ProxyListener   net.Listener
+	OpsListener     net.Listener
 }
 
 type WorkerAuthInfo struct {
@@ -87,7 +89,6 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, n
 		l.TLSDisable = true
 		return nil, ln, props, nil, nil
 	default:
-		alpnMux = alpnmux.New(ln)
 		switch l.TLSMinVersion {
 		case "", "tls12", "tls13":
 		default:
@@ -101,7 +102,7 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, n
 	}
 
 	if l.TLSDisable {
-		return alpnMux, nil, props, nil, nil
+		return alpnMux, ln, props, nil, nil
 	}
 
 	// Don't request a client cert unless they've explicitly configured it to do
@@ -113,18 +114,8 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, n
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	// Register no proto, "http/1.1", and "h2", with same TLS config
-	if _, err = alpnMux.RegisterProto("", tlsConfig); err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if _, err = alpnMux.RegisterProto("http/1.1", tlsConfig); err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if _, err = alpnMux.RegisterProto("h2", tlsConfig); err != nil {
-		return nil, nil, nil, nil, err
-	}
 
-	return alpnMux, nil, props, reloadFunc, nil
+	return alpnMux, tls.NewListener(ln, tlsConfig), props, reloadFunc, nil
 }
 
 func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {

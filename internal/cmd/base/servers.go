@@ -393,6 +393,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			if ln.ApiListener != nil {
 				ln.ApiListener.Close()
 			}
+			if ln.OpsListener != nil {
+				ln.OpsListener.Close()
+			}
 		}
 		return nil
 	})
@@ -477,10 +480,14 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		}
 
 		switch purpose {
+		case "api":
+			serverListener.ApiListener = ln
 		case "cluster":
 			serverListener.ClusterListener = ln
 		case "proxy":
 			serverListener.ProxyListener = ln
+		case "ops":
+			serverListener.OpsListener = ln
 		}
 
 		b.Listeners = append(b.Listeners, serverListener)
