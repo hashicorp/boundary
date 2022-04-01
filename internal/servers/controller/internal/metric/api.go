@@ -198,7 +198,7 @@ var expectedStatusCodesPerMethod = map[string][]int{
 	},
 }
 
-// pathLabel maps the requested path the the label value recorded for metrics
+// pathLabel maps the requested path to the label value recorded for metrics
 func pathLabel(incomingPath string) string {
 	if incomingPath == "" || incomingPath[0] != '/' {
 		incomingPath = fmt.Sprintf("/%s", incomingPath)

@@ -19,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -64,6 +65,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
+	metric.InstrumentProxyHttpCollectors(conf.PrometheusRegisterer)
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),
