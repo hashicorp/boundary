@@ -381,7 +381,18 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	// we ignore errors
 	b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
 		for _, ln := range b.Listeners {
-			ln.Mux.Close()
+			if ln.Mux != nil {
+				ln.Mux.Close()
+			}
+			if ln.ProxyListener != nil {
+				ln.ProxyListener.Close()
+			}
+			if ln.ClusterListener != nil {
+				ln.ClusterListener.Close()
+			}
+			if ln.ApiListener != nil {
+				ln.ApiListener.Close()
+			}
 		}
 		return nil
 	})
@@ -414,7 +425,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			}
 		}
 
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, ui)
+		lnMux, ln, props, reloadFunc, err := NewListener(lnConfig, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}
@@ -460,10 +471,19 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		}
 		props["max_request_duration"] = lnConfig.MaxRequestDuration.String()
 
-		b.Listeners = append(b.Listeners, &ServerListener{
+		serverListener := &ServerListener{
 			Mux:    lnMux,
 			Config: lnConfig,
-		})
+		}
+
+		switch purpose {
+		case "cluster":
+			serverListener.ClusterListener = ln
+		case "proxy":
+			serverListener.ProxyListener = ln
+		}
+
+		b.Listeners = append(b.Listeners, serverListener)
 
 		props["purpose"] = strings.Join(lnConfig.Purpose, ",")
 

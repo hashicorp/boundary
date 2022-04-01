@@ -21,11 +21,14 @@ import (
 )
 
 type ServerListener struct {
-	Mux          *alpnmux.ALPNMux
-	Config       *listenerutil.ListenerConfig
-	HTTPServer   *http.Server
-	GrpcServer   *grpc.Server
-	ALPNListener net.Listener
+	Mux             *alpnmux.ALPNMux
+	Config          *listenerutil.ListenerConfig
+	HTTPServer      *http.Server
+	GrpcServer      *grpc.Server
+	ALPNListener    net.Listener
+	ApiListener     net.Listener
+	ClusterListener net.Listener
+	ProxyListener   net.Listener
 }
 
 type WorkerAuthInfo struct {
@@ -47,55 +50,58 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, net.Listener, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
+		return nil, nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
 	if len(l.Purpose) != 1 {
-		return nil, nil, nil, fmt.Errorf("expected single listener purpose, found %d", len(l.Purpose))
+		return nil, nil, nil, nil, fmt.Errorf("expected single listener purpose, found %d", len(l.Purpose))
 	}
 	purpose := l.Purpose[0]
 
-	switch purpose {
-	case "cluster":
-		l.TLSDisable = true
-	case "proxy":
-		// TODO: Eventually we'll support bringing your own cert, and we'd only
-		// want to disable if you aren't actually bringing your own
-		l.TLSDisable = true
-	default:
-		switch l.TLSMinVersion {
-		case "", "tls12", "tls13":
-		default:
-			return nil, nil, nil, fmt.Errorf("unsupported minimum tls version %q", l.TLSMinVersion)
-		}
-		switch l.TLSMaxVersion {
-		case "", "tls12", "tls13":
-		default:
-			return nil, nil, nil, fmt.Errorf("unsupported maximum tls version %q", l.TLSMaxVersion)
-		}
-	}
-
 	finalAddr, ln, err := f(purpose, l, ui)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	ln, err = listenerWrapProxy(ln, l)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	props := map[string]string{
 		"addr": finalAddr,
 	}
 
-	alpnMux := alpnmux.New(ln)
+	var alpnMux *alpnmux.ALPNMux
+
+	switch purpose {
+	case "cluster":
+		l.TLSDisable = true
+		return nil, ln, props, nil, nil
+	case "proxy":
+		// TODO: Eventually we'll support bringing your own cert, and we'd only
+		// want to disable if you aren't actually bringing your own
+		l.TLSDisable = true
+		return nil, ln, props, nil, nil
+	default:
+		alpnMux = alpnmux.New(ln)
+		switch l.TLSMinVersion {
+		case "", "tls12", "tls13":
+		default:
+			return nil, nil, nil, nil, fmt.Errorf("unsupported minimum tls version %q", l.TLSMinVersion)
+		}
+		switch l.TLSMaxVersion {
+		case "", "tls12", "tls13":
+		default:
+			return nil, nil, nil, nil, fmt.Errorf("unsupported maximum tls version %q", l.TLSMaxVersion)
+		}
+	}
 
 	if l.TLSDisable {
-		return alpnMux, props, nil, nil
+		return alpnMux, nil, props, nil, nil
 	}
 
 	// Don't request a client cert unless they've explicitly configured it to do
@@ -105,20 +111,20 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (*alpnmux.ALPNMux, m
 	}
 	tlsConfig, reloadFunc, err := listenerutil.TLSConfig(l, props, ui)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// Register no proto, "http/1.1", and "h2", with same TLS config
 	if _, err = alpnMux.RegisterProto("", tlsConfig); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if _, err = alpnMux.RegisterProto("http/1.1", tlsConfig); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if _, err = alpnMux.RegisterProto("h2", tlsConfig); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return alpnMux, props, reloadFunc, nil
+	return alpnMux, nil, props, reloadFunc, nil
 }
 
 func tcpListenerFactory(purpose string, l *listenerutil.ListenerConfig, ui cli.Ui) (string, net.Listener, error) {

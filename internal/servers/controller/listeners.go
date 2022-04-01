@@ -122,14 +122,9 @@ func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) 
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	// Clear out in case this is a second start of the controller
-	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+	l := tls.NewListener(ln.ClusterListener, &tls.Config{
 		GetConfigForClient: c.validateWorkerTls,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
-	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
@@ -153,11 +148,9 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
 
-	interceptor := newInterceptingListener(c, l)
-	ln.ALPNListener = interceptor
 	ln.GrpcServer = workerServer
 
-	return func() { go ln.GrpcServer.Serve(ln.ALPNListener) }, nil
+	return func() { go ln.GrpcServer.Serve(newInterceptingListener(c, l)) }, nil
 }
 
 func (c *Controller) stopServersAndListeners() error {
@@ -183,12 +176,12 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 	if c.clusterListener.GrpcServer == nil {
 		return fmt.Errorf("no cluster grpc server")
 	}
-	if c.clusterListener.Mux == nil {
-		return fmt.Errorf("no cluster listener mux")
+	if c.clusterListener.ClusterListener == nil {
+		return fmt.Errorf("no cluster listener")
 	}
 
 	c.clusterListener.GrpcServer.GracefulStop()
-	err := c.clusterListener.Mux.Close()
+	err := c.clusterListener.ClusterListener.Close()
 	return listenerCloseErrorCheck(c.clusterListener.Config.Type, err)
 }
 
