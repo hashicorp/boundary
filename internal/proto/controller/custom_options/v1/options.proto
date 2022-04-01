@@ -20,6 +20,10 @@ extend google.protobuf.FieldOptions {
 	// of oneOf once and not for each option when generating the API
 	// This will serve as a JSON key, used to transform that into the key the protobuf expects
 	string subtype = 85555;
+
+  // subtype_source_id is used to indicate that a field provided an id that can be used
+  // to determine the subtype of a message.
+  bool subtype_source_id = 85556;
 }
 
 extend google.protobuf.FileOptions {
