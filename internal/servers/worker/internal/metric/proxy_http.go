@@ -32,7 +32,7 @@ var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Namespace: globals.MetricNamespace,
 		Subsystem: proxySubSystem,
 		Name:      "http_write_header_duration_seconds",
-		Help:      "Histogram of the latency from the time the request is received post TLS handshake to when the first http header is written back from the server.",
+		Help:      "Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
