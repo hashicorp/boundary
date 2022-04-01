@@ -33,6 +33,7 @@ type options struct {
 	withDbOpts                      []db.Option
 	withWorkerStateDelay            time.Duration
 	withDeadWorkerConnCloseMinGrace time.Duration
+	withWorkerAddresses             []string
 }
 
 func getDefaultOptions() options {
@@ -130,5 +131,12 @@ func WithWorkerStateDelay(d time.Duration) Option {
 func WithDeadWorkerConnCloseMinGrace(d time.Duration) Option {
 	return func(o *options) {
 		o.withDeadWorkerConnCloseMinGrace = d
+	}
+}
+
+// WithWorkerAddresses is used to pass the addresses that need to be encoded on the cert
+func WithWorkerAddresses(addrs []string) Option {
+	return func(o *options) {
+		o.withWorkerAddresses = addrs
 	}
 }

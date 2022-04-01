@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -265,11 +266,20 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	ctx := w.baseContext
 	var sessionId string
 	switch {
-	case strings.HasPrefix(hello.ServerName, "s_"):
+	case strings.HasPrefix(hello.ServerName, globals.SessionPrefix):
 		sessionId = hello.ServerName
 	default:
-		event.WriteSysEvent(ctx, op, "invalid session in SNI", "session_id", hello.ServerName)
-		return nil, fmt.Errorf("could not find session ID in SNI")
+		for _, proto := range hello.SupportedProtos {
+			if strings.HasPrefix(proto, globals.SessionPrefix) {
+				sessionId = proto
+				break
+			}
+		}
+	}
+
+	if sessionId == "" {
+		event.WriteSysEvent(ctx, op, "session_id not found in either SNI or ALPN protos", "server_name", hello.ServerName, "alpn_protos", hello.SupportedProtos)
+		return nil, fmt.Errorf("could not find session ID in SNI or ALPN protos")
 	}
 
 	conn, err := w.ControllerSessionConn()
@@ -297,10 +307,6 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		return nil, fmt.Errorf("error parsing session certificate: %w", err)
 	}
 
-	if len(parsedCert.DNSNames) != 1 {
-		return nil, fmt.Errorf("invalid length of DNS names (%d) in parsed certificate", len(parsedCert.DNSNames))
-	}
-
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
 
@@ -312,7 +318,8 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 				Leaf:        parsedCert,
 			},
 		},
-		ServerName: parsedCert.DNSNames[0],
+		NextProtos: []string{"http/1.1"},
+		ServerName: sessionId,
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 		MinVersion: tls.VersionTLS13,

@@ -19,7 +19,7 @@ import (
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, _ ...Option) (*Session, ed25519.PrivateKey, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, opt ...Option) (*Session, ed25519.PrivateKey, error) {
 	const op = "session.(Repository).CreateSession"
 	if newSession == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
@@ -64,12 +64,14 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
 	}
 
+	opts := getOpts(opt...)
+
 	id, err := newId()
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
-	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, newSession.ExpirationTime.Timestamp.AsTime())
+	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, opts.withWorkerAddresses, newSession.ExpirationTime.Timestamp.AsTime())
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}

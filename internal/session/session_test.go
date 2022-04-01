@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto/x509"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ func TestSession_Create(t *testing.T) {
 
 	type args struct {
 		composedOf ComposedOf
+		addresses  []string
 		opt        []Option
 	}
 	tests := []struct {
@@ -41,6 +43,7 @@ func TestSession_Create(t *testing.T) {
 			args: args{
 				composedOf: composedOf,
 				opt:        []Option{WithExpirationTime(exp)},
+				addresses:  []string{"1.2.3.4", "a.b.c.d"},
 			},
 			want: &Session{
 				UserId:             composedOf.UserId,
@@ -145,7 +148,7 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, composedOf.ExpirationTime.Timestamp.AsTime())
+				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
 				require.NoError(err)
 				got.Certificate = certBytes
 				err = db.New(conn).Create(ctx, got)
@@ -154,6 +157,13 @@ func TestSession_Create(t *testing.T) {
 					return
 				} else {
 					assert.NoError(err)
+				}
+
+				if len(tt.args.addresses) > 0 {
+					cert, err := x509.ParseCertificate(certBytes)
+					require.NoError(err)
+					// Session ID is always encoded, hence the +1
+					assert.Equal(len(tt.args.addresses)+1, len(cert.DNSNames)+len(cert.IPAddresses))
 				}
 			}
 		})

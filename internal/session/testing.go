@@ -84,7 +84,7 @@ func TestSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
+	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, nil, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
 	s.ServerId = opts.withServerId
@@ -205,5 +205,5 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
 func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(context.Background(), wrapper, userId, jobId, time.Now().Add(5*time.Minute))
+	return newCert(context.Background(), wrapper, userId, jobId, nil, time.Now().Add(5*time.Minute))
 }
