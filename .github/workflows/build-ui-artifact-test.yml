@@ -89,7 +89,6 @@ jobs:
       - name: Set sha
         id: set-sha
         run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-      - name: Test show sha
       - name: Download UI artifact
         uses: dawidd6/action-download-artifact@v2
         with:
