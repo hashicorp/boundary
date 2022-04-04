@@ -130,3 +130,59 @@ func protoToStruct(p proto.Message) (*structpb.Struct, error) {
 	}
 	return st, nil
 }
+
+// Filterable converts a proto.Message so any subtype attributes fields are
+// structed like the API so filter strings will be correctly applied. If the
+// given proto.Message does not have any subtype attributes, the original
+// proto.Message is returned.  To determine if the message needs
+// transformation, it looks for a oneof field named "attrs". It also expects
+// that there is a structpb.Struct field named "attributes" as part of the
+// oneof. Thus the message must be like:
+//
+//    message Foo {
+//      // other fields
+//      oneof attrs {
+//        google.protobuf.Struct attributes = 100;
+//        // other attribute fields
+//      }
+//    }
+//
+// If the message does not conform to this structure,
+// the original message is returned.
+func Filterable(item proto.Message) (proto.Message, error) {
+	clone := proto.Clone(item)
+	r := clone.ProtoReflect()
+
+	attrsField := r.Descriptor().Oneofs().ByName("attrs")
+	if attrsField == nil {
+		return item, nil
+	}
+
+	defaultAttrField := attrsField.Fields().ByName("attributes")
+	if defaultAttrField == nil {
+		return item, nil
+	}
+
+	var attr proto.Message
+	var pbAttrs proto.Message
+	var err error
+
+	oneofField := r.WhichOneof(attrsField)
+	if oneofField == nil {
+		// attrs field is not set, nothing to do
+		return item, nil
+	}
+
+	attr = r.Get(oneofField).Message().Interface()
+	pbAttrs, err = protoToStruct(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	r.Set(defaultAttrField, protoreflect.ValueOfMessage(pbAttrs.ProtoReflect()))
+	f, err := protoToStruct(r.Interface())
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
