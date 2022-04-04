@@ -42,7 +42,7 @@ func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
 	mux.Handle("/v1/proxy", h)
 
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)
-	metricHandler := metric.InstrumentProxyHttpHandler(genericWrappedHandler)
+	metricHandler := metric.InstrumentHttpHandler(genericWrappedHandler)
 	return metricHandler, nil
 }
 

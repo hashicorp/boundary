@@ -25,8 +25,7 @@ const (
 )
 
 // httpTimeUntilHeader collects measurements of how long it takes
-// the boundary system to hijack an HTTP request into a websocket connection
-// for the proxy worker.
+// the boundary worker to write back the first header to the requester.
 var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Namespace: globals.MetricNamespace,
@@ -61,10 +60,10 @@ func pathLabel(incomingPath string) string {
 	return invalidPathValue
 }
 
-// InstrumentProxyHttpHandler provides a proxy handler which measures
-// time until header is returned form the server and attaches status code,
-// method, and path labels for each of these measurements.
-func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
+// InstrumentHttpHandler provides a handler which measures time until header
+// is written by the server and attaches status code, method, and path
+// labels for the relevant measurements.
+func InstrumentHttpHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
 			labelHttpPath: pathLabel(req.URL.Path),
@@ -76,10 +75,10 @@ func InstrumentProxyHttpHandler(wrapped http.Handler) http.Handler {
 	})
 }
 
-// InstrumentProxyHttpCollectors registers the proxy collectors to the default
-// prometheus register and initializes them to 0 for all possible label
+// InitializeHttpCollectors registers the proxy collectors to the provided
+// prometheus register and initializes them to 0 for the most likely label
 // combinations.
-func InstrumentProxyHttpCollectors(r prometheus.Registerer) {
+func InitializeHttpCollectors(r prometheus.Registerer) {
 	if r == nil {
 		return
 	}
