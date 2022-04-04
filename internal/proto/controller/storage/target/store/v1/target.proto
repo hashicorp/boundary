@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package controller.storage.target.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/target/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+// TargetView is a view that contains all the target subtypes
+message TargetView {
+  // public_id is used to access the Target via an API
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 10;
+
+  // scope id for the Target
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 20;
+
+  // name is the optional friendly name used to
+  // access the Target via an API
+  // @inject_tag: `gorm:"default:null"`
+  string name = 30;
+
+  // description of the Target
+  // @inject_tag: `gorm:"default:null"`
+  string description = 40;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 50;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 60;
+
+  // version allows optimistic locking of the Target when modifying the
+  // Target
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 70;
+
+  // type represents the type of the Target
+  // @inject_tag: `gorm:"default:null"`
+  string type = 80;
+
+  // default port of the Target
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_port = 90;
+
+  // Maximum total lifetime of a created session, in seconds
+  // @inject_tag: `gorm:"default:null"`
+  uint32 session_max_seconds = 100;
+
+  // Maximum number of connections in a session
+  // @inject_tag: `gorm:"default:null"`
+  int32 session_connection_limit = 110;
+
+  // A boolean expression that allows filtering the workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string worker_filter = 120;
+}
+
+message TargetHostSet {
+  // target_id of the TargetHostSet
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // host_set_id of the TargetHostSet
+  // @inject_tag: gorm:"primary_key"
+  string host_set_id = 20;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+message CredentialLibrary {
+  // target_id of the Target
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // credential_library_id of the CredentialLibrary
+  // @inject_tag: gorm:"primary_key"
+  string credential_library_id = 20;
+
+  // credential_purpose is the purpose of the credential for the target
+  // @inject_tag: gorm:"primary_key"
+  string credential_purpose = 30;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
+}
