@@ -649,7 +649,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
-		b.Context,
+		ctx,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
