@@ -528,7 +528,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			}
 
 			if pluginLogger == nil {
-				pluginLogger, err = event.NewHclogLogger(b.Context, b.Eventer)
+				pluginLogger, err = event.NewHclogLogger(ctx, b.Eventer)
 				if err != nil {
 					return fmt.Errorf("Error creating KMS plugin logger: %w", err)
 				}
