@@ -67,23 +67,11 @@ jobs:
           go version
         name: Install go
     - run:
-        command: |-
+        command: |
           make tools
-
-          VERSION="3.17.3"
-          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
-          ARCH="$(uname -m)"
-          PACKAGE_NAME=protoc-$VERSION-linux-$ARCH.zip
-          curl -LO $PB_REL/download/v$VERSION/$PACKAGE_NAME
-          unzip $PACKAGE_NAME -d $HOME/.local
-          rm $PACKAGE_NAME
-
-          echo 'export PATH=$HOME/.local/bin:$PATH' >> "$BASH_ENV"
-          echo "$ protoc --version"
-          protoc --version
-        name: Install protobuf
+        name: Install tools
     - run:
-        command: |-
+        command: |
           make gen
           echo "Testing git diffs..."
           git diff --exit-code
@@ -357,26 +345,14 @@ workflows:
 #                     echo \"$ go version\"
 #                     go version
 #                 name: Install go
-#     install-protobuf:
+#     install-tools:
 #         description: |
-#             Ensure protobuf is installed
+#             Install tools using the Makefile
 #         steps:
 #             - run:
-#                 command: |-
+#                 command: |
 #                     make tools
-# 
-#                     VERSION=\"3.17.3\"
-#                     PB_REL=\"https://github.com/protocolbuffers/protobuf/releases\"
-#                     ARCH=\"$(uname -m)\"
-#                     PACKAGE_NAME=protoc-$VERSION-linux-$ARCH.zip
-#                     curl -LO $PB_REL/download/v$VERSION/$PACKAGE_NAME
-#                     unzip $PACKAGE_NAME -d $HOME/.local
-#                     rm $PACKAGE_NAME
-# 
-#                     echo 'export PATH=$HOME/.local/bin:$PATH' >> \"$BASH_ENV\"
-#                     echo \"$ protoc --version\"
-#                     protoc --version
-#                 name: Install protobuf
+#                 name: Install tools
 # executors:
 #     go-machine:
 #         machine:
@@ -430,9 +406,9 @@ workflows:
 #         steps:
 #             - checkout
 #             - install-go
-#             - install-protobuf
+#             - install-tools
 #             - run:
-#                 command: |-
+#                 command: |
 #                     make gen
 #                     echo \"Testing git diffs...\"
 #                     git diff --exit-code

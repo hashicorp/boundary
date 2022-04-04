@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )
@@ -116,6 +117,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
+				metric.InstrumentClusterInterceptor(),
 				workerReqInterceptor,
 				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
 				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
@@ -127,6 +129,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
+	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer
 

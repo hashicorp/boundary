@@ -15,7 +15,6 @@ package tools
 // helpful, it's separated out from the import block below. Please try to keep
 // them in the same order.
 //go:generate go install mvdan.cc/gofumpt
-//go:generate go install github.com/bufbuild/buf/cmd/buf
 //go:generate go install github.com/favadi/protoc-go-inject-tag
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
@@ -26,8 +25,6 @@ package tools
 
 import (
 	_ "mvdan.cc/gofumpt"
-
-	_ "github.com/bufbuild/buf/cmd/buf"
 
 	_ "github.com/favadi/protoc-go-inject-tag"
 
