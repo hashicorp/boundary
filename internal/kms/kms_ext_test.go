@@ -138,7 +138,7 @@ func TestKms(t *testing.T) {
 }
 
 func TestKms_ReconcileKeys(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
