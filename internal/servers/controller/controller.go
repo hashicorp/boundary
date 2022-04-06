@@ -220,7 +220,21 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
-	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader); err != nil {
+
+	// we need to get all the scopes so we can reconcile the DEKs for each scope.
+	iamRepo, err := iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize iam repository: %w", err)
+	}
+	allScopes, err := iamRepo.ListScopesRecursively(ctx, scope.Global.String())
+	if err != nil {
+		return nil, fmt.Errorf("error listing all scopes for reconciling keys: %w", err)
+	}
+	reconcileScopeIds := make([]string, 0, len(allScopes))
+	for _, s := range allScopes {
+		reconcileScopeIds = append(reconcileScopeIds, s.PublicId)
+	}
+	if err := c.kms.ReconcileKeys(ctx, c.conf.SecureRandomReader, kms.WithScopeIds(reconcileScopeIds...)); err != nil {
 		return nil, fmt.Errorf("error reconciling kms keys: %w", err)
 	}
 

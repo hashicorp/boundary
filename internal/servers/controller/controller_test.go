@@ -6,14 +6,17 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestController_New(t *testing.T) {
 	t.Run("ReconcileKeys", func(t *testing.T) {
-		require := require.New(t)
+		assert, require := assert.New(t), require.New(t)
 		testCtx := context.Background()
 		ctx, cancel := context.WithCancel(context.Background())
 		tc := &TestController{
@@ -22,16 +25,53 @@ func TestController_New(t *testing.T) {
 			cancel: cancel,
 			opts:   nil,
 		}
+
+		// TestControllerConfig(...) will create initial scopes
 		conf := TestControllerConfig(t, ctx, tc, nil)
+		org, _ := iam.TestScopes(t, iam.TestRepo(t, conf.Server.Database, conf.RootKms))
 
 		// this tests a scenario where there is an audit DEK
-		c, err := New(testCtx, conf)
+		_, err := New(testCtx, conf)
 		require.NoError(err)
 
+		verifyFn := func() {
+			// verify audit DEKs
+			kmsCache := kms.TestKms(t, conf.Server.Database, conf.RootKms)
+			w, err := kmsCache.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
+			require.NoError(err)
+			assert.NotNil(w)
+			w, err = kmsCache.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeOidc)
+			require.NoError(err)
+			assert.NotNil(w)
+			w, err = kmsCache.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeOidc)
+			require.NoError(err)
+			assert.NotNil(w)
+		}
+
+		verifyFn()
+
 		// this tests a scenario where there is NOT an audit DEK
-		db.TestDeleteWhere(t, c.conf.Server.Database, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conf.Server.Database, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conf.Server.Database, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
+
+		// re-init an empty cache and assert that the DEKs are not there.
+		kmsCache := kms.TestKms(t, conf.Server.Database, conf.RootKms)
+		w, err := kmsCache.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
+		require.Error(err)
+		assert.Nil(w)
+		w, err = kmsCache.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeOidc)
+		require.Error(err)
+		assert.Nil(w)
+		w, err = kmsCache.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeOidc)
+		require.Error(err)
+		assert.Nil(w)
+
+		// New(...) will reconcile the keys
 		_, err = New(testCtx, conf)
 		require.NoError(err)
+
+		// verify audit DEKs
+		verifyFn()
 	})
 }
 

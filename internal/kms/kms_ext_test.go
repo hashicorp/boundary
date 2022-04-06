@@ -138,16 +138,21 @@ func TestKms(t *testing.T) {
 }
 
 func TestKms_ReconcileKeys(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
 	tests := []struct {
 		name            string
 		kms             *kms.Kms
+		scopeIds        []string
 		reader          io.Reader
-		setup           func()
+		setup           func(*kms.Kms)
+		wantPurpose     []kms.KeyPurpose
 		wantErr         bool
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -177,10 +182,37 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			name:   "reconcile-audit-key",
 			kms:    kms.TestKms(t, conn, wrapper),
 			reader: rand.Reader,
-			setup: func() {
+			setup: func(k *kms.Kms) {
 				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err := k.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
+				require.Error(t, err)
 			},
-			wantErr: false,
+			wantPurpose: []kms.KeyPurpose{kms.KeyPurposeAudit},
+			wantErr:     false,
+		},
+		{
+			name:     "reconcile-oidc-key-multiple-scopes",
+			kms:      kms.TestKms(t, conn, wrapper),
+			scopeIds: []string{org.PublicId, org2.PublicId},
+			reader:   rand.Reader,
+			setup: func(k *kms.Kms) {
+				// create initial keys for the test scope ids...
+				for _, id := range []string{org.PublicId, org2.PublicId} {
+					_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, id)
+					require.NoError(t, err)
+				}
+				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				for _, id := range []string{org.PublicId, org2.PublicId} {
+					_, err := k.GetWrapper(testCtx, id, kms.KeyPurposeAudit)
+					require.Error(t, err)
+				}
+
+			},
+			wantPurpose: []kms.KeyPurpose{kms.KeyPurposeOidc},
 		},
 	}
 	for _, tt := range tests {
@@ -188,14 +220,15 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			// start with no keys...
 			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+
+			// create initial keys for the global scope...
 			_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
 			require.NoError(err)
 
 			if tt.setup != nil {
-				tt.setup()
+				tt.setup(tt.kms)
 			}
-
-			err = tt.kms.ReconcileKeys(testCtx, tt.reader)
+			err = tt.kms.ReconcileKeys(testCtx, tt.reader, kms.WithScopeIds(tt.scopeIds...))
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantErrMatch != nil {
@@ -207,6 +240,16 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
+			if len(tt.scopeIds) > 0 {
+				for _, id := range tt.scopeIds {
+					for _, p := range tt.wantPurpose {
+						_, err := tt.kms.GetWrapper(testCtx, id, p)
+						require.NoError(err)
+					}
+				}
+			}
+			_, err = tt.kms.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
+			require.NoError(err)
 		})
 	}
 }
