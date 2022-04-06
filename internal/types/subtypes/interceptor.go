@@ -34,7 +34,7 @@ func messageDomain(m proto.Message) string {
 // to identify the correct subtype and apply the transformation.
 //
 // The first structure is a message that contains a single "item" that is a
-// message that has a "type" and oneof for attributes:
+// message that has a "type" and an "attrs" oneof for attributes:
 //
 //    message CreateFooRequest {
 //      item Foo = 1;
@@ -66,7 +66,7 @@ func messageDomain(m proto.Message) string {
 //    }
 //
 // The third structure is a message that contains an id string and an "item"
-// that is a message that has a oneof for attributes:
+// that is a message that has an "attrs" oneof for attributes:
 //
 //    message UpdateFooRequest {
 //      string id = 1;
@@ -80,7 +80,7 @@ func messageDomain(m proto.Message) string {
 //      }
 //    }
 //
-// The forth structure is a message that contains an id string and a oneof for
+// The forth structure is a message that contains an id string and an "attrs" oneof for
 // attributes:
 //
 //    message FooActionRequest {
@@ -153,11 +153,22 @@ func transformRequestAttributes(req proto.Message) (proto.Message, error) {
 
 func transformResponseItemAttributes(item proto.Message) error {
 	r := item.ProtoReflect()
+	desc := r.Descriptor()
 
-	itemFields := r.Descriptor().Fields()
-	typeField := itemFields.ByName("type")
+	typeField := desc.Fields().ByName("type")
 	if typeField == nil {
 		// not an item with subtypes
+		return nil
+	}
+
+	attrsField := desc.Oneofs().ByName("attrs")
+	if attrsField == nil {
+		// not an item with attrs oneof
+		return nil
+	}
+
+	if r.WhichOneof(attrsField) == nil {
+		// attrs field is not set, nothing to do
 		return nil
 	}
 
@@ -166,12 +177,12 @@ func transformResponseItemAttributes(item proto.Message) error {
 }
 
 // transformResponseAttributes will modify the response proto.Message, setting
-// any subtype attribute fields into the default structpb.Struct field It looks
+// any subtype attribute fields into the default structpb.Struct field. It looks
 // for some specific structure in the proto.Message to identify that it is a
 // message that needs transformation.
 //
 // The first structure is a message that contains a single "item" that is a
-// message that has a oneof for attributes:
+// message that has an "attrs" oneof for attributes:
 //
 //    message CreateFooResponse {
 //      item Foo = 1;
@@ -184,7 +195,7 @@ func transformResponseItemAttributes(item proto.Message) error {
 //    }
 //
 // The second structure is a message that contains a single "items" that is a
-// slice of item messages that have a oneof for attributes:
+// slice of item messages that have an "attrs" oneof for attributes:
 //
 //    message ListFooResponse {
 //      items []Foo = 1;
