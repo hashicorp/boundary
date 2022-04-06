@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -34,6 +35,7 @@ const (
 	caCertsField        = "attributes.ca_cert"
 	clientCertField     = "attributes.client_certificate"
 	clientCertKeyField  = "attributes.certificate_key"
+	domain              = "credential"
 )
 
 var (
@@ -478,7 +480,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = credential.SubtypeFromId(in.GetPublicId()).String()
+		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -505,7 +507,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	if outputFields.Has(globals.AttributesField) {
-		switch credential.SubtypeFromId(in.GetPublicId()) {
+		switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
 		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
@@ -616,7 +618,7 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
-		switch credential.SubtypeFromType(req.GetItem().GetType()) {
+		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
 		case vault.Subtype:
 			attrs := &pb.VaultCredentialStoreAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
@@ -659,9 +661,9 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch credential.SubtypeFromId(req.GetId()) {
+		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case vault.Subtype:
-			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{}
