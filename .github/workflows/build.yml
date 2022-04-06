@@ -6,6 +6,7 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
+      - 'refactor-build-ci-worfklow-to-decouple-ui-build'
 
 env:
   PKG_NAME: "boundary"
@@ -96,25 +97,14 @@ jobs:
       - name: Set sha
         id: set-sha
         run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-      - uses: actions/checkout@v2
+      - name: Download UI artifact
+        uses: dawidd6/action-download-artifact@v2
         with:
-          repository: "hashicorp/boundary-ui"
-          ref: ${{ steps.set-sha.outputs.sha }}
-          path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
-      - name: UI Build
-        working-directory: internal/ui/.tmp/boundary-ui
-        run: |
-          yarn install --network-timeout 300000
-          yarn build:ui:admin
+          workflow: build-admin-ui.yaml
+          commit: ${{ steps.set-sha.outputs.sha }}
+          repo: "hashicorp/boundary-ui"
+          name: admin-ui
+          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -162,25 +152,14 @@ jobs:
       - name: Set sha
         id: set-sha
         run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-      - uses: actions/checkout@v2
+      - name: Download UI artifact
+        uses: dawidd6/action-download-artifact@v2
         with:
-          repository: "hashicorp/boundary-ui"
-          ref: ${{ steps.set-sha.outputs.sha }}
-          path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
-      - name: UI Build
-        working-directory: internal/ui/.tmp/boundary-ui
-        run: |
-          yarn install --network-timeout 300000
-          yarn build:ui:admin
+          workflow: build-admin-ui.yaml
+          commit: ${{ steps.set-sha.outputs.sha }}
+          repo: "hashicorp/boundary-ui"
+          name: admin-ui
+          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -255,25 +234,14 @@ jobs:
       - name: Set sha
         id: set-sha
         run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-      - uses: actions/checkout@v2
+      - name: Download UI artifact
+        uses: dawidd6/action-download-artifact@v2
         with:
-          repository: "hashicorp/boundary-ui"
-          ref: ${{ steps.set-sha.outputs.sha }}
-          path: "internal/ui/.tmp/boundary-ui"
-      - name: Setup node and yarn
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          cache: 'yarn'
-          cache-dependency-path: 'internal/ui/.tmp/boundary-ui/yarn.lock'
-      - name: Install Yarn
-        run: |
-          npm install -g yarn
-      - name: UI Build
-        working-directory: internal/ui/.tmp/boundary-ui
-        run: |
-          yarn install --network-timeout 300000
-          yarn build:ui:admin
+          workflow: build-admin-ui.yaml
+          commit: ${{ steps.set-sha.outputs.sha }}
+          repo: "hashicorp/boundary-ui"
+          name: admin-ui
+          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
           GOOS: ${{ matrix.goos }}
