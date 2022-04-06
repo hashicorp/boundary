@@ -866,7 +866,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			break
 		}
 		out.Attrs = &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 				LoginName: i.GetLoginName(),
 			},
 		}
@@ -878,7 +878,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			break
 		}
 		attrs := &pb.Account_OidcAccountAttributes{
-			&pb.OidcAccountAttributes{
+			OidcAccountAttributes: &pb.OidcAccountAttributes{
 				Issuer:   i.GetIssuer(),
 				Subject:  i.GetSubject(),
 				FullName: i.GetFullName(),
