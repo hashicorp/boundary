@@ -11,6 +11,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
   with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
   [PR](https://github.com/hashicorp/boundary/pull/1929))
+* controller: Reconcile DEKs with existing scopes ([Issue](https://github.com/hashicorp/boundary/issues/1856),
+  [PR](https://github.com/hashicorp/boundary/pull/1976))
   
 ## 0.7.6 (2022/03/15)
 
