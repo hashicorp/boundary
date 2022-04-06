@@ -46,6 +46,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const (
+	credentialDomain = "credential"
+)
+
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -1140,14 +1144,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 					Name:              l.GetName(),
 					Description:       l.GetDescription(),
 					CredentialStoreId: l.GetStoreId(),
-					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
 				},
 				CredentialSource: &pb.CredentialSource{
 					Id:                l.GetPublicId(),
 					Name:              l.GetName(),
 					Description:       l.GetDescription(),
 					CredentialStoreId: l.GetStoreId(),
-					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
 					CredentialType:    credType,
 				},
 				Secret: &pb.SessionSecret{
