@@ -75,9 +75,9 @@ func newGrpcServer(
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				requestCtxInterceptor,                         // populated requestInfo from headers into the request ctx
+				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
 				auditRequestInterceptor(ctx),                  // before we get started, audit the request
-				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				statusCodeInterceptor(ctx),                    // convert grpc codes into http status codes for the http proxy (can modify the resp)
 				auditResponseInterceptor(ctx),                 // as we finish, audit the response
 				grpc_recovery.UnaryServerInterceptor( // recover from panics with a grpc internal error

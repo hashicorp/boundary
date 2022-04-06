@@ -382,4 +382,12 @@ func TestErrorsOidc(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+
+	// Invalid attribute fields
+	_, err = accountClient.Create(tc.Context(), amId,
+		accounts.WithOidcAccountSubject("subject2"),
+		accounts.WithPasswordAccountLoginName("foo"),
+	)
+	require.Error(err)
+	require.JSONEq(err.Error(), `{"kind":"InvalidArgument", "message":"Error in provided request.", "details":{"request_fields":[{"name":"attributes", "description":"Attribute fields do not match the expected format."}]}}`)
 }
