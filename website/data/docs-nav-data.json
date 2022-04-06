@@ -359,6 +359,19 @@
     ]
   },
   {
+    "title": "Operations",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "operations"
+      },
+      {
+        "title": "Metrics",
+        "path": "operations/metrics"
+      }
+    ]
+  },
+  {
     "title": "Common Workflows",
     "href": "https://learn.hashicorp.com/collections/boundary/basic-administration"
   },
