@@ -184,11 +184,7 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}
 
-	pwAttrs := &pb.PasswordAuthMethodAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
+	pwAttrs := item.GetPasswordAuthMethodAttributes()
 	if pwAttrs.GetMinLoginNameLength() != 0 {
 		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
 	}

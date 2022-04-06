@@ -80,13 +80,15 @@ func TestAuthenticate(t *testing.T) {
 	assert.NotNil(tok)
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
+	// All attribute fields are classified for now.
+	// TODO(johanbrandhorst): revert this when classification is done for auth methods
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password")
+	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password", "login_name")
 
 	respDetails := tests_api.GetEventDetails(t, got, "response")
 	tests_api.AssertRedactedValues(t, respDetails)
-	tests_api.AssertRedactedValues(t, respDetails["attributes"], "token")
+	tests_api.AssertRedactedValues(t, respDetails["attributes"], "token", "approximate_last_used_time", "expiration_time", "token_type", "updated_time", "user_id", "account_id", "auth_method_id", "authorized_actions", "created_time", "id")
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "bad-pass"})
@@ -96,5 +98,5 @@ func TestAuthenticate(t *testing.T) {
 
 	reqDetails = tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password")
+	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password", "login_name")
 }
