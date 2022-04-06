@@ -250,13 +250,18 @@ func TestCallbackInterceptor(t *testing.T) {
 		Handler: wrapHandlerWithCallbackInterceptor(noopHandler, nil),
 	}
 
+	// Use error channel so that we can use test assertions on the returned error.
+	// It is illegal to call `t.FailNow()` from a goroutine.
+	// https://pkg.go.dev/testing#T.FailNow
+	errChan := make(chan error)
 	go func() {
-		if err := server.Serve(listener); err != nil {
-			if err != http.ErrServerClosed {
-				require.NoError(t, err)
-			}
-		}
+		errChan <- server.Serve(listener)
 	}()
+	t.Cleanup(func() {
+		if err := <-errChan; err != http.ErrServerClosed {
+			require.NoError(t, err)
+		}
+	})
 
 	testCases := []struct {
 		name     string

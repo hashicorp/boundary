@@ -98,37 +98,31 @@ func TestServer_ShutdownWorker(t *testing.T) {
 		UseDevAuthMethod:  true,
 		UseDevTarget:      true,
 	})
-	controllerDoneCh := make(chan struct{})
-	defer func() {
+	t.Cleanup(func() {
 		if controllerCmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(controllerCmd.DevDatabaseCleanupFunc())
 		}
-	}()
+	})
 	controllerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadControllerConfig, controllerCmd.DatabaseUrl, controllerKey, workerAuthKey))
 
+	// Use code channel so that we can use test assertions on the returned integer.
+	// It is illegal to call `t.FailNow()` from a goroutine.
+	// https://pkg.go.dev/testing#T.FailNow
+	controllerCodeChan := make(chan int)
 	go func() {
-		defer close(controllerDoneCh)
-		if code := controllerCmd.Run(nil); code != 0 {
-			output := controllerCmd.UI.(*cli.MockUi).ErrorWriter.String() + controllerCmd.UI.(*cli.MockUi).OutputWriter.String()
-			require.FailNow(output, "command exited with non-zero error code")
-		}
+		controllerCodeChan <- controllerCmd.Run(nil)
 	}()
 
 	waitCh(t, controllerCmd.startedCh)
 
 	// Start the worker
 	workerCmd := testServerCommand(t, testServerCommandOpts{})
-	workerDoneCh := make(chan struct{})
 	workerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadWorkerConfig, workerAuthKey))
 
+	workerCodeChan := make(chan int)
 	go func() {
-		defer close(workerDoneCh)
-		if code := workerCmd.Run(nil); code != 0 {
-			output := workerCmd.UI.(*cli.MockUi).ErrorWriter.String() + workerCmd.UI.(*cli.MockUi).OutputWriter.String()
-			require.FailNow(output, "command exited with non-zero error code")
-		}
+		workerCodeChan <- workerCmd.Run(nil)
 	}()
-
 	waitCh(t, workerCmd.startedCh)
 
 	// Set up the target
@@ -159,7 +153,10 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Now, shut the worker down.
 	close(workerCmd.ShutdownCh)
-	waitCh(t, workerDoneCh)
+	if <-workerCodeChan != 0 {
+		output := workerCmd.UI.(*cli.MockUi).ErrorWriter.String() + workerCmd.UI.(*cli.MockUi).OutputWriter.String()
+		require.FailNow(output, "command exited with non-zero error code")
+	}
 
 	// Connection should fail, and the session should be closed on the DB.
 	sConn.TestSendRecvFail(t)
@@ -167,7 +164,10 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// We're done! Shutdown the controller, and that's it.
 	close(controllerCmd.ShutdownCh)
-	waitCh(t, controllerDoneCh)
+	if <-controllerCodeChan != 0 {
+		output := controllerCmd.UI.(*cli.MockUi).ErrorWriter.String() + controllerCmd.UI.(*cli.MockUi).OutputWriter.String()
+		require.FailNow(output, "command exited with non-zero error code")
+	}
 }
 
 // largely copied from controller/testing.go

@@ -411,10 +411,17 @@ func TestShutdown(t *testing.T) {
 				require.NoError(t, err)
 
 				s1 := &http.Server{}
+				// Use error channel so that we can use test assertions on the returned error.
+				// It is illegal to call `t.FailNow()` from a goroutine.
+				// https://pkg.go.dev/testing#T.FailNow
+				errChan := make(chan error)
 				go func() {
-					require.ErrorIs(t, s1.Serve(l1), http.ErrServerClosed)
+					errChan <- s1.Serve(l1)
 				}()
-
+				t.Cleanup(func() {
+					// Will block until we stopped serving
+					require.ErrorIs(t, <-errChan, http.ErrServerClosed)
+				})
 				err = s1.Shutdown(context.Background())
 				require.NoError(t, err)
 
@@ -445,17 +452,28 @@ func TestShutdown(t *testing.T) {
 				require.NoError(t, err)
 
 				s1 := &http.Server{}
+				// Use error channel so that we can use test assertions on the returned error.
+				// It is illegal to call `t.FailNow()` from a goroutine.
+				// https://pkg.go.dev/testing#T.FailNow
+				s1ErrChan := make(chan error)
 				go func() {
-					require.ErrorIs(t, s1.Serve(l1), http.ErrServerClosed)
+					s1ErrChan <- s1.Serve(l1)
 				}()
+				t.Cleanup(func() {
+					require.ErrorIs(t, <-s1ErrChan, http.ErrServerClosed)
+				})
 
 				l2, err := net.Listen("tcp", "127.0.0.1:0")
 				require.NoError(t, err)
 
 				s2 := &http.Server{}
+				s2ErrChan := make(chan error)
 				go func() {
-					require.ErrorIs(t, s2.Serve(l2), http.ErrServerClosed)
+					s2ErrChan <- s2.Serve(l2)
 				}()
+				t.Cleanup(func() {
+					require.ErrorIs(t, <-s2ErrChan, http.ErrServerClosed)
+				})
 
 				return &Server{
 					bundles: []*opsBundle{
