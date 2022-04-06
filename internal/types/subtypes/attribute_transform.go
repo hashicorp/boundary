@@ -167,25 +167,16 @@ func Filterable(item proto.Message) (proto.Message, error) {
 	var pbAttrs proto.Message
 	var err error
 
-	oneOfFields := attrsField.Fields()
-
-	// Find the populated oneof field and turn it into a `*structpb.Struct`
-	for i := 0; i < oneOfFields.Len(); i++ {
-		attrField := oneOfFields.Get(i)
-		attrMsg := r.Get(attrField).Message()
-		attr = attrMsg.Interface()
-		if attrMsg.IsValid() && attr != nil {
-			pbAttrs, err = protoToStruct(attr)
-			if err != nil {
-				return nil, err
-			}
-			break
-		}
+	oneofField := r.WhichOneof(attrsField)
+	if oneofField == nil {
+		// attrs field is not set, nothing to do
+		return item, nil
 	}
 
-	// no attrs set, so the original item can just be filtered as is
-	if pbAttrs == nil {
-		return item, nil
+	attr = r.Get(oneofField).Message().Interface()
+	pbAttrs, err = protoToStruct(attr)
+	if err != nil {
+		return nil, err
 	}
 
 	r.Set(defaultAttrField, protoreflect.ValueOfMessage(pbAttrs.ProtoReflect()))
