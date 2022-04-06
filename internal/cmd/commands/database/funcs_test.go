@@ -220,11 +220,10 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, man.ApplyMigrations(ctx))
 
-	cmd := InitCommand{Command: base.NewCommand(cli.NewMockUi())}
-	cmd.srv = base.NewServer(&base.Command{UI: cmd.UI})
+	cmd := InitCommand{Server: base.NewServer(base.NewCommand(cli.NewMockUi()))}
 
-	cmd.srv.DatabaseUrl = u
-	require.NoError(t, cmd.srv.ConnectToDatabase(ctx, dialect))
+	cmd.DatabaseUrl = u
+	require.NoError(t, cmd.ConnectToDatabase(ctx, dialect))
 
 	assert.NoError(t, cmd.verifyOplogIsEmpty(ctx))
 }
