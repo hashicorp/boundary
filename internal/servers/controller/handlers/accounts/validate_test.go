@@ -63,7 +63,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
-					&pb.OidcAccountAttributes{FullName: "something"},
+					OidcAccountAttributes: &pb.OidcAccountAttributes{FullName: "something"},
 				},
 			},
 			errContains: fieldError(nameClaimField, "This is a read only field."),
@@ -74,7 +74,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
-					&pb.OidcAccountAttributes{Email: "something"},
+					OidcAccountAttributes: &pb.OidcAccountAttributes{Email: "something"},
 				},
 			},
 			errContains: fieldError(emailClaimField, "This is a read only field."),
@@ -93,7 +93,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_PasswordAccountAttributes{
-					&pb.PasswordAccountAttributes{
+					PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 						LoginName: "something",
 					},
 				},
@@ -105,7 +105,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
-					&pb.OidcAccountAttributes{Subject: "no oidc errors"},
+					OidcAccountAttributes: &pb.OidcAccountAttributes{Subject: "no oidc errors"},
 				},
 			},
 		},
