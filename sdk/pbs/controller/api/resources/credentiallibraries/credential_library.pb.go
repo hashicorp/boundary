@@ -33,34 +33,34 @@ type CredentialLibrary struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Credential Library.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The ID of the Credential Store of which this Credential Library is a part.
-	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"`
+	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this Credential Library.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Credential Library type.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
 	//	*CredentialLibrary_Attributes
 	//	*CredentialLibrary_VaultCredentialLibraryAttributes
 	Attrs isCredentialLibrary_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of credential this library will issue, defaults to Unspecified
-	CredentialType string `protobuf:"bytes,310,opt,name=credential_type,proto3" json:"credential_type,omitempty"`
+	CredentialType string `protobuf:"bytes,310,opt,name=credential_type,proto3" json:"credential_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The credential mapping overrides
-	CredentialMappingOverrides *structpb.Struct `protobuf:"bytes,320,opt,name=credential_mapping_overrides,proto3" json:"credential_mapping_overrides,omitempty"`
+	CredentialMappingOverrides *structpb.Struct `protobuf:"bytes,320,opt,name=credential_mapping_overrides,proto3" json:"credential_mapping_overrides,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CredentialLibrary) Reset() {
@@ -224,11 +224,11 @@ type VaultCredentialLibraryAttributes struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The path in Vault to request credentials from.
-	Path *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty"`
+	Path *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The HTTP method the library uses to communicate with Vault.
-	HttpMethod *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=http_method,proto3" json:"http_method,omitempty"`
+	HttpMethod *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=http_method,proto3" json:"http_method,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The body of the HTTP request the library sends to vault. When set http_method must be "POST"
-	HttpRequestBody *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=http_request_body,proto3" json:"http_request_body,omitempty"`
+	HttpRequestBody *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=http_request_body,proto3" json:"http_request_body,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
 func (x *VaultCredentialLibraryAttributes) Reset() {
