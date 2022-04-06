@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	_ "gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 // Test_WriterCreate provides unit tests for Writer Create
@@ -195,9 +194,6 @@ func Test_WriterDropTableIfExists(t *testing.T) {
 func TestWriter_Update(t *testing.T) {
 	db := setup(t)
 	id := testId(t)
-	type fields struct {
-		Tx *gorm.DB
-	}
 	type args struct {
 		user           *oplog_test.TestUser
 		fieldMaskPaths []string
