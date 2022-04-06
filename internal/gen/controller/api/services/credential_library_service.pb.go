@@ -30,7 +30,7 @@ type GetCredentialLibraryRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *GetCredentialLibraryRequest) Reset() {
@@ -124,8 +124,8 @@ type ListCredentialLibrariesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	CredentialStoreId string `protobuf:"bytes,1,opt,name=credential_store_id,json=scope_id,proto3" json:"credential_store_id,omitempty"`
-	Filter            string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`
+	CredentialStoreId string `protobuf:"bytes,1,opt,name=credential_store_id,json=scope_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter            string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                                        // @gotags: `class:"public"`
 }
 
 func (x *ListCredentialLibrariesRequest) Reset() {
@@ -273,7 +273,7 @@ type CreateCredentialLibraryResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string                                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri  string                                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item *credentiallibraries.CredentialLibrary `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -328,7 +328,7 @@ type UpdateCredentialLibraryRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id         string                                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item       *credentiallibraries.CredentialLibrary `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask                 `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -438,7 +438,7 @@ type DeleteCredentialLibraryRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *DeleteCredentialLibraryRequest) Reset() {
