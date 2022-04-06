@@ -563,6 +563,21 @@ func TestTransformResponseAttributes(t *testing.T) {
 				},
 			},
 		},
+		{
+			"TestCreateResourceOneofUnset",
+			&attribute.TestCreateResourceResponse{
+				Item: &attribute.TestResource{
+					Id:   "trsr_one",
+					Type: "sub_resource",
+				},
+			},
+			&attribute.TestCreateResourceResponse{
+				Item: &attribute.TestResource{
+					Id:   "trsr_one",
+					Type: "sub_resource",
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
