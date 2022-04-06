@@ -210,7 +210,6 @@ func TestKms_ReconcileKeys(t *testing.T) {
 					_, err := k.GetWrapper(testCtx, id, kms.KeyPurposeAudit)
 					require.Error(t, err)
 				}
-
 			},
 			wantPurpose: []kms.KeyPurpose{kms.KeyPurposeOidc},
 		},
