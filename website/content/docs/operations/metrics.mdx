@@ -31,7 +31,13 @@ The following lists the current metrics used, their descriptions, and full metri
 | Request size  | Histogram of request sizes for gRPC requests   | `boundary_controller_cluster_http_request_size_bytes` |
 | Response size | Histogram of response sizes for gRPC responses | `boundary_controller_cluster_http_response_size_bytes` |
 
-### Worker Proxy Websocket:
+### Worker Proxy HTTP
+
+| Metric        | Description                                    | Metric name   |
+|---------------|------------------------------------------------|---------------|
+| Time Until Header Written | Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server | `boundary_worker_proxy_http_write_header_duration_seconds` |
+
+### Worker Proxy Websocket
 
 | Metric             | Description                                             | Metric name   |
 |--------------------|---------------------------------------------------------|---------------|
@@ -53,7 +59,7 @@ For gRPC requests, the following labels should be used:
 Defining a listener stanza in the config file is sufficient for enabling metrics reporting in Boundary.  For details on what fields are allowed in this stanza, refer to the documentation about [TCP Listener](/docs/configuration/listener/tcp)
 
 An example listener stanza:
-   
+
 ```hcl
 listener "tcp" {
 	purpose = "ops"
