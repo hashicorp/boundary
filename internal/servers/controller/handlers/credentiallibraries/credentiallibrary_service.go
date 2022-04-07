@@ -142,7 +142,11 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
