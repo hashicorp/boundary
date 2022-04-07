@@ -7,7 +7,7 @@ description: |-
 
 ## Prometheus Metrics
 
-Boundary provides Prometheus metrics for Controllers and Workers at the ops endpoint on **port 9203** through the `/metrics `path.  For more information about Prometheus, see the **Prometheus Overview Guide** at https://prometheus.io/docs/introduction/overview. The Prometheus go library will be used to define and export metrics from the Boundary system. The metrics uses the [OpenMetric exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format) format.
+Boundary provides Prometheus metrics for Controllers and Workers at the ops endpoint on **port 9203** through the `/metrics` path. For more information about Prometheus, see the [Prometheus Overview Guide](https://prometheus.io/docs/introduction/overview). The Prometheus Go library is used to define and export metrics from the Boundary system. The metrics uses the [OpenMetric exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format) format.
 
 ## Metrics Collected
 
@@ -42,10 +42,11 @@ For GRPC requests, the following labels should be used:
 
 ## Sample code
 
-Defining a listener stanza in the config file is sufficient for enabling metrics reporting in Boundary.  For details on what fields are allowed in this stanza, refer to the documentation about [tcp Listener](/docs/configuration/listener/tcp)
+Defining a listener stanza in the config file is sufficient for enabling metrics reporting in Boundary.  For details on what fields are allowed in this stanza, refer to the documentation about [TCP Listener](/docs/configuration/listener/tcp)
 
 An example listener stanza:
-```
+   
+```hcl
 listener "tcp" {
 	purpose = "ops"
 	tls_disable = true
