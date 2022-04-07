@@ -301,6 +301,11 @@ func (c *Controller) Start() error {
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
+
+	// Upsert server before starting tickers and scheduler to ensure the server exists
+	if err := c.upsertServer(c.baseContext); err != nil {
+		return fmt.Errorf("error upserting server: %w", err)
+	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
