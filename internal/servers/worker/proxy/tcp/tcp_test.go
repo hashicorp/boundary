@@ -31,10 +31,10 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	defer l.Close()
 
 	var endpointConn net.Conn
+	var endpointErr error
 	ready := make(chan struct{})
 	go func() {
-		endpointConn, err = l.Accept()
-		require.NoError(err)
+		endpointConn, endpointErr = l.Accept()
 
 		defer endpointConn.Close()
 		ready <- struct{}{}
@@ -71,13 +71,20 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		UserClientIp:   net.ParseIP("127.0.0.1"),
 	}
 
+	// Use error channel so that we can use test assertions on the returned error.
+	// It is illegal to call `t.FailNow()` from a goroutine.
+	// https://pkg.go.dev/testing#T.FailNow
+	errChan := make(chan error)
 	go func() {
-		err = handleProxy(ctx, conf)
-		require.NoError(err)
+		errChan <- handleProxy(ctx, conf)
 	}()
+	t.Cleanup(func() {
+		require.NoError(<-errChan)
+	})
 
 	// wait for HandleTcpProxyV1 to dial endpoint
 	<-ready
+	require.NoError(endpointErr)
 	netConn := websocket.NetConn(ctx, clientConn, websocket.MessageBinary)
 
 	// Write from endpoint to client

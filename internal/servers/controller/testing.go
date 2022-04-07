@@ -790,10 +790,17 @@ func startTestGreeterService(t *testing.T, greeter interceptor.GreeterServiceSer
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)),
 	)
 	interceptor.RegisterGreeterServiceServer(s, greeter)
+	// Use error channel so that we can use test assertions on the returned error.
+	// It is illegal to call `t.FailNow()` from a goroutine.
+	// https://pkg.go.dev/testing#T.FailNow
+	errChan := make(chan error)
 	go func() {
-		err := s.Serve(listener)
-		require.NoError(err)
+		errChan <- s.Serve(listener)
 	}()
+	t.Cleanup(func() {
+		// Will block until we stopped serving
+		require.NoError(<-errChan)
+	})
 
 	conn, _ := grpc.DialContext(dialCtx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
