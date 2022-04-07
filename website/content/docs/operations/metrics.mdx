@@ -1,13 +1,15 @@
 ---
 layout: docs
-page_title: Prometheus Metrics
+page_title: Boundary Metrics
 description: |-
   Obtain visibility of various components of a running Boundary
 ---
 
-## Prometheus Metrics
+## Boundary Metrics
 
-Boundary provides Prometheus metrics for Controllers and Workers at the ops endpoint on **port 9203** through the `/metrics` path. For more information about Prometheus, see the [Prometheus Overview Guide](https://prometheus.io/docs/introduction/overview). The Prometheus Go library is used to define and export metrics from the Boundary system. The metrics uses the [OpenMetric exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format) format.
+Boundary provides Prometheus metrics for Controllers and Workers at the ops endpoint on port 9203 through the `/metrics` path. See the [sample code](#sample-code) section for an example listener stanza in a `config.hcl` file.
+
+For more information about Prometheus, see the [Prometheus Overview Guide](https://prometheus.io/docs/introduction/overview). The Prometheus Go library is used to define and export metrics from the Boundary system. The metrics uses the [OpenMetric exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format) format.
 
 ## Metrics Collected
 
@@ -15,27 +17,33 @@ The following lists the current metrics used, their descriptions, and full metri
 
 ### Controller API
 
-* **Latency:** Historgram of latencies for HTTP requests:`boundary_controller_api_http_request_duration_seconds`.
-* **Request size:** Histogram of request sizes for HTTP requests:`boundary_controller_api_http_request_size_bytes`.
-* **Response size:** Histogram of response sizes for HTTP requests:`boundary_controller_api_http_response_size_bytes`.
+| Metric        | Description                                   | Metric name   |
+|---------------|-----------------------------------------------|---------------|
+| Latency       | Historgram of latencies for HTTP requests.    | `boundary_controller_api_http_request_duration_seconds` |
+| Request size  | Histogram of request sizes for HTTP requests  | `boundary_controller_api_http_request_size_bytes`       |
+| Response size | Histogram of response sizes for HTTP requests | `boundary_controller_api_http_response_size_bytes`      |
 
 ### Controller Cluster API
 
-* **Latency:** Histogram of latencies for gRPC requests.: `boundary_controller_cluster_http_request_duration_seconds`.
-* **Request size:** Histogram of request sizes for gRPC requests: `boundary_controller_cluster_http_request_size_bytes`.
-* **Response size:** Histogram of response sizes for gRPC responses: `boundary_controller_cluster_http_response_size_bytes`.
+| Metric        | Description                                    | Metric name   |
+|---------------|------------------------------------------------|---------------|
+| Latency       | Histogram of latencies for gRPC requests       | `boundary_controller_cluster_http_request_duration_seconds` |
+| Request size  | Histogram of request sizes for gRPC requests   | `boundary_controller_cluster_http_request_size_bytes` |
+| Response size | Histogram of response sizes for gRPC responses | `boundary_controller_cluster_http_response_size_bytes` |
 
 ### Worker Proxy Websocket:
 
-* **Active Connections:** Count of open websocket connections to Boundary workers: `boundary_worker_proxy_websocket_active_connections`.
-* **Bytes Received:** Count of received bytes for Worker connections: `boundary_worker_proxy_websocket_received_bytes_total`.
-* **Bytes Sent:** Count of sent bytes for Worker connections: `boundary_worker_proxy_websocket_sent_bytes_total`.
+| Metric             | Description                                             | Metric name   |
+|--------------------|---------------------------------------------------------|---------------|
+| Active Connections | Count of open websocket connections to Boundary workers | `boundary_worker_proxy_websocket_active_connections`   |
+| Bytes Received     | Count of received bytes for Worker connections          | `boundary_worker_proxy_websocket_received_bytes_total` |
+| Bytes Sent         | Count of sent bytes for Worker connections              | `boundary_worker_proxy_websocket_sent_bytes_total`     |
 
 ## Metric Labels
 
 For HTTP requests, the following labels should be used: `path`, `method`, `code`. The value for the `path` label removes any query parameters, replaces unbounded portions of the path to something unbounded, such as resource IDs to "{id}", for example, and maps any paths which are not expected into a single value "unknown."
 
-For GRPC requests, the following labels should be used:
+For gRPC requests, the following labels should be used:
 * `grpc_service`: The proto service name including the package. For example, `controller.api.services.v1.GroupService`.
 * `grpc_method`: The name of the method on the grpc service.  For example, `GetGroup`.
 * `grpc_code`: The grpc [status code](https://github.com/grpc/grpc-go/blob/master/codes/codes.go) in human-readable format. For example, `OK`, `IllegalArgument`, `Unknown`.
