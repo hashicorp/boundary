@@ -171,6 +171,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/managed_group_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/groups/group.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/group_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentialstores/credential_store.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_store_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentiallibraries/credential_library.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_library_service.pb.go
 

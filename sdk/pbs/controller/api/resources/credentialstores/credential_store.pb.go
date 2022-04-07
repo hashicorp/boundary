@@ -33,32 +33,32 @@ type CredentialStore struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Credential Store.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The ID of the Scope of which this Credential Store is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this Credential Store.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Credential Store type.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
 	//	*CredentialStore_Attributes
 	//	*CredentialStore_VaultCredentialStoreAttributes
 	Attrs isCredentialStore_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The authorized actions for the scope's collections.
-	AuthorizedCollectionActions map[string]*structpb.ListValue `protobuf:"bytes,310,rep,name=authorized_collection_actions,proto3" json:"authorized_collection_actions,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	AuthorizedCollectionActions map[string]*structpb.ListValue `protobuf:"bytes,310,rep,name=authorized_collection_actions,proto3" json:"authorized_collection_actions,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // classified as public via taggable implementation
 }
 
 func (x *CredentialStore) Reset() {
@@ -215,28 +215,28 @@ type VaultCredentialStoreAttributes struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The complete url address of vault.
-	Address *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty"`
+	Address *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The namespace of vault used by this store
-	Namespace *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Namespace *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=namespace,proto3" json:"namespace,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The PEM encoded CA cert to verify the vault server's ssl certificate
-	CaCert *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=ca_cert,proto3" json:"ca_cert,omitempty"`
+	CaCert *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=ca_cert,proto3" json:"ca_cert,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The value to use as the SNI host when connecting to vault via TLS.
-	TlsServerName *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=tls_server_name,proto3" json:"tls_server_name,omitempty"`
+	TlsServerName *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=tls_server_name,proto3" json:"tls_server_name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// When set to true verification of the TLS certificate is disabled.
-	TlsSkipVerify *wrapperspb.BoolValue `protobuf:"bytes,50,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty"`
+	TlsSkipVerify *wrapperspb.BoolValue `protobuf:"bytes,50,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Input only. The current vault token used by this credential store for creating new credentials.
-	Token *wrapperspb.StringValue `protobuf:"bytes,60,opt,name=token,proto3" json:"token,omitempty"`
+	Token *wrapperspb.StringValue `protobuf:"bytes,60,opt,name=token,proto3" json:"token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the vault token used by this credential store.
-	TokenHmac string `protobuf:"bytes,70,opt,name=token_hmac,proto3" json:"token_hmac,omitempty"`
+	TokenHmac string `protobuf:"bytes,70,opt,name=token_hmac,proto3" json:"token_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Input only. A PEM encoded client certificate for vault with an
 	// optional private key included in the bundle.  It is an error to include
 	// the private key in this bundle as well as setting the certificate_key
 	// field.
-	ClientCertificate *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=client_certificate,proto3" json:"client_certificate,omitempty"`
+	ClientCertificate *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=client_certificate,proto3" json:"client_certificate,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Input only. A client certificate private key.
-	ClientCertificateKey *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=client_certificate_key,proto3" json:"client_certificate_key,omitempty"`
+	ClientCertificateKey *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=client_certificate_key,proto3" json:"client_certificate_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the private key used by the credential store.
-	ClientCertificateKeyHmac string `protobuf:"bytes,100,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty"`
+	ClientCertificateKeyHmac string `protobuf:"bytes,100,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *VaultCredentialStoreAttributes) Reset() {
