@@ -42,6 +42,9 @@ message AuthToken {
 	// Output only. The time this Auth Token expires.
 	google.protobuf.Timestamp expiration_time = 110 [json_name="expiration_time"];
 
+	// Output only. The type of this auth token. Either "cookie" or "token".
+	string token_type = 120 [json_name="token_type"];
+
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }
