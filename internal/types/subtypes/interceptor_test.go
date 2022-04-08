@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/gen/testing/attribute"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -597,7 +598,7 @@ func TestCustomTransformRequest(t *testing.T) {
 			require.True(t, ok, "wrong message passed to request transformation callback")
 			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
 				newAttrs := &attribute.TestSubResourceAttributes{}
-				err := structToProto(msg.GetAttributes(), newAttrs)
+				err := handlers.StructToProto(msg.GetAttributes(), newAttrs)
 				require.NoError(t, err)
 				msg.Attrs = &attribute.TestCustomTransformation_SubResourceAttributes{
 					SubResourceAttributes: newAttrs,
@@ -640,7 +641,7 @@ func TestCustomTransformResponse(t *testing.T) {
 			msg, ok := m.(*attribute.TestCustomTransformation)
 			require.True(t, ok, "wrong message passed to response transformation callback")
 			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
-				newAttrs, err := protoToStruct(msg.GetSubResourceAttributes())
+				newAttrs, err := handlers.ProtoToStruct(msg.GetSubResourceAttributes())
 				require.NoError(t, err)
 				msg.Attrs = &attribute.TestCustomTransformation_Attributes{
 					Attributes: newAttrs,
