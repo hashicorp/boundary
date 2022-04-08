@@ -32,7 +32,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -177,7 +176,13 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		// This comes last so that we can use item fields in the filter after
+		// the allowed fields are populated above
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -321,8 +326,8 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 
-	if item.GetAttributes() != nil && dryRun {
-		item.GetAttributes().Fields["dry_run"] = structpb.NewBoolValue(true)
+	if item.GetOidcAuthMethodsAttributes() != nil && dryRun {
+		item.GetOidcAuthMethodsAttributes().DryRun = true
 	}
 
 	return &pbs.UpdateAuthMethodResponse{Item: item}, nil
@@ -595,11 +600,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 			return nil, err
 		}
 
-		attrs := &pbs.OidcChangeStateAttributes{}
-		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse attributes"))
-		}
-
+		attrs := req.GetOidcChangeStateAttributes()
 		var opts []oidc.Option
 		if attrs.GetDisableDiscoveredConfigValidation() {
 			opts = append(opts, oidc.WithForce())
@@ -744,14 +745,12 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-			MinLoginNameLength: i.GetMinLoginNameLength(),
-			MinPasswordLength:  i.GetMinPasswordLength(),
-		})
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		out.Attrs = &pb.AuthMethod_PasswordAuthMethodAttributes{
+			PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+				MinLoginNameLength: i.GetMinLoginNameLength(),
+				MinPasswordLength:  i.GetMinPasswordLength(),
+			},
 		}
-		out.Attributes = st
 	case *oidc.AuthMethod:
 		if outputFields.Has(globals.TypeField) {
 			out.Type = oidc.Subtype.String()
@@ -787,12 +786,11 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			attrs.MaxAge = wrapperspb.UInt32(uint32(i.GetMaxAge()))
 		}
 
-		st, err := handlers.ProtoToStruct(attrs)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
+		out.Attrs = &pb.AuthMethod_OidcAuthMethodsAttributes{
+			OidcAuthMethodsAttributes: attrs,
 		}
-		out.Attributes = st
 	}
+	fmt.Println("attrs", out.Attrs)
 	return &out, nil
 }
 
@@ -839,14 +837,12 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 		}
 		switch subtypes.SubtypeFromType("auth", req.GetItem().GetType()) {
 		case password.Subtype:
-			attrs := &pb.PasswordAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
+			// Password attributes are not required when creating a password auth method.
 		case oidc.Subtype:
-			attrs := &pb.OidcAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
+			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
+			if attrs == nil {
+				// OIDC attributes are required when creating an OIDC auth method.
+				badFields[attributesField] = "Attributes are required for creating an OIDC auth method."
 			} else {
 				if attrs.GetIssuer().GetValue() != "" {
 					iss, err := url.Parse(attrs.GetIssuer().GetValue())
@@ -940,111 +936,106 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("auth", req.GetItem().GetType()) != password.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.PasswordAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("auth", req.GetItem().GetType()) != oidc.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.OidcAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
-			if attrs.DryRun && attrs.DisableDiscoveredConfigValidation {
-				badFields[disableDiscoveredConfigValidationField] = "This field cannot be set to true with dry_run."
-			}
+			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
+			if attrs != nil {
+				if attrs.DryRun && attrs.DisableDiscoveredConfigValidation {
+					badFields[disableDiscoveredConfigValidationField] = "This field cannot be set to true with dry_run."
+				}
 
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
-				// TODO: When we start accepting the address used in the request make this an optional field.
-				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
-					badFields[apiUrlPrefixField] = "This field should not be set to empty."
-				}
-				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
-				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				if attrs.GetIssuer().GetValue() != "" {
-					iss, err := url.Parse(attrs.GetIssuer().GetValue())
-					if err != nil {
-						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+					// TODO: When we start accepting the address used in the request make this an optional field.
+					if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+						badFields[apiUrlPrefixField] = "This field should not be set to empty."
 					}
-					if iss != nil && !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
-						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
-					}
-				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
-				if attrs.GetApiUrlPrefix().GetValue() != "" {
-					cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
-					if err != nil || cu.Host == "" {
+					if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
 						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					}
-					if !strutil.StrListContains([]string{"http", "https"}, cu.Scheme) {
-						badFields[apiUrlPrefixField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
-					}
 				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
-				badFields[clientSecretField] = "Can change but cannot unset this field."
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
-				badFields[clientIdField] = "Can change but cannot unset this field."
-			}
-
-			if attrs.GetClientSecretHmac() != "" {
-				badFields[clientSecretHmacField] = "Field is read only."
-			}
-			if attrs.GetState() != "" {
-				badFields[stateField] = "Field is read only."
-			}
-			if attrs.GetCallbackUrl() != "" {
-				badFields[callbackUrlField] = "Field is read only."
-			}
-
-			if len(attrs.GetSigningAlgorithms()) > 0 {
-				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
-						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
-						break
-					}
-				}
-			}
-			if len(attrs.GetIdpCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
-					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
-				}
-			}
-			if len(attrs.GetClaimsScopes()) > 0 {
-				for _, cs := range attrs.GetClaimsScopes() {
-					if cs == oidc.DefaultClaimsScope {
-						badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
-						break
-					}
-				}
-			}
-			if len(attrs.GetAccountClaimMaps()) > 0 {
-				acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
-				if err != nil {
-					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
-				} else {
-					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
-					for _, m := range acm {
-						if foundTo[m.To] {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
-						}
-						foundTo[m.To] = true
-
-						to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
+					if attrs.GetIssuer().GetValue() != "" {
+						iss, err := url.Parse(attrs.GetIssuer().GetValue())
 						if err != nil {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
+							badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+						}
+						if iss != nil && !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+							badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+						}
+					}
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+					if attrs.GetApiUrlPrefix().GetValue() != "" {
+						cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
+						if err != nil || cu.Host == "" {
+							badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+						}
+						if !strutil.StrListContains([]string{"http", "https"}, cu.Scheme) {
+							badFields[apiUrlPrefixField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+						}
+					}
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
+					badFields[clientSecretField] = "Can change but cannot unset this field."
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
+					badFields[clientIdField] = "Can change but cannot unset this field."
+				}
+
+				if attrs.GetClientSecretHmac() != "" {
+					badFields[clientSecretHmacField] = "Field is read only."
+				}
+				if attrs.GetState() != "" {
+					badFields[stateField] = "Field is read only."
+				}
+				if attrs.GetCallbackUrl() != "" {
+					badFields[callbackUrlField] = "Field is read only."
+				}
+
+				if len(attrs.GetSigningAlgorithms()) > 0 {
+					for _, sa := range attrs.GetSigningAlgorithms() {
+						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
+							badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 							break
 						}
-						if to == oidc.ToSubClaim {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", m.From, m.To)
+					}
+				}
+				if len(attrs.GetIdpCaCerts()) > 0 {
+					if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
+						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+					}
+				}
+				if len(attrs.GetClaimsScopes()) > 0 {
+					for _, cs := range attrs.GetClaimsScopes() {
+						if cs == oidc.DefaultClaimsScope {
+							badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
 							break
+						}
+					}
+				}
+				if len(attrs.GetAccountClaimMaps()) > 0 {
+					acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
+					if err != nil {
+						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
+					} else {
+						foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
+						for _, m := range acm {
+							if foundTo[m.To] {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
+							}
+							foundTo[m.To] = true
+
+							to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
+							if err != nil {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
+								break
+							}
+							if to == oidc.ToSubClaim {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", m.From, m.To)
+								break
+							}
 						}
 					}
 				}
@@ -1096,14 +1087,15 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 		badFields[versionField] = "Resource version is required."
 	}
 
-	attrs := &pbs.OidcChangeStateAttributes{}
-	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		badFields[attributesField] = "Attribute fields do not match the expected format."
-	}
-	switch oidcStateMap[attrs.GetState()] {
-	case inactiveState, privateState, publicState:
-	default:
-		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())
+	attrs := req.GetOidcChangeStateAttributes()
+	if attrs == nil {
+		badFields[attributesField] = "Attributes are required when changing an auth method."
+	} else {
+		switch oidcStateMap[attrs.GetState()] {
+		case inactiveState, privateState, publicState:
+		default:
+			badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)

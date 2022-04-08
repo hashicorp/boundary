@@ -295,14 +295,13 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 		}
 
 		res, handlerErr := handler(interceptorCtx, req)
-		newRes := res
 
 		if res, ok := res.(proto.Message); ok {
-			newRes, err = transformResponseAttributes(res)
+			res, err = transformResponseAttributes(res)
 			if err != nil {
 				return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building attribute struct: %v", err)
 			}
 		}
-		return newRes, handlerErr
+		return res, handlerErr
 	}
 }
