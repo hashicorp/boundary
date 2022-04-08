@@ -129,7 +129,11 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		if filter.Match(item) {
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -317,11 +321,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	if item.GetDescription() != nil {
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
-	attrs := &pb.OidcManagedGroupAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
+	attrs := item.GetOidcManagedGroupAttributes()
 	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
@@ -374,15 +374,8 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	if item.GetDescription() != nil {
 		mg.Description = item.GetDescription().GetValue()
 	}
-	if apiAttr := item.GetAttributes(); apiAttr != nil {
-		attrs := &pb.OidcManagedGroupAttributes{}
-		if err := handlers.StructToProto(apiAttr, attrs); err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-				map[string]string{globals.AttributesField: "Attribute fields do not match the expected format."})
-		}
-		// Set this regardless; it'll only take effect if the masks contain the value
-		mg.Filter = attrs.Filter
-	}
+	// Set this regardless; it'll only take effect if the masks contain the value
+	mg.Filter = item.GetOidcManagedGroupAttributes().GetFilter()
 
 	version := item.GetVersion()
 
@@ -568,11 +561,9 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 		attrs := &pb.OidcManagedGroupAttributes{
 			Filter: i.GetFilter(),
 		}
-		st, err := handlers.ProtoToStruct(attrs)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
+		out.Attrs = &pb.ManagedGroup_OidcManagedGroupAttributes{
+			OidcManagedGroupAttributes: attrs,
 		}
-		out.Attributes = st
 	}
 	return &out, nil
 }
@@ -605,9 +596,9 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
-			attrs := &pb.OidcManagedGroupAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+			attrs := req.GetItem().GetOidcManagedGroupAttributes()
+			if attrs == nil {
+				badFields[globals.AttributesField] = "Attribute fields is required."
 			}
 			if attrs.Filter == "" {
 				badFields[attrFilterField] = "This field is required."
@@ -635,10 +626,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.OidcManagedGroupAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
-			}
+			attrs := req.GetItem().GetOidcManagedGroupAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), attrFilterField) {
 				if attrs.Filter == "" {
 					badFields[attrFilterField] = "Field cannot be empty."

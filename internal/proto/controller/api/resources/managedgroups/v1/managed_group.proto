@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
+import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
@@ -40,8 +41,18 @@ message ManagedGroup {
 	// The ID of the Auth Method that is associated with this ManagedGroup.
 	string auth_method_id = 90 [json_name="auth_method_id"];
 
-	// The attributes that are applicable for the specific ManagedGroup type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	oneof attrs {
+		// The attributes that are applicable for the specific ManagedGroup type.
+		google.protobuf.Struct attributes = 100 [
+			(custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "default"
+		];
+		OidcManagedGroupAttributes oidc_managed_group_attributes = 101 [
+			(google.api.field_visibility).restriction = "INTERNAL",
+			(custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "oidc"
+		];
+	}
 
 	// Output only. The IDs of the current set of members (accounts) that are associated with this ManagedGroup.
 	repeated string member_ids = 110 [json_name="member_ids"];
