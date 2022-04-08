@@ -3,7 +3,7 @@ package subtypes
 import (
 	"fmt"
 
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -43,7 +43,7 @@ func convertAttributesToSubtype(msg proto.Message, st Subtype) error {
 		return fmt.Errorf("found default attribute field that is not structpb.Struct: %s %s", d.FullName(), defaultAttrField.FullName())
 	}
 	stAttrs := r.Get(stAttrField).Message().New().Interface()
-	if err := structToProto(defaultAttrs, stAttrs); err != nil {
+	if err := handlers.StructToProto(defaultAttrs, stAttrs); err != nil {
 		return err
 	}
 
@@ -82,53 +82,13 @@ func convertAttributesToDefault(msg proto.Message, st Subtype) error {
 	if !ok {
 		return fmt.Errorf("found subtype attribute field that is not proto.Message: %s %s", d.FullName(), stAttrField.FullName())
 	}
-	defaultAttrs, err := protoToStruct(stAttrs)
+	defaultAttrs, err := handlers.ProtoToStruct(stAttrs)
 	if err != nil {
 		return err
 	}
 	// implicitly clears any previously set oneof value
 	r.Set(defaultAttrField, protoreflect.ValueOfMessage(defaultAttrs.ProtoReflect()))
 	return nil
-}
-
-func structToProto(fields *structpb.Struct, p proto.Message) error {
-	if fields == nil {
-		// If there is no struct, don't update the default proto message.
-		return nil
-	}
-	js, err := fields.MarshalJSON()
-	if err != nil {
-		return err
-	}
-
-	// TODO: replicate this logic but with a proto extension set on the Field
-	// descriptor There are some attributes where we want to discard unknown
-	// fields, while others that should error if there are unknown fields
-	//
-	// opts := GetOpts(opt...)
-	// if opts.withDiscardUnknownFields {
-	// 	err = (protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(js, p))
-	// } else {
-	// 	err = protojson.Unmarshal(js, p)
-	// }
-
-	err = protojson.Unmarshal(js, p)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func protoToStruct(p proto.Message) (*structpb.Struct, error) {
-	js, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	st := &structpb.Struct{}
-	if err := protojson.Unmarshal(js, st); err != nil {
-		return nil, err
-	}
-	return st, nil
 }
 
 // Filterable converts a proto.Message so any subtype attributes fields are
@@ -174,13 +134,13 @@ func Filterable(item proto.Message) (proto.Message, error) {
 	}
 
 	attr = r.Get(oneofField).Message().Interface()
-	pbAttrs, err = protoToStruct(attr)
+	pbAttrs, err = handlers.ProtoToStruct(attr)
 	if err != nil {
 		return nil, err
 	}
 
 	r.Set(defaultAttrField, protoreflect.ValueOfMessage(pbAttrs.ProtoReflect()))
-	f, err := protoToStruct(r.Interface())
+	f, err := handlers.ProtoToStruct(r.Interface())
 	if err != nil {
 		return nil, err
 	}
