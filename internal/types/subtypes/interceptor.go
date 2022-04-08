@@ -172,6 +172,14 @@ func transformResponseItemAttributes(item proto.Message) error {
 	return convertAttributesToDefault(item, st)
 }
 
+func transformRequest(msg proto.Message) error {
+	fqn := msg.ProtoReflect().Descriptor().FullName()
+	if fn, ok := globalTransformationRegistry.requestTransformationFuncs[fqn]; ok {
+		return fn(msg)
+	}
+	return transformRequestAttributes(msg)
+}
+
 // transformResponseAttributes will modify the response proto.Message, setting
 // any subtype attribute fields into the default structpb.Struct field. It looks
 // for some specific structure in the proto.Message to identify that it is a
@@ -232,6 +240,14 @@ func transformResponseAttributes(res proto.Message) error {
 	return nil
 }
 
+func transformResponse(msg proto.Message) error {
+	fqn := msg.ProtoReflect().Descriptor().FullName()
+	if fn, ok := globalTransformationRegistry.responseTransformationFuncs[fqn]; ok {
+		return fn(msg)
+	}
+	return transformResponseAttributes(msg)
+}
+
 // AttributeTransformerInterceptor is a grpc server interceptor that will
 // transform subtype attributes for requests and responses. This will only
 // modify requests and responses that adhere to a specific structure and is done
@@ -280,7 +296,7 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 	const op = "subtypes.AttributeTransformInterceptor"
 	return func(interceptorCtx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
-			if err := transformRequestAttributes(reqMsg); err != nil {
+			if err := transformRequest(reqMsg); err != nil {
 				return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 					map[string]string{"attributes": "Attribute fields do not match the expected format."})
 			}
@@ -289,7 +305,7 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 		res, handlerErr := handler(interceptorCtx, req)
 
 		if res, ok := res.(proto.Message); ok {
-			if err := transformResponseAttributes(res); err != nil {
+			if err := transformResponse(res); err != nil {
 				return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building attribute struct: %v", err)
 			}
 		}

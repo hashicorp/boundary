@@ -40,6 +40,16 @@ message TestNoOneOf {
   google.protobuf.Struct attributes = 10;
 }
 
+message TestCustomTransformation {
+  string some_random_id = 1;
+  string secondary_id = 2;
+
+  oneof attrs {
+    google.protobuf.Struct attributes = 10;
+    TestSubResourceAttributes sub_resource_attributes = 20;
+  }
+}
+
 service TestResourceService {
   rpc TestListResource(TestListResourceRequest) returns (TestListResourceResponse) {
     option (google.api.http) = {
