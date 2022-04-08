@@ -298,9 +298,9 @@ func TestTransformRequestAttributes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := transformRequestAttributes(tc.req)
+			err := transformRequest(tc.req)
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(got, tc.expected, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(tc.req, tc.expected, protocmp.Transform()))
 		})
 	}
 }
@@ -582,9 +582,9 @@ func TestTransformResponseAttributes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := transformResponseAttributes(tc.resp)
+			err := transformResponse(tc.resp)
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(got, tc.expected, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(tc.resp, tc.expected, protocmp.Transform()))
 		})
 	}
 }
