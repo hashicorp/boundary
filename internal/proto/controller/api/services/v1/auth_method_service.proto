@@ -6,9 +6,13 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
+import "google/api/visibility.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/authmethods/v1/auth_method.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (custom_options.v1.domain) = "auth";
 
 service AuthMethodService {
   // GetAuthMethod returns a stored Auth Method if present.  The provided request
@@ -165,8 +169,11 @@ message ChangeStateRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
 
-  // The attributes specific to this auth method's state.
-  google.protobuf.Struct attributes = 4;
+  oneof attrs {
+    // The attributes specific to this auth method's state.
+    google.protobuf.Struct attributes = 4 [(custom_options.v1.subtype) = "default"];
+    OidcChangeStateAttributes oidc_change_state_attributes = 5 [(custom_options.v1.subtype) = "oidc", (google.api.field_visibility).restriction = "INTERNAL"];
+  }
 }
 
 message ChangeStateResponse {

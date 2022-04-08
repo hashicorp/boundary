@@ -409,11 +409,7 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	if in == nil {
 		return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
 	}
-	attrs := &pb.OidcAuthMethodAttributes{}
-	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
-		return nil, false, false, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
+	attrs := in.GetOidcAuthMethodsAttributes()
 	clientId := attrs.GetClientId().GetValue()
 	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
 
