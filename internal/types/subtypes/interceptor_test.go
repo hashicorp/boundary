@@ -588,3 +588,90 @@ func TestTransformResponseAttributes(t *testing.T) {
 		})
 	}
 }
+
+func TestCustomTransformRequest(t *testing.T) {
+	RegisterRequestTransformationFunc(
+		&attribute.TestCustomTransformation{},
+		func(m proto.Message) error {
+			msg, ok := m.(*attribute.TestCustomTransformation)
+			require.True(t, ok, "wrong message passed to request transformation callback")
+			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
+				newAttrs := &attribute.TestSubResourceAttributes{}
+				err := structToProto(msg.GetAttributes(), newAttrs)
+				require.NoError(t, err)
+				msg.Attrs = &attribute.TestCustomTransformation_SubResourceAttributes{
+					SubResourceAttributes: newAttrs,
+				}
+			}
+			return nil
+		},
+	)
+	request := &attribute.TestCustomTransformation{
+		SomeRandomId: "some_random_id",
+		SecondaryId:  "secondary_id",
+		Attrs: &attribute.TestCustomTransformation_Attributes{
+			Attributes: func() *structpb.Struct {
+				attrs, _ := structpb.NewStruct(map[string]interface{}{
+					"name": "test",
+				})
+				return attrs
+			}(),
+		},
+	}
+	expected := &attribute.TestCustomTransformation{
+		SomeRandomId: "some_random_id",
+		SecondaryId:  "secondary_id",
+		Attrs: &attribute.TestCustomTransformation_SubResourceAttributes{
+			SubResourceAttributes: &attribute.TestSubResourceAttributes{
+				Name: "test",
+			},
+		},
+	}
+
+	err := transformRequest(request)
+	require.NoError(t, err)
+	assert.Empty(t, cmp.Diff(request, expected, protocmp.Transform()))
+}
+
+func TestCustomTransformResponse(t *testing.T) {
+	RegisterResponseTransformationFunc(
+		&attribute.TestCustomTransformation{},
+		func(m proto.Message) error {
+			msg, ok := m.(*attribute.TestCustomTransformation)
+			require.True(t, ok, "wrong message passed to response transformation callback")
+			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
+				newAttrs, err := protoToStruct(msg.GetSubResourceAttributes())
+				require.NoError(t, err)
+				msg.Attrs = &attribute.TestCustomTransformation_Attributes{
+					Attributes: newAttrs,
+				}
+			}
+			return nil
+		},
+	)
+	response := &attribute.TestCustomTransformation{
+		SomeRandomId: "some_random_id",
+		SecondaryId:  "secondary_id",
+		Attrs: &attribute.TestCustomTransformation_SubResourceAttributes{
+			SubResourceAttributes: &attribute.TestSubResourceAttributes{
+				Name: "test",
+			},
+		},
+	}
+	expected := &attribute.TestCustomTransformation{
+		SomeRandomId: "some_random_id",
+		SecondaryId:  "secondary_id",
+		Attrs: &attribute.TestCustomTransformation_Attributes{
+			Attributes: func() *structpb.Struct {
+				attrs, _ := structpb.NewStruct(map[string]interface{}{
+					"name": "test",
+				})
+				return attrs
+			}(),
+		},
+	}
+
+	err := transformResponse(response)
+	require.NoError(t, err)
+	assert.Empty(t, cmp.Diff(response, expected, protocmp.Transform()))
+}
