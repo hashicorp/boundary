@@ -1,4 +1,4 @@
-package services_test
+package authmethods_test
 
 import (
 	"context"
@@ -65,23 +65,24 @@ func TestAuthenticate_Tags(t *testing.T) {
 				CreatedAt: now,
 				Payload: &services.AuthenticateResponse{
 					Command: "public-command",
+					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
-							"account_id":                 structpb.NewStringValue("public-account_id"),
-							"approximate_last_used_time": structpb.NewStringValue("public-approximate_last_used_time"),
-							"auth_method_id":             structpb.NewStringValue("public-auth_method_id"),
-							"authorized_actions":         structpb.NewStringValue("public-authorized_actions"),
-							"created_time":               structpb.NewStringValue("public-created_time"),
-							"expiration_time":            structpb.NewStringValue("public-expiration_time"),
-							"id":                         structpb.NewStringValue("public-id"),
-							"scope":                      structpb.NewStringValue("public-scope"),
-							"type":                       structpb.NewStringValue("public-type"),
-							"updated_time":               structpb.NewStringValue("public-updated_time"),
-							"user_id":                    structpb.NewStringValue("public-user_id"),
-							"status":                     structpb.NewStringValue("public-status"),
-							"auth_url":                   structpb.NewStringValue("public-auth_url"),
-							"token_id":                   structpb.NewStringValue("public-token_id"),
-							"final_redirect_url":         structpb.NewStringValue("public-final_redirect_url"),
+							"account_id":                 structpb.NewStringValue(encrypt.RedactedData),
+							"approximate_last_used_time": structpb.NewStringValue(encrypt.RedactedData),
+							"auth_method_id":             structpb.NewStringValue(encrypt.RedactedData),
+							"authorized_actions":         structpb.NewStringValue(encrypt.RedactedData),
+							"created_time":               structpb.NewStringValue(encrypt.RedactedData),
+							"expiration_time":            structpb.NewStringValue(encrypt.RedactedData),
+							"id":                         structpb.NewStringValue(encrypt.RedactedData),
+							"scope":                      structpb.NewStringValue(encrypt.RedactedData),
+							"type":                       structpb.NewStringValue(encrypt.RedactedData),
+							"updated_time":               structpb.NewStringValue(encrypt.RedactedData),
+							"user_id":                    structpb.NewStringValue(encrypt.RedactedData),
+							"status":                     structpb.NewStringValue(encrypt.RedactedData),
+							"auth_url":                   structpb.NewStringValue(encrypt.RedactedData),
+							"token_id":                   structpb.NewStringValue(encrypt.RedactedData),
+							"final_redirect_url":         structpb.NewStringValue(encrypt.RedactedData),
 							"token":                      structpb.NewStringValue(encrypt.RedactedData),
 						},
 					},
@@ -116,12 +117,13 @@ func TestAuthenticate_Tags(t *testing.T) {
 					AuthMethodId: "public-auth-method-id",
 					TokenType:    "public-token-type",
 					Command:      "public-command",
+					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
-							"login_name": structpb.NewStringValue("public-login_name"),
-							"auth_url":   structpb.NewStringValue("public-auth_url"),
-							"token_id":   structpb.NewStringValue("public-token_id"),
-							"state":      structpb.NewStringValue("public-state"),
+							"login_name": structpb.NewStringValue(encrypt.RedactedData),
+							"auth_url":   structpb.NewStringValue(encrypt.RedactedData),
+							"token_id":   structpb.NewStringValue(encrypt.RedactedData),
+							"state":      structpb.NewStringValue(encrypt.RedactedData),
 							"password":   structpb.NewStringValue(encrypt.RedactedData),
 							"code":       structpb.NewStringValue(encrypt.RedactedData),
 						},

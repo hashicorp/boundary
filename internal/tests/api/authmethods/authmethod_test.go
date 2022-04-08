@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -39,7 +41,7 @@ func TestCrud(t *testing.T) {
 	tcConfig.Eventing = &eventConfig.EventerConfig
 
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{Config: tcConfig})
-	defer tc.Shutdown()
+	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	token := tc.Token()
@@ -58,84 +60,175 @@ func TestCrud(t *testing.T) {
 
 	require.NotNil(eventConfig.AuditEvents)
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
-	u, err := amClient.Create(tc.Context(), "password", global,
+	pw, err := amClient.Create(tc.Context(), "password", global,
 		authmethods.WithName("bar"))
 	require.NoError(err)
-	checkAuthMethod("create", u.Item, "bar", 1)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), pw.Item.Id)
+		require.NoError(err)
+	})
+	checkAuthMethod("create", pw.Item, "bar", 1)
 
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 	reqItem := tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, reqItem)
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["attributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
-	u, err = amClient.Read(tc.Context(), u.Item.Id)
+	pw, err = amClient.Read(tc.Context(), pw.Item.Id)
 	require.NoError(err)
-	checkAuthMethod("read", u.Item, "bar", 1)
+	checkAuthMethod("read", pw.Item, "bar", 1)
 
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 	tests_api.AssertRedactedValues(t, tests_api.GetEventDetails(t, got, "request"))
 
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["attributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
-	u, err = amClient.Update(tc.Context(), u.Item.Id, u.Item.Version, authmethods.WithName("buz"))
+	pw, err = amClient.Update(tc.Context(), pw.Item.Id, pw.Item.Version, authmethods.WithName("buz"))
 	require.NoError(err)
-	checkAuthMethod("update", u.Item, "buz", 2)
+	checkAuthMethod("update", pw.Item, "buz", 2)
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 	tests_api.AssertRedactedValues(t, tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{}))
 
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["attributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
-	u, err = amClient.Update(tc.Context(), u.Item.Id, u.Item.Version, authmethods.DefaultName())
+	pw, err = amClient.Update(tc.Context(), pw.Item.Id, pw.Item.Version, authmethods.DefaultName())
 	require.NoError(err)
-	checkAuthMethod("update", u.Item, "", 3)
-
-	_, err = amClient.Delete(tc.Context(), u.Item.Id)
-	require.NoError(err)
+	checkAuthMethod("update", pw.Item, "", 3)
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	// OIDC auth methods
-	u, err = amClient.Create(tc.Context(), "oidc", global,
+	oidc, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
 		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
 	require.NoError(err)
-	checkAuthMethod("create", u.Item, "foo", 1)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), oidc.Item.Id)
+		require.NoError(err)
+	})
+	checkAuthMethod("create", oidc.Item, "foo", 1)
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 	reqItem = tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, reqItem)
-	tests_api.AssertRedactedValues(t, reqItem["attributes"], "client_secret")
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "callback_url", "state", "client_secret_hmac")
 
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["attributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "state", "client_secret_hmac", "callback_url")
 
-	u, err = amClient.Read(tc.Context(), u.Item.Id)
+	oidc, err = amClient.Read(tc.Context(), oidc.Item.Id)
 	require.NoError(err)
-	checkAuthMethod("read", u.Item, "foo", 1)
+	checkAuthMethod("read", oidc.Item, "foo", 1)
 
-	u, err = amClient.Update(tc.Context(), u.Item.Id, u.Item.Version, authmethods.WithName("bar"))
+	oidc, err = amClient.Update(tc.Context(), oidc.Item.Id, oidc.Item.Version, authmethods.WithName("bar"))
 	require.NoError(err)
-	checkAuthMethod("update", u.Item, "bar", 2)
+	checkAuthMethod("update", oidc.Item, "bar", 2)
 
-	u, err = amClient.Update(tc.Context(), u.Item.Id, u.Item.Version, authmethods.DefaultName())
+	oidc, err = amClient.Update(tc.Context(), oidc.Item.Id, oidc.Item.Version, authmethods.DefaultName())
 	require.NoError(err)
-	checkAuthMethod("update", u.Item, "", 3)
+	checkAuthMethod("update", oidc.Item, "", 3)
+}
 
-	_, err = amClient.Delete(tc.Context(), u.Item.Id)
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tcConfig, err := config.DevController()
 	require.NoError(err)
+
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{Config: tcConfig})
+	t.Cleanup(tc.Shutdown)
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	amClient := authmethods.NewClient(client)
+
+	result, err := amClient.List(tc.Context(), global)
+	require.NoError(err)
+	require.Len(result.Items, 2)
+	genOIDCAM := result.Items[0]
+	genPWAM := result.Items[1]
+
+	pwAM, err := amClient.Create(tc.Context(), "password", global,
+		authmethods.WithName("bar"),
+		authmethods.WithPasswordAuthMethodMinPasswordLength(10),
+	)
+	require.NoError(err)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), pwAM.Item.Id)
+		require.NoError(err)
+	})
+
+	result, err = amClient.List(tc.Context(), global)
+	require.NoError(err)
+	require.Len(result.Items, 3)
+	assert.Empty(cmp.Diff(genOIDCAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(genPWAM, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(pwAM.Item, result.Items[2], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+
+	oidcAM, err := amClient.Create(tc.Context(), "oidc", global,
+		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
+		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
+		authmethods.WithOidcAuthMethodClientSecret("secret"),
+		authmethods.WithOidcAuthMethodClientId("client-id"))
+	require.NoError(err)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), oidcAM.Item.Id)
+		require.NoError(err)
+	})
+
+	result, err = amClient.List(tc.Context(), global)
+	require.NoError(err)
+	require.Len(result.Items, 4)
+	assert.Empty(cmp.Diff(genOIDCAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(oidcAM.Item, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(genPWAM, result.Items[2], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(pwAM.Item, result.Items[3], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+
+	result, err = amClient.List(tc.Context(), global,
+		authmethods.WithFilter(`"/item/attributes/client_id"=="client-id"`))
+	require.NoError(err)
+	require.Len(result.Items, 1)
+	assert.Empty(cmp.Diff(oidcAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+
+	result, err = amClient.List(tc.Context(), global,
+		authmethods.WithFilter(`"/item/attributes/min_login_name_length"==3`))
+	require.NoError(err)
+	require.Len(result.Items, 2)
+	assert.Empty(cmp.Diff(genPWAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(pwAM.Item, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+
+	result, err = amClient.List(tc.Context(), global,
+		authmethods.WithFilter(`"/item/attributes/min_password_length"==10`))
+	require.NoError(err)
+	require.Len(result.Items, 1)
+	assert.Empty(cmp.Diff(pwAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
 }
 
 func TestCustomMethods(t *testing.T) {
@@ -193,11 +286,14 @@ func TestCustomMethods(t *testing.T) {
 
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["attributes"])
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["OidcChangeStateAttributes"], "state")
 
 	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["attributes"])
+	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "signing_algorithms", "callback_url", "idp_ca_certs", "state", "client_secret_hmac")
 
 	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "", authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 	assert.Error(err)
