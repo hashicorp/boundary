@@ -37,9 +37,9 @@ func retrieveBuildInfoLabels() map[string]string {
 	}
 }
 
-// InitializeBuildInfoVec registers the boundary_build_info metric with its
+// InitializeBuildInfo registers the boundary_build_info metric with its
 // correct labels and sets its value to 1.
-func InitializeBuildInfoVec(r prometheus.Registerer) {
+func InitializeBuildInfo(r prometheus.Registerer) {
 	if r == nil {
 		return
 	}
