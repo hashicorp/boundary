@@ -35,7 +35,7 @@ type sourceRegistry struct {
 	m map[protoreflect.FullName]protoreflect.FieldDescriptor
 }
 
-func (s sourceRegistry) register(d protoreflect.MessageDescriptor) error {
+func (s *sourceRegistry) register(d protoreflect.MessageDescriptor) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -58,7 +58,7 @@ func (s sourceRegistry) register(d protoreflect.MessageDescriptor) error {
 	return nil
 }
 
-func (s sourceRegistry) get(d protoreflect.MessageDescriptor) protoreflect.FieldDescriptor {
+func (s *sourceRegistry) get(d protoreflect.MessageDescriptor) protoreflect.FieldDescriptor {
 	s.RLock()
 	defer s.RUnlock()
 

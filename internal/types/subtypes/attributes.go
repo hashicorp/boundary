@@ -46,7 +46,7 @@ var globalAttributeRegistry attributeRegistry
 // to be called on any protobuf message. However, if a message has subtypes but
 // does not provide a field with a subtype of "default", or if the default
 // field is not a *structpb.Struct type, an error is returned.
-func (ak attributeRegistry) register(d protoreflect.MessageDescriptor) error {
+func (ak *attributeRegistry) register(d protoreflect.MessageDescriptor) error {
 	ak.Lock()
 	defer ak.Unlock()
 
@@ -96,7 +96,7 @@ func (ak attributeRegistry) register(d protoreflect.MessageDescriptor) error {
 // attributeField retrieves the FieldDescriptor for a given subtype's
 // attribute fields. If the corresponding protobuf message has not been
 // registered it will return an error.
-func (ak attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
+func (ak *attributeRegistry) attributeField(d protoreflect.MessageDescriptor, t Subtype) (protoreflect.FieldDescriptor, error) {
 	ak.RLock()
 	defer ak.RUnlock()
 
