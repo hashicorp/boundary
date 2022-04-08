@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/boundary/internal/cmd/base/internal/metric"
 	"io"
 	"net"
 	"os"
@@ -134,6 +135,7 @@ type Server struct {
 }
 
 func NewServer(cmd *Command) *Server {
+	metric.InitializeBuildInfoVec(prometheus.DefaultRegisterer)
 	return &Server{
 		Command:              cmd,
 		InfoKeys:             make([]string, 0, 20),
