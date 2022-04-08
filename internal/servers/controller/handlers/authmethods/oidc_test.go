@@ -1404,11 +1404,12 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		{
 			name: "Make Complete Private",
-			req: &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-				OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-					State: "active-private",
+			req: &pbs.ChangeStateRequest{
+				Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
+					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
+						State: "active-private",
+					},
 				},
-			},
 			},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
@@ -1419,11 +1420,12 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		{
 			name: "Make Complete Public",
-			req: &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-				OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-					State: "active-public",
+			req: &pbs.ChangeStateRequest{
+				Id: oidcam.GetPublicId(), Version: 2, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
+					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
+						State: "active-public",
+					},
 				},
-			},
 			},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
@@ -1434,11 +1436,12 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		{
 			name: "Make Complete Inactive",
-			req: &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-				OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-					State: "inactive",
+			req: &pbs.ChangeStateRequest{
+				Id: oidcam.GetPublicId(), Version: 3, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
+					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
+						State: "inactive",
+					},
 				},
-			},
 			},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
