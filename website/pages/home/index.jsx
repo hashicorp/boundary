@@ -218,7 +218,7 @@ export default function HomePage() {
             'Just-in-time credentials via HashiCorp Vault',
           ]}
           img={{
-            src: require('./img/how-boundary-works.svg'),
+            src: require('./img/how-boundary-works.png'),
             alt: 'How it works',
           }}
         />
