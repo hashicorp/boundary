@@ -4,16 +4,21 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
@@ -905,6 +910,72 @@ func TestDb_LookupWhere(t *testing.T) {
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []interface{}{id})
 		require.Error(err)
+	})
+}
+
+// TestDb_LookupNotFoundEvent validates that not found error events are suppressed when
+// LookupById and LookupWhere are called.
+func TestDb_LookupNotFoundEvent(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+	event.TestEnableEventing(t, true)
+	conn, _ := TestSetup(t, "postgres")
+	TestCreateTables(t, conn)
+
+	c := event.TestEventerConfig(t, "TestDb_LookupNotFoundEvent")
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, "TestDb_LookupNotFoundEvent", c.EventerConfig)
+	require.NoError(t, err)
+
+	info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
+	ctx, err := event.NewEventerContext(context.Background(), e)
+	require.NoError(t, err)
+	ctx, err = event.NewRequestInfoContext(ctx, info)
+	require.NoError(t, err)
+
+	t.Run("lookup-where", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := New(conn)
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+
+		var foundUser db_test.TestUser
+		err = w.LookupWhere(ctx, &foundUser, "public_id = ?", []interface{}{id})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
+
+		defer func() { _ = os.WriteFile(c.AllEvents.Name(), nil, 0o666) }()
+
+		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		require.NoError(err)
+		// No events should have been written with the above error
+		assert.Len(b, 0)
+	})
+	t.Run("lookup-by-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := New(conn)
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+
+		foundUser := db_test.TestUser{
+			StoreTestUser: &db_test.StoreTestUser{
+				PublicId: id,
+			},
+		}
+		err = w.LookupById(ctx, &foundUser)
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
+
+		defer func() { _ = os.WriteFile(c.AllEvents.Name(), nil, 0o666) }()
+
+		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		require.NoError(err)
+		// No events should have been written with the above error
+		assert.Len(b, 0)
 	})
 }
 

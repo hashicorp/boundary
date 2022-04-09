@@ -57,6 +57,8 @@ func WithCode(code Code) Option {
 	}
 }
 
+// WithoutEvent provides an option to suppress the event when wrapping or
+// creating a new error.
 func WithoutEvent() Option {
 	return func(o *Options) {
 		o.withoutEvent = true
