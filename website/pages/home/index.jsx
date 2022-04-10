@@ -39,10 +39,10 @@ export default function HomePage() {
         }}
         desktopVideo={{
           url:
-            'https://www.datocms-assets.com/2885/1614100044-hero-desktop.mp4',
+            'https://www.datocms-assets.com/2885/1646421743-hero-desktop-vault-credentials.mp4',
           srcType: 'mp4',
           aspectRatio: 0.59968354,
-          playbackRate: 1,
+          playbackRate: 2,
         }}
       />
 
