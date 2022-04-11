@@ -135,8 +135,15 @@ type Server struct {
 }
 
 func NewServer(cmd *Command) *Server {
+	// Create a new prometheus registry here to avoid "duplicate metrics collector
+	// registration" panics in tests where new servers are called consecutively.
+	// prometheus.DefaultRegisterer and prometheus.DefaultGatherer vars need to be
+	// assigned for promhttp package to work correctly.
 	reg := prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = reg
+	prometheus.DefaultGatherer = reg
 	metric.InitializeBuildInfo(reg)
+
 	return &Server{
 		Command:              cmd,
 		InfoKeys:             make([]string, 0, 20),
