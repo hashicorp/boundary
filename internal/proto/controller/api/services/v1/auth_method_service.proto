@@ -120,9 +120,9 @@ message GetAuthMethodResponse {
 }
 
 message ListAuthMethodsRequest {
-  string scope_id = 1 [json_name = "scope_id"];
-  bool recursive = 20 [json_name = "recursive"];
-  string filter = 30 [json_name = "filter"];
+  string scope_id = 1 [json_name = "scope_id"];  // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"];  // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"];  // @gotags: `class:"public"`
 }
 
 message ListAuthMethodsResponse {
@@ -149,7 +149,7 @@ message UpdateAuthMethodResponse {
 }
 
 message DeleteAuthMethodRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteAuthMethodResponse {}
@@ -157,18 +157,18 @@ message DeleteAuthMethodResponse {}
 // Attributes specific to changing the state of an oidc auth method.
 message OidcChangeStateAttributes {
   // state must be `inactive`, `active-private`, or `active-public`
-  string state = 1;
+  string state = 1;  // @gotags: `class:"public"`
   // This flag is only useful for an oidc auth method.  It should not be used
   // unless the oidc provider's config is incorrectly set and is stopping the
   // activation of this auth method.
-  bool disable_discovered_config_validation = 2 [json_name = "disable_discovered_config_validation"];
+  bool disable_discovered_config_validation = 2 [json_name = "disable_discovered_config_validation"];  // @gotags: `class:"public"`
 }
 
 message ChangeStateRequest {
   string id = 1;  // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
+  uint32 version = 2;  // @gotags: `class:"public"`
 
   oneof attrs {
     // The attributes specific to this auth method's state.
@@ -184,8 +184,8 @@ message ChangeStateResponse {
 // The layout of the struct for "attributes" field in AuthenticateRequest for a password type. This message isn't directly referenced anywhere but is used here to define the expected field names and
 // types.
 message PasswordLoginAttributes {
-  string login_name = 1 [json_name = "login_name"];
-  string password = 2;
+  string login_name = 1 [json_name = "login_name"];  // @gotags: `class:"sensitive"`
+  string password = 2;  // @gotags: `class:"secret"`
 }
 
 // The layout of the struct for "attributes" field in AuthenticateRequest for a oidc type's start command. This message isn't directly referenced anywhere but is used here to define the expected field
@@ -194,7 +194,7 @@ message OidcStartAttributes {
   // An object which will be marshaled as JSON and roundtripped in the token command call.
   google.protobuf.Struct roundtrip_payload = 1 [json_name = "roundtrip_payload"];
   // Cached marshaled payload. This is not ingressed from the client; anything found will be thrown out.
-  string cached_roundtrip_payload = 2;
+  string cached_roundtrip_payload = 2;  // @gotags: `class:"sensitive"`
 }
 
 message AuthenticateRequest {

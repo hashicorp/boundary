@@ -22,6 +22,10 @@ func TestAuthMethod_Tags(t *testing.T) {
 	now := time.Now()
 	wrapper := wrapper.TestWrapper(t)
 	testEncryptingFilter := api.NewEncryptFilter(t, wrapper)
+	testEncryptingFilter.FilterOperationOverrides = map[encrypt.DataClassification]encrypt.FilterOperation{
+		// Use HMAC for sensitive fields for easy test comparisons
+		encrypt.SensitiveClassification: encrypt.HmacSha256Operation,
+	}
 
 	tests := []struct {
 		name      string
@@ -78,21 +82,20 @@ func TestAuthMethod_Tags(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "oidc",
-					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							State:                             encrypt.RedactedData,
-							Issuer:                            wrapperspb.String(encrypt.RedactedData),
-							ClientId:                          wrapperspb.String(encrypt.RedactedData),
-							ClientSecretHmac:                  encrypt.RedactedData,
+							State:                             "public-state",
+							Issuer:                            wrapperspb.String("public-issuer"),
+							ClientId:                          wrapperspb.String("public-client_id"),
+							ClientSecretHmac:                  "public-client_secret_hmac",
 							MaxAge:                            wrapperspb.UInt32(100),
-							SigningAlgorithms:                 []string{encrypt.RedactedData},
-							IdpCaCerts:                        []string{encrypt.RedactedData},
-							ApiUrlPrefix:                      wrapperspb.String(encrypt.RedactedData),
-							CallbackUrl:                       encrypt.RedactedData,
-							AllowedAudiences:                  []string{encrypt.RedactedData},
-							ClaimsScopes:                      []string{encrypt.RedactedData},
-							AccountClaimMaps:                  []string{encrypt.RedactedData},
+							SigningAlgorithms:                 []string{"public-signing_algorithms"},
+							IdpCaCerts:                        []string{"public-idp_ca_certs"},
+							ApiUrlPrefix:                      wrapperspb.String("public-api_url_prefix"),
+							CallbackUrl:                       "public-callback_url",
+							AllowedAudiences:                  []string{"public-allowed_audiences"},
+							ClaimsScopes:                      []string{"public-claims_scopes"},
+							AccountClaimMaps:                  []string{"public-account_claim_maps"},
 							DisableDiscoveredConfigValidation: false,
 							DryRun:                            false,
 							ClientSecret:                      wrapperspb.String(encrypt.RedactedData),
@@ -147,7 +150,6 @@ func TestAuthMethod_Tags(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "password",
-					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
 						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
 							MinLoginNameLength: 100,

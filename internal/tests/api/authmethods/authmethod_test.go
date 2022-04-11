@@ -69,13 +69,11 @@ func TestCrud(t *testing.T) {
 	reqItem := tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, reqItem)
 	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
 	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
 	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
@@ -89,7 +87,6 @@ func TestCrud(t *testing.T) {
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
 	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
@@ -103,7 +100,6 @@ func TestCrud(t *testing.T) {
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
 	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
 
 	pw, err = amClient.Update(tc.Context(), pw.Item.Id, pw.Item.Version, authmethods.DefaultName())
@@ -129,14 +125,12 @@ func TestCrud(t *testing.T) {
 	reqItem = tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, reqItem)
 	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
-	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "callback_url", "state", "client_secret_hmac")
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
 
 	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "state", "client_secret_hmac", "callback_url")
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
 
 	oidc, err = amClient.Read(tc.Context(), oidc.Item.Id)
 	require.NoError(err)
@@ -300,13 +294,11 @@ func TestCustomMethods(t *testing.T) {
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
 	tests_api.AssertRedactedValues(t, reqDetails["Attrs"])
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["OidcChangeStateAttributes"], "state")
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["OidcChangeStateAttributes"])
 
 	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
 	tests_api.AssertRedactedValues(t, respItem)
-	// TODO(johanbrandhorst): Not all of these fields will be redacted eventually
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"], "signing_algorithms", "callback_url", "idp_ca_certs", "state", "client_secret_hmac")
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
 
 	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "", authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 	assert.Error(err)
