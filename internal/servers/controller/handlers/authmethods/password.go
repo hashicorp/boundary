@@ -88,8 +88,8 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []
 }
 
 func (s Service) authenticatePassword(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
-	reqAttrs := req.GetAttributes().GetFields()
-	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
+	reqAttrs := req.GetPasswordLoginAttributes()
+	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs.LoginName, reqAttrs.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -136,17 +136,11 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
-	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
-		badFields["attributes"] = "This is a required field."
-		// Return early because we need non-nil values in the rest of the check.
-		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
-	}
-
-	attrs := req.GetAttributes().GetFields()
-	if _, ok := attrs[loginNameField]; !ok {
+	attrs := req.GetPasswordLoginAttributes()
+	if attrs.LoginName == "" {
 		badFields["attributes.login_name"] = "This is a required field."
 	}
-	if _, ok := attrs[passwordField]; !ok {
+	if attrs.Password == "" {
 		badFields["attributes.password"] = "This is a required field."
 	}
 	if req.GetCommand() == "" {
