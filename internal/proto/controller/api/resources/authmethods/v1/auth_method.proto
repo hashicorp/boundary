@@ -207,3 +207,46 @@ message OidcAuthMethodAuthenticateTokenResponse {
   // the consumer.
   string status = 10;  // @gotags: `class:"public"`
 }
+
+// The structure of a successful authentication response. This is
+// a copy of the Auth token type, with the addition of a token type field.
+message AuthTokenResponse {
+	// The ID of the Auth Token.
+	string id = 10;
+
+	// The Scope in which this Auth Token was generated.
+	string scope_id = 20 [json_name="scope_id"];
+
+	// Scope information for this resource.
+	resources.scopes.v1.ScopeInfo scope = 30;
+
+	// The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.
+	string token = 40;
+
+	// The ID of the User associated with this Auth Token.
+	string user_id = 50 [json_name="user_id"];
+
+	// The ID of the Auth Method associated with this Auth Token.
+	string auth_method_id = 60 [json_name="auth_method_id"];
+
+	// The ID of the Account associated with this Auth Token.
+	string account_id = 70 [json_name="account_id"];
+
+	// The time this resource was created.
+	google.protobuf.Timestamp created_time = 80 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	google.protobuf.Timestamp updated_time = 90 [json_name="updated_time"];
+
+	// The approximate time this Auth Token was last used.
+	google.protobuf.Timestamp approximate_last_used_time = 100 [json_name = "approximate_last_used_time"];
+
+	// The time this Auth Token expires.
+	google.protobuf.Timestamp expiration_time = 110 [json_name="expiration_time"];
+
+	// The type of this auth token. Either "cookie" or "token".
+	string token_type = 120 [json_name="token_type"];
+
+	// The available actions on this resource for this user.
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+}

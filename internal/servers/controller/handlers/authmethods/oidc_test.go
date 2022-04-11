@@ -1529,16 +1529,18 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "start",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attributes: func() *structpb.Struct {
-					ret, err := structpb.NewStruct(map[string]interface{}{
-						"roundtrip_payload": map[string]interface{}{
-							"foo": "bar",
-							"baz": true,
-						},
-					})
-					require.NoError(t, err)
-					return ret
-				}(),
+				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
+					OidcStartAttributes: &pbs.OidcStartAttributes{
+						RoundtripPayload: func() *structpb.Struct {
+							ret, err := structpb.NewStruct(map[string]interface{}{
+								"foo": "bar",
+								"baz": true,
+							})
+							require.NoError(t, err)
+							return ret
+						}(),
+					},
+				},
 			},
 		},
 	}
@@ -1556,13 +1558,11 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.Equal(got.GetCommand(), "start")
 			// We can't really compare directly as a lot of the values contain
 			// random data, so just verify existence
-			require.NotNil(got.GetAttributes())
-			m := got.GetAttributes().AsMap()
-			require.NotNil(m)
-			require.Contains(m, "auth_url")
-			require.NotEmpty(m["auth_url"])
-			require.Contains(m, "token_id")
-			require.NotEmpty(m["token_id"])
+			got.GetAuthTokenResponse()
+			require.NotNil(got.GetOidcAuthMethodAuthenticateStartResponse())
+			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetAuthUrl())
+			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetTokenId())
+
 		})
 	}
 }
@@ -1623,18 +1623,16 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attributes: func() *structpb.Struct {
-					ret, err := structpb.NewStruct(map[string]interface{}{
-						"token_id": func() string {
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
+						TokenId: func() string {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, 200*time.Second, tokenPublicId)
 						}(),
-					})
-					require.NoError(t, err)
-					return ret
-				}(),
+					},
+				},
 			},
 		},
 		{
@@ -1642,18 +1640,16 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attributes: func() *structpb.Struct {
-					ret, err := structpb.NewStruct(map[string]interface{}{
-						"token_id": func() string {
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
+						TokenId: func() string {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, -20*time.Second, tokenPublicId)
 						}(),
-					})
-					require.NoError(t, err)
-					return ret
-				}(),
+					},
+				},
 			},
 			wantErrMatch: errors.T(errors.AuthAttemptExpired),
 		},
@@ -1662,13 +1658,11 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attributes: func() *structpb.Struct {
-					ret, err := structpb.NewStruct(map[string]interface{}{
-						"token_id": "bad-token-id",
-					})
-					require.NoError(t, err)
-					return ret
-				}(),
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
+						TokenId: "bad-token-id",
+					},
+				},
 			},
 			wantErrMatch: errors.T(errors.Unknown),
 		},
@@ -1689,11 +1683,8 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			}
 			require.NoError(err)
 			require.Equal(got.GetCommand(), "token")
-			require.NotNil(got.GetAttributes())
-			m := got.GetAttributes().AsMap()
-			require.NotNil(m)
-			require.Contains(m, "token")
-			require.NotEmpty(m["token"])
+			require.NotNil(got.GetAuthTokenResponse())
+			require.NotEmpty(got.GetAuthTokenResponse().GetToken())
 		})
 	}
 }
@@ -1710,27 +1701,23 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
-				Attributes: func() *structpb.Struct {
-					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
 						State: "anything",
-					})
-					require.NoError(t, err)
-					return st
-				}(),
+					},
+				},
 			},
 		},
 		{
 			name: "No Auth Method Id",
 			req: &pbs.AuthenticateRequest{
 				Command: "callback",
-				Attributes: func() *structpb.Struct {
-					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
 						Code:  "anythingworks",
 						State: "anything",
-					})
-					require.NoError(t, err)
-					return st
-				}(),
+					},
+				},
 			},
 		},
 		{
@@ -1738,13 +1725,11 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
-				Attributes: func() *structpb.Struct {
-					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
 						Code: "anythingworks",
-					})
-					require.NoError(t, err)
-					return st
-				}(),
+					},
+				},
 			},
 		},
 	}
@@ -1784,16 +1769,13 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 				&pbs.AuthenticateRequest{
 					AuthMethodId: s.authMethod.GetPublicId(),
 					Command:      "callback",
-					Attributes: func() *structpb.Struct {
-						st, err := handlers.ProtoToStruct(tc.attrs)
-						require.NoError(t, err)
-						return st
-					}(),
+					Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+						OidcAuthMethodAuthenticateCallbackRequest: tc.attrs,
+					},
 				})
 
 			require.NoError(t, err)
-			respAttrs := &pb.OidcAuthMethodAuthenticateCallbackResponse{}
-			require.NoError(t, handlers.StructToProto(got.GetAttributes(), respAttrs))
+			respAttrs := got.GetOidcAuthMethodAuthenticateCallbackResponse()
 			assert.Contains(t, respAttrs.FinalRedirectUrl, fmt.Sprintf("%s/authentication-error?", s.authMethod.GetApiUrl()))
 			u, err := url.Parse(respAttrs.GetFinalRedirectUrl())
 			require.NoError(t, err)
