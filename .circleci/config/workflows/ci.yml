@@ -6,9 +6,4 @@ jobs:
       matrix:
         parameters:
           postgres-version: ["latest", "11-alpine", "12-alpine", "13-alpine"]
-  - algolia-index:
-      filters:
-          branches:
-            only:
-              - stable-website
   - make-gen-deltas
