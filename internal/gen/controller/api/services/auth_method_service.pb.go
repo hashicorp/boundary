@@ -127,9 +127,9 @@ type ListAuthMethodsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"`
-	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
 }
 
 func (x *ListAuthMethodsRequest) Reset() {
@@ -449,7 +449,7 @@ type DeleteAuthMethodRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *DeleteAuthMethodRequest) Reset() {
@@ -536,11 +536,11 @@ type OidcChangeStateAttributes struct {
 	unknownFields protoimpl.UnknownFields
 
 	// state must be `inactive`, `active-private`, or `active-public`
-	State string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	State string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// This flag is only useful for an oidc auth method.  It should not be used
 	// unless the oidc provider's config is incorrectly set and is stopping the
 	// activation of this auth method.
-	DisableDiscoveredConfigValidation bool `protobuf:"varint,2,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"`
+	DisableDiscoveredConfigValidation bool `protobuf:"varint,2,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *OidcChangeStateAttributes) Reset() {
@@ -597,7 +597,7 @@ type ChangeStateRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
 	//	*ChangeStateRequest_Attributes
 	//	*ChangeStateRequest_OidcChangeStateAttributes
@@ -742,8 +742,8 @@ type PasswordLoginAttributes struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	LoginName string `protobuf:"bytes,1,opt,name=login_name,proto3" json:"login_name,omitempty"`
-	Password  string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	LoginName string `protobuf:"bytes,1,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Password  string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"`     // @gotags: `class:"secret"`
 }
 
 func (x *PasswordLoginAttributes) Reset() {
@@ -802,7 +802,7 @@ type OidcStartAttributes struct {
 	// An object which will be marshaled as JSON and roundtripped in the token command call.
 	RoundtripPayload *structpb.Struct `protobuf:"bytes,1,opt,name=roundtrip_payload,proto3" json:"roundtrip_payload,omitempty"`
 	// Cached marshaled payload. This is not ingressed from the client; anything found will be thrown out.
-	CachedRoundtripPayload string `protobuf:"bytes,2,opt,name=cached_roundtrip_payload,json=cachedRoundtripPayload,proto3" json:"cached_roundtrip_payload,omitempty"`
+	CachedRoundtripPayload string `protobuf:"bytes,2,opt,name=cached_roundtrip_payload,json=cachedRoundtripPayload,proto3" json:"cached_roundtrip_payload,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 }
 
 func (x *OidcStartAttributes) Reset() {

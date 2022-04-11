@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -28,6 +29,10 @@ func TestAuthenticate_Tags(t *testing.T) {
 	now := time.Now()
 	wrapper := wrapper.TestWrapper(t)
 	testEncryptingFilter := api.NewEncryptFilter(t, wrapper)
+	testEncryptingFilter.FilterOperationOverrides = map[encrypt.DataClassification]encrypt.FilterOperation{
+		// Use HMAC for sensitive fields for easy test comparisons
+		encrypt.SensitiveClassification: encrypt.HmacSha256Operation,
+	}
 
 	tests := []struct {
 		name      string
@@ -35,7 +40,48 @@ func TestAuthenticate_Tags(t *testing.T) {
 		wantEvent *eventlogger.Event
 	}{
 		{
-			name: "validate-response-filtering",
+			name: "validate-authenticate-request-filtering",
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
+					Attrs: &services.AuthenticateRequest_OidcStartAttributes{
+						OidcStartAttributes: &services.OidcStartAttributes{
+							RoundtripPayload: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"key": structpb.NewStringValue("value"),
+								},
+							},
+							CachedRoundtripPayload: "public-cached_roundtrip_payload",
+						},
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
+					Attrs: &services.AuthenticateRequest_OidcStartAttributes{
+						OidcStartAttributes: &services.OidcStartAttributes{
+							RoundtripPayload: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"key": structpb.NewStringValue(encrypt.RedactedData),
+								},
+							},
+							CachedRoundtripPayload: encrypt.TestHmacSha256(t, []byte("public-cached_roundtrip_payload"), wrapper, nil, nil),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "validate-authenticate-response-filtering",
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
@@ -73,7 +119,6 @@ func TestAuthenticate_Tags(t *testing.T) {
 				CreatedAt: now,
 				Payload: &services.AuthenticateResponse{
 					Command: "public-command",
-					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attrs: &services.AuthenticateResponse_AuthTokenResponse{
 						AuthTokenResponse: &authtokens.AuthToken{
 							AccountId:               "public-account_id",
@@ -103,7 +148,7 @@ func TestAuthenticate_Tags(t *testing.T) {
 			},
 		},
 		{
-			name: "validate-request-filtering",
+			name: "validate-callback-request-filtering",
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
@@ -111,9 +156,13 @@ func TestAuthenticate_Tags(t *testing.T) {
 					AuthMethodId: "public-auth-method-id",
 					TokenType:    "public-token-type",
 					Command:      "public-command",
-					Attrs: &services.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
-						OidcAuthMethodAuthenticateTokenRequest: &authmethods.OidcAuthMethodAuthenticateTokenRequest{
-							TokenId: "public-token-id",
+					Attrs: &services.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+						OidcAuthMethodAuthenticateCallbackRequest: &authmethods.OidcAuthMethodAuthenticateCallbackRequest{
+							Code:             "secret-code",
+							State:            "public-state",
+							Error:            "public-error",
+							ErrorDescription: "public-error_description",
+							ErrorUri:         "public-error_uri",
 						},
 					},
 				},
@@ -125,10 +174,98 @@ func TestAuthenticate_Tags(t *testing.T) {
 					AuthMethodId: "public-auth-method-id",
 					TokenType:    "public-token-type",
 					Command:      "public-command",
-					// TODO(johanbrandhorst): update redaction once typed attributes are available
+					Attrs: &services.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+						OidcAuthMethodAuthenticateCallbackRequest: &authmethods.OidcAuthMethodAuthenticateCallbackRequest{
+							Code:             encrypt.RedactedData,
+							State:            "public-state",
+							Error:            "public-error",
+							ErrorDescription: "public-error_description",
+							ErrorUri:         "public-error_uri",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "validate-callback-response-filtering",
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateResponse{
+					Command: "public-command",
+					Attrs: &services.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse{
+						OidcAuthMethodAuthenticateCallbackResponse: &authmethods.OidcAuthMethodAuthenticateCallbackResponse{
+							FinalRedirectUrl: "public-final_redirect_url",
+						},
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateResponse{
+					Command: "public-command",
+					Attrs: &services.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse{
+						OidcAuthMethodAuthenticateCallbackResponse: &authmethods.OidcAuthMethodAuthenticateCallbackResponse{
+							FinalRedirectUrl: "public-final_redirect_url",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "validate-token-request-filtering",
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
+					Attrs: &services.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+						OidcAuthMethodAuthenticateTokenRequest: &authmethods.OidcAuthMethodAuthenticateTokenRequest{
+							TokenId: "secret-token-id",
+						},
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateRequest{
+					AuthMethodId: "public-auth-method-id",
+					TokenType:    "public-token-type",
+					Command:      "public-command",
 					Attrs: &services.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
 						OidcAuthMethodAuthenticateTokenRequest: &authmethods.OidcAuthMethodAuthenticateTokenRequest{
 							TokenId: encrypt.RedactedData,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "validate-token-response-filtering",
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateResponse{
+					Command: "public-command",
+					Attrs: &services.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse{
+						OidcAuthMethodAuthenticateTokenResponse: &authmethods.OidcAuthMethodAuthenticateTokenResponse{
+							Status: "public-status",
+						},
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &services.AuthenticateResponse{
+					Command: "public-command",
+					Attrs: &services.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse{
+						OidcAuthMethodAuthenticateTokenResponse: &authmethods.OidcAuthMethodAuthenticateTokenResponse{
+							Status: "public-status",
 						},
 					},
 				},

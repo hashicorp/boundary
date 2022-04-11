@@ -37,7 +37,7 @@ type AuthMethod struct {
 	// The ID of the Scope of which this Auth Method is a part.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this Auth method.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: `class:"public"`
+	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
 	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
@@ -239,9 +239,9 @@ type PasswordAuthMethodAttributes struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The minimum length allowed for user names for Accounts in this Auth Method.
-	MinLoginNameLength uint32 `protobuf:"varint,10,opt,name=min_login_name_length,proto3" json:"min_login_name_length,omitempty"`
+	MinLoginNameLength uint32 `protobuf:"varint,10,opt,name=min_login_name_length,proto3" json:"min_login_name_length,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The minimum length allowed for passwords for Accounts in this Auth Method.
-	MinPasswordLength uint32 `protobuf:"varint,20,opt,name=min_password_length,proto3" json:"min_password_length,omitempty"`
+	MinPasswordLength uint32 `protobuf:"varint,20,opt,name=min_password_length,proto3" json:"min_password_length,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *PasswordAuthMethodAttributes) Reset() {
@@ -298,46 +298,46 @@ type OidcAuthMethodAttributes struct {
 
 	// Output only. The state of the auth method. Will be "inactive",
 	// "active-private", or "active-public".
-	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty"`
+	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The issuer URL. Boundary expects only the schema, host, and port and will
 	// strip off ".well-known/openid-configuration" if present. This will be
 	// used for configuration discovery as well as for validation of the "iss"
 	// claim.
-	Issuer *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Issuer *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=issuer,proto3" json:"issuer,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An OAuth 2.0 Client Identifier valid at the Authorization Server.
-	ClientId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=client_id,proto3" json:"client_id,omitempty"`
+	ClientId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=client_id,proto3" json:"client_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Input only. The client's secret.
-	ClientSecret *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=client_secret,proto3" json:"client_secret,omitempty"`
+	ClientSecret *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=client_secret,proto3" json:"client_secret,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The HMAC'd value of the clients secret to indicate whether
 	// the client secret has changed.
-	ClientSecretHmac string `protobuf:"bytes,50,opt,name=client_secret_hmac,proto3" json:"client_secret_hmac,omitempty"`
+	ClientSecretHmac string `protobuf:"bytes,50,opt,name=client_secret_hmac,proto3" json:"client_secret_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The OIDC "max_age" parameter sent to the Authorization Server indicating
 	// a maximum acceptable time in seconds since the user's last authentication
 	// before requiring the user to reauthenticate. 0 indicates an immediate
 	// need to reauthenticate.
-	MaxAge *wrapperspb.UInt32Value `protobuf:"bytes,60,opt,name=max_age,proto3" json:"max_age,omitempty"`
+	MaxAge *wrapperspb.UInt32Value `protobuf:"bytes,60,opt,name=max_age,proto3" json:"max_age,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The signing algorithms allowed for the auth method.
-	SigningAlgorithms []string `protobuf:"bytes,70,rep,name=signing_algorithms,proto3" json:"signing_algorithms,omitempty"`
+	SigningAlgorithms []string `protobuf:"bytes,70,rep,name=signing_algorithms,proto3" json:"signing_algorithms,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The prefix that should be used for any URLs needed during the
 	// authentication flow. This includes the callback URL, the token retrieval
 	// URL, and the redirection URL used by the OIDC Authorization Server.
-	ApiUrlPrefix *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=api_url_prefix,proto3" json:"api_url_prefix,omitempty"`
+	ApiUrlPrefix *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=api_url_prefix,proto3" json:"api_url_prefix,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The callback URL that should be configured on the
 	// Authorization Server to use during the authentication flow.
-	CallbackUrl string `protobuf:"bytes,90,opt,name=callback_url,proto3" json:"callback_url,omitempty"`
+	CallbackUrl string `protobuf:"bytes,90,opt,name=callback_url,proto3" json:"callback_url,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional PEM-encoded X.509 CA certificates that can be used as trust anchors
 	// when connecting to an OIDC provider.
-	IdpCaCerts []string `protobuf:"bytes,100,rep,name=idp_ca_certs,proto3" json:"idp_ca_certs,omitempty"`
+	IdpCaCerts []string `protobuf:"bytes,100,rep,name=idp_ca_certs,proto3" json:"idp_ca_certs,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Allowed audience claims for this auth method.
-	AllowedAudiences []string `protobuf:"bytes,110,rep,name=allowed_audiences,proto3" json:"allowed_audiences,omitempty"`
+	AllowedAudiences []string `protobuf:"bytes,110,rep,name=allowed_audiences,proto3" json:"allowed_audiences,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional claims scopes that will be requested during authentication.
 	// see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
-	ClaimsScopes []string `protobuf:"bytes,112,rep,name=claims_scopes,proto3" json:"claims_scopes,omitempty"`
+	ClaimsScopes []string `protobuf:"bytes,112,rep,name=claims_scopes,proto3" json:"claims_scopes,omitempty" class:"public"` // @gotags: `class:"public"`
 	// account_claim_maps are optional claim maps from custom claims to the
 	// standard claims of sub, name and email.  These maps are represented as
 	// key=value where the key equals the from_claim and the value equals the
 	// to_claim.  For example "oid=sub".
-	AccountClaimMaps []string `protobuf:"bytes,113,rep,name=account_claim_maps,proto3" json:"account_claim_maps,omitempty"`
+	AccountClaimMaps []string `protobuf:"bytes,113,rep,name=account_claim_maps,proto3" json:"account_claim_maps,omitempty" class:"public"` // @gotags: `class:"public"`
 	// If the Authorization Server's discovered configuration contains values
 	// that do not match the configuration set on this auth method, this can be
 	// set to force the local configuration to override the discovered values.
@@ -346,14 +346,14 @@ type OidcAuthMethodAttributes struct {
 	// will be treated the same as "false"; that is, every time the method is
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
-	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"`
+	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty" class:"public"` // @gotags: `class:"public"`
 	// dry_run, when set on an update request, indicates that the changes should
 	// not be persisted.  Boundary will still perform the normal checks to confirm
 	// the auth method is complete and validated against the discovered config.
 	// This value will also be set on the returned resource when set in the request
 	// along with the updated fields applied to the resource (but not persisted) as
 	// a result of the update request.
-	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty"`
+	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *OidcAuthMethodAttributes) Reset() {
@@ -690,7 +690,7 @@ type OidcAuthMethodAuthenticateTokenRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the pending token
-	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty" class:"private"` // @gotags: `class:"private"`
+	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
 func (x *OidcAuthMethodAuthenticateTokenRequest) Reset() {
