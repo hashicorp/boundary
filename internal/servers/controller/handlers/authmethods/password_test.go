@@ -19,14 +19,12 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
-	authtokenpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -510,13 +508,12 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
 			},
 			wantType: "token",
 		},
@@ -525,13 +522,12 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "cookie",
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
 			},
 			wantType: "cookie",
 		},
@@ -539,13 +535,12 @@ func TestAuthenticate_Password(t *testing.T) {
 			name: "no-token-type",
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
 			},
 		},
 		{
@@ -553,26 +548,24 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "email",
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "no-authmethod",
 			request: &pbs.AuthenticateRequest{
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -581,13 +574,12 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: testLoginName,
+						Password:  "wrong",
+					},
+				},
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
@@ -596,13 +588,12 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attributes: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"login_name": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
-						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
+				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+						LoginName: "wrong",
+						Password:  testPassword,
+					},
+				},
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
@@ -621,8 +612,8 @@ func TestAuthenticate_Password(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			aToken := &authtokenpb.AuthToken{}
-			require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
+
+			aToken := resp.GetAuthTokenResponse()
 			assert.NotEmpty(aToken.GetId())
 			assert.NotEmpty(aToken.GetToken())
 			assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
@@ -678,18 +669,16 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),
-		Attributes: func() *structpb.Struct {
-			creds := map[string]*structpb.Value{
-				"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
-				"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
-			}
-			return &structpb.Struct{Fields: creds}
-		}(),
+		Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
+			PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
+				LoginName: testLoginName,
+				Password:  testPassword,
+			},
+		},
 	})
 	require.NoError(err)
 
-	aToken := &authtokenpb.AuthToken{}
-	require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
+	aToken := resp.GetAuthTokenResponse()
 	assert.Equal(iamUser.GetPublicId(), aToken.GetUserId())
 	assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
 	assert.Equal(acct.GetPublicId(), aToken.GetAccountId())

@@ -32,8 +32,15 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+func init() {
+	subtypes.RegisterRequestTransformationFunc(&pbs.AuthenticateRequest{}, transformAuthenticateRequestAttributes)
+	subtypes.RegisterResponseTransformationFunc(&pbs.AuthenticateResponse{}, transformAuthenticateResponseAttributes)
+}
 
 const (
 	// general auth method field names
@@ -792,7 +799,6 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			OidcAuthMethodsAttributes: attrs,
 		}
 	}
-	fmt.Println("attrs", out.Attrs)
 	return &out, nil
 }
 
@@ -1194,20 +1200,117 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
-	retAttrs, err := handlers.ProtoToStruct(tok)
-	if err != nil {
-		return nil, err
-	}
 	tokenType := req.GetType()
 	if tokenType == "" {
 		// Fall back to deprecated field if type is not set
 		tokenType = req.GetTokenType()
 	}
 
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
 	return &pbs.AuthenticateResponse{
-		Command:    req.GetCommand(),
-		Attributes: retAttrs,
-		Type:       tokenType,
+		Command: req.GetCommand(),
+		Attrs: &pbs.AuthenticateResponse_AuthTokenResponse{
+			AuthTokenResponse: tok,
+		},
+		Type: tokenType,
 	}, nil
+}
+
+func transformAuthenticateRequestAttributes(msg proto.Message) error {
+	const op = "authmethod.transformAuthenticateRequestAttributes"
+	authRequest, ok := msg.(*pbs.AuthenticateRequest)
+	if !ok {
+		return fmt.Errorf("%s: message is not an AuthenticateRequest", op)
+	}
+	attrs := authRequest.GetAttributes()
+	if attrs == nil {
+		return nil
+	}
+	switch subtypes.SubtypeFromId(domain, authRequest.GetAuthMethodId()) {
+	case password.Subtype:
+		newAttrs := &pbs.PasswordLoginAttributes{}
+		if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+			return err
+		}
+		authRequest.Attrs = &pbs.AuthenticateRequest_PasswordLoginAttributes{
+			PasswordLoginAttributes: newAttrs,
+		}
+	case oidc.Subtype:
+		switch authRequest.GetCommand() {
+		case startCommand:
+			newAttrs := &pbs.OidcStartAttributes{}
+			if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcStartAttributes{
+				OidcStartAttributes: newAttrs,
+			}
+		case callbackCommand:
+			newAttrs := &pb.OidcAuthMethodAuthenticateCallbackRequest{}
+			if err := handlers.StructToProto(attrs, newAttrs, handlers.WithDiscardUnknownFields(true)); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+				OidcAuthMethodAuthenticateCallbackRequest: newAttrs,
+			}
+		case tokenCommand:
+			newAttrs := &pb.OidcAuthMethodAuthenticateTokenRequest{}
+			if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+				OidcAuthMethodAuthenticateTokenRequest: newAttrs,
+			}
+		default:
+			return fmt.Errorf("%s: unknown command %q", op, authRequest.GetCommand())
+		}
+	default:
+		return fmt.Errorf("%s: unknown auth method subtype in ID %q", op, authRequest.GetAuthMethodId())
+	}
+	return nil
+}
+
+func transformAuthenticateResponseAttributes(msg proto.Message) error {
+	const op = "authmethod.transformAuthenticateResponseAttributes"
+	authResponse, ok := msg.(*pbs.AuthenticateResponse)
+	if !ok {
+		return fmt.Errorf("%s: message is not an AuthenticateResponse", op)
+	}
+	attrs := authResponse.GetAttrs()
+	if attrs == nil {
+		return nil
+	}
+	var newAttrs *structpb.Struct
+	var err error
+	switch attrs := attrs.(type) {
+	case *pbs.AuthenticateResponse_Attributes:
+		// No transformation necessary
+		newAttrs = attrs.Attributes
+	case *pbs.AuthenticateResponse_AuthTokenResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.AuthTokenResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateStartResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateStartResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateCallbackResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateTokenResponse)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("%s: unknown attributes type %T", op, attrs)
+	}
+	authResponse.Attrs = &pbs.AuthenticateResponse_Attributes{
+		Attributes: newAttrs,
+	}
+	return nil
 }

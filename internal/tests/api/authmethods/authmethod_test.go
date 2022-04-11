@@ -187,9 +187,16 @@ func TestList(t *testing.T) {
 	result, err = amClient.List(tc.Context(), global)
 	require.NoError(err)
 	require.Len(result.Items, 3)
-	assert.Empty(cmp.Diff(genOIDCAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(genPWAM, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(pwAM.Item, result.Items[2], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(
+		cmp.Diff(
+			result.Items,
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item},
+			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
+				return a.Name < b.Name
+			}),
+		),
+	)
 
 	oidcAM, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
@@ -206,10 +213,16 @@ func TestList(t *testing.T) {
 	result, err = amClient.List(tc.Context(), global)
 	require.NoError(err)
 	require.Len(result.Items, 4)
-	assert.Empty(cmp.Diff(genOIDCAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(oidcAM.Item, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(genPWAM, result.Items[2], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(pwAM.Item, result.Items[3], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(
+		cmp.Diff(
+			result.Items,
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item, oidcAM.Item},
+			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
+				return a.Name < b.Name
+			}),
+		),
+	)
 
 	result, err = amClient.List(tc.Context(), global,
 		authmethods.WithFilter(`"/item/attributes/client_id"=="client-id"`))
@@ -221,8 +234,16 @@ func TestList(t *testing.T) {
 		authmethods.WithFilter(`"/item/attributes/min_login_name_length"==3`))
 	require.NoError(err)
 	require.Len(result.Items, 2)
-	assert.Empty(cmp.Diff(genPWAM, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
-	assert.Empty(cmp.Diff(pwAM.Item, result.Items[1], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(
+		cmp.Diff(
+			result.Items,
+			[]*authmethods.AuthMethod{genPWAM, pwAM.Item},
+			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
+				return a.Name < b.Name
+			}),
+		),
+	)
 
 	result, err = amClient.List(tc.Context(), global,
 		authmethods.WithFilter(`"/item/attributes/min_password_length"==10`))
