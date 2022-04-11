@@ -42,19 +42,6 @@ event "upload-dev" {
   }
 }
 
-event "quality-tests" {
-  depends = ["upload-dev"]
-  action "quality-tests" {
-    organization = "hashicorp"
-    repository = "crt-workflows-common"
-    workflow = "quality-tests"
-  }
-
-  notification {
-    on = "fail"
-  }
-}
-
 event "security-scan-binaries" {
   depends = ["upload-dev"]
   action "security-scan-binaries" {

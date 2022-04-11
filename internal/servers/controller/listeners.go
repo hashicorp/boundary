@@ -14,8 +14,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 )
@@ -42,7 +42,7 @@ func (c *Controller) startListeners() error {
 
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
-		apiServers, err := c.configureForAPI(ln)
+		apiServers, err := c.configureForApi(ln)
 		if err != nil {
 			return fmt.Errorf("failed to configure listener for api mode: %w", err)
 		}
@@ -62,7 +62,7 @@ func (c *Controller) startListeners() error {
 	return nil
 }
 
-func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) {
+func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) {
 	apiServers := make([]func(), 0)
 
 	handler, err := c.apiHandler(HandlerProperties{
@@ -97,39 +97,15 @@ func (c *Controller) configureForAPI(ln *base.ServerListener) ([]func(), error) 
 		server.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	switch ln.Config.TLSDisable {
-	case true:
-		l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
-		if err != nil {
-			return nil, fmt.Errorf("error getting non-tls listener: %w", err)
-		}
-		if l == nil {
-			return nil, errors.New("could not get non-tls listener")
-		}
-		apiServers = append(apiServers, func() { go server.Serve(l) })
-
-	default:
-		for _, v := range []string{"", "http/1.1", "h2"} {
-			l := ln.Mux.GetListener(v)
-			if l == nil {
-				return nil, fmt.Errorf("could not get tls proto %q listener", v)
-			}
-			apiServers = append(apiServers, func() { go server.Serve(l) })
-		}
-	}
+	apiServers = append(apiServers, func() { go server.Serve(ln.ApiListener) })
 
 	return apiServers, nil
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	// Clear out in case this is a second start of the controller
-	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+	l := tls.NewListener(ln.ClusterListener, &tls.Config{
 		GetConfigForClient: c.validateWorkerTls,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
-	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
@@ -141,6 +117,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
+				metric.InstrumentClusterInterceptor(),
 				workerReqInterceptor,
 				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
 				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
@@ -152,12 +129,11 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
+	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
-	interceptor := newInterceptingListener(c, l)
-	ln.ALPNListener = interceptor
 	ln.GrpcServer = workerServer
 
-	return func() { go ln.GrpcServer.Serve(ln.ALPNListener) }, nil
+	return func() { go ln.GrpcServer.Serve(newInterceptingListener(c, l)) }, nil
 }
 
 func (c *Controller) stopServersAndListeners() error {
@@ -183,12 +159,12 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 	if c.clusterListener.GrpcServer == nil {
 		return fmt.Errorf("no cluster grpc server")
 	}
-	if c.clusterListener.Mux == nil {
-		return fmt.Errorf("no cluster listener mux")
+	if c.clusterListener.ClusterListener == nil {
+		return fmt.Errorf("no cluster listener")
 	}
 
 	c.clusterListener.GrpcServer.GracefulStop()
-	err := c.clusterListener.Mux.Close()
+	err := c.clusterListener.ClusterListener.Close()
 	return listenerCloseErrorCheck(c.clusterListener.Config.Type, err)
 }
 
@@ -204,7 +180,7 @@ func (c *Controller) stopHttpServersAndListeners() error {
 		ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
-		err := ln.Mux.Close() // The HTTP Shutdown call should close this, but just in case.
+		err := ln.ApiListener.Close() // The HTTP Shutdown call should close this, but just in case.
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
@@ -231,11 +207,11 @@ func (c *Controller) stopAnyListeners() error {
 	var closeErrors *multierror.Error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
-		if ln == nil || ln.Mux == nil {
+		if ln == nil || ln.ApiListener == nil {
 			continue
 		}
 
-		err := ln.Mux.Close()
+		err := ln.ApiListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)

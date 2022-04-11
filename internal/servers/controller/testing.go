@@ -219,7 +219,15 @@ func (tc *TestController) addrs(purpose string) []string {
 	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == purpose {
-			addr := listener.Mux.Addr()
+			var addr net.Addr
+			switch purpose {
+			case "api":
+				addr = listener.ApiListener.Addr()
+			case "cluster":
+				addr = listener.ClusterListener.Addr()
+			case "ops":
+				addr = listener.OpsListener.Addr()
+			}
 			switch {
 			case strings.HasPrefix(addr.String(), "/"):
 				switch purpose {
@@ -782,10 +790,17 @@ func startTestGreeterService(t *testing.T, greeter interceptor.GreeterServiceSer
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)),
 	)
 	interceptor.RegisterGreeterServiceServer(s, greeter)
+	// Use error channel so that we can use test assertions on the returned error.
+	// It is illegal to call `t.FailNow()` from a goroutine.
+	// https://pkg.go.dev/testing#T.FailNow
+	errChan := make(chan error)
 	go func() {
-		err := s.Serve(listener)
-		require.NoError(err)
+		errChan <- s.Serve(listener)
 	}()
+	t.Cleanup(func() {
+		// Will block until we stopped serving
+		require.NoError(<-errChan)
+	})
 
 	conn, _ := grpc.DialContext(dialCtx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()

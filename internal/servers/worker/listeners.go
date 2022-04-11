@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 )
@@ -24,7 +23,7 @@ func (w *Worker) startListeners() error {
 	if e == nil {
 		return fmt.Errorf("%s: sys eventer not initialized", op)
 	}
-	logger, err := e.StandardLogger(w.baseContext, "listeners", event.ErrorType)
+	logger, err := e.StandardLogger(w.baseContext, "worker.listeners: ", event.ErrorType)
 	if err != nil {
 		return fmt.Errorf("%s: unable to initialize std logger: %w", op, err)
 	}
@@ -46,7 +45,7 @@ func (w *Worker) startListeners() error {
 	return nil
 }
 
-func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (func(), error) {
+func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger) (func(), error) {
 	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config})
 	if err != nil {
 		return nil, err
@@ -57,7 +56,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (f
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		ErrorLog:          log,
+		ErrorLog:          logger,
 		BaseContext: func(net.Listener) context.Context {
 			return cancelCtx
 		},
@@ -77,18 +76,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, log *log.Logger) (f
 		server.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	// Clear out in case this is a second start of the controller
-	ln.Mux.UnregisterProto(alpnmux.DefaultProto)
-	ln.Mux.UnregisterProto(alpnmux.NoProto)
-	l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
+	l := tls.NewListener(ln.ProxyListener, &tls.Config{
 		GetConfigForClient: w.getSessionTls,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error getting tls listener: %w", err)
-	}
-	if l == nil {
-		return nil, errors.New("could not get tls listener")
-	}
 
 	return func() { go server.Serve(l) }, nil
 }
@@ -120,7 +110,7 @@ func (w *Worker) stopHttpServersAndListeners() error {
 		ln.HTTPServer.Shutdown(ctx)
 		cancel()
 
-		err := ln.Mux.Close()
+		err := ln.ProxyListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)
@@ -136,11 +126,11 @@ func (w *Worker) stopHttpServersAndListeners() error {
 func (w *Worker) stopAnyListeners() error {
 	var closeErrors *multierror.Error
 	for _, ln := range w.listeners {
-		if ln == nil || ln.Mux == nil {
+		if ln == nil || ln.ProxyListener == nil {
 			continue
 		}
 
-		err := ln.Mux.Close()
+		err := ln.ProxyListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
 			multierror.Append(closeErrors, err)

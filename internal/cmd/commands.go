@@ -318,7 +318,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"database init": func() (cli.Command, error) {
 			return &database.InitCommand{
-				Command: base.NewCommand(ui),
+				Server: base.NewServer(base.NewCommand(ui)),
 			}, nil
 		},
 		"database migrate": func() (cli.Command, error) {

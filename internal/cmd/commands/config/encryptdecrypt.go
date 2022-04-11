@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -151,7 +152,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 		c.Context,
 		kmsDefFile,
-		"config",
+		globals.KmsPurposeConfig,
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),

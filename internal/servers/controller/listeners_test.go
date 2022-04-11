@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/libs/alpnmux"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -256,9 +255,9 @@ func TestStartListeners(t *testing.T) {
 
 			apiAddrs := make([]string, 0)
 			for _, l := range c.apiListeners {
-				apiAddrs = append(apiAddrs, l.Mux.Addr().String())
+				apiAddrs = append(apiAddrs, l.ApiListener.Addr().String())
 			}
-			tt.assertions(t, c, apiAddrs, c.clusterListener.Mux.Addr().String())
+			tt.assertions(t, c, apiAddrs, c.clusterListener.ClusterListener.Addr().String())
 		})
 	}
 }
@@ -297,7 +296,7 @@ func TestStopClusterGrpcServerAndListener(t *testing.T) {
 				}
 			},
 			expErr:    true,
-			expErrStr: "no cluster listener mux",
+			expErrStr: "no cluster listener",
 		},
 		{
 			name: "listener already closed",
@@ -308,15 +307,14 @@ func TestStopClusterGrpcServerAndListener(t *testing.T) {
 
 				return &Controller{
 					clusterListener: &base.ServerListener{
-						ALPNListener: l,
-						GrpcServer:   grpc.NewServer(),
-						Mux:          alpnmux.New(l),
-						Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+						ClusterListener: l,
+						GrpcServer:      grpc.NewServer(),
+						Config:          &listenerutil.ListenerConfig{Type: "tcp"},
 					},
 				}
 			},
 			assertions: func(t *testing.T, c *Controller) {
-				require.ErrorIs(t, c.clusterListener.Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, c.clusterListener.ClusterListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -339,15 +337,14 @@ func TestStopClusterGrpcServerAndListener(t *testing.T) {
 
 				return &Controller{
 					clusterListener: &base.ServerListener{
-						ALPNListener: l,
-						GrpcServer:   grpcServer,
-						Mux:          alpnmux.New(l),
-						Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+						ClusterListener: l,
+						GrpcServer:      grpcServer,
+						Config:          &listenerutil.ListenerConfig{Type: "tcp"},
 					},
 				}
 			},
 			assertions: func(t *testing.T, c *Controller) {
-				require.ErrorIs(t, c.clusterListener.Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, c.clusterListener.ClusterListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -421,20 +418,19 @@ func TestStopHttpServersAndListeners(t *testing.T) {
 					baseContext: context.Background(),
 					apiListeners: []*base.ServerListener{
 						{
-							ALPNListener: l1,
-							HTTPServer:   s1,
-							Mux:          alpnmux.New(l1),
-							Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+							ApiListener: l1,
+							HTTPServer:  s1,
+							Config:      &listenerutil.ListenerConfig{Type: "tcp"},
 						},
 					},
 				}
 			},
 			assertions: func(t *testing.T, c *Controller) {
 				// Asserts the HTTP Servers are closed.
-				require.ErrorIs(t, c.apiListeners[0].HTTPServer.Serve(c.apiListeners[0].ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, c.apiListeners[0].HTTPServer.Serve(c.apiListeners[0].ApiListener), http.ErrServerClosed)
 
 				// Asserts the underlying listeners are closed.
-				require.ErrorIs(t, c.apiListeners[0].Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, c.apiListeners[0].ApiListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -468,28 +464,26 @@ func TestStopHttpServersAndListeners(t *testing.T) {
 					baseContext: context.Background(),
 					apiListeners: []*base.ServerListener{
 						{
-							ALPNListener: l1,
-							HTTPServer:   s1,
-							Mux:          alpnmux.New(l1),
-							Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+							ApiListener: l1,
+							HTTPServer:  s1,
+							Config:      &listenerutil.ListenerConfig{Type: "tcp"},
 						},
 						{
-							ALPNListener: l2,
-							HTTPServer:   s2,
-							Mux:          alpnmux.New(l2),
-							Config:       &listenerutil.ListenerConfig{Type: "tcp"},
+							ApiListener: l2,
+							HTTPServer:  s2,
+							Config:      &listenerutil.ListenerConfig{Type: "tcp"},
 						},
 					},
 				}
 			},
 			assertions: func(t *testing.T, c *Controller) {
 				// Asserts the HTTP Servers are closed.
-				require.ErrorIs(t, c.apiListeners[0].HTTPServer.Serve(c.apiListeners[0].ALPNListener), http.ErrServerClosed)
-				require.ErrorIs(t, c.apiListeners[1].HTTPServer.Serve(c.apiListeners[1].ALPNListener), http.ErrServerClosed)
+				require.ErrorIs(t, c.apiListeners[0].HTTPServer.Serve(c.apiListeners[0].ApiListener), http.ErrServerClosed)
+				require.ErrorIs(t, c.apiListeners[1].HTTPServer.Serve(c.apiListeners[1].ApiListener), http.ErrServerClosed)
 
 				// Asserts the underlying listeners are closed.
-				require.ErrorIs(t, c.apiListeners[0].Mux.Close(), net.ErrClosed)
-				require.ErrorIs(t, c.apiListeners[1].Mux.Close(), net.ErrClosed)
+				require.ErrorIs(t, c.apiListeners[0].ApiListener.Close(), net.ErrClosed)
+				require.ErrorIs(t, c.apiListeners[1].ApiListener.Close(), net.ErrClosed)
 			},
 			expErr: false,
 		},
@@ -601,10 +595,10 @@ func TestStopAnyListeners(t *testing.T) {
 			expErr: false,
 		},
 		{
-			name: "listeners with nil mux",
+			name: "non-empty listeners with nil listeners",
 			controllerFn: func(t *testing.T) *Controller {
 				return &Controller{apiListeners: []*base.ServerListener{
-					{Mux: nil}, {Mux: nil}, {Mux: nil},
+					{ClusterListener: nil}, {ClusterListener: nil}, {ClusterListener: nil},
 				}}
 			},
 			expErr: false,
@@ -624,23 +618,23 @@ func TestStopAnyListeners(t *testing.T) {
 
 				return &Controller{apiListeners: []*base.ServerListener{
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l1),
+						Config:      &listenerutil.ListenerConfig{Type: "tcp"},
+						ApiListener: l1,
 					},
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l2),
+						Config:      &listenerutil.ListenerConfig{Type: "tcp"},
+						ApiListener: l2,
 					},
 					{
-						Config: &listenerutil.ListenerConfig{Type: "tcp"},
-						Mux:    alpnmux.New(l3),
+						Config:      &listenerutil.ListenerConfig{Type: "tcp"},
+						ApiListener: l3,
 					},
 				}}
 			},
 			assertions: func(t *testing.T, c *Controller) {
 				for i := range c.apiListeners {
 					ln := c.apiListeners[i]
-					require.ErrorIs(t, ln.Mux.Close(), net.ErrClosed)
+					require.ErrorIs(t, ln.ApiListener.Close(), net.ErrClosed)
 				}
 			},
 			expErr: false,

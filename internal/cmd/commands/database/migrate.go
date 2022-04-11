@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -291,7 +292,7 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 		c.Context,
 		wrapperPath,
-		"config",
+		globals.KmsPurposeConfig,
 		configutil.WithPluginOptions(
 			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),

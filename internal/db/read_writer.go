@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	stderrors "errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -437,7 +436,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler Tx
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
-// must be unique. Options are ignored.
+// must be unique. WithDebug is the only valid option, all other options are ignored.
 func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
@@ -445,7 +444,13 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt 
 	}
 	opts := GetOpts(opt...)
 	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
-		return wrapError(ctx, err, op)
+		var errOpts []errors.Option
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			// Not found is a common workflow in the application layer during lookup, suppress
+			// the event here and allow the caller to log event if needed.
+			errOpts = append(errOpts, errors.WithoutEvent())
+		}
+		return wrapError(ctx, err, op, errOpts...)
 	}
 	return nil
 }
@@ -465,7 +470,13 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	}
 	opts := GetOpts(opt...)
 	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
-		return wrapError(ctx, err, op)
+		var errOpts []errors.Option
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			// Not found is a common workflow in the application layer during lookup, suppress
+			// the event here and allow the caller to log event if needed.
+			errOpts = append(errOpts, errors.WithoutEvent())
+		}
+		return wrapError(ctx, err, op, errOpts...)
 	}
 	return nil
 }
@@ -507,19 +518,17 @@ func wrapError(ctx context.Context, err error, op string, errOpts ...errors.Opti
 	// See github.com/hashicorp/go-dbw/error.go for appropriate errors to test
 	// for and wrap
 	switch {
-	case stderrors.Is(err, dbw.ErrUnknown):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.Unknown))
-	case stderrors.Is(err, dbw.ErrInvalidParameter):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.InvalidParameter))
-	case stderrors.Is(err, dbw.ErrInternal):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.Internal))
-	case stderrors.Is(err, dbw.ErrRecordNotFound):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.RecordNotFound))
-	case stderrors.Is(err, dbw.ErrMaxRetries):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.MaxRetries))
-	case stderrors.Is(err, dbw.ErrInvalidFieldMask):
-		return errors.Wrap(ctx, err, errors.Op(op), errors.WithCode(errors.InvalidFieldMask))
-	default:
-		return errors.Wrap(ctx, err, errors.Op(op), errOpts...)
+	case errors.Is(err, dbw.ErrInvalidParameter):
+		errOpts = append(errOpts, errors.WithCode(errors.InvalidParameter))
+	case errors.Is(err, dbw.ErrInternal):
+		errOpts = append(errOpts, errors.WithCode(errors.Internal))
+	case errors.Is(err, dbw.ErrRecordNotFound):
+		errOpts = append(errOpts, errors.WithCode(errors.RecordNotFound))
+	case errors.Is(err, dbw.ErrMaxRetries):
+		errOpts = append(errOpts, errors.WithCode(errors.MaxRetries))
+	case errors.Is(err, dbw.ErrInvalidFieldMask):
+		errOpts = append(errOpts, errors.WithCode(errors.InvalidFieldMask))
 	}
+
+	return errors.Wrap(ctx, err, errors.Op(op), errOpts...)
 }

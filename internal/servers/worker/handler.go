@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/servers/common"
+	"github.com/hashicorp/boundary/internal/servers/worker/internal/metric"
 	proxyHandlers "github.com/hashicorp/boundary/internal/servers/worker/proxy"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -37,11 +39,11 @@ func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	mux.Handle("/v1/proxy", h)
+	mux.Handle("/v1/proxy", metric.InstrumentWebsocketWrapper(h))
 
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)
-
-	return genericWrappedHandler, nil
+	metricHandler := metric.InstrumentHttpHandler(genericWrappedHandler)
+	return metricHandler, nil
 }
 
 func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.HandlerFunc, error) {
@@ -52,11 +54,26 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 	return func(wr http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.TLS == nil {
-			event.WriteError(ctx, op, errors.New("no request TLS information found"))
+			event.WriteError(ctx, op, errors.New("no request tls information found"))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		sessionId := r.TLS.ServerName
+
+		var sessionId string
+	outerCertLoop:
+		for _, cert := range r.TLS.PeerCertificates {
+			for _, name := range cert.DNSNames {
+				if strings.HasPrefix(name, globals.SessionPrefix) {
+					sessionId = name
+					break outerCertLoop
+				}
+			}
+		}
+		if sessionId == "" {
+			event.WriteError(ctx, op, errors.New("no session id could be found in peer certificates"))
+			wr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		clientIp, clientPort, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
@@ -77,7 +94,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 
 		userClientIp, err := common.ClientIpFromRequest(ctx, listenerCfg, r)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to determine user IP"))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to determine user ip"))
 			wr.WriteHeader(http.StatusInternalServerError)
 		}
 

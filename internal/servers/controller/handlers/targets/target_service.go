@@ -100,7 +100,8 @@ func NewService(
 	sessionRepoFn common.SessionRepoFactory,
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
-	vaultCredRepoFn common.VaultCredentialRepoFactory) (Service, error) {
+	vaultCredRepoFn common.VaultCredentialRepoFactory,
+) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target repository")
@@ -939,6 +940,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			codes.FailedPrecondition,
 			"No workers are available to handle this session, or all have been filtered.")
 	}
+	workerAddresses := make([]string, 0, len(workers))
+	for _, worker := range workers {
+		workerAddresses = append(workerAddresses, worker.GetAddress())
+	}
 
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
@@ -1046,7 +1051,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
+	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses)
 	if err != nil {
 		return nil, err
 	}
