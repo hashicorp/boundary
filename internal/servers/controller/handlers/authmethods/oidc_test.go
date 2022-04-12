@@ -1565,7 +1565,6 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.NotNil(got.GetOidcAuthMethodAuthenticateStartResponse())
 			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetAuthUrl())
 			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetTokenId())
-
 		})
 	}
 }
