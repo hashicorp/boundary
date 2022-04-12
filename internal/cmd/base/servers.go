@@ -134,15 +134,14 @@ type Server struct {
 	StatusGracePeriodDuration time.Duration
 }
 
-func NewServer(cmd *Command) *Server {
+// The only option used here is WithPrometheusRegisterer; all others are ignored.
+func NewServer(cmd *Command, opt ...Option) *Server {
 	// Create a new prometheus registry here to avoid "duplicate metrics collector
 	// registration" panics in tests where new servers are called consecutively.
 	// prometheus.DefaultRegisterer and prometheus.DefaultGatherer vars need to be
 	// assigned for promhttp package to work correctly.
-	reg := prometheus.NewRegistry()
-	prometheus.DefaultRegisterer = reg
-	prometheus.DefaultGatherer = reg
-	metric.InitializeBuildInfo(reg)
+	opts := getOpts(opt...)
+	metric.InitializeBuildInfo(opts.withPrometheusRegisterer)
 
 	return &Server{
 		Command:              cmd,
@@ -152,7 +151,7 @@ func NewServer(cmd *Command) *Server {
 		ReloadFuncsLock:      new(sync.RWMutex),
 		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
 		StderrLock:           new(sync.Mutex),
-		PrometheusRegisterer: reg,
+		PrometheusRegisterer: opts.withPrometheusRegisterer,
 	}
 }
 
