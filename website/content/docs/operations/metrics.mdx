@@ -7,56 +7,81 @@ description: |-
 
 ## Boundary Metrics
 
-Boundary provides Prometheus metrics for Controllers and Workers at the ops endpoint on port 9203 through the `/metrics` path. See the [sample code](#sample-code) section for an example listener stanza in a `config.hcl` file.
+Boundary provides metrics through the `/metrics` path using a listener with the
+"ops" purpose. By default a listener with that purpose runs on port 9203.  See
+the [sample code](#sample-code) section for an example listener stanza in a
+`config.hcl` file.
 
-For more information about Prometheus, see the [Prometheus Overview Guide](https://prometheus.io/docs/introduction/overview). The Prometheus Go library is used to define and export metrics from the Boundary system. The metrics uses the [OpenMetric exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format) format.
+Metrics are important for understanding what is happening in a boundary
+deployment, enabling diagnoses of deployed controllers and workers. Adding
+metrics will grant greater visibility into the various components of a running
+Boundary deployment through Prometheus.
 
-## Metrics Collected
+For more information about Prometheus, see the [Prometheus Overview
+Guide](https://prometheus.io/docs/introduction/overview). The Prometheus Go
+library is used to define and export metrics from the Boundary system. The
+metrics uses the [OpenMetric
+exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format)
+format.
 
-The following lists the current metrics exported, their descriptions, and full names.
 
-### Controller API
+### Controller
 
-| Metric        | Description                                   | Metric name   |
-|---------------|-----------------------------------------------|---------------|
-| Latency       | Historgram of latencies for HTTP requests.    | `boundary_controller_api_http_request_duration_seconds` |
-| Request size  | Histogram of request sizes for HTTP requests  | `boundary_controller_api_http_request_size_bytes`       |
-| Response size | Histogram of response sizes for HTTP requests | `boundary_controller_api_http_response_size_bytes`      |
+The following lists the current names and descriptions of metrics provided for controllers.
 
-### Controller Cluster API
+| Name                                                          | Description                                   |
+|---------------------------------------------------------------|-----------------------------------------------|
+| `boundary_controller_api_http_request_duration_seconds`       | Historgram of latencies for HTTP requests.     |  
+| `boundary_controller_api_http_request_size_bytes`             | Histogram of request sizes for HTTP requests.  |
+| `boundary_controller_api_http_response_size_bytes`            | Histogram of response sizes for HTTP requests. |
+| `boundary_controller_cluster_grpc_request_duration_seconds`   | Histogram of latencies for requests made to the gRPC service running on the cluster listener. |
+| `boundary_controller_cluster_grpc_request_size_bytes`         | Histogram of byte sizes for requests made to the gRPC service running on the cluster listener. |
+| `boundary_controller_cluster_grpc_response_size_bytes`        | Histogram of byte sizes for responses from the gRPC service running on the cluster listener. |
 
-| Metric        | Description                                    | Metric name   |
-|---------------|------------------------------------------------|---------------|
-| Latency       | Histogram of latencies for gRPC requests       | `boundary_controller_cluster_http_request_duration_seconds` |
-| Request size  | Histogram of request sizes for gRPC requests   | `boundary_controller_cluster_http_request_size_bytes` |
-| Response size | Histogram of response sizes for gRPC responses | `boundary_controller_cluster_http_response_size_bytes` |
 
-### Worker Proxy HTTP
+### Worker
 
-| Metric        | Description                                    | Metric name   |
-|---------------|------------------------------------------------|---------------|
-| Time Until Header Written | Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server | `boundary_worker_proxy_http_write_header_duration_seconds` |
+The following lists the current names and descriptions of metrics provided for
+workers.
 
-### Worker Proxy Websocket
+| Name                                                          | Description                                   |
+|---------------------------------------------------------------|-----------------------------------------------|
+| `boundary_worker_proxy_http_write_header_duration_seconds`    | Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server. |
+| `boundary_worker_proxy_websocket_active_connections`          | A gauge of the current count of open proxy connections on the worker. |
+| `boundary_worker_proxy_websocket_received_bytes_total`        | Count of received bytes sent over all proxy connections handled by the worker. |
+| `boundary_worker_proxy_websocket_sent_bytes_total`            | Count of sent bytes  sent over all proxy connections handled by the worker. |
 
-| Metric             | Description                                             | Metric name   |
-|--------------------|---------------------------------------------------------|---------------|
-| Active Connections | Count of open websocket connections to Boundary workers | `boundary_worker_proxy_websocket_active_connections`   |
-| Bytes Received     | Count of received bytes for Worker connections          | `boundary_worker_proxy_websocket_received_bytes_total` |
-| Bytes Sent         | Count of sent bytes for Worker connections              | `boundary_worker_proxy_websocket_sent_bytes_total`     |
 
-## Metric Labels
+### Metric Labels
 
-For HTTP requests, the following labels should be used: `path`, `method`, `code`. The value for the `path` label removes any query parameters, replaces unbounded portions of the path to something unbounded, such as resource IDs to "{id}", for example, and maps any paths which are not expected into a single value "unknown."
+Each metric uses labels to help organize and narrow its scope so that users can
+filter for different characteristics, allowing more flexible analysis of the
+measurements collected.
 
-For gRPC requests, the following labels should be used:
-* `grpc_service`: The proto service name including the package. For example, `controller.api.services.v1.GroupService`.
-* `grpc_method`: The name of the method on the grpc service.  For example, `GetGroup`.
-* `grpc_code`: The grpc [status code](https://github.com/grpc/grpc-go/blob/master/codes/codes.go) in human-readable format. For example, `OK`, `IllegalArgument`, `Unknown`.
+#### Metrics for HTTP requests include the following labels:
+
+| Label        | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `code`       | The HTTP status code of the request (e.g., “200”, “400”, etc.). |
+| `path`       | The path, excluding query parameters, associated with the request. The value for this label replaces resource IDs with "{id}" (for example, `/v1/groups/{id}` is a possible value for this label). Any unexpected paths receive the value "unknown." |
+| `method`     | The name of the method on the HTTP request.  For example "GET", “POST”, “DELETE”. |
+
+
+#### Metrics for gRPC requests include the following labels: 
+
+| Label           | Description                                                     |
+|-----------------|-----------------------------------------------------------------|
+| `grpc_method`   | The name of the method on the grpc service (e.g., `GetGroup`).  |
+| `grpc_service`  | The proto service name including the package (e.g., `controller.api.services.v1.GroupService`). |
+| `grpc_code`     | The grpc [status code](https://github.com/grpc/grpc-go/blob/master/codes/codes.go) in human-readable format. For example, `OK`, `IllegalArgument`, `Unknown`. |
+
 
 ## Sample code
 
-Defining a listener stanza in the config file is sufficient for enabling metrics reporting in Boundary.  For details on what fields are allowed in this stanza, refer to the documentation about [TCP Listener](/docs/configuration/listener/tcp)
+Defining a listener stanza in the config file is sufficient for enabling metrics
+reporting in Boundary. For details on what fields are allowed in this stanza,
+refer to the documentation about [TCP
+Listener](/docs/configuration/listener/tcp).
 
 An example listener stanza:
 
@@ -69,4 +94,4 @@ listener "tcp" {
 
 ### Tutorial
 
-TBD
+Refer to _TBD_ for a step-by-step tutorial.
