@@ -68,6 +68,8 @@ type Worker struct {
 func New(conf *Config) (*Worker, error) {
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
+	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
+
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),
