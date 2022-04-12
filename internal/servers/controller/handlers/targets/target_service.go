@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -960,7 +961,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
 		// FIXME: read in type from DB rather than rely on prefix
-		switch host.SubtypeFromId(hsId) {
+		switch subtypes.SubtypeFromId("host", hsId) {
 		case static.Subtype:
 			eps, err := staticHostRepo.Endpoints(ctx, hsId)
 			if err != nil {
@@ -2106,7 +2107,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		}
 	}
 	if req.GetHostId() != "" {
-		switch host.SubtypeFromId(req.GetHostId()) {
+		switch subtypes.SubtypeFromId("host", req.GetHostId()) {
 		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."

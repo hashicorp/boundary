@@ -714,7 +714,9 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 		if err := proto.Unmarshal(in.GetAttributes(), attrs); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to unmarshal attributes"))
 		}
-		hc.Attributes = attrs
+		hc.Attrs = &pb.HostCatalog_Attributes{
+			Attributes: attrs,
+		}
 	}
 	if in.Secrets != nil {
 		hc.Secrets = in.Secrets
