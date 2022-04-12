@@ -167,6 +167,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_set_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authtokens/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/authtokens_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/managedgroups/managed_group.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/managed_group_service.pb.go
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go

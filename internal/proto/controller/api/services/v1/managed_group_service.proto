@@ -89,7 +89,7 @@ service ManagedGroupService {
 }
 
 message GetManagedGroupRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetManagedGroupResponse {
@@ -97,8 +97,8 @@ message GetManagedGroupResponse {
 }
 
 message ListManagedGroupsRequest {
-  string auth_method_id = 1 [json_name="auth_method_id"];
-  string filter = 30 [json_name="filter"];
+  string auth_method_id = 1 [json_name="auth_method_id"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
 }
 
 message ListManagedGroupsResponse {
@@ -110,12 +110,12 @@ message CreateManagedGroupRequest {
 }
 
 message CreateManagedGroupResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public"`
   resources.managedgroups.v1.ManagedGroup item = 2;
 }
 
 message UpdateManagedGroupRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.managedgroups.v1.ManagedGroup item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -125,7 +125,7 @@ message UpdateManagedGroupResponse {
 }
 
 message DeleteManagedGroupRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteManagedGroupResponse {}

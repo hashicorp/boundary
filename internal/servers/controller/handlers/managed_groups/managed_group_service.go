@@ -28,6 +28,8 @@ import (
 const (
 	// oidc field names
 	attrFilterField = "attributes.filter"
+
+	domain = "auth"
 )
 
 var (
@@ -107,7 +109,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 	}
 	for _, mg := range ul {
 		res.Id = mg.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", mg.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, mg.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -168,7 +170,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", mg.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, mg.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.MemberIdsField) {
 		outputOpts = append(outputOpts, handlers.WithMemberIds(memberIds))
@@ -210,7 +212,7 @@ func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedG
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", mg.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, mg.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, mg, outputOpts...)
@@ -249,7 +251,7 @@ func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedG
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", mg.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, mg.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, mg, outputOpts...)
@@ -279,7 +281,7 @@ func (s Service) DeleteManagedGroup(ctx context.Context, req *pbs.DeleteManagedG
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup, []string, error) {
 	var out auth.ManagedGroup
 	var memberIds []string
-	switch subtypes.SubtypeFromId("auth", id) {
+	switch subtypes.SubtypeFromId(domain, id) {
 	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
@@ -347,7 +349,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.ManagedGroup
-	switch subtypes.SubtypeFromId("auth", am.GetPublicId()) {
+	switch subtypes.SubtypeFromId(domain, am.GetPublicId()) {
 	case oidc.Subtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
@@ -400,7 +402,7 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateManagedGroupRequest) (auth.ManagedGroup, error) {
 	const op = "managed_groups.(Service).updateInRepo"
 	var out auth.ManagedGroup
-	switch subtypes.SubtypeFromId("auth", req.GetId()) {
+	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case oidc.Subtype:
 		mg, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
@@ -418,7 +420,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	const op = "managed_groups.(Service).deleteFromRepo"
 	var rows int
 	var err error
-	switch subtypes.SubtypeFromId("auth", id) {
+	switch subtypes.SubtypeFromId(domain, id) {
 	case oidc.Subtype:
 		repo, iErr := s.oidcRepoFn()
 		if iErr != nil {
@@ -439,7 +441,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	const op = "managed_groups.(Service).listFromRepo"
 
 	var outUl []auth.ManagedGroup
-	switch subtypes.SubtypeFromId("auth", authMethodId) {
+	switch subtypes.SubtypeFromId(domain, authMethodId) {
 	case oidc.Subtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
@@ -471,7 +473,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	case action.List, action.Create:
 		parentId = id
 	default:
-		switch subtypes.SubtypeFromId("auth", id) {
+		switch subtypes.SubtypeFromId(domain, id) {
 		case oidc.Subtype:
 			acct, err := oidcRepo.LookupManagedGroup(ctx, id)
 			if err != nil {
@@ -491,7 +493,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var authMeth auth.AuthMethod
-	switch subtypes.SubtypeFromId("auth", parentId) {
+	switch subtypes.SubtypeFromId(domain, parentId) {
 	case oidc.Subtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
@@ -591,7 +593,7 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 		if req.GetItem().GetAuthMethodId() == "" {
 			badFields[globals.AuthMethodIdField] = "This field is required."
 		}
-		switch subtypes.SubtypeFromId("auth", req.GetItem().GetAuthMethodId()) {
+		switch subtypes.SubtypeFromId(domain, req.GetItem().GetAuthMethodId()) {
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
@@ -621,7 +623,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId("auth", req.GetId()) {
+		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."

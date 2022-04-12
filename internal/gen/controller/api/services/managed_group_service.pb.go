@@ -30,7 +30,7 @@ type GetManagedGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *GetManagedGroupRequest) Reset() {
@@ -124,8 +124,8 @@ type ListManagedGroupsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
-	Filter       string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter       string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                // @gotags: `class:"public"`
 }
 
 func (x *ListManagedGroupsRequest) Reset() {
@@ -273,7 +273,7 @@ type CreateManagedGroupResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string                      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri  string                      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item *managedgroups.ManagedGroup `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -328,7 +328,7 @@ type UpdateManagedGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id         string                      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item       *managedgroups.ManagedGroup `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask      `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -438,7 +438,7 @@ type DeleteManagedGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *DeleteManagedGroupRequest) Reset() {
