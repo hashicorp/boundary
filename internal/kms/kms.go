@@ -287,8 +287,10 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	return pooled, rootKeyId, nil
 }
 
-// ReconcileKeys will reconcile the keys in the kms against known possible issues.
-func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader) error {
+// ReconcileKeys will reconcile the keys in the kms against known possible
+// issues.  This function reconciles the global scope unless the
+// WithScopeIds(...) option is provided
+func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader, opt ...Option) error {
 	const op = "kms.ReconcileKeys"
 	if isNil(randomReader) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing rand reader")
@@ -315,6 +317,46 @@ func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader) error {
 			errors.Wrap(ctx, err, op)
 		}
 	}
+
+	opts := getOpts(opt...)
+	for _, id := range opts.withScopeIds {
+		var scopeRootWrapper *multi.PooledWrapper
+
+		for _, purpose := range []KeyPurpose{
+			// just add additional purposes as needed going forward to reconcile
+			// new keys as they are added.
+			//
+			// NOTE: don't add an audit key here since it can only be created in
+			// the global scope.
+			KeyPurposeOidc,
+		} {
+			if _, err := k.GetWrapper(ctx, id, purpose); err != nil {
+				switch {
+				case errors.Match(errors.T(errors.KeyNotFound), err):
+					if scopeRootWrapper == nil {
+						if scopeRootWrapper, _, err = k.loadRoot(ctx, id); err != nil {
+							return errors.Wrap(ctx, err, op)
+						}
+					}
+					key, err := generateKey(ctx, randomReader)
+					if err != nil {
+						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for %q key in scope %q", purpose.String(), id)))
+					}
+					switch purpose {
+					case KeyPurposeOidc:
+						if _, _, err := k.repo.CreateOidcKey(ctx, scopeRootWrapper, key); err != nil {
+							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating %q key in scope %s", purpose.String(), id)))
+						}
+					default:
+						return errors.New(ctx, errors.Internal, op, fmt.Sprintf("error creating %q key in scope %s since it's not a supported KeyPurpose", purpose.String(), id))
+					}
+				default:
+					errors.Wrap(ctx, err, op)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

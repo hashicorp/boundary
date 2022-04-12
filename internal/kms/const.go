@@ -4,6 +4,11 @@ package kms
 // is used to select which DEK to return
 type KeyPurpose uint
 
+// ****************************************************************************
+// IMPORTANT: if you're adding a new KeyPurpose, you should consider whether or
+// not existing scopes need this new type of key.  If they do, then you may want
+// to add the new key into kms.ReconcileKeys(...)
+// ****************************************************************************
 const (
 	// KeyPurposeUnknown is the default, and indicates that a correct purpose
 	// wasn't specified

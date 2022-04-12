@@ -26,6 +26,7 @@ type options struct {
 	withRepository        *Repository
 	withOrderByVersion    db.OrderBy
 	withKeyId             string
+	withScopeIds          []string
 }
 
 func getDefaultOptions() options {
@@ -85,5 +86,12 @@ func WithOrderByVersion(orderBy db.OrderBy) Option {
 func WithKeyId(keyId string) Option {
 	return func(o *options) {
 		o.withKeyId = keyId
+	}
+}
+
+// WithScopeIds allows the specifying of optional scope ids.
+func WithScopeIds(scopeId ...string) Option {
+	return func(o *options) {
+		o.withScopeIds = scopeId
 	}
 }
