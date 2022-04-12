@@ -152,7 +152,7 @@ func (tc *TestController) Logger() hclog.Logger {
 
 func (tc *TestController) Token() *authtokens.AuthToken {
 	if tc.opts.DisableAuthMethodCreation {
-		tc.t.Error("no default auth method ID configured")
+		tc.t.Fatal("no default auth method ID configured")
 		return nil
 	}
 	result, err := authmethods.NewClient(tc.Client()).Authenticate(
@@ -165,12 +165,12 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		},
 	)
 	if err != nil {
-		tc.t.Error(fmt.Errorf("error logging in: %w", err))
+		tc.t.Fatal(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
 	token := new(authtokens.AuthToken)
 	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
-		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		tc.t.Fatal(fmt.Errorf("error unmarshaling token: %w", err))
 		return nil
 	}
 	return token
