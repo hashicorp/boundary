@@ -151,7 +151,13 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		// This comes last so that we can use item fields in the filter after
+		// the allowed fields are populated above
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -876,7 +882,9 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 				return nil, errors.Wrap(ctx, err, op)
 			}
 			if len(attrs.GetFields()) > 0 {
-				out.Attributes = attrs
+				out.Attrs = &pb.HostSet_Attributes{
+					Attributes: attrs,
+				}
 			}
 		}
 	}
