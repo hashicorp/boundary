@@ -35,7 +35,7 @@ message Scope {
   string scope_id = 20 [json_name = "scope_id"];  // @gotags: `class:"public"`
 
   // Output only. Scope information for this resource.
-  ScopeInfo scope = 30;
+  ScopeInfo scope = 30;  // @gotags: `class:"public"`
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "name" }];  // @gotags: `class:"public"`
@@ -69,5 +69,5 @@ message Scope {
   repeated string authorized_actions = 300 [json_name = "authorized_actions"];  // @gotags: `class:"public"`
 
   // Output only. The authorized actions for the scope's collections.
-  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];
+  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];  // @gotags: `class:"public"`
 }
