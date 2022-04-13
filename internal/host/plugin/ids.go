@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	if err := host.Register(Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
 		panic(err)
 	}
 }
