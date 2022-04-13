@@ -20,20 +20,18 @@ const (
 	clusterSubSystem = "controller_cluster"
 )
 
-var (
-	// gRpcRequestLatency collects measurements of how long it takes
-	// the boundary system to reply to a request to the controller cluster
-	// from the time that boundary received the request.
-	gRpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: globals.MetricNamespace,
-			Subsystem: clusterSubSystem,
-			Name:      "grpc_request_duration_seconds",
-			Help:      "Histogram of latencies for gRPC requests.",
-			Buckets:   prometheus.DefBuckets,
-		},
-		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
-	)
+// gRpcRequestLatency collects measurements of how long it takes
+// the boundary system to reply to a request to the controller cluster
+// from the time that boundary received the request.
+var gRpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: clusterSubSystem,
+		Name:      "grpc_request_duration_seconds",
+		Help:      "Histogram of latencies for gRPC requests.",
+		Buckets:   prometheus.DefBuckets,
+	},
+	[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
 )
 
 // statusFromError retrieves the *status.Status from the provided error.  It'll
@@ -70,9 +68,11 @@ type statsHandler struct{}
 func (sh statsHandler) TagRPC(ctx context.Context, i *stats.RPCTagInfo) context.Context {
 	return context.WithValue(ctx, metricMethodNameContextKey{}, i.FullMethodName)
 }
+
 func (sh statsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
 	return ctx
 }
+
 func (sh statsHandler) HandleConn(context.Context, stats.ConnStats) {
 }
 
