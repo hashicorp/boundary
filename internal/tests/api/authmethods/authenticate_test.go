@@ -81,16 +81,13 @@ func TestAuthenticate(t *testing.T) {
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 	// All attribute fields are classified for now.
-	// TODO(johanbrandhorst): revert this when classification is done for auth methods
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"])
 	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
 
 	respDetails := tests_api.GetEventDetails(t, got, "response")
 	tests_api.AssertRedactedValues(t, respDetails)
-	tests_api.AssertRedactedValues(t, respDetails["Attrs"])
-	tests_api.AssertRedactedValues(t, respDetails["Attrs"].(map[string]interface{})["AuthTokenResponse"], "token", "token_type", "user_id", "account_id", "auth_method_id", "authorized_actions", "id", "scope_id")
+	tests_api.AssertRedactedValues(t, respDetails["Attrs"].(map[string]interface{})["AuthTokenResponse"], "token")
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "bad-pass"})
@@ -100,6 +97,5 @@ func TestAuthenticate(t *testing.T) {
 
 	reqDetails = tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"])
 	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
 }
