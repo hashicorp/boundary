@@ -49,6 +49,12 @@ build: build-ui-ifne
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
 
+.PHONY: build-memprof
+build-memprof: BUILD_TAGS+=memprofiler
+build-memprof:
+	@echo "==> Building Boundary with memory profiling enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+
 # Format Go files, ignoring files marked as generated through the header defined at
 # https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
 .PHONY: fmt
