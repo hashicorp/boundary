@@ -76,16 +76,16 @@ func TestAuthenticate_Tags(t *testing.T) {
 					// TODO(johanbrandhorst): update redaction once typed attributes are available
 					Attrs: &services.AuthenticateResponse_AuthTokenResponse{
 						AuthTokenResponse: &authtokens.AuthToken{
-							AccountId:               encrypt.RedactedData,
+							AccountId:               "public-account_id",
 							ApproximateLastUsedTime: timestamppb.New(now),
-							AuthMethodId:            encrypt.RedactedData,
+							AuthMethodId:            "public-auth_method_id",
 							AuthorizedActions: []string{
-								encrypt.RedactedData,
+								"public-authorized_actions",
 							},
 							CreatedTime:    timestamppb.New(now),
 							ExpirationTime: timestamppb.New(now),
-							Id:             encrypt.RedactedData,
-							ScopeId:        encrypt.RedactedData,
+							Id:             "public-id",
+							ScopeId:        "public-scope_id",
 							Scope: &scopes.ScopeInfo{
 								Id:            "public-scope_id",
 								Type:          "public-scope_type",
@@ -94,7 +94,7 @@ func TestAuthenticate_Tags(t *testing.T) {
 								ParentScopeId: "public-parent_scope_id",
 							},
 							UpdatedTime: timestamppb.New(now),
-							UserId:      encrypt.RedactedData,
+							UserId:      "public-user_id",
 							Token:       encrypt.RedactedData,
 						},
 					},

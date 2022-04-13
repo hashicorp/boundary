@@ -33,7 +33,7 @@ type AuthToken struct {
 	// The Scope in which this Auth Token was generated.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: `class:"public"`
+	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.
 	Token string `protobuf:"bytes,40,opt,name=token,proto3" json:"token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The ID of the User associated with this Auth Token.

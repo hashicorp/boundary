@@ -16,7 +16,7 @@ message AuthToken {
 	string scope_id = 20 [json_name="scope_id"];  // @gotags: `class:"public"`
 
 	// Output only. Scope information for this resource.
-	resources.scopes.v1.ScopeInfo scope = 30;  // @gotags: `class:"public"`
+	resources.scopes.v1.ScopeInfo scope = 30;
 
 	// Output only. The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.
 	string token = 40;  // @gotags: `class:"secret"`

@@ -63,7 +63,7 @@ message ListAuthTokensRequest {
 }
 
 message ListAuthTokensResponse {
-  repeated resources.authtokens.v1.AuthToken items = 1;  // @gotags: `class:"public"`
+  repeated resources.authtokens.v1.AuthToken items = 1;
 }
 
 message DeleteAuthTokenRequest {

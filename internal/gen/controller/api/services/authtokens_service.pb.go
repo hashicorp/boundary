@@ -185,7 +185,7 @@ type ListAuthTokensResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Items []*authtokens.AuthToken `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" class:"public"` // @gotags: `class:"public"`
+	Items []*authtokens.AuthToken `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 }
 
 func (x *ListAuthTokensResponse) Reset() {
