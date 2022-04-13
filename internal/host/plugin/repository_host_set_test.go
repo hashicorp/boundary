@@ -648,14 +648,14 @@ func TestRepository_UpdateSet(t *testing.T) {
 	checkUpdateSetRequestCurrentAttributes := func(want map[string]interface{}) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
-			assert.Empty(t, cmp.Diff(mustStruct(want), got.CurrentSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
+			assert.Empty(t, cmp.Diff(mustStruct(want), got.CurrentSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
 		}
 	}
 
 	checkUpdateSetRequestNewAttributes := func(want map[string]interface{}) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
-			assert.Empty(t, cmp.Diff(mustStruct(want), got.NewSet.Attributes, protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
+			assert.Empty(t, cmp.Diff(mustStruct(want), got.NewSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
 		}
 	}
 
