@@ -26,7 +26,7 @@ message HostCatalog {
 	string plugin_id = 34 [json_name="plugin_id", (custom_options.v1.generate_sdk_option) = true];  // @gotags: `class:"public"`
 
 	// Output only. Plugin information for this resource.
-	resources.plugins.v1.PluginInfo plugin = 35;  // @gotags: `class:"public"`
+	resources.plugins.v1.PluginInfo plugin = 35;
 
 	// Optional name for identification purposes.
 	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];  // @gotags: `class:"public"`
