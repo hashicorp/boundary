@@ -113,11 +113,11 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	}
 
 	workerServer := grpc.NewServer(
+		grpc.StatsHandler(metric.InstrumentClusterStatsHandler()),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
-				metric.InstrumentClusterInterceptor(),
 				workerReqInterceptor,
 				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
 				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
