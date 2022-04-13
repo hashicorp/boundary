@@ -180,7 +180,7 @@ service RoleService {
 }
 
 message GetRoleRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetRoleResponse {
@@ -188,9 +188,9 @@ message GetRoleResponse {
 }
 
 message ListRolesRequest {
-  string scope_id = 1 [json_name="scope_id"];
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  string scope_id = 1 [json_name="scope_id"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
 }
 
 message ListRolesResponse {
@@ -207,7 +207,7 @@ message CreateRoleResponse {
 }
 
 message UpdateRoleRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.roles.v1.Role item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -217,17 +217,17 @@ message UpdateRoleResponse {
 }
 
 message DeleteRoleRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteRoleResponse {}
 
 message AddRolePrincipalsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name="principal_ids"]; // @gotags: `class:"public"`
 }
 
 message AddRolePrincipalsResponse {
@@ -235,11 +235,11 @@ message AddRolePrincipalsResponse {
 }
 
 message SetRolePrincipalsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name="principal_ids"]; // @gotags: `class:"public"`
 }
 
 message SetRolePrincipalsResponse {
@@ -247,11 +247,11 @@ message SetRolePrincipalsResponse {
 }
 
 message RemoveRolePrincipalsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string principal_ids = 3 [json_name="principal_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveRolePrincipalsResponse {
@@ -259,11 +259,11 @@ message RemoveRolePrincipalsResponse {
 }
 
 message AddRoleGrantsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_strings = 3 [json_name="grant_strings"]; // @gotags: `class:"public"`
 }
 
 message AddRoleGrantsResponse {
@@ -271,11 +271,11 @@ message AddRoleGrantsResponse {
 }
 
 message SetRoleGrantsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_strings = 3 [json_name="grant_strings"]; // @gotags: `class:"public"`
 }
 
 message SetRoleGrantsResponse {
@@ -283,11 +283,11 @@ message SetRoleGrantsResponse {
 }
 
 message RemoveRoleGrantsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_strings = 3 [json_name="grant_strings"]; // @gotags: `class:"public"`
 }
 
 message RemoveRoleGrantsResponse {
