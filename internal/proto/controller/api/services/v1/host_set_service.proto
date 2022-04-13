@@ -151,7 +151,7 @@ message ListHostSetsRequest {
 }
 
 message ListHostSetsResponse {
-  repeated api.resources.hostsets.v1.HostSet items = 1;  // @gotags: `class:"public"`
+  repeated api.resources.hostsets.v1.HostSet items = 1;
 }
 
 message CreateHostSetRequest {

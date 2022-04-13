@@ -179,7 +179,7 @@ type ListHostSetsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Items []*hostsets.HostSet `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" class:"public"` // @gotags: `class:"public"`
+	Items []*hostsets.HostSet `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 }
 
 func (x *ListHostSetsResponse) Reset() {
