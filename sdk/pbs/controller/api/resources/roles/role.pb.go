@@ -30,11 +30,11 @@ type Principal struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the principal.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The type of the principal.
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Scope of the principal.
-	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Principal) Reset() {
@@ -96,11 +96,11 @@ type GrantJson struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID, if set.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The type, if set.
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The actions.
-	Actions []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty"`
+	Actions []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *GrantJson) Reset() {
@@ -162,9 +162,9 @@ type Grant struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The original user-supplied string.
-	Raw string `protobuf:"bytes,1,opt,name=raw,proto3" json:"raw,omitempty"`
+	Raw string `protobuf:"bytes,1,opt,name=raw,proto3" json:"raw,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The canonically-formatted string.
-	Canonical string `protobuf:"bytes,2,opt,name=canonical,proto3" json:"canonical,omitempty"`
+	Canonical string `protobuf:"bytes,2,opt,name=canonical,proto3" json:"canonical,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The JSON representation of the grant.
 	Json *GrantJson `protobuf:"bytes,3,opt,name=json,proto3" json:"json,omitempty"`
 }
@@ -229,34 +229,34 @@ type Role struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Role.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The ID of the Scope containing this Role.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
-	GrantScopeId *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty"`
+	GrantScopeId *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The IDs (only) of principals that are assigned to this role.
-	PrincipalIds []string `protobuf:"bytes,100,rep,name=principal_ids,proto3" json:"principal_ids,omitempty"`
+	PrincipalIds []string `protobuf:"bytes,100,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The principals that are assigned to this role.
 	Principals []*Principal `protobuf:"bytes,110,rep,name=principals,proto3" json:"principals,omitempty"`
 	// Output only. The grants that this role provides for its principals.
-	GrantStrings []string `protobuf:"bytes,120,rep,name=grant_strings,proto3" json:"grant_strings,omitempty"`
+	GrantStrings []string `protobuf:"bytes,120,rep,name=grant_strings,proto3" json:"grant_strings,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The parsed grant information.
 	Grants []*Grant `protobuf:"bytes,130,rep,name=grants,proto3" json:"grants,omitempty"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Role) Reset() {
