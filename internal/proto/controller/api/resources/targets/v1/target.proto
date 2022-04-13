@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
+import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
@@ -158,8 +159,19 @@ message Target {
   // Output only. The egress credential sources associated with this Target.
   repeated CredentialSource egress_credential_sources = 510 [json_name = "egress_credential_sources"];
 
-  // The attributes that are applicable for the specific Target.
-  google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
+  oneof attrs {
+    // The attributes that are applicable for the specific Target.
+    google.protobuf.Struct attributes = 200 [
+			(google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "default"
+    ];
+		TcpTargetAttributes tcp_target_attributes = 201 [
+			(google.api.field_visibility).restriction = "INTERNAL",
+			(custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "tcp"
+		];
+  }
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"];

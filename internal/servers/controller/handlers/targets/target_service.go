@@ -211,14 +211,18 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
 	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
-// GetTargets implements the interface pbs.TargetServiceServer.
+// GetTarget implements the interface pbs.TargetServiceServer.
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
 	const op = "targets.(Service).GetTarget"
 
@@ -1243,7 +1247,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
 	}
 
-	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), withStruct(item.GetAttributes()))
+	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
@@ -1287,7 +1291,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	subtype := target.SubtypeFromId(id)
 
-	attr, err := subtypeRegistry.newAttribute(subtype, withStruct(item.GetAttributes()))
+	attr, err := subtypeRegistry.newAttribute(subtype, item.GetAttrs())
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
@@ -1655,16 +1659,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		}
 	}
 	if outputFields.Has(globals.AttributesField) {
-		attr, err := subtypeRegistry.newAttribute(in.GetType(), withTarget(in))
-		if err != nil {
+		if err := subtypeRegistry.setAttributes(in.GetType(), in, &out); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-
-		st, err := handlers.ProtoToStruct(attr)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
-		}
-		out.Attributes = st
 	}
 	return &out, nil
 }
@@ -1715,7 +1712,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if err != nil {
 			badFields[globals.TypeField] = "Unknown type provided."
 		} else {
-			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
@@ -1760,7 +1757,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 
-			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {

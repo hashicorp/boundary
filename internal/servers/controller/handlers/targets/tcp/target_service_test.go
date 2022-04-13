@@ -133,7 +133,7 @@ func TestGet(t *testing.T) {
 		Type:                   tcp.Subtype.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		HostSourceIds:          []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
-		Attributes:             new(structpb.Struct),
+		Attrs:                  &pb.Target_TcpTargetAttributes{},
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(1),
 		AuthorizedActions:      testAuthorizedActions,
@@ -227,7 +227,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
 			Type:                   tcp.Subtype.String(),
-			Attributes:             new(structpb.Struct),
+			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
 			AuthorizedActions:      testAuthorizedActions,
@@ -243,7 +243,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
 			Type:                   tcp.Subtype.String(),
-			Attributes:             new(structpb.Struct),
+			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
 			AuthorizedActions:      testAuthorizedActions,
@@ -323,7 +323,7 @@ func TestList(t *testing.T) {
 				require.Nil(item.SessionMaxSeconds)
 				require.Nil(item.SessionConnectionLimit)
 				require.Empty(item.WorkerFilter)
-				require.Nil(item.Attributes)
+				require.Nil(item.Attrs)
 			}
 		})
 	}
@@ -447,9 +447,11 @@ func TestCreate(t *testing.T) {
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
 				Type:        tcp.Subtype.String(),
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"default_port": structpb.NewNumberValue(2),
-				}},
+				Attrs: &pb.Target_TcpTargetAttributes{
+					TcpTargetAttributes: &pb.TcpTargetAttributes{
+						DefaultPort: wrapperspb.UInt32(2),
+					},
+				},
 				WorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			res: &pbs.CreateTargetResponse{
@@ -460,9 +462,11 @@ func TestCreate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        tcp.Subtype.String(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(1),
 					AuthorizedActions:      testAuthorizedActions,
@@ -476,9 +480,11 @@ func TestCreate(t *testing.T) {
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
 				Type:        tcp.Subtype.String(),
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"default_port": structpb.NewNumberValue(0),
-				}},
+				Attrs: &pb.Target_TcpTargetAttributes{
+					TcpTargetAttributes: &pb.TcpTargetAttributes{
+						DefaultPort: wrapperspb.UInt32(2),
+					},
+				},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -654,9 +660,11 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        tcp.Subtype.String(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
@@ -689,9 +697,11 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        tcp.Subtype.String(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					HostSourceIds:          hostSourceIds,
@@ -728,9 +738,11 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateTargetRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"default_port"}},
 				Item: &pb.Target{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(0),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(0),
+						},
+					},
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -776,9 +788,11 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        tcp.Subtype.String(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					HostSourceIds:          hostSourceIds,
@@ -809,9 +823,11 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        tcp.Subtype.String(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
 					HostSourceIds:          hostSourceIds,
@@ -841,9 +857,11 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("default"),
 					Description: wrapperspb.String("notignored"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"default_port": structpb.NewNumberValue(2),
-					}},
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(2),
+						},
+					},
 					Type:                   tcp.Subtype.String(),
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,

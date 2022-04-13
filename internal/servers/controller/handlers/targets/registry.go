@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,11 +22,14 @@ type Attributes interface {
 	Vet() map[string]string
 }
 
-type attributeFunc func(target.Target) Attributes
+type attributeFunc func(interface{}) Attributes
+
+type setAttributeFunc func(target.Target, *pb.Target) error
 
 type registryEntry struct {
 	maskManager handlers.MaskManager
 	attrFunc    attributeFunc
+	setAttrFunc setAttributeFunc
 }
 
 type registry struct {
@@ -56,45 +60,39 @@ func (r registry) maskManager(s subtypes.Subtype) (handlers.MaskManager, error) 
 
 // newAttribute creates an Attribute for the given subtype. It delegates the
 // allocation of the Attribute to the registered attrFunc for the given
-// subtype. An error is returned if the provided subtype is not registered. It
-// supports the options of:
-//
-// - withTarget: The Attribute will be initialized based on the given
-// target.Target. This initialization is delegated to the attrFunc.
-//
-// - withStruct: The Attribute will be initialized based on the given
-// structpb.Struct. This is *not* delegated.
-//
-// These two options are mutually exclusive. If both are provided, and error is returned.
-// If no options are provided an empty Attribute will be returned.
-func (r registry) newAttribute(s subtypes.Subtype, opt ...option) (Attributes, error) {
+// subtype. An error is returned if the provided subtype is not registered
+func (r registry) newAttribute(s subtypes.Subtype, m interface{}) (Attributes, error) {
 	re, err := r.get(s)
 	if err != nil {
 		return nil, err
 	}
 
-	opts := getOpts(opt...)
-	if opts.withTarget != nil && opts.withStruct != nil {
-		return nil, fmt.Errorf("cannot use both withTarget and withStruct")
-	}
-
-	attr := re.attrFunc(opts.withTarget)
-	if opts.withStruct != nil {
-		if err := handlers.StructToProto(opts.withStruct, attr); err != nil {
-			return nil, fmt.Errorf("Provided attributes don't match expected format.")
-		}
-	}
+	attr := re.attrFunc(m)
 
 	return attr, nil
+}
+
+// setAttributes is used to set the Attrs field on a pb.Target. It delegates the
+// setting of the specific attribute type to the registered setAttributeFunc for
+// the given subtype. An error is returned if the provided subtype is not
+// registered.
+func (r registry) setAttributes(s subtypes.Subtype, in target.Target, out *pb.Target) error {
+	re, err := r.get(s)
+	if err != nil {
+		return err
+	}
+
+	return re.setAttrFunc(in, out)
 }
 
 var subtypeRegistry = registry{}
 
 // Register registers a subtype for used by the service handler.
-func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc) {
+func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc) {
 	if _, existed := subtypeRegistry.LoadOrStore(s, &registryEntry{
 		maskManager: maskManager,
 		attrFunc:    af,
+		setAttrFunc: sf,
 	}); existed {
 		panic(fmt.Sprintf("subtype %s already registered", s))
 	}
