@@ -49,7 +49,7 @@ service AuthTokenService {
 }
 
 message GetAuthTokenRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message GetAuthTokenResponse {
@@ -57,17 +57,17 @@ message GetAuthTokenResponse {
 }
 
 message ListAuthTokensRequest {
-  string scope_id = 1 [json_name="scope_id"];
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  string scope_id = 1 [json_name="scope_id"];  // @gotags: `class:"public"`
+  bool recursive = 20 [json_name="recursive"];  // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"];  // @gotags: `class:"public"`
 }
 
 message ListAuthTokensResponse {
-  repeated resources.authtokens.v1.AuthToken items = 1;
+  repeated resources.authtokens.v1.AuthToken items = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteAuthTokenRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteAuthTokenResponse {}

@@ -29,29 +29,29 @@ type AuthToken struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Auth Token.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Scope in which this Auth Token was generated.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
+	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The token value, which will only be populated after authentication and is only ever visible to the end user whose login request resulted in this Auth Token being created.
-	Token string `protobuf:"bytes,40,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,40,opt,name=token,proto3" json:"token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The ID of the User associated with this Auth Token.
-	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the Auth Method associated with this Auth Token.
-	AuthMethodId string `protobuf:"bytes,60,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty"`
+	AuthMethodId string `protobuf:"bytes,60,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the Account associated with this Auth Token.
-	AccountId string `protobuf:"bytes,70,opt,name=account_id,proto3" json:"account_id,omitempty"`
+	AccountId string `protobuf:"bytes,70,opt,name=account_id,proto3" json:"account_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,80,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,80,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,90,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,90,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The approximate time this Auth Token was last used.
-	ApproximateLastUsedTime *timestamppb.Timestamp `protobuf:"bytes,100,opt,name=approximate_last_used_time,proto3" json:"approximate_last_used_time,omitempty"`
+	ApproximateLastUsedTime *timestamppb.Timestamp `protobuf:"bytes,100,opt,name=approximate_last_used_time,proto3" json:"approximate_last_used_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this Auth Token expires.
-	ExpirationTime *timestamppb.Timestamp `protobuf:"bytes,110,opt,name=expiration_time,proto3" json:"expiration_time,omitempty"`
+	ExpirationTime *timestamppb.Timestamp `protobuf:"bytes,110,opt,name=expiration_time,proto3" json:"expiration_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *AuthToken) Reset() {
