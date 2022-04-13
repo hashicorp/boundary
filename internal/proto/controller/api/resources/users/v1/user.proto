@@ -11,61 +11,61 @@ import "controller/custom_options/v1/options.proto";
 
 message Account {
   // Output only. The ID of the Account.
-  string id = 10;
+  string id = 10; // @gotags: `class:"public"`
 
   // Output only. The Scope containing the Account.
-  string scope_id = 20 [json_name = "scope_id"];
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
 }
 
 // User contains all fields related to a User resource
 message User {
   // Output only. The ID of the User.
-  string id = 10;
+  string id = 10; // @gotags: `class:"public"`
 
   // The ID of the Scope this resource is in.
-  string scope_id = 20 [json_name = "scope_id"];
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
 
   // Optional name for identification purposes.
-  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "name" }];
+  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "name" }]; // @gotags: `class:"sensitive"`
 
   // Optional user-set description for identification purposes.
-  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "description" }];
+  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "description" }]; // @gotags: `class:"sensitive"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"];
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"];
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 80;
+  uint32 version = 80; // @gotags: `class:"public"`
 
   // Output only. Contains the list of Account IDs linked to this User.
-  repeated string account_ids = 90 [json_name = "account_ids"];
+  repeated string account_ids = 90 [json_name = "account_ids"]; // @gotags: `class:"public"`
 
   // Output only. The Accounts linked to this User.
   repeated Account accounts = 100;
 
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"];
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 
   // Output only. login_name is a string that maps to the user's account "login
   // name" from the scope's primary auth method
-  string login_name = 110 [json_name = "login_name"];
+  string login_name = 110 [json_name = "login_name"]; // @gotags: `class:"sensitive"`
 
   // Output only. full_name is a string that maps to the user's account name
   // from the scope's primary auth method
-  string full_name = 120 [json_name = "full_name"];
+  string full_name = 120 [json_name = "full_name"]; // @gotags: `class:"sensitive"`
 
   // Output only. email is a string that maps to the user's account email from
   // the scope's primary auth method
-  string email = 130 [json_name = "email"];
+  string email = 130 [json_name = "email"]; // @gotags: `class:"sensitive"`
 
   // Output only. primary_account_id is a string that maps to the user's account
   // public_id from the scope's primary auth method
-  string primary_account_id = 140 [json_name = "primary_account_id"];
+  string primary_account_id = 140 [json_name = "primary_account_id"]; // @gotags: `class:"public"`
 }
