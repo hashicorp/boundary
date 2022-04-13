@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
+const domain = "target"
+
 // NewFunc is a function that creates a Target with the provided scope and options.
 type NewFunc func(scopeId string, opt ...Option) (Target, error)
 
@@ -32,8 +34,7 @@ type registryEntry struct {
 }
 
 type registry struct {
-	m        map[subtypes.Subtype]*registryEntry
-	subtypes *subtypes.Registry
+	m map[subtypes.Subtype]*registryEntry
 
 	sync.RWMutex
 }
@@ -47,7 +48,7 @@ func (r *registry) set(s subtypes.Subtype, entry *registryEntry) {
 		panic(fmt.Sprintf("target subtype %s already registered", s))
 	}
 
-	if err := r.subtypes.Register(s, entry.prefix); err != nil {
+	if err := subtypes.Register(domain, s, entry.prefix); err != nil {
 		panic(err)
 	}
 
@@ -106,29 +107,24 @@ func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
 }
 
 var subtypeRegistry = registry{
-	m:        make(map[subtypes.Subtype]*registryEntry),
-	subtypes: subtypes.NewRegistry(),
+	m: make(map[subtypes.Subtype]*registryEntry),
 }
 
 // SubtypeFromType returns the Subtype from the provided string or if
 // no Subtype was registered with that string Unknown is returned.
 func SubtypeFromType(t string) subtypes.Subtype {
-	subtypeRegistry.RLock()
-	defer subtypeRegistry.RUnlock()
-	return subtypeRegistry.subtypes.SubtypeFromType(t)
+	return subtypes.SubtypeFromType(domain, t)
 }
 
 // SubtypeFromId returns the Subtype from the provided id if the id's prefix
 // was registered with a Subtype. Otherwise Unknown is returned.
 func SubtypeFromId(id string) subtypes.Subtype {
-	subtypeRegistry.RLock()
-	defer subtypeRegistry.RUnlock()
-	return subtypeRegistry.subtypes.SubtypeFromId(id)
+	return subtypes.SubtypeFromId(domain, id)
 }
 
 // Prefixes returns the list of all known target Prefixes.
 func Prefixes() []string {
-	return subtypeRegistry.subtypes.Prefixes()
+	return subtypes.Prefixes(domain)
 }
 
 // New creates a Target of the given subtype and scopeId.

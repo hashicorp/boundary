@@ -169,7 +169,13 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		tcr, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[i].Name))
+		tcr, err = tarClient.Create(
+			tc.Context(),
+			"tcp",
+			proj.GetPublicId(),
+			targets.WithName(expected[i].Name),
+			targets.WithTcpTargetDefaultPort(uint32(i)),
+		)
 		require.NoError(err)
 		expected[i] = tcr.Item
 	}
@@ -180,6 +186,13 @@ func TestList(t *testing.T) {
 	filterItem := ul.Items[3]
 	ul, err = tarClient.List(tc.Context(), proj.GetPublicId(),
 		targets.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
+
+	filterstr := fmt.Sprintf(`"/item/attributes/default_port"==%d`, uint32(filterItem.Attributes["default_port"].(float64)))
+	ul, err = tarClient.List(tc.Context(), proj.GetPublicId(),
+		targets.WithFilter(filterstr))
 	require.NoError(err)
 	assert.Len(ul.Items, 1)
 	assert.Equal(filterItem.Id, ul.Items[0].Id)

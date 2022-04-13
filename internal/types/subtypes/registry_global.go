@@ -70,6 +70,22 @@ func (r *registry) subtypeFromId(domain, id string) Subtype {
 	return subtype
 }
 
+func (r *registry) prefixes(domain string) []string {
+	r.RLock()
+	defer r.RUnlock()
+
+	subtypePrefixes, ok := r.subtypesPrefixes[domain]
+	if !ok {
+		return nil
+	}
+
+	ret := make([]string, 0, len(subtypePrefixes))
+	for p := range subtypePrefixes {
+		ret = append(ret, p)
+	}
+	return ret
+}
+
 // Register registers all the prefixes for a provided Subtype. Register returns
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
@@ -121,6 +137,11 @@ func SubtypeFromType(domain, t string) Subtype {
 // was registered with a Subtype. Otherwise Unknown is returned.
 func SubtypeFromId(domain, id string) Subtype {
 	return globalRegistry.subtypeFromId(domain, id)
+}
+
+// Prefixes returns the list of all known Prefixes for a domain.
+func Prefixes(domain string) []string {
+	return globalRegistry.prefixes(domain)
 }
 
 // Register registers all the prefixes for a provided Subtype.  Register returns

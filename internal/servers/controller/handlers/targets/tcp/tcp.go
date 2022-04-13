@@ -30,16 +30,30 @@ func (a *attribute) Vet() map[string]string {
 	return badFields
 }
 
-func newAttribute(t target.Target) targets.Attributes {
+func newAttribute(m interface{}) targets.Attributes {
 	a := &attribute{
 		&pb.TcpTargetAttributes{},
 	}
-	if t != nil {
-		if t.GetDefaultPort() > 0 {
-			a.DefaultPort = &wrappers.UInt32Value{Value: t.GetDefaultPort()}
-		}
+	if tcpAttr, ok := m.(*pb.Target_TcpTargetAttributes); ok {
+		a.TcpTargetAttributes = tcpAttr.TcpTargetAttributes
 	}
 	return a
+}
+
+func setAttributes(t target.Target, out *pb.Target) error {
+	if t == nil {
+		return nil
+	}
+
+	attrs := &pb.Target_TcpTargetAttributes{
+		TcpTargetAttributes: &pb.TcpTargetAttributes{},
+	}
+	if t.GetDefaultPort() > 0 {
+		attrs.TcpTargetAttributes.DefaultPort = &wrappers.UInt32Value{Value: t.GetDefaultPort()}
+	}
+
+	out.Attrs = attrs
+	return nil
 }
 
 func init() {
@@ -53,5 +67,5 @@ func init() {
 		panic(err)
 	}
 
-	targets.Register(tcp.Subtype, maskManager, newAttribute)
+	targets.Register(tcp.Subtype, maskManager, newAttribute, setAttributes)
 }
