@@ -15,8 +15,6 @@ These parameters are shared across all sink types:
 
 - `event_types` - Specifies a list of event types that will be sent to the sink.
   Can be `*`, `error`, `system`, `observation` or `audit`.  
-  
-  Note: `audit` events are a WIP and will only be emitted if they are both enabled and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true. We anticipate many changes for audit events before they are generally available including what data is included and different options for redacting/encrypting that data.
 
 - `event_source_url` - Specifies an optional event source URL for the sink.  If
   not specified a default source will be composed of the
