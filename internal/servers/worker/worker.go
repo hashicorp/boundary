@@ -324,10 +324,29 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 			},
 		},
 		NextProtos: []string{"http/1.1"},
-		ServerName: sessionId,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  certPool,
 		MinVersion: tls.VersionTLS13,
+
+		// These two are set this way so we can make use of VerifyConnection,
+		// which we set on this TLS config below. We are not skipping
+		// verification!
+		ClientAuth:         tls.RequireAnyClientCert,
+		InsecureSkipVerify: true,
+	}
+
+	// We disable normal DNS SAN behavior as we don't rely on DNS or IP
+	// addresses for security and want to avoid issues with including localhost
+	// etc.
+	verifyOpts := x509.VerifyOptions{
+		DNSName: sessionId,
+		Roots:   certPool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}
+	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
+		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
+		return err
 	}
 
 	si := &session.Info{

@@ -462,10 +462,29 @@ func (c *Command) Run(args []string) (retCode int) {
 				Leaf:        parsedCert,
 			},
 		},
-		RootCAs:    certPool,
 		ServerName: workerHost,
 		MinVersion: tls.VersionTLS13,
 		NextProtos: []string{"http/1.1", c.sessionAuthzData.SessionId},
+
+		// This is set this way so we can make use of VerifyConnection, which we
+		// set on this TLS config below. We are not skipping verification!
+		InsecureSkipVerify: true,
+	}
+
+	// We disable normal DNS SAN behavior as we don't rely on DNS or IP
+	// addresses for security and want to avoid issues with including localhost
+	// etc.
+	verifyOpts := x509.VerifyOptions{
+		DNSName: c.sessionAuthzData.SessionId,
+		Roots:   certPool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}
+	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
+		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
+		return err
 	}
 
 	transport := cleanhttp.DefaultTransport()
