@@ -156,7 +156,12 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	if req.Command != loginCommand {
 		badFields[commandField] = "Invalid command for this auth method type."
 	}
-	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+	tokenType := req.GetType()
+	if tokenType == "" {
+		// Fall back to deprecated field if type is not set
+		tokenType = req.GetTokenType()
+	}
+	tType := strings.ToLower(strings.TrimSpace(tokenType))
 	if tType != "" && tType != "token" && tType != "cookie" {
 		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 	}

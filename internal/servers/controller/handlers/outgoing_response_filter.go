@@ -21,7 +21,7 @@ import (
 const (
 	HttpOnlyCookieName       = "wt-http-token-cookie"
 	JsVisibleCookieName      = "wt-js-token-cookie"
-	tokenTypeField           = "token_type"
+	tokenTypeField           = "type"
 	finalRedirectUrlField    = "final_redirect_url"
 	statusField              = "status"
 	StatusCodeHeader         = "x-http-code"
@@ -93,14 +93,13 @@ func OutgoingResponseFilter(ctx context.Context, w http.ResponseWriter, m proto.
 			return nil
 		}
 		// It's a token response
-		if _, ok := fields[tokenTypeField]; ok {
+		if m.GetType() != "" {
 			aToken := &authtokenpb.AuthToken{}
-			// We may have "token_type" if it's a token, or it may not be a token at
-			// all, so ignore unknown fields
+			// This may not be a token at all, so ignore unknown fields
 			if err := StructToProto(m.GetAttributes(), aToken, WithDiscardUnknownFields(true)); err != nil {
 				return err
 			}
-			tokenType := m.GetAttributes().GetFields()[tokenTypeField].GetStringValue()
+			tokenType := m.GetType()
 			if strings.EqualFold(tokenType, "cookie") {
 				tok := aToken.GetToken()
 				if tok == "" {

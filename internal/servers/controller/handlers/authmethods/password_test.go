@@ -612,7 +612,7 @@ func TestAuthenticate_Password(t *testing.T) {
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
 			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
 			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
-			assert.Equal(tc.wantType, resp.GetAttributes().GetFields()["token_type"].GetStringValue())
+			assert.Equal(tc.wantType, resp.GetType())
 		})
 	}
 }
