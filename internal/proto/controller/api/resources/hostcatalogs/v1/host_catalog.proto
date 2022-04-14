@@ -62,5 +62,5 @@ message HostCatalog {
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];  // @gotags: `class:"public"`
 
 	// Output only. The authorized actions for the scope's collections.
-	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"];
+	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"]; // classified as public via taggable implementation
 }

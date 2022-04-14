@@ -131,7 +131,7 @@ func TestClassification(t *testing.T) {
 					AuthorizedCollectionActions: map[string]*structpb.ListValue{
 						"public-collection_action": {
 							Values: []*structpb.Value{
-								structpb.NewStringValue(encrypt.RedactedData),
+								structpb.NewStringValue("public-collection_action_value"),
 							},
 						},
 					},
