@@ -156,6 +156,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/targets/target.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/target_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/accounts/account.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/account_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/hosts/host.pb.go

@@ -32,9 +32,9 @@ type HostSource struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Host Set.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host Catalog to which this Host Source belongs.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *HostSource) Reset() {
@@ -89,9 +89,9 @@ type HostSet struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Host Set.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host Catalog to which this Host Set belongs.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *HostSet) Reset() {
@@ -146,17 +146,17 @@ type CredentialSource struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the Credential. May be empty if the credential is dynamically generated from a library.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The name of the Credential source.
-	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The description of the Credential source.
-	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Credential Store to which this Credential source belongs.
-	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"`
+	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The type of the credential source (e.g. "vault"; not the type of the credential itself).
-	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The type of the credential, empty if unspecified.
-	CredentialType string `protobuf:"bytes,70,opt,name=credential_type,json=credentialType,proto3" json:"credential_type,omitempty"`
+	CredentialType string `protobuf:"bytes,70,opt,name=credential_type,json=credentialType,proto3" json:"credential_type,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CredentialSource) Reset() {
@@ -239,15 +239,15 @@ type CredentialLibrary struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the Credential Library.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only.  The name of the Credential Library.
-	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The description of the Credential Library.
-	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,30,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Credential Store to which this Credential Library belongs.
-	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"`
+	CredentialStoreId string `protobuf:"bytes,40,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The type of the credential library.
-	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,60,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CredentialLibrary) Reset() {
@@ -325,7 +325,7 @@ type SessionSecret struct {
 
 	// Output only. The base64-encoded value representing the raw bytes from the
 	// credential provider.
-	Raw string `protobuf:"bytes,10,opt,name=raw,proto3" json:"raw,omitempty"`
+	Raw string `protobuf:"bytes,10,opt,name=raw,proto3" json:"raw,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The decoded raw string, if a JSON object.
 	Decoded *structpb.Struct `protobuf:"bytes,20,opt,name=decoded,proto3" json:"decoded,omitempty"`
 }
@@ -463,52 +463,52 @@ type Target struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the resource.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Required name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of the Target.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The IDs of the Host Sets associated with this Target.
-	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty"`
+	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host Sets associated with this Target.
 	HostSets []*HostSet `protobuf:"bytes,110,rep,name=host_sets,proto3" json:"host_sets,omitempty"`
 	// Output only. The IDs of the Host Sources associated with this Target.
-	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty"`
+	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The Host Sources associated with this Target.
 	HostSources []*HostSource `protobuf:"bytes,430,rep,name=host_sources,proto3" json:"host_sources,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
-	SessionMaxSeconds *wrapperspb.UInt32Value `protobuf:"bytes,120,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty"`
+	SessionMaxSeconds *wrapperspb.UInt32Value `protobuf:"bytes,120,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"`
+	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
-	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"`
+	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
 	//
 	// Deprecated: Do not use.
-	ApplicationCredentialLibraryIds []string `protobuf:"bytes,150,rep,name=application_credential_library_ids,proto3" json:"application_credential_library_ids,omitempty"`
+	ApplicationCredentialLibraryIds []string `protobuf:"bytes,150,rep,name=application_credential_library_ids,proto3" json:"application_credential_library_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
 	//
 	// Deprecated: Do not use.
 	ApplicationCredentialLibraries []*CredentialLibrary `protobuf:"bytes,180,rep,name=application_credential_libraries,proto3" json:"application_credential_libraries,omitempty"`
 	// Output only. The IDs of the application credential source ids associated with this Target.
-	ApplicationCredentialSourceIds []string `protobuf:"bytes,400,rep,name=application_credential_source_ids,proto3" json:"application_credential_source_ids,omitempty"`
+	ApplicationCredentialSourceIds []string `protobuf:"bytes,400,rep,name=application_credential_source_ids,proto3" json:"application_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The application credential sources associated with this Target.
 	ApplicationCredentialSources []*CredentialSource `protobuf:"bytes,410,rep,name=application_credential_sources,proto3" json:"application_credential_sources,omitempty"`
 	// Output only. The IDs of the egress credential source ids associated with this Target.
-	EgressCredentialSourceIds []string `protobuf:"bytes,500,rep,name=egress_credential_source_ids,proto3" json:"egress_credential_source_ids,omitempty"`
+	EgressCredentialSourceIds []string `protobuf:"bytes,500,rep,name=egress_credential_source_ids,proto3" json:"egress_credential_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The egress credential sources associated with this Target.
 	EgressCredentialSources []*CredentialSource `protobuf:"bytes,510,rep,name=egress_credential_sources,proto3" json:"egress_credential_sources,omitempty"`
 	// Types that are assignable to Attrs:
@@ -516,7 +516,7 @@ type Target struct {
 	//	*Target_TcpTargetAttributes
 	Attrs isTarget_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Target) Reset() {
@@ -759,7 +759,7 @@ type TcpTargetAttributes struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The default TCP port that will be used when connecting to the endpoint unless overridden by a Host Set or Host.
-	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty"`
+	DefaultPort *wrapperspb.UInt32Value `protobuf:"bytes,10,opt,name=default_port,proto3" json:"default_port,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *TcpTargetAttributes) Reset() {
@@ -869,7 +869,7 @@ type SessionAuthorizationData struct {
 	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
 	ConnectionLimit int32 `protobuf:"varint,90,opt,name=connection_limit,proto3" json:"connection_limit,omitempty"`
 	// Output only. The certificate to use when connecting. Raw DER bytes.
-	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty" class:"secret"` // @gotags: `class:"secret"`
+	Certificate []byte `protobuf:"bytes,120,opt,name=certificate,proto3" json:"certificate,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
 	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
@@ -1135,9 +1135,9 @@ type UserPasswordCredential struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Username of the credential
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Password of the credential
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
 func (x *UserPasswordCredential) Reset() {
@@ -1267,7 +1267,7 @@ var file_controller_api_resources_targets_v1_target_proto_rawDesc = []byte{
 	0x37, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x18, 0x28, 0x20,
 	0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x52, 0x0a, 0x63, 0x72,
-	0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x22, 0xd9, 0x0f, 0x0a, 0x06, 0x54, 0x61, 0x72,
+	0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x22, 0xc9, 0x0f, 0x0a, 0x06, 0x54, 0x61, 0x72,
 	0x67, 0x65, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x02, 0x69, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x18,
 	0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x12,
@@ -1374,12 +1374,11 @@ var file_controller_api_resources_targets_v1_target_proto_rawDesc = []byte{
 	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x2e,
 	0x76, 0x31, 0x2e, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x53, 0x6f, 0x75,
 	0x72, 0x63, 0x65, 0x52, 0x19, 0x65, 0x67, 0x72, 0x65, 0x73, 0x73, 0x5f, 0x63, 0x72, 0x65, 0x64,
-	0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x5f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x12, 0x5b,
+	0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x5f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x12, 0x4b,
 	0x0a, 0x0a, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x18, 0xc8, 0x01, 0x20,
 	0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x42, 0x1f, 0xa0, 0xda,
-	0x29, 0x01, 0x9a, 0xe3, 0x29, 0x07, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0xfa, 0xd2, 0xe4,
-	0x93, 0x02, 0x0a, 0x12, 0x08, 0x49, 0x4e, 0x54, 0x45, 0x52, 0x4e, 0x41, 0x4c, 0x48, 0x00, 0x52,
+	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x42, 0x0f, 0xa0, 0xda,
+	0x29, 0x01, 0x9a, 0xe3, 0x29, 0x07, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x48, 0x00, 0x52,
 	0x0a, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x12, 0x8c, 0x01, 0x0a, 0x15,
 	0x74, 0x63, 0x70, 0x5f, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x5f, 0x61, 0x74, 0x74, 0x72, 0x69,
 	0x62, 0x75, 0x74, 0x65, 0x73, 0x18, 0xc9, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x38, 0x2e, 0x63,

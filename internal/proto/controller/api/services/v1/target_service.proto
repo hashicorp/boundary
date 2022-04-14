@@ -8,6 +8,9 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/targets/v1/target.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (custom_options.v1.domain) = "target";
 
 service TargetService {
 
@@ -83,7 +86,7 @@ service TargetService {
       summary: "Deletes a Target."
     };
   }
-  
+
   // AuthorizeSession creates authorization information from a given Target.
   rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
     option (google.api.http) = {
@@ -316,7 +319,7 @@ service TargetService {
 }
 
 message GetTargetRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetTargetResponse {
@@ -324,9 +327,9 @@ message GetTargetResponse {
 }
 
 message ListTargetsRequest {
-  string scope_id = 1;
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
 }
 
 message ListTargetsResponse {
@@ -338,12 +341,12 @@ message CreateTargetRequest {
 }
 
 message CreateTargetResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public"`
   resources.targets.v1.Target item = 2;
 }
 
 message UpdateTargetRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.targets.v1.Target item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -353,17 +356,17 @@ message UpdateTargetResponse {
 }
 
 message DeleteTargetRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteTargetResponse {}
 
 message AddTargetHostSetsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_set_ids = 3 [json_name="host_set_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_set_ids = 3 [json_name="host_set_ids"]; // @gotags: `class:"public"`
 }
 
 message AddTargetHostSetsResponse {
@@ -371,11 +374,11 @@ message AddTargetHostSetsResponse {
 }
 
 message SetTargetHostSetsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_set_ids = 3 [json_name="host_set_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_set_ids = 3 [json_name="host_set_ids"]; // @gotags: `class:"public"`
 }
 
 message SetTargetHostSetsResponse {
@@ -383,11 +386,11 @@ message SetTargetHostSetsResponse {
 }
 
 message RemoveTargetHostSetsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_set_ids = 3 [json_name="host_set_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_set_ids = 3 [json_name="host_set_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveTargetHostSetsResponse {
@@ -395,11 +398,11 @@ message RemoveTargetHostSetsResponse {
 }
 
 message AddTargetHostSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name="host_source_ids"]; // @gotags: `class:"public"`
 }
 
 message AddTargetHostSourcesResponse {
@@ -407,11 +410,11 @@ message AddTargetHostSourcesResponse {
 }
 
 message SetTargetHostSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name="host_source_ids"]; // @gotags: `class:"public"`
 }
 
 message SetTargetHostSourcesResponse {
@@ -419,11 +422,11 @@ message SetTargetHostSourcesResponse {
 }
 
 message RemoveTargetHostSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string host_source_ids = 3 [json_name="host_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name="host_source_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveTargetHostSourcesResponse {
@@ -431,11 +434,11 @@ message RemoveTargetHostSourcesResponse {
 }
 
 message AddTargetCredentialLibrariesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"]; // @gotags: `class:"public"`
 }
 
 message AddTargetCredentialLibrariesResponse {
@@ -446,11 +449,11 @@ message AddTargetCredentialLibrariesResponse {
 // credential_library_id field that is not set in the request will result in
 // those fields being cleared.
 message SetTargetCredentialLibrariesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"]; // @gotags: `class:"public"`
 }
 
 message SetTargetCredentialLibrariesResponse {
@@ -458,11 +461,11 @@ message SetTargetCredentialLibrariesResponse {
 }
 
 message RemoveTargetCredentialLibrariesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_library_ids = 3 [json_name="application_credential_library_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveTargetCredentialLibrariesResponse {
@@ -470,12 +473,12 @@ message RemoveTargetCredentialLibrariesResponse {
 }
 
 message AddTargetCredentialSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
-  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"]; // @gotags: `class:"public"`
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"]; // @gotags: `class:"public"`
 }
 
 message AddTargetCredentialSourcesResponse {
@@ -485,12 +488,12 @@ message AddTargetCredentialSourcesResponse {
 // Sets the values for credential sources. Any credential_source_id field that
 // is not set in the request will result in those fields being cleared.
 message SetTargetCredentialSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"];
-  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_ids"]; // @gotags: `class:"public"`
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"]; // @gotags: `class:"public"`
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -498,12 +501,12 @@ message SetTargetCredentialSourcesResponse {
 }
 
 message RemoveTargetCredentialSourcesRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_id"];
-  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string application_credential_source_ids = 3 [json_name="application_credential_source_id"]; // @gotags: `class:"public"`
+  repeated string egress_credential_source_ids = 4 [json_name="egress_credential_source_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveTargetCredentialSourcesResponse {
@@ -512,19 +515,19 @@ message RemoveTargetCredentialSourcesResponse {
 
 message AuthorizeSessionRequest {
   // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 
   // The name of the target. When using this, scope_id or scope_name must be set.
-  string name = 3;
+  string name = 3; // @gotags: `class:"public"`
 
   // The scope ID containing the target, if specifying the target by name.
-  string scope_id = 4;
-  
+  string scope_id = 4; // @gotags: `class:"public"`
+
   // The scope name containing the target, if specifying the target by name.
-  string scope_name = 5;
+  string scope_name = 5; // @gotags: `class:"public"`
 
   // An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
-  string host_id = 2 [json_name="host_id"];
+  string host_id = 2 [json_name="host_id"]; // @gotags: `class:"public"`
 }
 
 message AuthorizeSessionResponse {
