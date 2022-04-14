@@ -345,6 +345,11 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		},
 	}
 	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
+		// Go will not run this without at least one peer certificate, but
+		// doesn't hurt to check
+		if len(cs.PeerCertificates) == 0 {
+			return errors.New("no peer certificates provided")
+		}
 		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 		return err
 	}
