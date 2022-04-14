@@ -102,8 +102,8 @@ func TestAuthMethod_Tags(t *testing.T) {
 					AuthorizedCollectionActions: map[string]*structpb.ListValue{
 						"auth-methods": {
 							Values: []*structpb.Value{
-								structpb.NewStringValue(encrypt.RedactedData),
-								structpb.NewStringValue(encrypt.RedactedData),
+								structpb.NewStringValue("create"),
+								structpb.NewStringValue("list"),
 							},
 						},
 					},
@@ -158,8 +158,8 @@ func TestAuthMethod_Tags(t *testing.T) {
 					AuthorizedCollectionActions: map[string]*structpb.ListValue{
 						"auth-methods": {
 							Values: []*structpb.Value{
-								structpb.NewStringValue(encrypt.RedactedData),
-								structpb.NewStringValue(encrypt.RedactedData),
+								structpb.NewStringValue("create"),
+								structpb.NewStringValue("list"),
 							},
 						},
 					},
