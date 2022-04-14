@@ -48,6 +48,7 @@ import (
 
 const (
 	credentialDomain = "credential"
+	hostDomain       = "host"
 )
 
 var (
@@ -969,7 +970,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
 		// FIXME: read in type from DB rather than rely on prefix
-		switch subtypes.SubtypeFromId("host", hsId) {
+		switch subtypes.SubtypeFromId(hostDomain, hsId) {
 		case static.Subtype:
 			eps, err := staticHostRepo.Endpoints(ctx, hsId)
 			if err != nil {
@@ -2108,7 +2109,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		}
 	}
 	if req.GetHostId() != "" {
-		switch subtypes.SubtypeFromId("host", req.GetHostId()) {
+		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
 		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."
