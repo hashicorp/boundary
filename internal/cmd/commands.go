@@ -34,19 +34,19 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
+	srv := base.NewServer(base.NewCommand(serverCmdUi),
+		base.WithPrometheusRegisterer(prometheus.DefaultRegisterer))
 	Commands = map[string]cli.CommandFactory{
 		"server": func() (cli.Command, error) {
 			return &server.Command{
-				Server: base.NewServer(base.NewCommand(serverCmdUi),
-					base.WithPrometheusRegisterer(prometheus.DefaultRegisterer)),
+				Server:    srv,
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
-				Server: base.NewServer(base.NewCommand(serverCmdUi),
-					base.WithPrometheusRegisterer(prometheus.DefaultRegisterer)),
+				Server:    srv,
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
@@ -321,7 +321,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"database init": func() (cli.Command, error) {
 			return &database.InitCommand{
-				Server: base.NewServer(base.NewCommand(ui), base.WithPrometheusRegisterer(prometheus.DefaultRegisterer)),
+				Server: base.NewServer(base.NewCommand(ui)),
 			}, nil
 		},
 		"database migrate": func() (cli.Command, error) {
