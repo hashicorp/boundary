@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -124,13 +123,5 @@ func Test_GetOpts(t *testing.T) {
 		assert.False(testOpts.withEventGating)
 		opts := getOpts(WithEventGating(true))
 		assert.True(opts.withEventGating)
-	})
-	t.Run("withPrometheusRegisterer", func(t *testing.T) {
-		assert := assert.New(t)
-		pmr := prometheus.NewRegistry()
-		opts := getOpts(WithPrometheusRegisterer(pmr))
-		testOpts := getDefaultOptions()
-		testOpts.withPrometheusRegisterer = pmr
-		assert.Equal(opts, testOpts)
 	})
 }

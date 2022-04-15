@@ -63,6 +63,10 @@ const (
 	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
 
+func init() {
+	metric.InitializeBuildInfo(prometheus.DefaultRegisterer)
+}
+
 type Server struct {
 	*Command
 
@@ -135,12 +139,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server.
-// The WithPrometheusRegisterer Option uses the passed in registry to initialize
-// the build info collectors.  All other Options are ignored.
-func NewServer(cmd *Command, opt ...Option) *Server {
-	opts := getOpts(opt...)
-	metric.InitializeBuildInfo(opts.withPrometheusRegisterer)
-
+func NewServer(cmd *Command) *Server {
 	return &Server{
 		Command:              cmd,
 		InfoKeys:             make([]string, 0, 20),
@@ -149,7 +148,7 @@ func NewServer(cmd *Command, opt ...Option) *Server {
 		ReloadFuncsLock:      new(sync.RWMutex),
 		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
 		StderrLock:           new(sync.Mutex),
-		PrometheusRegisterer: opts.withPrometheusRegisterer,
+		PrometheusRegisterer: prometheus.DefaultRegisterer,
 	}
 }
 
