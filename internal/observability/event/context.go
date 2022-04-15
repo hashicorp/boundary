@@ -3,12 +3,9 @@ package event
 import (
 	"context"
 	"fmt"
-	"os"
 	"runtime"
-	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -170,11 +167,6 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 // WithRequest, WithResponse, WithAuth, WithId, WithFlush and WithRequestInfo.
 // All other options are ignored.
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
-	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
-	// generally available.
-	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
-		return nil
-	}
 	const op = "event.WriteAudit"
 	if ctx == nil {
 		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
