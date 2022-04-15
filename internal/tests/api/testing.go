@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/eventlogger/filters/encrypt"
@@ -31,18 +32,11 @@ func GetEventDetails(t *testing.T, e *cloudevents.Event, messageType string) map
 	require.NotNil(e)
 	require.NotEmpty(messageType)
 	data, ok := e.Data.(map[string]interface{})
-	if !ok {
-		return nil
-	}
+	require.Truef(ok, "event was not a map[string]interface")
 	msgType, ok := data[messageType].(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
+	require.Truef(ok, "event data did not contain a %q.  Current keys: %q", messageType, reflect.ValueOf(data).MapKeys())
 	details, ok := msgType["details"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
+	require.Truef(ok, `%q of event did not contain "details"`, messageType)
 	return details
 }
 
