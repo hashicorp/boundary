@@ -368,6 +368,10 @@
       {
         "title": "Metrics",
         "path": "operations/metrics"
+      },
+      {
+        "title": "Health Endpoint",
+        "path": "operations/health"
       }
     ]
   },
