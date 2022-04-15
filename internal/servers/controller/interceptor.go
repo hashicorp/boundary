@@ -252,7 +252,7 @@ func auditRequestInterceptor(
 func auditResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditRequestInterceptor"
+	const op = "controller.auditResponseInterceptor"
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
