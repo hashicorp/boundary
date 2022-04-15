@@ -63,6 +63,10 @@ type Worker struct {
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
 	updateTags ua.Bool
+
+	// Test-specific options
+	TestOverrideX509VerifyDnsName  string
+	TestOverrideX509VerifyCertPool *x509.CertPool
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -343,6 +347,12 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 			x509.ExtKeyUsageClientAuth,
 			x509.ExtKeyUsageServerAuth,
 		},
+	}
+	if w.TestOverrideX509VerifyCertPool != nil {
+		verifyOpts.Roots = w.TestOverrideX509VerifyCertPool
+	}
+	if w.TestOverrideX509VerifyDnsName != "" {
+		verifyOpts.DNSName = w.TestOverrideX509VerifyDnsName
 	}
 	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
 		// Go will not run this without at least one peer certificate, but

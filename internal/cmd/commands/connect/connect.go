@@ -2,9 +2,7 @@ package connect
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -437,60 +435,18 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
+	tlsConf, err := ClientTlsConfig(c.sessionAuthzData, workerHost)
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
-		return base.CommandUserError
+		c.PrintCliError(fmt.Errorf("Error creating TLS configuration: %w", err))
+		return base.CommandCliError
 	}
-
-	c.expiration = parsedCert.NotAfter
+	c.expiration = tlsConf.Certificates[0].Leaf.NotAfter
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
 	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
 	defer c.proxyCancel()
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(parsedCert)
-
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{c.sessionAuthzData.Certificate},
-				PrivateKey:  ed25519.PrivateKey(c.sessionAuthzData.PrivateKey),
-				Leaf:        parsedCert,
-			},
-		},
-		ServerName: workerHost,
-		MinVersion: tls.VersionTLS13,
-		NextProtos: []string{"http/1.1", c.sessionAuthzData.SessionId},
-
-		// This is set this way so we can make use of VerifyConnection, which we
-		// set on this TLS config below. We are not skipping verification!
-		InsecureSkipVerify: true,
-	}
-
-	// We disable normal DNS SAN behavior as we don't rely on DNS or IP
-	// addresses for security and want to avoid issues with including localhost
-	// etc.
-	verifyOpts := x509.VerifyOptions{
-		DNSName: c.sessionAuthzData.SessionId,
-		Roots:   certPool,
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-	}
-	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
-		// Go will not run this without at least one peer certificate, but
-		// doesn't hurt to check
-		if len(cs.PeerCertificates) == 0 {
-			return errors.New("no peer certificates provided")
-		}
-		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
-		return err
-	}
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
