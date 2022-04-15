@@ -166,10 +166,6 @@ func Test_WrapWithOptionals(t *testing.T) {
 
 func Test_WrapWithEventsHandler(t *testing.T) {
 	// This cannot run in parallel because it relies on a pkg var common.privateNets
-
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
 	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	testKms := kms.TestKms(t, conn, wrapper)
@@ -353,9 +349,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 }
 
 func Test_startGatedEvents(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
 	testStartTime := time.Now()
 	tests := []struct {
 		name             string
@@ -412,9 +405,6 @@ func Test_startGatedEvents(t *testing.T) {
 }
 
 func Test_flushGatedEvents(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
 	testStartTime := time.Now()
 	tests := []struct {
 		name             string

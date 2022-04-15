@@ -140,9 +140,6 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 }
 
 func TestVerify_AuditEvent(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
 	eventConfig := event.TestEventerConfig(t, "Test_Verify", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{

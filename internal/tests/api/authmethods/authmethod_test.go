@@ -24,10 +24,6 @@ import (
 const global = "global"
 
 func TestCrud(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
-
 	assert, require := assert.New(t), require.New(t)
 	eventConfig := event.TestEventerConfig(t, "TestCrud", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
@@ -253,10 +249,6 @@ func TestList(t *testing.T) {
 }
 
 func TestCustomMethods(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
-
 	assert, require := assert.New(t), require.New(t)
 	eventConfig := event.TestEventerConfig(t, "TestCrud", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
