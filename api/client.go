@@ -678,7 +678,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	req.Header.Set("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
-		req = req.WithContext(ctx)
+		req = req.Clone(ctx)
 	}
 
 	ret := &retryablehttp.Request{
@@ -735,7 +735,7 @@ func (c *Client) Do(r *retryablehttp.Request, opt ...Option) (*Response, error) 
 		// this as it will make reading the response body impossible
 		_ = cancel
 	}
-	r.Request = r.Request.WithContext(ctx)
+	r.Request = r.Request.Clone(ctx)
 
 	if backoff == nil {
 		backoff = retryablehttp.LinearJitterBackoff
