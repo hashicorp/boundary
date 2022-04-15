@@ -22,10 +22,6 @@ import (
 
 // TestAuthenticate tests the api calls and the audit events it should produce
 func TestAuthenticate(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
-
 	assert, require := assert.New(t), require.New(t)
 	eventConfig := event.TestEventerConfig(t, "TestAuthenticateAuditEntry", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
