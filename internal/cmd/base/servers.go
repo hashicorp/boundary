@@ -134,12 +134,10 @@ type Server struct {
 	StatusGracePeriodDuration time.Duration
 }
 
-// The only option used here is WithPrometheusRegisterer; all others are ignored.
+// NewServer creates a new Server.
+// The WithPrometheusRegisterer Option uses the passed in registry to initialize
+// the build info collectors.  All other Options are ignored.
 func NewServer(cmd *Command, opt ...Option) *Server {
-	// Create a new prometheus registry here to avoid "duplicate metrics collector
-	// registration" panics in tests where new servers are called consecutively.
-	// prometheus.DefaultRegisterer and prometheus.DefaultGatherer vars need to be
-	// assigned for promhttp package to work correctly.
 	opts := getOpts(opt...)
 	metric.InitializeBuildInfo(opts.withPrometheusRegisterer)
 
