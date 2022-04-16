@@ -2,9 +2,6 @@ package helper
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -18,6 +15,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -54,11 +52,12 @@ const (
 
 // TestSession represents an authorized session.
 type TestSession struct {
-	sessionId       string
-	workerAddr      string
-	transport       *http.Transport
-	tofuToken       string
-	connectionsLeft int32
+	SessionId        string
+	WorkerAddr       string
+	Transport        *http.Transport
+	tofuToken        string
+	connectionsLeft  int32
+	SessionAuthzData *targetspb.SessionAuthorizationData
 }
 
 // NewTestSession authorizes a session and creates all of the data
@@ -76,43 +75,27 @@ func NewTestSession(
 	require.NotNil(sar)
 
 	s := &TestSession{
-		sessionId: sar.Item.SessionId,
+		SessionId: sar.Item.SessionId,
 	}
 	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	require.NoError(err)
 	require.NotZero(marshaled)
 
-	sessionAuthzData := new(targetspb.SessionAuthorizationData)
-	err = proto.Unmarshal(marshaled, sessionAuthzData)
+	s.SessionAuthzData = new(targetspb.SessionAuthorizationData)
+	err = proto.Unmarshal(marshaled, s.SessionAuthzData)
 	require.NoError(err)
-	require.NotZero(sessionAuthzData.GetWorkerInfo())
+	require.NotZero(s.SessionAuthzData.GetWorkerInfo())
 
-	s.workerAddr = sessionAuthzData.GetWorkerInfo()[0].GetAddress()
+	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
-	parsedCert, err := x509.ParseCertificate(sessionAuthzData.Certificate)
+	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, "")
 	require.NoError(err)
-	require.Len(parsedCert.DNSNames, 1)
 
-	certPool := x509.NewCertPool()
-	certPool.AddCert(parsedCert)
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{sessionAuthzData.Certificate},
-				PrivateKey:  ed25519.PrivateKey(sessionAuthzData.PrivateKey),
-				Leaf:        parsedCert,
-			},
-		},
-		RootCAs:    certPool,
-		ServerName: parsedCert.DNSNames[0],
-		MinVersion: tls.VersionTLS13,
-	}
-
-	s.transport = cleanhttp.DefaultTransport()
-	s.transport.DisableKeepAlives = false
-	s.transport.TLSClientConfig = tlsConf
-	s.transport.IdleConnTimeout = 0
+	s.Transport = cleanhttp.DefaultTransport()
+	s.Transport.DisableKeepAlives = false
+	s.Transport.TLSClientConfig = tlsConf
+	s.Transport.IdleConnTimeout = 0
 
 	return s
 }
@@ -126,10 +109,10 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 	require := require.New(t)
 	conn, resp, err := websocket.Dial(
 		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", s.workerAddr),
+		fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
-				Transport: s.transport,
+				Transport: s.Transport,
 			},
 			Subprotocols: []string{globals.TcpProxyV1},
 		},
@@ -184,7 +167,7 @@ func (s *TestSession) ExpectConnectionStateOnController(
 	connectionRepo, err := connectionRepoFn()
 	require.NoError(err)
 
-	conns, err := connectionRepo.ListConnectionsBySessionId(ctx, s.sessionId)
+	conns, err := connectionRepo.ListConnectionsBySessionId(ctx, s.SessionId)
 	require.NoError(err)
 	// To avoid misleading passing tests, we require this test be used
 	// with sessions with connections..
@@ -290,7 +273,7 @@ func (s *TestSession) ExpectConnectionStateOnWorker(
 func (s *TestSession) testWorkerConnectionInfo(t *testing.T, tw *worker.TestWorker) map[string]worker.TestConnectionInfo {
 	t.Helper()
 	require := require.New(t)
-	si, ok := tw.LookupSession(s.sessionId)
+	si, ok := tw.LookupSession(s.SessionId)
 	// This is always an error if the session has been removed from the
 	// local state.
 	require.True(ok)

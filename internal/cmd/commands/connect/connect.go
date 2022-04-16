@@ -2,9 +2,7 @@ package connect
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -437,36 +435,18 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
+	tlsConf, err := ClientTlsConfig(c.sessionAuthzData, workerHost)
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
-		return base.CommandUserError
+		c.PrintCliError(fmt.Errorf("Error creating TLS configuration: %w", err))
+		return base.CommandCliError
 	}
-
-	c.expiration = parsedCert.NotAfter
+	c.expiration = tlsConf.Certificates[0].Leaf.NotAfter
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
 	// try to actually make it
 	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
 	defer c.proxyCancel()
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(parsedCert)
-
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{c.sessionAuthzData.Certificate},
-				PrivateKey:  ed25519.PrivateKey(c.sessionAuthzData.PrivateKey),
-				Leaf:        parsedCert,
-			},
-		},
-		RootCAs:    certPool,
-		ServerName: workerHost,
-		MinVersion: tls.VersionTLS13,
-		NextProtos: []string{"http/1.1", c.sessionAuthzData.SessionId},
-	}
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false

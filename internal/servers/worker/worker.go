@@ -63,6 +63,10 @@ type Worker struct {
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
 	updateTags ua.Bool
+
+	// Test-specific options
+	TestOverrideX509VerifyDnsName  string
+	TestOverrideX509VerifyCertPool *x509.CertPool
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -324,10 +328,40 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 			},
 		},
 		NextProtos: []string{"http/1.1"},
-		ServerName: sessionId,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  certPool,
 		MinVersion: tls.VersionTLS13,
+
+		// These two are set this way so we can make use of VerifyConnection,
+		// which we set on this TLS config below. We are not skipping
+		// verification!
+		ClientAuth:         tls.RequireAnyClientCert,
+		InsecureSkipVerify: true,
+	}
+
+	// We disable normal DNS SAN behavior as we don't rely on DNS or IP
+	// addresses for security and want to avoid issues with including localhost
+	// etc.
+	verifyOpts := x509.VerifyOptions{
+		DNSName: sessionId,
+		Roots:   certPool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}
+	if w.TestOverrideX509VerifyCertPool != nil {
+		verifyOpts.Roots = w.TestOverrideX509VerifyCertPool
+	}
+	if w.TestOverrideX509VerifyDnsName != "" {
+		verifyOpts.DNSName = w.TestOverrideX509VerifyDnsName
+	}
+	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
+		// Go will not run this without at least one peer certificate, but
+		// doesn't hurt to check
+		if len(cs.PeerCertificates) == 0 {
+			return errors.New("no peer certificates provided")
+		}
+		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
+		return err
 	}
 
 	si := &session.Info{
