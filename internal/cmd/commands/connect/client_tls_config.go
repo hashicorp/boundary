@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -13,6 +12,10 @@ import (
 // ClientTlsConfig creates a TLS configuration from the session authorization
 // data and host
 func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host string) (*tls.Config, error) {
+	const op = "connect.ClientTlsConfig"
+	if sessionAuthzData == nil {
+		return nil, fmt.Errorf("%s: nil session authorization data", op)
+	}
 	parsedCert, err := x509.ParseCertificate(sessionAuthzData.Certificate)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode mTLS certificate: %w", err)
@@ -56,7 +59,7 @@ func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host 
 		// Go will not run this without at least one peer certificate, but
 		// doesn't hurt to check
 		if len(cs.PeerCertificates) == 0 {
-			return errors.New("no peer certificates provided")
+			return fmt.Errorf("%s: no peer certificates provided", op)
 		}
 		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 		return err
