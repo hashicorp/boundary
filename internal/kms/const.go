@@ -120,3 +120,15 @@ func (k KeyType) String() string {
 		return "unknown"
 	}
 }
+
+// ValidDekPurposes returns the current list of valid DEK key purposes
+func ValidDekPurposes() []KeyPurpose {
+	return []KeyPurpose{
+		KeyPurposeDatabase,
+		KeyPurposeOplog,
+		KeyPurposeTokens,
+		KeyPurposeSessions,
+		KeyPurposeOidc,
+		KeyPurposeAudit,
+	}
+}
