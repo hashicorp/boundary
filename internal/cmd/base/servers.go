@@ -674,7 +674,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		}
 	}()
 
-	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
+	_, err = kms.DeprecatedCreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
 	if err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}

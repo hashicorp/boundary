@@ -79,10 +79,10 @@ type KeyIder interface {
 // easily accessed via their KeyType
 type Keys map[KeyType]KeyIder
 
-// CreateKeysTx creates the root key and DEKs returns a map of the new keys.
+// DeprecatedCreateKeysTx creates the root key and DEKs returns a map of the new keys.
 // This function encapsulates all the work required within a db.TxHandler and
 // allows this capability to be shared with the iam repo.
-func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
+func DeprecatedCreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
 	const op = "kms.CreateKeysTx"
 	if dbReader == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db reader")

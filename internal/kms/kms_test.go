@@ -22,7 +22,7 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 
 	// Make the global scope base keys
-	_, err = CreateKeysTx(ctx, rw, rw, extWrapper, rand.Reader, scope.Global.String())
+	_, err = DeprecatedCreateKeysTx(ctx, rw, rw, extWrapper, rand.Reader, scope.Global.String())
 	require.NoError(err)
 
 	// Get the global scope's root wrapper

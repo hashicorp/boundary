@@ -29,6 +29,7 @@ type options struct {
 	withRandomReader            io.Reader
 	withAccountIds              []string
 	withPrimaryAuthMethodId     string
+	withDeprecatedCreateKeys    bool
 }
 
 func getDefaultOptions() options {
@@ -139,5 +140,14 @@ func WithAccountIds(id ...string) Option {
 func WithPrimaryAuthMethodId(id string) Option {
 	return func(o *options) {
 		o.withPrimaryAuthMethodId = id
+	}
+}
+
+// WithDeprecatedCreateKeys:  WARNING: this provides an option to specify the
+// use of the deprecated create keys functionality.  You probably shouldn't be
+// using this!!!!
+func WithDeprecatedCreateKeys() Option {
+	return func(o *options) {
+		o.withDeprecatedCreateKeys = true
 	}
 }

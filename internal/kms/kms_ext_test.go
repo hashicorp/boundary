@@ -200,7 +200,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			setup: func(k *kms.Kms) {
 				// create initial keys for the test scope ids...
 				for _, id := range []string{org.PublicId, org2.PublicId} {
-					_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, id)
+					_, err := kms.DeprecatedCreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, id)
 					require.NoError(t, err)
 				}
 				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
@@ -221,7 +221,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
 
 			// create initial keys for the global scope...
-			_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
+			_, err := kms.DeprecatedCreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
 			require.NoError(err)
 
 			if tt.setup != nil {

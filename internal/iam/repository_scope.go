@@ -175,9 +175,19 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			s := scopeRaw.(*Scope)
 
 			// Create the scope's keys
-			_, err = kms.CreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope keys"))
+			switch {
+			case opts.withDeprecatedCreateKeys:
+				_, err = kms.DeprecatedCreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope keys"))
+				}
+			default:
+				// TODO (jimlambrt 4/2022) -> update this to use the new create
+				// keys!!!!
+				_, err = kms.DeprecatedCreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope keys"))
+				}
 			}
 
 			kmsRepo, err := kms.NewRepository(dbr, w)
