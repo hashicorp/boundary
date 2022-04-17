@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -51,8 +50,8 @@ func TestController_New(t *testing.T) {
 		verifyFn()
 
 		// this tests a scenario where there is NOT an audit DEK
-		db.TestDeleteWhere(t, conf.Server.Database, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
-		db.TestDeleteWhere(t, conf.Server.Database, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
+		kms.TestKmsDeleteKeyPurpose(t, conf.Database, kms.KeyPurposeAudit)
+		kms.TestKmsDeleteKeyPurpose(t, conf.Database, kms.KeyPurposeOidc)
 
 		// re-init an empty cache and assert that the DEKs are not there.
 		kmsCache := kms.TestKms(t, conf.Server.Database, conf.RootKms)

@@ -24,7 +24,7 @@ func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	wrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
 	if err != nil {
-		_, err = kms.DeprecatedCreateKeysTx(context.Background(), rw, rw, rootWrapper, rand.Reader, scope.Global.String())
+		err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 		require.NoError(err)
 		wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeOplog)
 		if err != nil {

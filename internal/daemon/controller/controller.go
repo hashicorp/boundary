@@ -204,11 +204,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
-	kmsRepo, err := kms.NewRepository(dbase, dbase)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	c.kms, err = kms.NewKms(kmsRepo)
+	c.kms, err = kms.New(ctx, dbase, dbase)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}

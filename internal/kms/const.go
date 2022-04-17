@@ -24,6 +24,9 @@ const (
 	// KeyPurposeRecovery is used for recovery access
 	KeyPurposeRecovery
 
+	// KeyPurposeWorkerAuth is used for worker auth
+	KeyPurposeWorkerAuth
+
 	// KeyPurposeTokens is used for token encryption
 	KeyPurposeTokens
 
@@ -36,6 +39,9 @@ const (
 
 	// KeyPurposeAudit is used for audit operations
 	KeyPurposeAudit
+
+	// KeyPurposeRootKey is used as the root key
+	KeyPurposeRootKey
 )
 
 // String returns the key purpose cast as a string, just so it can be called as
@@ -48,6 +54,8 @@ func (k KeyPurpose) String() string {
 		return "oplog"
 	case KeyPurposeRecovery:
 		return "recovery"
+	case KeyPurposeWorkerAuth:
+		return "workerauth"
 	case KeyPurposeTokens:
 		return "tokens"
 	case KeyPurposeSessions:
@@ -56,66 +64,8 @@ func (k KeyPurpose) String() string {
 		return "oidc"
 	case KeyPurposeAudit:
 		return "audit"
-	default:
-		return "unknown"
-	}
-}
-
-// KeyType allows the kms repo to return a map[KeyType]Key which can be easily
-// used without type casting.
-type KeyType uint
-
-const (
-	KeyTypeUnknown KeyType = iota
-	KeyTypeRootKey
-	KeyTypeRootKeyVersion
-	KeyTypeDatabaseKey
-	KeyTypeDatabaseKeyVersion
-	KeyTypeOplogKey
-	KeyTypeOplogKeyVersion
-	KeyTypeTokenKey
-	KeyTypeTokenKeyVersion
-	KeyTypeSessionKey
-	KeyTypeSessionKeyVersion
-	KeyTypeOidcKey
-	KeyTypeOidcKeyVersion
-	KeyTypeAuditKey
-	KeyTypeAuditKeyVersion
-)
-
-// String returns the key type cast as a string, just so it can be called as
-// a function instead of direct casting elsewhere, yw
-func (k KeyType) String() string {
-	switch k {
-	case KeyTypeRootKey:
+	case KeyPurposeRootKey:
 		return "rootKey"
-	case KeyTypeRootKeyVersion:
-		return "rootKeyVersion"
-	case KeyTypeDatabaseKey:
-		return "databaseKey"
-	case KeyTypeDatabaseKeyVersion:
-		return "databaseKeyVersion"
-	case KeyTypeOplogKey:
-		return "oplogKey"
-	case KeyTypeOplogKeyVersion:
-		return "oplogKeyVersion"
-	case KeyTypeTokenKey:
-		return "tokenKey"
-	case KeyTypeTokenKeyVersion:
-		return "tokenKeyVersion"
-	case KeyTypeSessionKey:
-		return "sessionKey"
-	case KeyTypeSessionKeyVersion:
-		return "sessionKeyVersion"
-	case KeyTypeOidcKey:
-		return "oidcKey"
-	case KeyTypeOidcKeyVersion:
-		return "oidcKeyVersion"
-	case KeyTypeAuditKey:
-		return "auditKey"
-	case KeyTypeAuditKeyVersion:
-		return "auditKeyVersion"
-
 	default:
 		return "unknown"
 	}
